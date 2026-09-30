@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#101c20" />
+    <title>Lantern — Isometric Fantasy Playground</title>
+  </head>
+  <body>
+    <div id="app">
+      <div id="scene" aria-label="Interactive isometric fantasy scene"></div>
+      <header class="masthead">
+        <span class="eyebrow">THREE.JS PLAYGROUND</span>
+        <h1>Lantern</h1>
+        <p>A small clearing at the edge of a larger world.</p>
+      </header>
+      <aside class="scene-card" aria-live="polite">
+        <span class="scene-card__label">THE FIRST CLEARING</span>
+        <h2>Viking foothills</h2>
+        <p id="asset-status">Checking local art…</p>
+        <div class="scene-card__rule"></div>
+        <div class="material-lab">
+          <span class="scene-card__label">MATERIAL LAB / ROCK</span>
+          <button id="rock-toggle" type="button" disabled>Painted rock unavailable</button>
+          <button id="rock-focus" type="button" disabled>Inspect rock up close</button>
+          <p>Same low poly mesh · baked color only</p>
+        </div>
+        <div class="scene-card__rule"></div>
+        <p class="controls"><strong>Drag</strong> to look around <span>·</span> <strong>Scroll</strong> to zoom</p>
+      </aside>
+      <footer>01 / A WORLD IN THE MAKING</footer>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

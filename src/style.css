@@ -1,0 +1,27 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=DM+Sans:wght@400;500;600;700&display=swap');
+
+:root{font-family:'DM Sans',sans-serif;color:#f1eedf;background:#101c20;font-synthesis:none}
+*{box-sizing:border-box}
+html,body,#app{width:100%;height:100%;margin:0;overflow:hidden}
+#app{position:relative;background:radial-gradient(circle at 62% 38%,#344a48 0,#152b2d 47%,#101c20 100%)}
+#scene{position:absolute;inset:0}
+#scene canvas{display:block;width:100%;height:100%;outline:none}
+#app:after{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,rgba(5,13,16,.54),transparent 45%),linear-gradient(0deg,rgba(5,13,16,.35),transparent 22%)}
+.masthead,.scene-card,footer{position:absolute;z-index:1}
+.masthead{top:clamp(26px,5vw,72px);left:clamp(24px,5vw,76px);max-width:360px;pointer-events:none}
+.eyebrow,.scene-card__label,footer{font-size:10px;letter-spacing:.23em;font-weight:700;color:#dfbc7e}
+h1,h2,p{margin:0}
+h1{font-family:'Cormorant Garamond',Georgia,serif;font-size:clamp(66px,8vw,110px);font-weight:600;line-height:.9;letter-spacing:-.055em;margin:16px 0 19px}
+.masthead p{font-size:14px;line-height:1.6;color:#c1c9c3;max-width:250px}
+.scene-card{right:clamp(20px,4vw,58px);bottom:clamp(24px,5vw,70px);width:min(315px,calc(100vw - 40px));padding:22px 24px 20px;background:rgba(12,27,28,.82);border:1px solid rgba(216,190,140,.35);box-shadow:0 12px 35px rgba(0,0,0,.21);backdrop-filter:blur(12px)}
+.scene-card h2{font-family:'Cormorant Garamond',Georgia,serif;font-size:31px;font-weight:600;margin:6px 0 9px}
+.scene-card p{font-size:12px;color:#b9c5bd;line-height:1.5}
+.scene-card__rule{height:1px;background:rgba(216,190,140,.22);margin:16px 0 14px}
+.material-lab button{display:block;width:100%;margin:10px 0 8px;padding:10px 12px;border:1px solid #c3a672;background:rgba(195,166,114,.12);color:#f1eedf;font:600 12px 'DM Sans',sans-serif;text-align:left;cursor:pointer;transition:background .15s}
+.material-lab button+button{margin-top:7px;background:transparent;border-color:rgba(195,166,114,.45)}
+.material-lab button:hover:not(:disabled){background:rgba(195,166,114,.26)}
+.material-lab button:focus-visible{outline:2px solid #efd3a1;outline-offset:2px}
+.material-lab button:disabled{opacity:.45;cursor:default}
+.controls strong{font-weight:600;color:#e8e5d5}.controls span{padding:0 5px;color:#dfbc7e}
+footer{left:clamp(24px,5vw,76px);bottom:clamp(26px,5vw,70px);font-size:9px;color:#b0bbb4}
+@media(max-width:720px){.masthead{top:23px}.masthead h1{font-size:65px;margin:8px 0}.masthead p{display:none}.scene-card{bottom:19px;padding:16px 18px}.scene-card h2{font-size:25px}.scene-card__rule{margin:10px 0}footer{display:none}}
