@@ -2,34 +2,37 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' blob: data: ws://127.0.0.1:* ws://localhost:*" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#101c20" />
-    <title>Lantern — Isometric Fantasy Playground</title>
+    <title>Lantern</title>
   </head>
   <body>
     <div id="app">
-      <div id="scene" aria-label="Interactive isometric fantasy scene"></div>
-      <header class="masthead">
-        <span class="eyebrow">THREE.JS PLAYGROUND</span>
-        <h1>Lantern</h1>
-        <p>A small clearing at the edge of a larger world.</p>
-      </header>
-      <aside class="scene-card" aria-live="polite">
-        <span class="scene-card__label">THE FIRST CLEARING</span>
-        <h2>Viking foothills</h2>
-        <p id="asset-status">Checking local art…</p>
-        <div class="scene-card__rule"></div>
-        <div class="material-lab">
-          <span class="scene-card__label">MATERIAL LAB / ROCK</span>
-          <button id="rock-toggle" type="button" disabled>Painted rock unavailable</button>
-          <button id="rock-focus" type="button" disabled>Inspect rock up close</button>
-          <p>Same low poly mesh · baked color only</p>
+      <div id="scene" aria-label="Game"></div>
+      <div class="toolbar"><button id="rock-focus" type="button" hidden disabled>Return</button><button id="options-open" type="button">Options</button></div>
+      <section class="combat-hud" aria-label="Combat status">
+        <p id="phase-label">LOADING</p>
+        <div class="combat-hud__row"><span>Player</span><span id="player-health" aria-label="Player health"></span></div>
+        <div class="combat-hud__row"><span>Enemy</span><span id="enemy-health" aria-label="Enemy health"></span></div>
+      </section>
+      <p id="asset-status" role="status"></p>
+      <div id="result-panel" class="result-panel" hidden><h2 id="result-title"></h2><p id="result-copy"></p><button id="retry" type="button">Retry</button></div>
+      <dialog id="options-dialog" aria-labelledby="options-title">
+        <header class="options-header"><h1 id="options-title">Options</h1><button id="options-close" type="button" aria-label="Close options">Close</button></header>
+        <nav class="options-tabs" role="tablist" aria-label="Options categories"><button type="button" role="tab" aria-selected="true" data-options-tab="graphics">Graphics</button><button type="button" role="tab" aria-selected="false" data-options-tab="animations">Animations</button></nav>
+        <div class="options-content">
+          <section data-options-panel="graphics"><div id="graphics-settings"></div></section>
+          <section data-options-panel="animations" hidden>
+            <div class="motion-pack-row"><label>Player<select class="motion-pack" id="player-motions" disabled><option>Loading…</option></select></label><label>Enemy<select class="motion-pack" id="enemy-motions" disabled><option>Loading…</option></select></label></div>
+            <div class="motion-choices"><label>Idle<select id="motion-idle" disabled></select></label><label>Run<select id="motion-run" disabled></select></label><label>Attack<select id="motion-attack" disabled></select></label><label>Hit<select id="motion-hit" disabled></select></label><label>Death<select id="motion-death" disabled></select></label></div>
+            <p id="motion-status" role="status"></p>
+            <div class="game-actions"><button id="options-inspect" type="button">Inspect rock</button><button id="options-restart" type="button">Restart</button></div>
+          </section>
         </div>
-        <div class="scene-card__rule"></div>
-        <p class="controls"><strong>Drag</strong> to look around <span>·</span> <strong>Scroll</strong> to zoom</p>
-      </aside>
-      <footer>01 / A WORLD IN THE MAKING</footer>
+        <footer class="options-footer"><button id="options-reset" type="button">Reset graphics</button></footer>
+      </dialog>
     </div>
-    <script type="module" src="/src/main.ts"></script>
+    <script type="module" src="/src/entry.ts"></script>
   </body>
 </html>

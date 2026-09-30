@@ -5,16 +5,41 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "build": "tsc --noEmit && vite build",
+    "build": "node scripts/build.mjs",
     "preview": "vite preview --host 127.0.0.1",
-    "assets:import": "node scripts/import-synty.mjs"
+    "assets:import": "node scripts/import-synty.mjs",
+    "assets:export-character": "node scripts/export-character.mjs",
+    "assets:export-ground": "node scripts/export-ground.mjs",
+    "assets:export-animation-lab": "node scripts/export-animation-lab.mjs",
+    "assets:export-art-lab": "node scripts/export-art-lab.mjs",
+    "assets:download-mixamo": "python3 scripts/mixamo-download-collector.py",
+    "desktop": "npm run build && electron electron/main.cjs",
+    "desktop:run": "electron electron/main.cjs",
+    "desktop:check": "electron electron/main.cjs --background",
+    "assets:import-library": "python3 scripts/import-library.py",
+    "assets:verify-library": "python3 scripts/synty-library/verify.py",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "docs:check": "node scripts/check-docs.mjs",
+    "smoke:preview": "node scripts/smoke-preview.mjs",
+    "assets:check": "node scripts/check-assets.mjs",
+    "check": "node scripts/check.mjs"
   },
   "dependencies": {
+    "postprocessing": "6.39.5",
     "three": "^0.180.0"
   },
   "devDependencies": {
+    "@types/node": "^24.19.0",
     "@types/three": "^0.180.0",
+    "electron": "44.5.1",
     "typescript": "^5.9.0",
-    "vite": "^7.1.0"
+    "vite": "^7.1.0",
+    "vitest": "^4.1.11"
+  },
+  "license": "CC-BY-NC-4.0",
+  "engines": {
+    "node": ">=24 <25",
+    "npm": ">=11"
   }
 }
