@@ -26,7 +26,7 @@ export async function checkInputs(base) {
 await cli(async () => {
   const args = parseArgs(process.argv.slice(2), { '--base': 'value', '--full': 'boolean', '--assets': 'boolean' });
   if (args['--help']) { console.log('Usage: npm run check -- [--base SHA] [--assets]\nFast sanity checks. npm run check:full runs the complete production gate.'); return; }
-  await withResource('checks', async () => {
+  const perform = async () => {
     const inputs = await checkInputs(args['--base']);
     const full = !!args['--full'], files = inputs.files;
     const docsOnly = files.length > 0 && files.every(name => name.endsWith('.md'));
@@ -57,12 +57,16 @@ await cli(async () => {
     let failed = false;
     for (const [name, command, argv] of stages) {
       if (failed) { summary.push({ name, status: 'skipped' }); continue; }
-      const log = await open(resolve(dir, `${name}.log`), 'w'), start = Date.now();
+      const log = await open(resolve(dir, `${name}.log`), 'w'), queued = Date.now();
+      let start = queued, waitingMs = 0;
       try {
-        await run(command, argv, { timeout: 180000, stdio: ['ignore', log.fd, log.fd] });
-        summary.push({ name, status: 'passed', ms: Date.now() - start }); console.log(`PASS ${name}`);
+        await withResource(name === 'build' ? 'heavy' : 'checks', async () => {
+          start = Date.now(); waitingMs = start - queued;
+          await run(command, argv, { timeout: 180000, stdio: ['ignore', log.fd, log.fd] });
+        });
+        summary.push({ name, status: 'passed', ms: Date.now() - start, waitingMs }); console.log(`PASS ${name}`);
       } catch (error) {
-        failed = true; summary.push({ name, status: 'failed', error: error.message, ms: Date.now() - start });
+        failed = true; summary.push({ name, status: 'failed', error: error.message, ms: Date.now() - start, waitingMs });
         console.error(`FAIL ${name}: ${error.message}; log: ${resolve(dir, `${name}.log`)}`);
       } finally { await log.close(); }
     }
@@ -82,5 +86,6 @@ await cli(async () => {
     }
     console.log(`${full ? 'Full gate' : 'Sanity check'} evidence: ${dir}`);
     if (failed) process.exitCode = 1;
-  });
+  };
+  await perform();
 });
