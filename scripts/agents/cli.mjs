@@ -1,6 +1,6 @@
 import { resolve, join } from 'node:path';
 import { cli, parseArgs, root, UsageError } from '../lib/cli.mjs';
-import { context, currentTask, readJSON, tasks, freeSpace, processIdentity } from './state.mjs';
+import { context, currentTask, readJSON, tasks, freeSpace, liveLeases, lastSuccessfulCheck } from './state.mjs';
 import { startTask, finishTask, cleanupTask, prepareSources, ensureDependencies, recover } from './workflow.mjs';
 import { startPreview, stopPreview, livePreview } from './preview.mjs';
 import { withResource } from './resources.mjs';
@@ -24,8 +24,19 @@ await cli(async () => {
     console.log(`Task ${task.id}\nDirectory: ${task.path}\nSetup: ${task.setupMs} ms; available disk ${(await freeSpace(ctx.main) / 1024 ** 3).toFixed(1)} GiB (clone directory sizes are logical).`);
   } else if (operation === 'status') {
     const records = await tasks(ctx);
-    const views = await Promise.all(records.map(async task => ({ ...task, preview: await livePreview(task.path) })));
-    console.log(JSON.stringify({ main: ctx.main, freeGiB: await freeSpace(ctx.main) / 1024 ** 3, promotion: await readJSON(join(ctx.store, 'promotion.json'), null), tasks: views }, null, 2));
+    const views = await Promise.all(records.map(async task => {
+      const [preview, lastCheck] = await Promise.all([livePreview(task.path), lastSuccessfulCheck(task.path)]);
+      return {
+        id: task.id, path: task.path, branch: task.branch, status: task.status,
+        base: task.base, candidate: task.candidate, setupMs: task.setupMs,
+        assetChanges: task.assetChanges?.length ?? 0, assetConflicts: task.assetConflicts,
+        integratedAt: task.integratedAt, cleanedAt: task.cleanedAt,
+        preview: preview ? { url: preview.url, session: preview.session, browser: preview.browser, author: preview.author } : null,
+        lastCheck,
+      };
+    }));
+    const [free, leases, promotion] = await Promise.all([freeSpace(ctx.main), liveLeases(ctx), readJSON(join(ctx.store, 'promotion.json'), null)]);
+    console.log(JSON.stringify({ main: ctx.main, freeGiB: Number((free / 1024 ** 3).toFixed(1)), leases, promotion, tasks: views }, null, 2));
   } else if (operation === 'main') {
     await withResource('promotion', () => recover(ctx), { ctx });
     if (args['--stop']) await stopPreview(ctx.main);

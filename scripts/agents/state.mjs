@@ -54,3 +54,26 @@ export async function processIdentity(pid) {
   try { return (await execute('ps', ['-p', String(pid), '-o', 'lstart='])).stdout.trim(); }
   catch { return ''; }
 }
+export async function liveLeases(ctx) {
+  const directory = join(ctx.store, 'leases');
+  const names = await readdir(directory).catch(error => { if (error.code === 'ENOENT') return []; throw error; });
+  const records = await Promise.all(names.filter(name => name.endsWith('.json')).map(name => readJSON(join(directory, name), null)));
+  const live = await Promise.all(records.map(async record => record?.started && await processIdentity(record.pid) === record.started ? {
+    resource: record.resource, slot: record.slot, pid: record.pid, task: record.task,
+  } : null));
+  return live.filter(Boolean).sort((a, b) => a.resource.localeCompare(b.resource) || a.slot - b.slot);
+}
+export async function lastSuccessfulCheck(cwd) {
+  const cache = await readJSON(join(cwd, '.local/checks/cache.json'), null);
+  if (!cache?.passed || !cache.evidence) return null;
+  const [inputs, stages] = await Promise.all([
+    readJSON(join(cache.evidence, 'inputs.json'), null),
+    readJSON(join(cache.evidence, 'summary.json'), null),
+  ]);
+  if (!inputs?.passed || !stages) return null;
+  return {
+    evidence: cache.evidence, revision: inputs.head, base: inputs.base,
+    assets: inputs.assets, full: inputs.full, ms: stages.reduce((sum, stage) => sum + (stage.ms ?? 0), 0),
+    stages: stages.map(stage => stage.name),
+  };
+}

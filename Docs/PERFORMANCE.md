@@ -5,6 +5,14 @@ Ordinary feature work follows the [lean task workflow](DEVELOPMENT.md#working-al
 
 Use matched local measurements to judge changes; performance numbers are advisory, not CI gates. Browser resource smoke does not execute the renderer.
 
+## October 1 isolated task workflow
+
+The two real private tasks initially took 18.14 and 18.53 seconds to prepare on the local Apple M5 / 16 GB APFS Mac, including checkout, two prepared-art snapshots, dependency cloning and asset indexing. These are setup observations, not an estimate of physical storage allocated by clones.
+
+One warmed clone of the same dependency directory (4,983 entries) took 0.877 seconds before and 0.469 seconds after the native helper optimization. The helper now loads `clonefile` once, traverses with `scandir`, creates parent directories once and lets per-file `clonefile` preserve attributes. Editing a cloned package file preserved the source bytes and used a different inode; the relative executable link still resolved inside the clone. No directory cloning or large-copy fallback was introduced.
+
+This single before/after sanity measurement includes Python startup and excludes deletion. It does not establish the full setup improvement, SSD write volume, GPU capacity or cross-machine performance. Asset indexing and other setup stages remain part of the total cost. Task status reports available disk, concise task/check evidence and live verified resource owners without dumping the asset catalog.
+
 ## Current rendering policy
 
 Lantern requires native WebGPU across gameplay, authoring and labs through the shared graph. FSR Temporal is the sole reconstruction method (Balanced, sharpening 0.50 by default), with output pixel ratio fixed at 1. There is no reconstruction fallback; WebGPU/FSR startup failure produces an actionable error. Independent Shadow Quality and Particle Effects presets replace the overloaded quality setting. Atmosphere is simple profile distance fog; volumetric rendering is retired.

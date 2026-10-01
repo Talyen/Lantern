@@ -11,6 +11,13 @@ import subprocess
 import sys
 import time
 
+_clonefile = None
+if sys.platform == 'darwin':
+    _libc = ctypes.CDLL('/usr/lib/libSystem.B.dylib', use_errno=True)
+    _clonefile = _libc.clonefile
+    _clonefile.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int]
+    _clonefile.restype = ctypes.c_int
+
 
 def identity(pid):
     try:
@@ -19,36 +26,40 @@ def identity(pid):
         return ''
 
 
-def clone(source, target, exclusions=(), source_root=None, small_copy=False):
-    source, target = Path(source), Path(target)
-    source_root = source_root or source.resolve()
-    if str(source.resolve()) in exclusions:
-        return
-    if source.is_symlink():
-        # Dependency links must remain inside the private copy, not point to its original.
-        link = os.readlink(source)
-        if os.path.isabs(link) or not (source.parent / link).resolve().is_relative_to(source_root):
-            raise RuntimeError(f'Absolute symlink cannot be privately cloned: {source}')
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.symlink_to(link)
-    elif source.is_dir():
-        target.mkdir(parents=True, exist_ok=True)
-        for child in source.iterdir():
-            clone(child, target / child.name, exclusions, source_root, small_copy)
-        shutil.copystat(source, target)
-    else:
-        target.parent.mkdir(parents=True, exist_ok=True)
-        if sys.platform == 'darwin':
-            libc = ctypes.CDLL('/usr/lib/libSystem.B.dylib', use_errno=True)
-            libc.clonefile.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int]
-            if libc.clonefile(os.fsencode(source), os.fsencode(target), 0):
+def clone(source, target, exclusions=(), small_copy=False):
+    source, target = os.path.abspath(source), os.path.abspath(target)
+    source_root = Path(source).resolve()
+    # Realpath checks matter for excluded paths, but avoid resolving every ordinary file.
+    excluded = {os.path.realpath(path) for path in exclusions}
+    os.makedirs(os.path.dirname(target), exist_ok=True)
+
+    def copy_entry(source, target, entry=None):
+        if excluded and os.path.realpath(source) in excluded:
+            return
+        is_link = entry.is_symlink() if entry else os.path.islink(source)
+        if is_link:
+            # Relative links must stay inside the private tree when copied unchanged.
+            link = os.readlink(source)
+            if os.path.isabs(link) or not (Path(source).parent / link).resolve().is_relative_to(source_root):
+                raise RuntimeError(f'Symlink escapes its private clone: {source}')
+            os.symlink(link, target)
+        elif (entry.is_dir(follow_symlinks=False) if entry else os.path.isdir(source)):
+            os.makedirs(target, exist_ok=True)
+            with os.scandir(source) as children:
+                for child in children:
+                    copy_entry(child.path, os.path.join(target, child.name), child)
+            shutil.copystat(source, target)
+        elif _clonefile:
+            # clonefile copies attributes too. Directory cloning is intentionally avoided.
+            if _clonefile(os.fsencode(source), os.fsencode(target), 0):
                 raise OSError(ctypes.get_errno(), f'APFS clone failed: {source} -> {target}')
         elif small_copy:
             # Explicitly bounded fixture/asset-free CI copies, never a catalog fallback.
             shutil.copy2(source, target)
         else:
-            subprocess.run(['cp', '--reflink=always', '--', str(source), str(target)], check=True)
-        shutil.copystat(source, target)
+            subprocess.run(['cp', '--reflink=always', '--', source, target], check=True)
+
+    copy_entry(source, target)
 
 
 def lease(args):
