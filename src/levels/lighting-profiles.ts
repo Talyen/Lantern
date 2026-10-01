@@ -33,22 +33,23 @@ export const lightingProfiles = {
       },
     },
   },
+  // Gameplay baseline: subdued, readable woodland; amber flames carry the focal contrast.
   'woodland-night': {
     label: 'Woodland night', defaultMode: 'moonlit',
     lighting: {
-      background: '#18242f', fogNear: 30, fogFar: 65, saturation: .82,
-      ambient: { sky: '#71849c', ground: '#384536', intensity: .22 },
-      sun: { color: '#c0d0e6', intensity: .45, position: [-18, 26, -10], shadowExtent: 27 },
-      environment: { sky: '#4e627d', horizon: '#6d7f93', ground: '#28312c', sunColor: '#bbcce3', sunIntensity: .75, intensity: 1.1, rotation: 0 },
-      grade: { shadows: '#b6c6ce', highlights: '#ebe3d4', strength: .1 },
+      background: '#131b23', fogNear: 30, fogFar: 65, saturation: .98,
+      ambient: { sky: '#71849c', ground: '#384536', intensity: .2 },
+      sun: { color: '#c0d0e6', intensity: .32, position: [-18, 26, -10], shadowExtent: 27 },
+      environment: { sky: '#4e627d', horizon: '#6d7f93', ground: '#28312c', sunColor: '#bbcce3', sunIntensity: .4, intensity: .75, rotation: 0 },
+      grade: { shadows: '#b6c6ce', highlights: '#ffe3bb', strength: .08 },
     },
-    autoProbes: { spacing: 6, bottom: .6, height: 3, padding: 1, intensity: .7, bounces: 1 },
+    autoProbes: { spacing: 6, bottom: .6, height: 3, padding: 1, intensity: .5, bounces: 1 },
     moods: {
       moonlit: {},
-      dark: { background: '#111a24', ambient: { intensity: .12 }, sun: { intensity: .2 },
-        environment: { sky: '#344761', horizon: '#4e6076', ground: '#18251f', intensity: .8, sunIntensity: .45 } },
-      misty: { background: '#243143', fogNear: 22, fogFar: 55, ambient: { intensity: .28 }, sun: { intensity: .3 },
-        environment: { sky: '#586d80', horizon: '#758697', intensity: 1.2 } },
+      dark: { background: '#080d11', ambient: { intensity: .015 }, sun: { intensity: .015 },
+        environment: { intensity: .1, sunIntensity: .06 } },
+      misty: { background: '#111b22', fogNear: 22, fogFar: 55, ambient: { intensity: .05 }, sun: { intensity: .025 },
+        environment: { intensity: .25 } },
     },
   },
   studio: {

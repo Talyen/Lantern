@@ -180,7 +180,7 @@ Settings revision 5 preserves existing applicable preferences, including saved s
 
 Electron uses a stable secure local origin so Options can persist across restarts. Hidden checks use a separate ignored profile and remain non-focusable. CLI --aa overrides the saved method. --renderer=webgpu is accepted only for compatibility; other backend values are rejected. All routes require a supported browser/OS/GPU and hardware acceleration; browser deployments require HTTPS (loopback development is supported).
 
-Environment palette, material treatment, golden/silver entry selection and local surface preparation follow [the art direction](ART_DIRECTION.md).
+Environment palette, material treatment, the fixed dark woodland baseline and local surface preparation follow [the art direction](ART_DIRECTION.md).
 
 ## Lighting preparation
 

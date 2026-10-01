@@ -27,6 +27,7 @@ export default defineConfig(({ command }) => ({
   publicDir: command === 'build' ? '.local/build-public' : 'public',
   plugins: [privateLibrary()],
   build: { copyPublicDir: false }, // The build wrapper privately clones the staged public files once.
-  server: { watch: { ignored: ['**/.local/**', '**/public/vendor/**'] } },
+  // Scope exclusions to this checkout: task source lives beneath main's .local/worktrees.
+  server: { watch: { ignored: [resolve('.local') + '/**', resolve('public/vendor') + '/**'] } },
   optimizeDeps: { include: ['three', 'three/webgpu', 'three/tsl'] },
 }));

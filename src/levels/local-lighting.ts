@@ -1,8 +1,11 @@
+/** Shared amber flame color; strength and reach distinguish sources, never temperature. */
+const flameColor = '#ffad55';
+
 /** Flame-light recipes shared by all areas. Placement and models remain area-owned. */
 export const localLightRecipes = {
-  campfire: { color: '#ffb35c', intensity: 9, distance: 8, emitterHeight: .45, shadow: true, shadowRadius: 5, shadowIntensity: .95, flicker: .025 },
-  torch: { color: '#ffb968', intensity: 7, distance: 6, emitterHeight: 1.6, shadow: true, shadowRadius: 4, shadowIntensity: .95, flicker: .035 },
-  lantern: { color: '#ffd29a', intensity: 4, distance: 5, emitterHeight: 1.2, shadow: false, shadowRadius: 4, shadowIntensity: .8, flicker: .008 },
+  campfire: { color: flameColor, intensity: 18, distance: 10, emitterHeight: .45, shadow: true, shadowRadius: 5, shadowIntensity: .95, flicker: .025 },
+  torch: { color: flameColor, intensity: 12, distance: 8, emitterHeight: 1.6, shadow: true, shadowRadius: 4, shadowIntensity: .95, flicker: .035 },
+  lantern: { color: flameColor, intensity: 7, distance: 7, emitterHeight: 1.2, shadow: false, shadowRadius: 4, shadowIntensity: .8, flicker: .008 },
 } as const;
 export type LocalLightRole = keyof typeof localLightRecipes;
 export type LocalLightDefinition = { role?: LocalLightRole; color?: string; intensity?: number; distance?: number; emitterHeight?: number; shadow?: boolean };

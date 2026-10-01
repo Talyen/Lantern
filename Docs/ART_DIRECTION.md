@@ -25,7 +25,7 @@ The woodland uses weathered autumn colors. Existing pine silhouettes are deliber
 | Burgundy | `#653944` | Sparse darker shrub accents |
 | Muted copper | `#AF8050` | Foliage highlights; nonmetallic |
 
-These swatches establish relationships, not universal material tints. Preserve authored color differences between material regions and facets. Characters, enemies, ground contacts and paths must remain legible in both lighting moods. Keep combat ground quieter than surrounding scenery. Rare magic belongs to existing portals, loot and a few future landmarks; avoid ambient runes and pervasive glowing vegetation.
+These swatches establish relationships, not universal material tints. Preserve authored color differences between material regions and facets. Characters and nearby ground contacts must remain legible within warm light pools; distant woodland detail can recede into darkness. Keep combat ground quieter than surrounding scenery. Rare magic belongs to existing portals, loot and a few future landmarks; avoid ambient runes and pervasive glowing vegetation.
 
 ## Materials and projection
 
@@ -39,13 +39,15 @@ Prepared variants cover the three selected pines, rock, log, bush, fern, crate, 
 
 Run `node scripts/assets/surfaces/environment.mjs --help` for the local exporter. Default bakes are 1024 pixels. Runtime prefers available variants and falls back to original optional scenery. An authored-surface comparison is available only in development authoring.
 
-## Golden and silver hour
+## Dark woodland and amber refuge
 
-Golden hour uses low-angle, muted golden sunlight with warm-gray sky fill. Silver hour uses low-angle, soft pewter moonlight with desaturated gray/olive fill. Silver is moonlit, not blue-black. Both keep strong local amber warmth from campfires, torches and lanterns. Local lights and physical environment response use the shared native WebGPU lighting and visual pipeline.
+Homestead and Forest Clearing use one fixed `woodland-night` / Moonlit baseline. Outside light pools, subdued cool illumination preserves paths, tree masses and nearby enemies; distant detail recedes. Within the lantern and campfire pools, warm earth, autumn color, faces and armor regain definition. Darkness comes from restrained hemisphere, directional and environment energy, not reduced player exposure or a global orange filter.
 
-Choose golden or silver independently with equal probability at initial entry and each successful gameplay area transition. The same choice can repeat. Commit the mood with the loaded destination, including gate travel, campfire travel, portals and Return Home. Failed travel, menus, retry within an area and development hot reload retain the current mood. Apply changes behind area replacement and reset temporal history. No continuous clock, save migration or Rest action is introduced. A future safe campfire rest may become another selection event.
+Campfires, torches and lanterns share amber `#ffad55` illumination. Distinguish them through intensity, reach, emitter height and subtle flicker. Campfires have broad pools with world shadows; the personal lantern follows the rig and uses an elevated effective emitter plus short-range warm owner bounce to reach torso and face while turning. Native point-light falloff feathers warmth into the dark surroundings. Keep bright centers controlled rather than whitening every nearby surface with bloom.
 
-Development authoring can force either mood for matched comparisons. It must not add controls or implementation status to the gameplay HUD.
+Travel, Return Home and restart use the same baseline; there is no random gameplay mood or day/night clock. Area overrides may adjust light direction or coverage without changing this identity. Future enclosed areas should preserve the warm-light/dark-surroundings relationship while adapting their environment and probe volumes to the space.
+
+Golden/Silver and Deep/Misty night remain development comparison looks during this first direction review. They are not normal gameplay variants. Studio remains a neutral asset-inspection profile. Retire comparison alternatives after accepting the baseline; do not replace useful inspection lighting with gameplay darkness.
 
 ## Acceptance and evidence
 
@@ -109,6 +111,4 @@ Matched native WebGPU views cover both areas in golden and silver at zoom 0.9, 1
 
 ## Shared lighting profiles
 
-Golden and silver are scoped variations of `woodland-dusk`, resolved centrally for gameplay and authoring. New environments choose an appropriate profile; neutral comparisons use `studio`. Keep family-wide tuning in profiles and intentional local differences in area overrides. See [lighting authoring](LIGHTING.md) for recipes, probe preparation, reference views and cache ownership.
-
-The fixed-night trial uses a cool, subdued woodland environment with a warm personal lantern. Moonlit prioritizes combat readability; Deep night emphasizes the explored pool of light; Misty night softens distance. These are shared profile variants and developer comparisons, not an automatic day/night cycle. See [lighting authoring](LIGHTING.md).
+The fixed `woodland-night` baseline is resolved centrally for both playable areas. Keep family-wide tuning in profiles and intentional local differences in area overrides. Golden/Silver and Deep/Misty night remain development references; neutral comparisons use `studio`. See [lighting authoring](LIGHTING.md) for recipes, probe preparation, reference views and cache ownership.

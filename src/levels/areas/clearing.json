@@ -1980,7 +1980,7 @@
     }
   ],
   "lighting": {
-    "profile": "woodland-dusk",
+    "profile": "woodland-night",
     "overrides": {
       "sun": {
         "shadowExtent": 25
@@ -2001,7 +2001,6 @@
         },
         "height": 0.45,
         "emitterHeight": 0.45,
-        "intensity": 11,
         "shadow": true,
         "role": "campfire"
       }

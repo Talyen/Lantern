@@ -2348,7 +2348,7 @@
     "yaw": -0.8
   },
   "lighting": {
-    "profile": "woodland-dusk",
+    "profile": "woodland-night",
     "overrides": {
       "sun": {
         "position": [
@@ -2374,7 +2374,6 @@
         "height": 0.45,
         "emitterHeight": 0.45,
         "shadow": true,
-        "intensity": 9,
         "role": "campfire"
       }
     ]

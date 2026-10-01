@@ -7,23 +7,30 @@ import { validateAreas } from '../src/levels/validation';
 import { resolveLocalLight } from '../src/levels/local-lighting';
 import type { AreaDefinition, ResolvedAreaDefinition } from '../src/levels/types';
 import homestead from '../src/levels/areas/homestead.json';
+import clearing from '../src/levels/areas/clearing.json';
 
 test('area profiles provide complete lighting, scoped moods, automatic coverage and local light recipes', () => {
   const area = homestead as unknown as AreaDefinition;
-  const golden = resolveAreaLighting(area, 'golden'), silver = resolveAreaLighting(area, 'silver');
+  const dusk = { ...area, lighting: { profile: 'woodland-dusk' as const } };
+  const golden = resolveAreaLighting(dusk, 'golden'), silver = resolveAreaLighting(dusk, 'silver');
   expect(golden.sun.intensity).toBeGreaterThan(silver.sun.intensity);
   expect(golden.probes!.size[0]).toBeGreaterThan(30);
   expect(golden.probes!.position[1] - golden.probes!.size[1] / 2).toBeCloseTo(.6);
   expect(resolveLighting({ profile: 'studio' }, 'silver')).toEqual(resolveLighting({ profile: 'studio' }, 'golden'));
   const overridden = resolveAreaLighting({ ...area, lighting: { profile: 'woodland-dusk', overrides: { fogFar: 80, fill: { intensity: .8 }, probes: false } } }, 'silver');
   expect(overridden.fogFar).toBe(80); expect(overridden.fill!.intensity).toBe(.8); expect(overridden.probes).toBeUndefined();
-  expect(entryLightingModesFor({ profile: 'woodland-night' })).toEqual([]);
-  expect(defaultLightingModeFor({ profile: 'woodland-night' })).toBe('moonlit');
+  for (const lighting of [homestead.lighting, clearing.lighting]) {
+    expect(lighting.profile).toBe('woodland-night');
+    expect(entryLightingModesFor(lighting as AreaDefinition['lighting'])).toEqual([]);
+    expect(defaultLightingModeFor(lighting as AreaDefinition['lighting'])).toBe('moonlit');
+  }
   expect(resolveAreaLighting({ ...area, lighting: { profile: 'woodland-night' } }, 'dark').sun.intensity).toBeLessThan(silver.sun.intensity);
   expect(golden.fill).toBeUndefined();
   const invalid = structuredClone(area); invalid.lighting = { profile: 'woodland-dusk', overrides: { fogNear: -1 } };
   expect(validateAreas({ homestead: invalid }).some(error => error.includes('invalid lighting'))).toBe(true);
   expect(golden.fogFar).toBe(60); // Resolving an override never mutates the shared profile.
+  expect(resolveLocalLight({ role: 'lantern' }).color).toBe(resolveLocalLight({ role: 'campfire' }).color);
+  expect(resolveLocalLight({ role: 'torch' }).color).toBe(resolveLocalLight({ role: 'campfire' }).color);
   expect(resolveLocalLight({ role: 'torch' }).intensity).toBeGreaterThan(resolveLocalLight({ role: 'lantern' }).intensity);
   expect(resolveLocalLight({ role: 'campfire', intensity: 11, shadow: false })).toMatchObject({ intensity: 11, shadow: false });
 });
