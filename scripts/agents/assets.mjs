@@ -1,5 +1,5 @@
 import { lstat, readdir, mkdir, rm, rename, readFile } from 'node:fs/promises';
-import { join, resolve, relative, sep } from 'node:path';
+import { join, resolve, relative, sep, basename } from 'node:path';
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { privateCopy, privateTree } from './copy.mjs';
@@ -99,5 +99,15 @@ export async function retainSources(ctx, task) {
     if (existsSync(archive)) throw new Error(`Archive already exists; preserve/reconcile it before cleanup: ${archive}`);
     await privateTree(source, archive);
   }
+  const archive = join(ctx.main, '.local/agent-archives', task.id);
+  const checks = join(task.path, '.local/checks');
+  if (existsSync(checks)) {
+    await privateTree(checks, join(archive, 'checks'));
+    if (task.lastCheck?.evidence) task.lastCheck.evidence = join(archive, 'checks', basename(task.lastCheck.evidence));
+  }
+  const previewLog = join(task.path, '.local/agents/preview.log');
+  if (existsSync(previewLog)) await privateCopy(previewLog, join(archive, 'preview.log'));
+  const views = join(task.path, '.local/level-design');
+  if (existsSync(views)) await privateTree(views, join(archive, 'level-design'));
   await writeJSON(join(ctx.main, '.local/agent-archives', task.id, 'retained.json'), { task: task.id, revision: task.candidate, retained: new Date().toISOString() });
 }

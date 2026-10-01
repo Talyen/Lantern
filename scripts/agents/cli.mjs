@@ -32,7 +32,7 @@ await cli(async () => {
         assetChanges: task.assetChanges?.length ?? 0, assetConflicts: task.assetConflicts,
         integratedAt: task.integratedAt, cleanedAt: task.cleanedAt,
         preview: preview ? { url: preview.url, session: preview.session, browser: preview.browser, author: preview.author } : null,
-        lastCheck,
+        lastCheck: lastCheck ?? task.lastCheck ?? null,
       };
     }));
     const [free, leases, promotion] = await Promise.all([freeSpace(ctx.main), liveLeases(ctx), readJSON(join(ctx.store, 'promotion.json'), null)]);

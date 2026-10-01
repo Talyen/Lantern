@@ -139,6 +139,11 @@ export async function finishTask(ctx, task, { paths = [], message = `feat: ${tas
       const candidate = await git(['rev-parse', 'HEAD'], task.path);
       try { await run(process.execPath, ['scripts/check.mjs', '--base', base, ...(task.assetChanges.length ? ['--assets'] : [])], { cwd: task.path }); }
       catch (error) { task.status = 'needs-check-repair'; await saveTask(ctx, task); throw error; }
+      const cache = await readJSON(join(task.path, '.local/checks/cache.json'), null);
+      if (cache) {
+        task.lastCheck = { evidence: cache.evidence, inputs: await readJSON(join(cache.evidence, 'inputs.json'), null), stages: await readJSON(join(cache.evidence, 'summary.json'), []) };
+        await saveTask(ctx, task);
+      }
       await clean(task.path);
       if (await git(['rev-parse', 'HEAD'], task.path) !== candidate || assetIdentity(await assetIndex(join(task.path, 'public/vendor'))) !== assets) throw new Error('Candidate changed during checks; retry after completing edits.');
       const transaction = join(ctx.store, 'transactions', randomUUID());

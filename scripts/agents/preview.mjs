@@ -1,3 +1,4 @@
+import { createServer as portServer } from 'node:net';
 import { spawn } from 'node:child_process';
 import { mkdir, open, rm, writeFile, readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -40,41 +41,53 @@ export async function startPreview(cwd, { main = false, browser = false, author 
   const token = randomUUID(), directory = join(cwd, '.local/agents');
   await mkdir(directory, { recursive: true });
   const log = await open(join(directory, 'preview.log'), 'w');
-  const child = spawn(process.execPath, [resolve(root, 'scripts/agents/preview.mjs'), '--serve'], { cwd, env: { ...process.env, LANTERN_PREVIEW: JSON.stringify({ main, browser, author, area, token }), LANTERN_LEASES: '{}' }, detached: true, stdio: ['ignore', log.fd, log.fd] });
+  const child = spawn(process.execPath, [resolve(root, 'scripts/agents/preview.mjs'), '--serve'], { cwd, env: { ...process.env, LANTERN_PREVIEW: JSON.stringify({ main, browser, author, area, token }), LANTERN_LEASES: '{}', LANTERN_LEVEL_SESSION: token }, detached: true, stdio: ['ignore', log.fd, log.fd] });
   child.unref(); await log.close();
-  for (let attempt = 0; attempt < 100; attempt++) {
-    const record = await livePreview(cwd);
-    if (record?.token === token && record.ready) return record;
-    await new Promise(accept => setTimeout(accept, 100));
-  }
-  const started = await processIdentity(child.pid);
-  if (started) process.kill(child.pid, 'SIGTERM');
-  throw new Error(`Preview did not start; inspect ${join(directory, 'preview.log')}`);
+  const identity = await processIdentity(child.pid);
+  let interrupted = false, reportedWaiting = false;
+  const began = Date.now();
+  const cancel = () => { interrupted = true; child.kill('SIGTERM'); };
+  process.once('SIGINT', cancel); process.once('SIGTERM', cancel);
+  try {
+    for (;;) {
+      if (interrupted) throw new Error('Preview startup interrupted.');
+      const record = await livePreview(cwd);
+      if (record?.token === token && record.ready) return record;
+      if (!identity || await processIdentity(child.pid) !== identity) throw new Error(`Preview exited during startup; inspect ${join(directory, 'preview.log')}`);
+      if (!reportedWaiting && Date.now() - began > 3000) { console.log(`Waiting for owned preview/GPU resource; log: ${join(directory, 'preview.log')}`); reportedWaiting = true; }
+      await new Promise(accept => setTimeout(accept, 200));
+    }
+  } finally { process.removeListener('SIGINT', cancel); process.removeListener('SIGTERM', cancel); }
+
 }
 async function serve() {
   const options = JSON.parse(process.env.LANTERN_PREVIEW);
   const cwd = process.cwd(), ctx = await context(cwd);
   if (options.main && cwd !== ctx.main) throw new Error('Main preview must use the main checkout.');
-  const lease = options.browser ? await acquire('gpu', { cwd, ctx }) : null;
   const session = `lantern-level-${options.token}`;
-  lease?.cleanup(['agent-browser', '--session', session, 'close']);
-  let server, timer, closing = false;
+  let lease, server, timer, closing = false, browserOpened = false;
   const close = async () => {
     if (closing) return; closing = true;
     clearInterval(timer);
-    if (options.browser) await run('agent-browser', ['--session', session, 'close']).catch(() => {});
+    if (browserOpened) await run('agent-browser', ['--session', session, 'close']).catch(() => {});
     await server?.close(); await rm(sessionPath(cwd), { force: true });
     if (options.author) await rm(join(cwd, '.local/level-design/session.json'), { force: true });
     await lease?.release(); process.exit(0);
   };
   process.once('SIGTERM', close); process.once('SIGINT', close);
   try {
+    lease = options.browser ? await acquire('gpu', { cwd, ctx }) : null;
+    lease?.cleanup(['agent-browser', '--session', session, 'close']);
+    const port = options.main ? 5173 : await new Promise((accept, reject) => {
+      const probe = portServer(); probe.once('error', reject);
+      probe.listen(0, '127.0.0.1', () => { const selected = probe.address().port; probe.close(() => accept(selected)); });
+    });
     const { createServer } = await import(pathToFileURL(join(cwd, 'node_modules/vite/dist/node/index.js')));
     const generation = record => record ? `${record.revision}:${record.assets}` : null;
     let revision = generation(await readJSON(join(ctx.store, 'main-revision.json'), null));
     const journal = join(ctx.store, 'promotion.json');
-    server = await createServer({ root: cwd, configFile: join(cwd, 'vite.config.ts'), server: { host: '127.0.0.1', port: options.main ? 5173 : 0, strictPort: true }, plugins: [{
-      name: 'lantern-owned-preview',
+    server = await createServer({ root: cwd, configFile: join(cwd, 'vite.config.ts'), server: { host: '127.0.0.1', port, strictPort: true }, plugins: [{
+      name: 'lantern-owned-preview', enforce: 'pre',
       configureServer(vite) {
         vite.middlewares.use('/__agent-owner', (_request, response) => { response.setHeader('Content-Type', 'application/json'); response.end(JSON.stringify({ token: options.token })); });
         vite.middlewares.use('/__level-owner', (_request, response) => { response.setHeader('Content-Type', 'application/json'); response.end(JSON.stringify({ token: options.token })); });
@@ -90,7 +103,7 @@ async function serve() {
     const record = { pid: process.pid, started: await processIdentity(process.pid), token: options.token, url, session, renderer: 'webgpu', browser: options.browser, author: options.author, gpuLease: lease ? { token: lease.record.token, slot: lease.record.slot } : null, ready: false };
     await writeJSON(sessionPath(cwd), record);
     if (options.author) await writeJSON(join(cwd, '.local/level-design/session.json'), record);
-    if (options.browser) await run('agent-browser', ['--session', session, '--headed', 'false', '--webgpu', 'open', `${url}/?area=${encodeURIComponent(options.area)}${options.author ? '&author=levels' : ''}`]);
+    if (options.browser) { browserOpened = true; await run('agent-browser', ['--session', session, '--headed', 'false', '--webgpu', 'open', `${url}/?area=${encodeURIComponent(options.area)}${options.author ? '&author=levels' : ''}`]); }
     record.ready = true; await writeJSON(sessionPath(cwd), record);
     if (options.author) await writeJSON(join(cwd, '.local/level-design/session.json'), record);
     if (options.main) timer = setInterval(async () => {
