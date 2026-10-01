@@ -16,6 +16,27 @@ Use one private Git worktree per task. The main checkout stays on `main` and is 
 
 Finish stages only named reviewed paths and refuses a pre-existing staged index. Commit before the final checks so `check --base <sha>` examines candidate changes, not just a clean working-tree diff. Checks belong to their exact revision/assets; main advancing triggers preparation and relevant checks again. Broken candidates never block unrelated tasks from attempting promotion.
 
+### Copyable task example
+
+For a documentation task, start in main and switch to the exact `Directory:` printed by the command (the default location is shown here):
+
+```sh
+cd /Users/ryanmcintire/Documents/Lantern
+npm run agent:start -- --task menu-docs
+cd /Users/ryanmcintire/Documents/Lantern/.local/worktrees/menu-docs
+# Edit and review the intended documentation paths here.
+mkdir -p .local
+cat > .local/reviewed-paths.json <<'JSON'
+["Docs/DEVELOPMENT.md"]
+JSON
+npm run agent:finish -- --paths .local/reviewed-paths.json --message "docs: clarify menu workflow"
+# After finish reports integration, return to main for cleanup.
+cd /Users/ryanmcintire/Documents/Lantern
+npm run agent:cleanup -- --task menu-docs
+```
+
+Replace the example slug, reviewed paths and commit message with the task's actual scope. A documentation task needs no preview; player-facing tasks use their one relevant private preview before finish.
+
 ### Private assets and resource use
 
 Worktrees stay on main's filesystem. Native macOS `clonefile` creates independent asset/dependency copies sharing initial storage; ordinary writes allocate changed blocks. Node's clone-copy option is unsupported on this machine and is not used. There is no silent large-copy fallback. Do not use writable symlinks or hardlinks. Clone sizes are logical, not additional physical disk usage.
@@ -35,6 +56,17 @@ The October 1 shared-checkout work was drained and committed as a settled baseli
 ## Level authoring
 
 Use the persistent preview and captures in [level design](LEVEL_DESIGN.md): `npm run levels:dev`, `npm run levels:capture`, `npm run levels:check`, `npm run levels:assets`, `npm run levels:measure`, and `npm run levels:stop`. Use one representative view; `levels:capture -- --all` is an explicit batch. Close owned sessions after review. Ordinary scene-data edits need no build/export/restart.
+
+When a capture helps review an area, run these from its task worktree with the owned authoring preview active:
+
+```sh
+npm run levels:capture -- --area clearing                # One center view (default)
+npm run levels:capture -- --area clearing --view center  # One named view
+# Optional batch only when the change warrants it:
+npm run levels:capture -- --area clearing --all          # All authored views and overview
+```
+
+Choose one single-view command for ordinary review. Only `--all` creates a contact sheet; it cannot be combined with `--view`.
 
 ## Commands and handoff
 
