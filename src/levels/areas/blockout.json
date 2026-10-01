@@ -1,0 +1,784 @@
+{
+  "version": 1,
+  "id": "blockout",
+  "name": "Blockout",
+  "envelope": {
+    "width": 33.10344827586208,
+    "depth": 26.33363185108522,
+    "apron": 4,
+    "yaw": 0.7853981633974483,
+    "reference": {
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1.45
+    },
+    "screen": [
+      16.55172413793104,
+      13.16681592554261
+    ]
+  },
+  "layout": {
+    "boundary": {
+      "kind": "polygon",
+      "points": [
+        [
+          -21.014181205846306,
+          2.393491550673893
+        ],
+        [
+          2.393491550673893,
+          -21.014181205846306
+        ],
+        [
+          21.014181205846306,
+          -2.393491550673893
+        ],
+        [
+          -2.393491550673893,
+          21.014181205846306
+        ]
+      ]
+    },
+    "player": {
+      "position": [
+        -9.582516034700458,
+        9.582516034700458
+      ],
+      "yaw": 2.356194490192345
+    },
+    "enemy": {
+      "position": [
+        2.1,
+        -1.5
+      ],
+      "yaw": 0
+    }
+  },
+  "seed": 271,
+  "props": [
+    {
+      "id": "ground",
+      "position": [
+        0,
+        -0.3,
+        0
+      ],
+      "yaw": 0.7853981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": false,
+      "receiveShadow": true,
+      "primitive": {
+        "kind": "box",
+        "size": [
+          41.10344827586208,
+          0.6,
+          34.333631851085215
+        ],
+        "color": "#48544c"
+      },
+      "terrain": true
+    },
+    {
+      "id": "landmark",
+      "position": [
+        0,
+        2,
+        -12
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "primitive": {
+        "kind": "box",
+        "size": [
+          3,
+          4,
+          2
+        ],
+        "color": "#687273"
+      }
+    },
+    {
+      "id": "edge-rock-0",
+      "position": [
+        -21.014181205846306,
+        0.8,
+        0.979277988300798
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        0.8,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "primitive": {
+        "kind": "pebble",
+        "size": [
+          1.4
+        ],
+        "color": "#687273"
+      }
+    },
+    {
+      "id": "edge-rock-1",
+      "position": [
+        -19.014775824560207,
+        0.8,
+        -1.0201273929853016
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        0.8,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "primitive": {
+        "kind": "pebble",
+        "size": [
+          1.4
+        ],
+        "color": "#687273"
+      }
+    },
+    {
+      "id": "edge-rock-2",
+      "position": [
+        -17.015370443274104,
+        0.8,
+        -3.0195327742714024
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        0.8,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "primitive": {
+        "kind": "pebble",
+        "size": [
+          1.4
+        ],
+        "color": "#687273"
+      }
+    },
+    {
+      "id": "edge-rock-3",
+      "position": [
+        -15.015965061988004,
+        0.8,
+        -5.018938155557503
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        0.8,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "primitive": {
+        "kind": "pebble",
+        "size": [
+          1.4
+        ],
+        "color": "#687273"
+      }
+    },
+    {
+      "id": "edge-rock-4",
+      "position": [
+        -13.016559680701906,
+        0.8,
+        -7.018343536843603
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        0.8,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "primitive": {
+        "kind": "pebble",
+        "size": [
+          1.4
+        ],
+        "color": "#687273"
+      }
+    },
+    {
+      "id": "edge-rock-5",
+      "position": [
+        -11.017154299415804,
+        0.8,
+        -9.017748918129705
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        0.8,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "primitive": {
+        "kind": "pebble",
+        "size": [
+          1.4
+        ],
+        "color": "#687273"
+      }
+    },
+    {
+      "id": "edge-rock-6",
+      "position": [
+        -9.017748918129703,
+        0.8,
+        -11.017154299415806
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        0.8,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "primitive": {
+        "kind": "pebble",
+        "size": [
+          1.4
+        ],
+        "color": "#687273"
+      }
+    },
+    {
+      "id": "edge-rock-7",
+      "position": [
+        -7.018343536843603,
+        0.8,
+        -13.016559680701906
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        0.8,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "primitive": {
+        "kind": "pebble",
+        "size": [
+          1.4
+        ],
+        "color": "#687273"
+      }
+    },
+    {
+      "id": "edge-rock-8",
+      "position": [
+        -5.018938155557503,
+        0.8,
+        -15.015965061988004
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        0.8,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "primitive": {
+        "kind": "pebble",
+        "size": [
+          1.4
+        ],
+        "color": "#687273"
+      }
+    },
+    {
+      "id": "edge-rock-9",
+      "position": [
+        -3.0195327742714015,
+        0.8,
+        -17.015370443274104
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        0.8,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "primitive": {
+        "kind": "pebble",
+        "size": [
+          1.4
+        ],
+        "color": "#687273"
+      }
+    },
+    {
+      "id": "edge-rock-10",
+      "position": [
+        -1.0201273929853016,
+        0.8,
+        -19.014775824560207
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        0.8,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "primitive": {
+        "kind": "pebble",
+        "size": [
+          1.4
+        ],
+        "color": "#687273"
+      }
+    },
+    {
+      "id": "edge-rock-11",
+      "position": [
+        0.979277988300798,
+        0.8,
+        -21.014181205846306
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        0.8,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "primitive": {
+        "kind": "pebble",
+        "size": [
+          1.4
+        ],
+        "color": "#687273"
+      }
+    },
+    {
+      "id": "west-post--2",
+      "position": [
+        -9.582516034700458,
+        1,
+        12.410943159446647
+      ],
+      "yaw": 0.7853981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "primitive": {
+        "kind": "box",
+        "size": [
+          0.5,
+          2,
+          0.5
+        ],
+        "color": "#a6a18a"
+      }
+    },
+    {
+      "id": "west-post-2",
+      "position": [
+        -12.410943159446647,
+        1,
+        9.582516034700458
+      ],
+      "yaw": 0.7853981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "primitive": {
+        "kind": "box",
+        "size": [
+          0.5,
+          2,
+          0.5
+        ],
+        "color": "#a6a18a"
+      }
+    },
+    {
+      "id": "east-post--2",
+      "position": [
+        12.410943159446647,
+        1,
+        -9.582516034700458
+      ],
+      "yaw": 0.7853981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "primitive": {
+        "kind": "box",
+        "size": [
+          0.5,
+          2,
+          0.5
+        ],
+        "color": "#a6a18a"
+      }
+    },
+    {
+      "id": "east-post-2",
+      "position": [
+        9.582516034700458,
+        1,
+        -12.410943159446647
+      ],
+      "yaw": 0.7853981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "primitive": {
+        "kind": "box",
+        "size": [
+          0.5,
+          2,
+          0.5
+        ],
+        "color": "#a6a18a"
+      }
+    }
+  ],
+  "scatter": [],
+  "reserved": [
+    {
+      "id": "combat",
+      "center": [
+        0,
+        0
+      ],
+      "radius": 6,
+      "role": "combat"
+    },
+    {
+      "id": "west-arrival",
+      "center": [
+        -9.582516034700458,
+        9.582516034700458
+      ],
+      "radius": 2,
+      "role": "arrival"
+    },
+    {
+      "id": "east-arrival",
+      "center": [
+        9.582516034700458,
+        -9.582516034700458
+      ],
+      "radius": 2,
+      "role": "arrival"
+    },
+    {
+      "id": "route-0",
+      "center": [
+        -8.48528137423857,
+        8.48528137423857
+      ],
+      "radius": 2,
+      "role": "route"
+    },
+    {
+      "id": "route-1",
+      "center": [
+        -6.363961030678928,
+        6.363961030678928
+      ],
+      "radius": 2,
+      "role": "route"
+    },
+    {
+      "id": "route-2",
+      "center": [
+        -4.242640687119285,
+        4.242640687119285
+      ],
+      "radius": 2,
+      "role": "route"
+    },
+    {
+      "id": "route-3",
+      "center": [
+        -2.1213203435596424,
+        2.1213203435596424
+      ],
+      "radius": 2,
+      "role": "route"
+    },
+    {
+      "id": "route-4",
+      "center": [
+        0.0,
+        0.0
+      ],
+      "radius": 2,
+      "role": "route"
+    },
+    {
+      "id": "route-5",
+      "center": [
+        2.1213203435596424,
+        -2.1213203435596424
+      ],
+      "radius": 2,
+      "role": "route"
+    },
+    {
+      "id": "route-6",
+      "center": [
+        4.242640687119285,
+        -4.242640687119285
+      ],
+      "radius": 2,
+      "role": "route"
+    },
+    {
+      "id": "route-7",
+      "center": [
+        6.363961030678928,
+        -6.363961030678928
+      ],
+      "radius": 2,
+      "role": "route"
+    },
+    {
+      "id": "route-8",
+      "center": [
+        8.48528137423857,
+        -8.48528137423857
+      ],
+      "radius": 2,
+      "role": "route"
+    }
+  ],
+  "gates": [
+    {
+      "id": "west",
+      "role": "entrance",
+      "position": [
+        -10.996729597073552,
+        10.996729597073552
+      ],
+      "yaw": -0.7853981633974483,
+      "width": 3,
+      "depth": 2,
+      "arrival": {
+        "position": [
+          -9.582516034700458,
+          9.582516034700458
+        ],
+        "yaw": 2.356194490192345
+      },
+      "destination": {
+        "area": "clearing",
+        "gate": "west"
+      }
+    },
+    {
+      "id": "east",
+      "role": "exit",
+      "position": [
+        10.996729597073552,
+        -10.996729597073552
+      ],
+      "yaw": 2.356194490192345,
+      "width": 3,
+      "depth": 2,
+      "arrival": {
+        "position": [
+          9.582516034700458,
+          -9.582516034700458
+        ],
+        "yaw": -0.7853981633974483
+      },
+      "destination": {
+        "area": "clearing",
+        "gate": "west"
+      }
+    }
+  ],
+  "lighting": {
+    "background": "#20282b",
+    "fogNear": 16.6,
+    "fogFar": 42.6,
+    "ambient": {
+      "sky": "#a4b6bf",
+      "ground": "#393c37",
+      "intensity": 0.95
+    },
+    "sun": {
+      "color": "#d3d1bd",
+      "intensity": 1.1,
+      "position": [
+        -7,
+        13,
+        9
+      ],
+      "shadowExtent": 25
+    }
+  },
+  "effects": {
+    "water": [],
+    "fires": []
+  },
+  "views": [
+    {
+      "id": "entrance",
+      "target": [
+        -9.582516034700458,
+        0.9,
+        9.582516034700458
+      ]
+    },
+    {
+      "id": "center",
+      "target": [
+        0.0,
+        0.9,
+        0.0
+      ]
+    },
+    {
+      "id": "exit",
+      "target": [
+        9.582516034700458,
+        0.9,
+        -9.582516034700458
+      ]
+    },
+    {
+      "id": "review-1",
+      "target": [
+        -7.7781745930520225,
+        0.9,
+        -0.7071067811865475
+      ]
+    },
+    {
+      "id": "review-2",
+      "target": [
+        7.7781745930520225,
+        0.9,
+        0.7071067811865475
+      ]
+    }
+  ],
+  "traversal": {
+    "obstacles": [
+      {
+        "id": "landmark",
+        "position": [
+          0,
+          2,
+          -12
+        ],
+        "size": [
+          3,
+          4,
+          2
+        ],
+        "yaw": 0
+      },
+      {
+        "id": "west-post--2",
+        "position": [
+          -9.582516034700458,
+          1,
+          12.410943159446647
+        ],
+        "size": [
+          0.5,
+          2,
+          0.5
+        ],
+        "yaw": 0.7853981633974483
+      },
+      {
+        "id": "west-post-2",
+        "position": [
+          -12.410943159446647,
+          1,
+          9.582516034700458
+        ],
+        "size": [
+          0.5,
+          2,
+          0.5
+        ],
+        "yaw": 0.7853981633974483
+      },
+      {
+        "id": "east-post--2",
+        "position": [
+          12.410943159446647,
+          1,
+          -9.582516034700458
+        ],
+        "size": [
+          0.5,
+          2,
+          0.5
+        ],
+        "yaw": 0.7853981633974483
+      },
+      {
+        "id": "east-post-2",
+        "position": [
+          9.582516034700458,
+          1,
+          -12.410943159446647
+        ],
+        "size": [
+          0.5,
+          2,
+          0.5
+        ],
+        "yaw": 0.7853981633974483
+      }
+    ]
+  }
+}

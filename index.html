@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' blob: data: ws://127.0.0.1:* ws://localhost:*" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' blob: data: ws://127.0.0.1:* ws://localhost:*" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#101c20" />
     <title>Lantern</title>
@@ -10,21 +10,37 @@
   <body>
     <div id="app">
       <div id="scene" aria-label="Game"></div>
-      <div class="toolbar"><button id="rock-focus" type="button" hidden disabled>Return</button><button id="options-open" type="button">Options</button></div>
-      <section class="combat-hud" aria-label="Combat status">
-        <p id="phase-label">LOADING</p>
-        <div class="combat-hud__row"><span>Player</span><span id="player-health" aria-label="Player health"></span></div>
-        <div class="combat-hud__row"><span>Enemy</span><span id="enemy-health" aria-label="Enemy health"></span></div>
-      </section>
+      <div class="toolbar"><button id="rock-focus" type="button" hidden disabled>Return</button></div>
+      <div id="player-health" class="resource-orb resource-orb--health" role="meter" aria-label="Health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" title="Health · 100 / 100">
+        <img class="orb-frame" src="/assets/ui/orbs/health-frame.png" alt="" />
+        <div class="orb-vessel"><div class="orb-liquid"><div class="orb-surface"></div><div class="orb-current"></div></div></div>
+        <img class="orb-glass" src="/assets/ui/orbs/health-frame.png" alt="" />
+      </div>
+      <div id="player-mana" class="resource-orb resource-orb--mana" role="meter" aria-label="Mana" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" title="Mana · 100 / 100">
+        <img class="orb-frame" src="/assets/ui/orbs/mana-frame.png" alt="" />
+        <div class="orb-vessel"><div class="orb-liquid"><div class="orb-surface"></div><div class="orb-current"></div></div></div>
+        <img class="orb-glass" src="/assets/ui/orbs/mana-frame.png" alt="" />
+      </div>
+      <div id="enemy-health" class="enemy-health" role="meter" aria-label="Enemy health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" hidden><div></div></div>
       <p id="asset-status" role="status"></p>
-      <div id="result-panel" class="result-panel" hidden><h2 id="result-title"></h2><p id="result-copy"></p><button id="retry" type="button">Retry</button></div>
+      <div id="result-panel" class="result-panel" hidden><h2 id="result-title"></h2><p id="result-copy"></p><button id="retry" type="button">Return Home</button></div>
+      <p id="interaction-prompt" role="status"></p>
+      <p id="save-status" role="status"></p>
+      <dialog id="inventory-dialog" class="game-menu" aria-labelledby="inventory-title">
+        <header><h2 id="inventory-title">Inventory</h2><button type="button" data-close>Close</button></header>
+        <div class="inventory-item"><span>Scroll of Return</span><span id="scroll-count"></span><button id="scroll-use" type="button">Use</button></div>
+      </dialog>
+      <dialog id="travel-dialog" class="game-menu" aria-labelledby="travel-title">
+        <header><h2 id="travel-title">Travel</h2><button type="button" data-close>Close</button></header>
+        <div id="travel-destinations"></div>
+      </dialog>
       <dialog id="options-dialog" aria-labelledby="options-title">
         <header class="options-header"><h1 id="options-title">Options</h1><button id="options-close" type="button" aria-label="Close options">Close</button></header>
         <nav class="options-tabs" role="tablist" aria-label="Options categories"><button type="button" role="tab" aria-selected="true" data-options-tab="graphics">Graphics</button><button type="button" role="tab" aria-selected="false" data-options-tab="animations">Animations</button></nav>
         <div class="options-content">
           <section data-options-panel="graphics"><div id="graphics-settings"></div></section>
           <section data-options-panel="animations" hidden>
-            <div class="motion-pack-row"><label>Player<select class="motion-pack" id="player-motions" disabled><option>Loading…</option></select></label><label>Enemy<select class="motion-pack" id="enemy-motions" disabled><option>Loading…</option></select></label></div>
+            <div class="motion-pack-row" hidden><label>Player<select class="motion-pack" id="player-motions" disabled><option>Loading…</option></select></label><label>Enemy<select class="motion-pack" id="enemy-motions" disabled><option>Loading…</option></select></label></div>
             <div class="motion-choices"><label>Idle<select id="motion-idle" disabled></select></label><label>Run<select id="motion-run" disabled></select></label><label>Attack<select id="motion-attack" disabled></select></label><label>Hit<select id="motion-hit" disabled></select></label><label>Death<select id="motion-death" disabled></select></label></div>
             <p id="motion-status" role="status"></p>
             <div class="game-actions"><button id="options-inspect" type="button">Inspect rock</button><button id="options-restart" type="button">Restart</button></div>

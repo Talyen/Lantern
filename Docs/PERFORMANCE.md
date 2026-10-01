@@ -2,6 +2,12 @@
 
 Use matched local measurements to judge changes; performance numbers are advisory, not CI gates. Browser resource smoke does not execute the renderer.
 
+## Current rendering policy
+
+Lantern requires native WebGPU across gameplay, authoring and labs through the shared graph. FSR Temporal is the sole reconstruction method (Balanced, sharpening 0.50 by default), with output pixel ratio fixed at 1. There is no reconstruction fallback; WebGPU/FSR startup failure produces an actionable error. Independent Shadow Quality and Particle Effects presets replace the overloaded quality setting. Atmosphere is simple profile distance fog; volumetric rendering is retired.
+
+Archived studies and initial authoring measurements include evidence from before the native WebGPU-only migration. WebGL comparisons, retired lab controls and former TAA defaults are historical evidence. Re-measure current authored areas and comparison labs on target hardware before drawing performance conclusions.
+
 ## Current measurement protocol
 
 Run a fresh production build before measuring. Use hidden `npm run desktop:check -- --debug-port=9231` and attach CDP, or use a real browser. Keep GPU acceleration enabled. Record hardware, OS, browser/Electron and three.js versions, renderer backend, AA, content viewport, actual scene dimensions, DPR/render scale, graphics settings, camera, and asset set.
@@ -10,96 +16,63 @@ Warm the chosen scene for five seconds, then sample at least 180 frames under th
 
 Compare the same machine, runtime, scene and settings. Repeat only the affected case when noise makes the result inconclusive; report variation. Frame intervals measure presentation cadence, not isolated GPU execution or headroom beyond vsync. Do not compare virtual CI rendering with desktop GPU measurements.
 
-The current clearing has Graphics Options and a custom r180 temporal-AA adapter. The older art/renderer comparison URLs now lead to this same clearing. The animation comparison remains separate. Settings defaults live in the source owner, not in historical tables below.
+The current clearing has Graphics Options and a custom r186 temporal-AA adapter. The older art/renderer comparison URLs now lead to this same clearing. The animation comparison remains separate. Settings defaults live in the source owner, not in historical tables below.
 
-## Historical studies — September 30, 2026
+## Archived renderer studies
 
-The following records preserve prior experiments. They predate the current Options UI and temporal rejection controls; old controls, sanctuary routes and defaults are historical, not current instructions. Existing raw evidence remains private. Windows and older integrated GPUs remain unverified.
+The [September 30 renderer studies](archive/RENDERER_STUDIES_2026-09-30.md) preserve the retired art lab, WebGL comparisons, r180 Options study and pre-migration temporal upscaling evidence. Their measurements, former defaults and fallback behavior describe those experiments, not current workflows.
 
-## Art direction lab
+## Level authoring measurements
 
-Open **Explore art direction** from the clearing, or visit `/?lab=art`. The lab compares Blue-hour pines, Ashen ruins, Winter dusk, and the original renderer under the same geometry and camera. Switch between the playable clearing and a roofless Synty sanctuary. The sanctuary has its own idle character preview and pauses the clearing without changing its combat progress.
+See [level design](LEVEL_DESIGN.md) for the persistent visual loop. `npm run levels:measure -- --area=clearing` records a moving-gameplay sample after five seconds of warmup and at least 180 frames under ignored `.local/level-design/`. It uses the development authoring browser: treat it as iteration evidence and repeat release measurements with a fresh production build and GPU acceleration confirmed. The report records revision/hash, area definition, runtime, viewport/DPR, backend/settings, machine CPU/OS/memory and cadence samples. Browser GPU/driver identification and hardware acceleration need explicit inspection; CPU metadata alone does not establish the GPU.
 
-Surfaces are independent of lighting: choose the original palette, the existing painted rock/ground experiments, or the coordinated painterly stone/soil/wood set. Existing painted mode changes only the clearing; the sanctuary retains its original palette in that mode. Inspect rock freezes combat while viewing the selected surface. Pause stops combat, character motion, fire motion, and particles; camera zoom and art controls remain available. Save locally / Load saved store one custom look in this browser. Startup and Reset look use the chosen Ashen ruins direction: coordinated painterly surfaces, Enhanced quality, Atmosphere 0.70, Bloom 0.80, AO 1.00, and DOF 1.00 (exposure 1.10, warm/cold balance 0.85). The playable clearing uses the same chosen rendering by default.
+Targets remain 60 fps on a named integrated-GPU baseline and scalable 120 fps on stronger hardware. Baseline hardware and cross-machine validation are outstanding. Use Unlimited for comparisons, report fallback and actual internal resolution, and do not infer 120 fps headroom from a 60 Hz presentation cadence. Warm authoring targets are <2 s edit-to-ready and <5 s per clean view; report cold startup separately.
 
-The lab uses `postprocessing` 6.39.5 with the existing WebGL renderer: half-float HDR buffers, optional normal-buffer SSAO and orthographic depth of field, thresholded bloom, merged exposure/desaturation/vignette and ACES tone mapping, and selectable FXAA, SMAA High, or 4× MSAA. Tone mapping runs once; output is converted to sRGB once. The original rendering baseline bypasses the composer and restores the original lights, fog, and exposure, keeping the selected surfaces. Ambient fog and sparse procedural mist/embers/snow accompany the three moods. Supporting braziers provide amber point lights. Refined lighting adds one softened shadow-casting spotlight per space, gentle intensity flicker, and subtle non-shadowing character fill. The clearing also retains directional shadows with tighter coverage; the sanctuary disables directional shadows.
+### Initial authoring validation — September 30, 2026
 
-Laptop quality caps pixel ratio at 1, reduces bloom luminance/blur resolution to 35%, uses 55 particles, and initially disables AO and bokeh. Enhanced caps pixel ratio at 1.5, uses 50% bloom resolution and 180 particles, and enables restrained AO and bokeh. Both expensive effects can be adjusted independently in either mode. DOF tracks the camera's focus target with a broad 16-world-unit focus transition so combat remains readable. The animation lab retains its existing renderer. The normal clearing shares the chosen art pipeline without the comparison controls. Temporal AA on WebGPU is now the preferred default; the WebGL pipeline remains available as an alternative and falls back to SMAA when native WebGPU is unavailable.
+On the local Apple M5 / 16 GB Mac, Chromium 152 at 1920×1080 and DPR 1, five warmed WebGL blockout data updates took 0.29–0.52 s end-to-end including automation and 16 settling frames; the area replacement itself reported 19–28 ms. Earlier WebGPU iterations also met the two-second target. The same canvas, target and overview zoom survived. Geometry/texture counts remained 40/48 across the five settled updates. Earlier WebGPU checks also showed stable render-target counts. Sixty animation-frame callbacks produced sixty rendered frames. Invalid spawn and JSON edits retained the preceding scene and recovered after repair; overlapping loads discarded stale requests. Keyboard travel worked in both directions without arrival bounce-back. Evidence is private under `.local/level-design/verification-webgl.json` and the session capture directories.
 
-### Original surfaces and local export
+WebGL clean views took 0.36–0.64 s; the final WebGPU clearing batch took 0.55–0.98 s per view. Overview fits the full design envelope and apron using a development-only zoom range. The moving clearing sample with native TAA, High quality (`enhanced`) and Unlimited cap warmed five seconds then retained 180 frames: median 16.7 ms, p95 17.2 ms. Adapter identification reported Apple / metal-3 with `isFallbackAdapter:false`. These are local development-browser cadence measurements, not a 120 fps guarantee or a substitute for the production/target-hardware protocol above.
 
-The original text-generated surfaces are `assets/textures/stone-painterly.png`, `soil-painterly.png`, and `wood-painterly.png`. They share broad painted shapes and restrained variation, with no baked directional lighting. No Synty source, texture, or render was submitted to ImageGen. The bake projects each surface locally and exports 1024px color textures; characters and foliage retain their palette materials.
+## September 30 native WebGPU-only migration (historical)
 
-```sh
-npm run assets:export-art-lab
-# Optional: --topaz /absolute/path/to/Topaz --blender /path/to/blender
-```
+A local Chromium browser smoke pass with prepared art confirmed movement/camera follow, animation-delayed damage, victory, defeat, retry health/focus, Options reset and method changes, rock inspection, resize, saved FSR reload and clearing/blockout replacement. The comparison lab rendered both lanes through the shared graph with independent perspective cameras and histories; playback, clip selection, pause/step, view changes and resize passed. FSR, TAAU, TAA and Off compiled on the migrated routes.
 
-The exporter reads seven Synty models (including the existing rock) from Topaz and creates original/painterly variants under ignored `public/vendor/synty/art-lab/`. Ground is baked to ignored `public/vendor/terrain/ground-painterly.glb`. UV previews stay in ignored `.local/art-lab/`. Missing experiments are reported and available original meshes remain visible. Licensed models, bakes, and comparison captures remain local; the existing deployment packaging boundary still applies.
+Fault injection confirmed FSR → TAAU → TAA startup fallback with requested FSR retained, and an actionable startup error when all graph preparations failed. Suppressed WebGPU and a null adapter produced startup errors in both gameplay and the lab. Instrumented canvas creation recorded zero WebGL contexts throughout those checks, including legacy renderer/SMAA URLs. The native renderer bridges r186's otherwise swallowed asynchronous GPU compilation errors. Representative static guard probes rejected legacy renderers, shader hooks, context creation and extra graph owners.
 
-### First comparison, September 30, 2026
+This is local correctness evidence, not a fresh performance comparison or broad hardware certification. Browser flow evidence is private under `.local/webgpu-only-verification.json`; captures and fault-injection helpers remain private. The migrated lab uses two native renderer instances to isolate per-lane temporal state; measure that comparison's resource cost separately from gameplay.
 
-The first comparison recommended **Blue-hour pines with painterly surfaces and restrained bloom**. The subsequent chosen direction is **Ashen ruins with Enhanced quality**, stronger atmosphere (0.70), bloom (0.80), AO (1.00), and DOF (1.00). Its cool stone and evergreen contrast with the warm soil and amber refuges. Ashen ruins is a useful darker interior variant; Winter dusk is the more open, readable weather variant. Keep AO and bokeh optional while refining the scene. The dock-floor study deliberately retains its timber joints; wood has clearer projection direction changes on perpendicular faces and is worth refining before expanding to more architecture. The new rock is less bright than the existing painted experiment. No obvious UV cracks were observed in the browser rock inspection, but these are surface studies rather than final texture approval.
+## Gameplay library trials — September 30, 2026
 
-Browser verification covered movement, animation-timed damage, victory, defeat, retry, rock inspection, preset/surface changes, saved-look restoration, pause/resume, and sanctuary switching. Comparison captures and raw samples live in ignored `.local/art-lab/` (`comparison-sheet.png`, individual clearing/interior captures, `comparisons.json`, and `measurements.json`).
+Retained: original TSL weapon ribbon, navcat 0.4.1 route queries, Rapier 0.21.0 grounded collision, analytic gold/amber portal and one sparse rune decal. The published drei-vanilla Trail was inspected but its line material was not adopted. three-fluid-fx 0.1.0 was tested through its TSL entry point and removed after comparison: extra solver state did not produce a compelling improvement over the restrained analytic swirl.
 
-Measured on a MacBook Air M5, 16 GB RAM, 8-core integrated GPU, Chromium 152 via ANGLE Metal. The browser viewport was 1920×1080; the scene was 1570×1080 because the controls occupy 350px. Device pixel ratio was 1. Each rendering mode warmed for five seconds before sampling its most recent 180 frames with motion paused for consistent comparisons. These initial measurements used Blue-hour pines (Atmosphere 0.35, Bloom 0.28), with Enhanced AO 0.35 and DOF 0.30; they predate the stronger chosen Ashen defaults.
+Matched measurements used Apple M5 / 16 GB MacBook Air, native WebGPU Metal-3, headless Chrome 152, three.js 0.186.1, 1920×1080 output, DPR 1, High quality, FSR Temporal Quality, sharpening 0.2, AO 0.65, DOF 0.50 and bloom 0.40. The application FPS cap was disabled. The prepared clearing, fixed center camera, lighting and motion were identical: player away from enemy, repeating missed attack every two seconds. Each case warmed five seconds and then rendered at least 180 additional frames. Samples measure presentation intervals; display pacing limits conclusions about GPU headroom. These browser results are not Electron/Windows benchmarks.
 
-| Rendering mode | Median frame interval | 95th percentile |
+| Case | Median / p95 (ms) | Reported GPU memory (bytes) |
 | --- | --- | --- |
-| Original rendering baseline | 16.7 ms | 16.8 ms |
-| Laptop | 16.7 ms | 16.8 ms |
-| Enhanced (AO + DOF) | 16.7 ms | 16.9 ms |
-| Laptop + AO only | 16.7 ms | 16.9 ms |
-| Laptop + DOF only | 16.7 ms | 16.8 ms |
-| Laptop, bloom off | 16.7 ms | 17.4 ms |
+| Trail and portal off | 16.50 / 17.70 | 327619898 |
+| Trail on, portal off | 16.60 / 17.60 | 327632602 |
+| Analytic portal, trail off | 16.70 / 17.50 | 327776016 |
+| Fluid portal, trail off | 16.70 / 17.60 | 328496098 |
 
-All six cases sustained approximately 60 fps here. These are presentation frame intervals, not isolated GPU timings; vsync prevents inferring GPU headroom or attributing small differences to individual effects. The three moods in both spaces also held approximately 60 fps (p95 ≤17.6 ms). Older Intel/AMD integrated graphics and Retina pixel ratios remain unverified; this result does not establish a universal laptop guarantee.
+The fluid case used 64-pixel velocity, 128-pixel density and six pressure iterations. The retained analytic portal avoids that extra compute work and approximately 0.7 MB of reported solver memory. Differences in cadence are within noise. The retained portal was subsequently moved to the rear of the clearing for clearer separation from foreground vegetation; no comparative speed claim relies on that placement change. Raw samples and licensed-art captures remain private under `.local/library-trials/`.
 
+Navigation generation in the prepared clearing took approximately 34–36 ms in the browser. One generation occurs per area construction; routes refresh at most every 250 ms unless the target moves 40 cm. The focused movement flow covers blocked contacts, a route around a wall, sliding, a 20 cm step and a slope. Browser smoke covers movement, contact timing, visible trails, victory, defeat, retry and inspection pause. Windows hardware and a distributed Steam package remain unverified.
 
-## Renderer and desktop comparison
+## Sculpted dusk verification
 
-The game, art lab, and `/?lab=renderers` now default to **WebGPU temporal reprojection AA**, preserving Ashen ruins and its chosen Atmosphere 0.70, Bloom 0.80, AO 1.00, and DOF 1.00. The edge-quality selector keeps FXAA, SMAA High, and 4× MSAA available through WebGL. Switching backend carries the selected look, surface, effect values, lighting, and space in the URL and restarts the encounter. The animation comparison lab keeps its separate existing renderer.
+The following evidence describes the retired volumetric implementation and must not be used as a current performance baseline. Current fog uses no volume pass; shadow and particle presets now scale independently. Re-measure with fixed pixel ratio 1 and matched resolution quality on target hardware.
 
-The WebGPU route shares scene construction, geometry, skeletal animation, lighting, and camera behavior with the WebGL game. Its TSL pipeline provides contact AO, temporal resolve, orthographic DOF, thresholded bloom, grading/vignette, ACES, and one sRGB conversion. AO and blur use different algorithms from the WebGL library, so the matched controls reproduce the treatment rather than pixel-identical output. The r180 integration explicitly converts orthographic depth and initializes previous-bone data on cloned skeletons. Retry, inspection changes, space switches, and viewport changes rebuild or resize temporal history.
+Private `.local/sculpted-dusk/` evidence records isolated lighting contributions, matched Golden/Silver zoom views, night variants, effective AA/movement/toggle/pause/travel checks, gameplay smoke and production measurements. Compare settled resource counts after warm-up. The concurrent grass pass owns the geometry-buffer correction and its separate evidence under `.local/grass-review/`; old leaking-instancing measurements are diagnostic evidence, not shipping performance. Local measurements do not certify Windows or a broader integrated-GPU baseline.
 
-**Inspect edges · lens off** temporarily removes AO, bloom, and DOF without overwriting the chosen settings; restore them with the same button. **Lighting** compares the refined fire shadows/fill against the original light contributions. The comparison route fixes pixel ratio at 1 to avoid resolution differences between AA methods. Native WebGPU unavailability is reported and falls back to WebGL SMAA. DLSS, vendor temporal upscalers, and Steam SDK integration remain deferred.
+## October 1 FSR-only quality migration
 
-### Local Electron shell
+Local headless Chromium with native WebGPU and prepared art verified fixed 1× canvas dimensions, Native and Balanced reconstruction, live Low/Medium/High shadows with flame shadows retained, independent particle presets, persistence/reload and Reset. Gameplay checks covered keyboard movement, delayed attack contact (100 → 50 after contact, then victory), defeat, Return Home at full health and rock inspection. Authoring and both comparison labs rendered without startup errors. Injected compilation failure rejected FSR preparation with an actionable error and no reconstruction fallback. Particle inspection confirmed 192/144/96 active slots and clearing outside reduced limits, retaining the 14-particle combat burst. These checks do not certify Windows hardware or comparative performance; the preceding grass-shadow investigation remains an independent finding.
 
-```sh
-npm run desktop                         # build, then open a playable comparison window
-npm run desktop -- --aa=smaa            # WebGL alternative
-npm run desktop:run                     # open the existing build
-npm run desktop:check -- --debug-port=9231  # hidden background checks against the existing build
-```
+## October 1 foliage and settings stabilization
 
-Electron 44.5.1 serves the private build only on an ephemeral loopback port, with sandboxing and context isolation enabled and Node integration disabled. Public deployment is not configured. The visible window is centered and fits within 90% of the current display's work area, capped at 1280×900. On this MacBook Air that produced a 1280×745 outer window inside a 1470×828 work area.
+Local hidden Chromium review used native WebGPU, prepared Homestead art, 1440×900 output, FSR Balanced and fixed pixel ratio 1. Off/Soft/Cinematic rendered; Golden/Silver and zoom 0.9/1.35/2 were inspected, with keyboard movement and reversals. Runtime sun depth coverage was 56 m in Homestead, replacing the previous 150 m span. Native PCF preserves scenery/actor shadows while grass receives without casting blades. DOF follows resolved FSR color with jitter-corrected bilateral depth; thin features at reduced scene resolution can still shimmer.
 
-Automated runs use **desktop:check**: the window stays hidden, is non-focusable, and does not focus on navigation. On macOS the app uses accessory activation policy and hides its Dock entry. Background throttling is disabled so rendering checks continue while hidden. The verification run reported `visible:false` and `focused:false`. Use the visible desktop commands only when explicitly reviewing or playing the app; automated checks must use background mode.
+Warmed sharpening input handlers took 0–0.2 ms and reached the next animation frame in 13.8–17.6 ms, with no canvas resize or history reset. These are input-to-next-frame measurements, not display scanout latency. First-time effect-graph compilation/setup still produced approximately 304 ms main-thread tasks; the HTML UI has no worker isolation. Two retained effect graphs avoid repeated compilation for common DOF toggles, and Resolution Quality resizes existing buffers. Graph eviction releases pass-specific r186 render objects: repeated cache/eviction cycles held geometry, texture, target, program and uniform-buffer counts constant. Cached Homestead comparisons reported about 653 MB total native resources including private textures; the two-graph cache trades bounded memory for faster repeat changes. Counts/bytes are renderer diagnostics, not process-memory measurements.
 
-### Matched results on the M5
-
-Captured in Electron 44.5.1 on this MacBook Air M5 with device pixel ratio 1. CDP set 1920×1080 and 2560×1440 content viewports for matching render loads; the control panel occupies 350px, leaving 1570×1080 and 2210×1440 scene buffers. Each case warmed for five seconds, then recorded recent frame intervals while characters and fire animated. Both clearing and sanctuary were checked; the table reports the slower space for each mode. These are vsync-limited frame intervals, not isolated GPU timings.
-
-| Mode | 1080p median / p95 | 1440p median / p95 |
-| --- | --- | --- |
-| WebGL FXAA | 16.7 / 17.9 ms | 16.7 / 17.7 ms |
-| WebGL SMAA High | 16.7 / 17.7 ms | 16.8 / 18.1 ms |
-| WebGL 4× MSAA | 16.7 / 18.1 ms | 19.2 / 21.9 ms |
-| WebGPU temporal AA | 16.7 / 17.7 ms | 16.7 / 18.6 ms |
-
-Temporal AA met approximately 60 fps here at both tested sizes and is the selected default based on visual preference. Its softer reconstruction fits the selected atmosphere; SMAA is a useful sharper alternative. 4× MSAA dropped to approximately 52 fps in the 1440p clearing. Keep Windows validation as a release gate: these macOS measurements do not establish Windows driver behavior or performance on older integrated GPUs.
-
-Private captures, the matched comparison sheet, lens-free captures, and raw timing samples stay under ignored `.local/renderer-pass/`. Windows validation is outstanding. No new automated test infrastructure, asset exports, vendor upscalers, or public uploads were introduced by this pass.
-
-
-### Camera stability and TAA tuning
-
-Camera follow now eases only the focus point and keeps the isometric offset fixed at (12, 12.5, 12). The previous independent camera/target easing changed the viewing angle and distance during movement. Initial camera placement uses the same offset to avoid a jump when movement starts. Temporal AA still uses its required subpixel sampling offsets; there is no intentional gameplay shake.
-
-Characters are part of the same color/depth/velocity pass as scenery, including skeletal motion history. TAA resolves before DOF and bloom. Thin moving features, low render resolution, and edges introduced by later effects can still look aliased. Inspect edges disables the lens effects to isolate the temporal resolve.
-
-The installed three.js r180 TRAA implementation hardcodes its sampling pattern and a base 95% history weight. Current upstream documentation describes additional depth/motion rejection controls, but those are not present in this installed version. Exposing those controls requires a deliberate renderer upgrade or a maintained temporal wrapper. A higher render resolution is another way to improve small character silhouettes.
-
-TAA can be combined with a subsequent SMAA or FXAA cleanup stage, at additional cost and potential softness. Such stacked modes are not currently implemented by the selector. The current TRAA node explicitly requires MSAA to be disabled; its depth/velocity inputs cannot simply be changed to multisampled buffers.
+Injected replacement failure retained the active graph and recovered on the next valid choice. Browser smoke passed movement, delayed hit progression, victory, defeat, return-home health/focus, Options and rock inspection. Both perspective animation-lab lanes rendered with Cinematic DOF; pause, frame step and view selection worked. Private evidence is under `.local/graphics-stability/`. This is local development correctness/responsiveness evidence, not a production GPU throughput comparison or Windows certification. The preceding FSR-only task had already removed volumetrics and mist pockets; this change preserves its simple profile fog.

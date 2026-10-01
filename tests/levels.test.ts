@@ -1,0 +1,56 @@
+import { expect, test } from 'vitest';
+import homestead from '../src/levels/areas/homestead.json';
+import clearing from '../src/levels/areas/clearing.json';
+import movementTrial from '../src/levels/areas/movement-trial.json';
+import blockout from '../src/levels/areas/blockout.json';
+import type { LightingRecipe } from '../src/levels/lighting';
+import type { AreaDefinition } from '../src/levels/types';
+import { generateGrass, grassCoverage, grassBudget } from '../src/levels/grass';
+import { GateTravel } from '../src/gameplay/area';
+import { generateDecoration, inReserved, validateAreas } from '../src/levels/validation';
+const areas = { homestead, clearing, blockout, 'movement-trial': movementTrial } as unknown as Record<string, AreaDefinition>;
+test('connected areas validate, decoration is repeatable and reserved routes stay clear', () => {
+  expect(validateAreas(areas)).toEqual([]);
+  const props = generateGrass(areas.homestead, areas.homestead.grass!);
+  expect(props).toEqual(generateGrass(areas.homestead, areas.homestead.grass!));
+  expect(props.length).toBeGreaterThan(0);
+  expect(props.length).toBeLessThanOrEqual(grassBudget);
+  expect(props.some(p => inReserved(areas.homestead, [p.x, p.z], .35) || grassCoverage(areas.homestead, areas.homestead.grass!, p.x, p.z) === 0)).toBe(false);
+  expect(Object.values(areas).flatMap(a => generateDecoration(a)).filter(p => ['grass', 'pebble'].includes(p.primitive!.kind))).toEqual([]);
+  expect(grassCoverage(areas.homestead, areas.homestead.grass!, -2, 1)).toBe(0);
+  const dense = areas.homestead.grass!.map(p => ({ ...p, density: 400 }));
+  expect(generateGrass(areas.homestead, dense).length).toBe(grassBudget);
+  const broken = structuredClone(areas);
+  broken.homestead.grass![0].density = NaN;
+  expect(validateAreas(broken).join('\n')).toMatch(/invalid grass patch/);
+  broken.blockout.gates[0].destination.gate='missing'; broken.blockout.props[0].position[0]=NaN;
+  expect(validateAreas(broken).join('\n')).toMatch(/broken link/);
+  expect(validateAreas(broken).join('\n')).toMatch(/invalid transform/);
+  (broken.homestead.lighting as LightingRecipe).overrides = { environment: { intensity: NaN }, probes: { size: [36, -1, 36] } };
+  expect(validateAreas(broken).join('\n')).toMatch(/invalid environment lighting/);
+  expect(validateAreas(broken).join('\n')).toMatch(/invalid irradiance probes/);
+});
+test('arrival gate cannot immediately send the player back until its trigger is left', () => {
+  const gate=areas.clearing.gates[0], travel=new GateTravel();
+  travel.arrive(gate.id);
+  expect(travel.check([gate],gate.position)).toBeUndefined();
+  expect(travel.check([gate],gate.arrival.position)).toBeUndefined();
+  expect(travel.check([gate],gate.position)?.id).toBe(gate.id);
+});
+
+test('lighting commits only successful entries and retains mood for retry or hot reload', async () => {
+  const { EnvironmentMood } = await import('../src/levels/environment-lighting');
+  let roll = .1, selections = 0;
+  const mood = new EnvironmentMood(() => { selections++; return roll; });
+  mood.commit(mood.choose());
+  expect(mood.mode).toBe('golden');
+  roll = .9;
+  const failedDestination = mood.choose();
+  expect(failedDestination).toBe('silver');
+  expect(mood.mode).toBe('golden');
+  expect(mood.choose(true)).toBe('golden');
+  expect(selections).toBe(2);
+  mood.commit(mood.choose());
+  expect(mood.mode).toBe('silver');
+  expect(mood.choose(true)).toBe('silver');
+});

@@ -1,11 +1,7 @@
 node_modules/
 dist/
 .DS_Store
-public/vendor/synty/
-public/vendor/characters/
-public/vendor/terrain/
 .local/
-public/vendor/animations/
 
 __pycache__/
 

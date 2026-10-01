@@ -6,15 +6,19 @@ Original Lantern code, documentation and original surface studies use [CC BY-NC 
 
 Dependencies are declared in `package.json` and locked in `package-lock.json`; included license files and package metadata govern those distributions. Preserve required notices in any future packaged application, including Electron/Chromium/Node.js.
 
-`src/temporal-aa.ts` adapts three.js r180 TRAANode. Copyright 2010–2025 three.js authors, MIT license. Its header and [full notice](src/LICENSE-three.txt) must remain. This third-party adaptation is an exception to the project's noncommercial license.
+three.js is MIT licensed; preserve its package license and the [full notice](src/rendering/LICENSE-three.txt) in distributed applications.
+
+`@pmndrs/upscaler` 0.2.0 is an independent MIT-licensed FSR-style WebGPU implementation and includes AMD FidelityFX EASU/RCAS attribution. Preserve its package LICENSE and AMD notice in any distributed application. Lantern’s `src/rendering/fsr-temporal.ts` adapts its integration callbacks for three.js r186. `src/rendering/fsr-accumulate.wgsl` adapts its MIT-licensed accumulation shader to preserve converged stationary history; retain the [full notice](src/rendering/LICENSE-upscaler.txt). The other FSR passes remain package-owned. No official AMD FSR4 binaries or frame-generation SDK are included.
+
+navcat 0.4.1 and its mathcat dependency are MIT licensed. `@dimforge/rapier3d-compat` 0.21.0 is Apache-2.0 licensed and includes its WebAssembly physics runtime. Preserve their distributed licenses/notices in packaged builds. The weapon ribbon and portal composition are original Lantern code; no drei-vanilla/meshline code is copied or shipped. The portal rune is drawn locally, without third-party artwork.
 
 ## Asset provenance
 
 | Group | Source | Handling |
 | --- | --- | --- |
-| Original Lantern surface studies | Text-prompted ImageGen rock, forest floor, stone, soil and wood studies | Tracked under `assets/textures/`; project license applies to original project material. No Synty input was supplied to generation. |
-| Synty scenery and warrior | Owner-supplied Synty packs, including Polygon Viking Realm in Topaz | Licensed third-party sources and exports remain private; project license does not grant redistribution rights. |
-| Mixamo motions and acquisition characters | Signed-in Mixamo catalog export | Sources/catalog/receipts remain private; animations retargeted locally to the Synty rig. No standalone redistribution through this repository. |
+| Original Lantern surface studies | Text-prompted ImageGen rock, forest floor, stone, soil, wood and Paladin armor studies | Tracked under `assets/textures/`; project license applies to original project material. No Synty input was supplied to generation. |
+| Synty scenery and warrior | Owner-supplied Synty packs, including Polygon Viking Realm | Licensed third-party sources and exports remain private; project license does not grant redistribution rights. |
+| Mixamo motions and acquisition characters | Signed-in Mixamo catalog export | Sources/catalog/receipts remain private; gameplay animations retargeted locally to separate Paladin and Goblin rigs; gallery samples target each displayed character. No standalone redistribution through this repository. |
 
 Purchase evidence, account tokens and private receipts must not be committed. Local provenance lives with the private acquisition records, not in public notices. The source repository includes conversion tools, not the licensed models, textures or exports.
 

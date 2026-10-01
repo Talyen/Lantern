@@ -1,0 +1,170 @@
+{
+  "version": 1,
+  "bakeSize": 1024,
+  "surfaces": {
+    "stone": {
+      "file": "stone-v1.png",
+      "prompt": "Use case: stylized-concept. Asset type: original seamless square base-color material texture for a low-poly isometric action RPG. Warm grimdark painterly fantasy; handmade broad shapes, muted earth palette, readable midtones, restrained contrast, no crushed blacks. Flat orthographic surface filling the whole square. Even diffuse neutral illumination: no baked lighting, shadows, highlights, perspective, vignette, border, objects, text or watermark. Seamless matching opposite edges. Material detail must read from a distant gameplay camera; avoid photorealistic micro-noise and busy decorative motifs. Warm gray weathered woodland stone: broad irregular mineral strata, understated charcoal fissures, sparse olive lichen and faint earthy staining. No cobblestone pattern.",
+      "sha256": "88cd0eeaf052f61456c37ed381d7c5b8a5dc45f91fd7178654ad5ce76a0a8e10",
+      "tool": "built-in ImageGen",
+      "inputs": "text only"
+    },
+    "bark": {
+      "file": "bark-v1.png",
+      "prompt": "Use case: stylized-concept. Asset type: original seamless square base-color material texture for a low-poly isometric action RPG. Warm grimdark painterly fantasy; handmade broad shapes, muted earth palette, readable midtones, restrained contrast, no crushed blacks. Flat orthographic surface filling the whole square. Even diffuse neutral illumination: no baked lighting, shadows, highlights, perspective, vignette, border, objects, text or watermark. Seamless matching opposite edges. Material detail must read from a distant gameplay camera; avoid photorealistic micro-noise and busy decorative motifs. Umber pine bark: broad vertical ridges, broken flakes, quiet charcoal recesses and subtle olive weathering. Strong vertical grain, restrained knots.",
+      "sha256": "1ba02c676a5eab978de3cb93bd7cbefd4498fd081d6cfda7b749ae162c7177ff",
+      "tool": "built-in ImageGen",
+      "inputs": "text only"
+    },
+    "timber": {
+      "file": "timber-v1.png",
+      "prompt": "Use case: stylized-concept. Asset type: original seamless square base-color material texture for a low-poly isometric action RPG. Warm grimdark painterly fantasy; handmade broad shapes, muted earth palette, readable midtones, restrained contrast, no crushed blacks. Flat orthographic surface filling the whole square. Even diffuse neutral illumination: no baked lighting, shadows, highlights, perspective, vignette, border, objects, text or watermark. Seamless matching opposite edges. Material detail must read from a distant gameplay camera; avoid photorealistic micro-noise and busy decorative motifs. Worn umber timber: broad vertical wood grain, weathered fibers, muted warm gray wear. No individual boards, seams, nails or manufactured plank layout.",
+      "sha256": "f3f75e16fb3c9b8cc39fbbea7c326109d74e19c6b714f3763c01e7aa66445685",
+      "tool": "built-in ImageGen",
+      "inputs": "text only"
+    },
+    "foliage": {
+      "file": "foliage-v1.png",
+      "prompt": "Use case: stylized-concept. Asset type: original seamless square base-color material texture for a low-poly isometric action RPG. Warm grimdark painterly fantasy; handmade broad shapes, muted earth palette, readable midtones, restrained contrast, no crushed blacks. Flat orthographic surface filling the whole square. Even diffuse neutral illumination: no baked lighting, shadows, highlights, perspective, vignette, border, objects, text or watermark. Seamless matching opposite edges. Material detail must read from a distant gameplay camera; avoid photorealistic micro-noise and busy decorative motifs. Muted olive evergreen foliage material: broad painterly clusters of small needle-like marks, dusty olive midtones, gentle gray-green variation. No branches or silhouettes; fill the entire image.",
+      "sha256": "8d00aa76d3d0a1e940e0ec1433f180e9bc3f80656ccb08a9a1569ebebe3dc84c",
+      "tool": "built-in ImageGen",
+      "inputs": "text only"
+    },
+    "cloth": {
+      "file": "cloth-v1.png",
+      "prompt": "Use case: stylized-concept. Asset type: original seamless square base-color material texture for a low-poly isometric action RPG. Warm grimdark painterly fantasy; handmade broad shapes, muted earth palette, readable midtones, restrained contrast, no crushed blacks. Flat orthographic surface filling the whole square. Even diffuse neutral illumination: no baked lighting, shadows, highlights, perspective, vignette, border, objects, text or watermark. Seamless matching opposite edges. Material detail must read from a distant gameplay camera; avoid photorealistic micro-noise and busy decorative motifs. Coarse weathered linen canvas: muted warm taupe and umber fibers, broad gentle worn patches, subtle desaturated rust-red staining. No folds, seams, stitching or draped cloth.",
+      "sha256": "c3509499ffff0019b34f145d2e7ec3fd4bf84c68a0c87e04884367f8f085bb36",
+      "tool": "built-in ImageGen",
+      "inputs": "text only"
+    },
+    "leather": {
+      "file": "leather-v1.png",
+      "prompt": "Use case: stylized-concept. Asset type: original seamless square base-color material texture for a low-poly isometric action RPG. Warm grimdark painterly fantasy; handmade broad shapes, muted earth palette, readable midtones, restrained contrast, no crushed blacks. Flat orthographic surface filling the whole square. Even diffuse neutral illumination: no baked lighting, shadows, highlights, perspective, vignette, border, objects, text or watermark. Seamless matching opposite edges. Material detail must read from a distant gameplay camera; avoid photorealistic micro-noise and busy decorative motifs. Aged brown leather: warm umber with muted gray worn patches, sparse broad scuffs, restrained charcoal grain and fine natural creases. No seams, stitching or straps.",
+      "sha256": "cf67ba5a2215e2cb692acbd7a5e9f574fff6daefb0f2ef870f66bdeb5c153c12",
+      "tool": "built-in ImageGen",
+      "inputs": "text only"
+    }
+  },
+  "projection": {
+    "colorBlend": 0.48,
+    "foliageBlend": 0.35,
+    "roughness": "local per-region constants",
+    "metalness": "0.65 metal; 0 otherwise",
+    "regions": "sample authored palette before UV replacement; retain vertex colors and hierarchy",
+    "privateOutputs": "public/vendor/synty/environment/",
+    "foliagePalette": "weathered autumn; classify authored regions before luminance-preserving recolor of sampled foliage and original text-prompted texture"
+  },
+  "assets": [
+    {
+      "id": "alpine-mountain:model:props-sm-prop-backpack-01",
+      "kind": "backpack",
+      "url": "/vendor/synty/environment/props-sm-prop-backpack-01.glb"
+    },
+    {
+      "id": "alpine-mountain:model:props-sm-prop-campfire-01",
+      "kind": "campfire",
+      "url": "/vendor/synty/environment/props-sm-prop-campfire-01.glb"
+    },
+    {
+      "id": "generic:model:sm-gen-env-bush-01",
+      "kind": "bush",
+      "url": "/vendor/synty/environment/sm-gen-env-bush-01.glb",
+      "foliage": {
+        "color": "#874739",
+        "shadow": "#653944",
+        "shadowRetention": 0.65,
+        "valueScale": 0.86
+      }
+    },
+    {
+      "id": "generic:model:sm-gen-env-fern-01",
+      "kind": "fern",
+      "url": "/vendor/synty/environment/sm-gen-env-fern-01.glb",
+      "foliage": {
+        "color": "#AD9145",
+        "shadow": "#626A45",
+        "shadowRetention": 0.7,
+        "valueScale": 0.74
+      }
+    },
+    {
+      "id": "generic:model:sm-gen-env-log-02",
+      "kind": "log",
+      "url": "/vendor/synty/environment/sm-gen-env-log-02.glb"
+    },
+    {
+      "id": "generic:model:sm-gen-env-rock-04",
+      "kind": "rock",
+      "url": "/vendor/synty/environment/sm-gen-env-rock-04.glb"
+    },
+    {
+      "id": "generic:model:sm-gen-env-tree-pine-01",
+      "kind": "pine",
+      "url": "/vendor/synty/environment/sm-gen-env-tree-pine-01.glb",
+      "foliage": {
+        "color": "#AF8050",
+        "shadow": "#626A45",
+        "shadowRetention": 0.42,
+        "valueScale": 0.82
+      }
+    },
+    {
+      "id": "generic:model:sm-gen-env-tree-pine-02",
+      "kind": "pine",
+      "url": "/vendor/synty/environment/sm-gen-env-tree-pine-02.glb",
+      "foliage": {
+        "color": "#AD6035",
+        "shadow": "#626A45",
+        "shadowRetention": 0.5,
+        "valueScale": 0.78
+      }
+    },
+    {
+      "id": "generic:model:sm-gen-env-tree-pine-03",
+      "kind": "pine",
+      "url": "/vendor/synty/environment/sm-gen-env-tree-pine-03.glb",
+      "foliage": {
+        "color": "#AD9145",
+        "shadow": "#626A45",
+        "shadowRetention": 0.5,
+        "valueScale": 0.74
+      }
+    },
+    {
+      "id": "goblin-war-camp:model:buildings-sm-bld-tent-small-04",
+      "kind": "tent",
+      "url": "/vendor/synty/environment/buildings-sm-bld-tent-small-04.glb"
+    },
+    {
+      "id": "goblin-war-camp:model:props-sm-prop-barrel-01",
+      "kind": "barrel",
+      "url": "/vendor/synty/environment/props-sm-prop-barrel-01.glb"
+    },
+    {
+      "id": "goblin-war-camp:model:props-sm-prop-bedroll-02",
+      "kind": "bedroll",
+      "url": "/vendor/synty/environment/props-sm-prop-bedroll-02.glb"
+    },
+    {
+      "id": "goblin-war-camp:model:props-sm-prop-crate-01",
+      "kind": "crate",
+      "url": "/vendor/synty/environment/props-sm-prop-crate-01.glb"
+    },
+    {
+      "id": "viking-realm:model:sm-prop-lantern-01",
+      "kind": "lantern",
+      "url": "/vendor/synty/environment/sm-prop-lantern-01.glb"
+    },
+    {
+      "id": "/vendor/synty/chest.glb",
+      "kind": "chest",
+      "url": "/vendor/synty/environment/chest.glb"
+    },
+    {
+      "id": "/vendor/synty/art-lab/rock-painterly.glb",
+      "kind": "rock",
+      "url": "/vendor/synty/environment/cliff-rock.glb",
+      "sourceUrl": "/vendor/synty/art-lab/rock.glb"
+    }
+  ]
+}

@@ -32,7 +32,7 @@ export function rejectArchives(files) {
   const bad = files.find((file) => sourceArchive.test(file.path));
   if (bad) throw new Error(`Source archive cannot enter a build: ${bad.path}`);
 }
-export async function readGlb(path) {
+export async function readGlb(path, resourceRoot = dirname(path)) {
   const file = await open(path, 'r');
   try {
     const header = Buffer.alloc(20);
@@ -46,7 +46,7 @@ export async function readGlb(path) {
     const data = JSON.parse(json.toString());
     for (const entry of [...(data.images ?? []), ...(data.buffers ?? [])]) {
       if (entry.uri && !entry.uri.startsWith('data:')) {
-        const referenced = inside(dirname(path), decodeURIComponent(entry.uri));
+        const referenced = inside(resourceRoot, resolve(dirname(path), decodeURIComponent(entry.uri)));
         if (!(await stat(referenced)).isFile()) throw new Error(`Missing GLB resource: ${entry.uri}`);
       }
     }
@@ -58,6 +58,7 @@ export async function selectedLibrary(base = resolve(root, 'public/vendor/synty/
   if (!Array.isArray(selection) || selection.some((id) => typeof id !== 'string')) throw new Error('Library selection must be an array of IDs');
   const selected = new Map();
   if (!selection.length) return { selection, selected };
+  if (!existsSync(base)) { console.log('Private library absent; validating an asset-free build.'); return { selection, selected }; }
   const catalog = JSON.parse(await readFile(resolve(base, 'catalog.json'), 'utf8'));
   if (catalog.version !== 1) throw new Error('Unsupported library catalog');
   const visit = async (id) => {
@@ -68,7 +69,7 @@ export async function selectedLibrary(base = resolve(root, 'public/vendor/synty/
     if (!(await stat(path)).isFile()) throw new Error(`Missing selected asset: ${id}`);
     if (sourceArchive.test(path)) throw new Error(`Selected source archive: ${id}`);
     selected.set(id, asset);
-    if (extname(path) === '.glb') await readGlb(path);
+    if (extname(path) === '.glb') await readGlb(path, base);
     for (const dependency of asset.dependencies) await visit(dependency);
   };
   for (const id of selection) await visit(id);
@@ -77,40 +78,42 @@ export async function selectedLibrary(base = resolve(root, 'public/vendor/synty/
 export async function checkAssets(playable = false) {
   const vendor = resolve(root, 'public/vendor');
   const { selection, selected } = await selectedLibrary();
-  const characterPath = resolve(vendor, 'characters/prototype.glb');
-  const states = ['idle', 'run', 'attack', 'hit', 'death'];
-  const character = existsSync(characterPath) ? await readGlb(characterPath) : undefined;
-  if (character && (!character.skins?.length || states.some((name) => !character.animations?.some((clip) => clip.name === name)))) throw new Error('Playable character needs a skin and five retained animation states');
-  if (playable && !character) throw new Error('Playable character unavailable; run assets:export-character after exporting the animation lab');
-  const catalogPath = resolve(vendor, 'animations/catalog.json');
-  let motionCount = 0;
-  if (existsSync(catalogPath)) {
+  const characters = JSON.parse(await readFile(resolve(root, 'assets/playable-characters.json'), 'utf8'));
+  const combatStates = ['idle', 'run', 'attack', 'hit', 'death'];
+  let motionCount = 0, characterCount = 0;
+  for (const [who, config] of Object.entries(characters)) {
+    const states = who === 'player' ? [...combatStates, 'dodge'] : combatStates;
+    const urls = config.variants ? Object.values(config.variants) : [config.model];
+    const models = [];
+    for (const url of urls) {
+      const path = assetPath(vendor, url);
+      if (!existsSync(path)) { if (playable) throw new Error(`${config.name} unavailable; run assets:export-character`); continue; }
+      const character = await readGlb(path);
+      if (!character.skins?.length || states.some(name => !character.animations?.some(clip => clip.name === name))) throw new Error(`${config.name} needs a skin and its retained motions`);
+      if (character.animations.some(clip => clip.channels.some(channel => !character.nodes[channel.target.node]))) throw new Error(`Invalid embedded animation binding: ${config.name}`);
+      models.push(character);
+    }
+    if (models.length) characterCount++;
+    const catalogPath = assetPath(vendor, config.catalog);
+    if (!existsSync(catalogPath)) { if (playable) throw new Error(`${config.name} motion catalog unavailable; run assets:export-character`); continue; }
     const catalog = JSON.parse(await readFile(catalogPath, 'utf8'));
-    if (catalog.version !== 1 || !Array.isArray(catalog.packs)) throw new Error('Invalid animation catalog');
-    const rigPath = assetPath(vendor, catalog.character);
-    const rig = await readGlb(rigPath);
-    const rigNames = new Set(rig.nodes?.map((node) => node.name));
-    const preferred = ['sword and shield idle', 'sword and shield run', 'sword and shield slash', 'sword and shield impact', 'sword and shield death'];
-    const pack = catalog.packs.find((item) => item.id === 'mixamo');
-    if (playable && (!pack || preferred.some((name) => !pack.clips.some((clip) => clip.name === name)))) throw new Error('Default Mixamo motion set unavailable');
+    if (catalog.version !== 1 || !Array.isArray(catalog.packs) || !catalog.defaults) throw new Error(`Invalid ${who} animation catalog`);
+    const pack = catalog.packs.find(item => item.id === 'mixamo');
+    if (!pack || states.some(state => !pack.clips.some(clip => clip.name === catalog.defaults[state] && clip.category === state))) throw new Error(`${config.name} default motion set unavailable`);
     for (const pack of catalog.packs) {
       if (pack.id !== 'mixamo') throw new Error(`Unsupported animation provider: ${pack.id}`);
       for (const clip of pack.clips) {
-        const path = assetPath(vendor, clip.url);
-        if (!(await stat(path)).isFile()) throw new Error(`Motion unavailable: ${clip.id}`);
+        const data = await readGlb(assetPath(vendor, clip.url));
+        if (data.animations?.length !== 1 || data.animations[0].channels.some(channel => !data.nodes[channel.target.node]?.name)) throw new Error(`Invalid motion: ${clip.name}`);
+        for (const model of models) if (data.animations[0].channels.some(channel => !model.nodes.some(node => node.name === data.nodes[channel.target.node].name))) throw new Error(`${config.name} rig mismatch: ${clip.name}`);
         motionCount++;
-        if (preferred.includes(clip.name)) {
-          const data = await readGlb(path);
-          if (data.animations?.length !== 1 || data.animations[0].channels.some((channel) => !rigNames.has(data.nodes[channel.target.node]?.name))) throw new Error(`Motion rig mismatch: ${clip.name}`);
-          if (character && data.animations[0].channels.some((channel) => !character.nodes.some((node) => node.name === data.nodes[channel.target.node]?.name))) throw new Error(`Playable rig mismatch: ${clip.name}`);
-        }
       }
     }
-  } else if (playable) throw new Error('Mixamo catalog unavailable; run assets:export-animation-lab');
+  }
   for (const dir of ['synty', 'terrain']) {
     const base = resolve(vendor, dir);
     if (!existsSync(base)) continue;
     for (const entry of await readdir(base, { withFileTypes: true })) if (entry.isFile() && entry.name.endsWith('.glb')) await readGlb(resolve(base, entry.name));
   }
-  console.log(`Assets: ${selection.length} selected IDs / ${selected.size} closure entries; ${motionCount} catalog motions; playable character ${character ? 'present' : 'absent (asset-free build only)'}.`);
+  console.log(`Assets: ${selection.length} selected IDs / ${selected.size} closure entries; ${motionCount} catalog motions; playable character ${characterCount}/2 characters present${characterCount ? '' : ' (asset-free build only)'}.`);
 }

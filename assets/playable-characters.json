@@ -1,0 +1,25 @@
+{
+  "player": {
+    "name": "Paladin J Nordstrom",
+    "height": 1.8,
+    "catalog": "/vendor/characters/paladin/catalog.json",
+    "defaultVariant": "authored",
+    "variants": {
+      "authored": "/vendor/characters/paladin/authored-playable.glb",
+      "dark-brass": "/vendor/characters/paladin/dark-brass-playable.glb",
+      "silver-gold": "/vendor/characters/paladin/silver-gold-playable.glb",
+      "ivory-gold": "/vendor/characters/paladin/ivory-gold-playable.glb",
+      "grim-gold": "/vendor/characters/paladin/grim-gold-playable.glb",
+      "grim-crimson": "/vendor/characters/paladin/grim-crimson-playable.glb",
+      "iron-gold-crimson": "/vendor/characters/paladin/iron-gold-crimson-playable.glb",
+      "iron-copper-teal": "/vendor/characters/paladin/iron-copper-teal-playable.glb",
+      "slate-bronze-blue": "/vendor/characters/paladin/slate-bronze-blue-playable.glb"
+    }
+  },
+  "enemy": {
+    "name": "Goblin D Shareyko",
+    "height": 1.45,
+    "model": "/vendor/characters/goblin/authored-playable.glb",
+    "catalog": "/vendor/characters/goblin/catalog.json"
+  }
+}

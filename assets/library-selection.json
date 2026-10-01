@@ -1,1 +1,16 @@
-[]
+[
+  "alpine-mountain:model:props-sm-prop-backpack-01",
+  "alpine-mountain:model:props-sm-prop-campfire-01",
+  "generic:model:sm-gen-env-bush-01",
+  "generic:model:sm-gen-env-fern-01",
+  "generic:model:sm-gen-env-log-02",
+  "generic:model:sm-gen-env-rock-04",
+  "generic:model:sm-gen-env-tree-pine-01",
+  "generic:model:sm-gen-env-tree-pine-02",
+  "generic:model:sm-gen-env-tree-pine-03",
+  "goblin-war-camp:model:buildings-sm-bld-tent-small-04",
+  "goblin-war-camp:model:props-sm-prop-barrel-01",
+  "goblin-war-camp:model:props-sm-prop-bedroll-02",
+  "goblin-war-camp:model:props-sm-prop-crate-01",
+  "viking-realm:model:sm-prop-lantern-01"
+]

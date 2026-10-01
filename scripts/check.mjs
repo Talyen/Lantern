@@ -8,9 +8,11 @@ await cli(async () => {
   await mkdir(dir, { recursive: true });
   const node = process.execPath;
   const stages = [
+    ['rendering', node, ['scripts/check-rendering.mjs']],
     ['docs', node, ['scripts/check-docs.mjs']],
     ['types', node, ['node_modules/typescript/bin/tsc', '--noEmit']],
     ['tests', node, ['node_modules/vitest/vitest.mjs', 'run']],
+    ['levels', node, ['scripts/levels/check.mjs']],
     ['build', node, ['scripts/build.mjs', '--skip-typecheck']],
     ['inventory', node, ['scripts/check-assets.mjs', '--build']],
     ['preview', node, ['scripts/smoke-preview.mjs']],

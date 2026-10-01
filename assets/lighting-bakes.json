@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "bakes": {
+    "1c3bc043f7b04f83bfb4955d8490f2a7a82a7b06286100d316ea6b23bfaa4a5e": {
+      "url": "/vendor/lighting/1c3bc043f7b04f83bfb4955d8490f2a7a82a7b06286100d316ea6b23bfaa4a5e.json",
+      "area": "clearing",
+      "lighting": "golden",
+      "surfaces": "projected",
+      "profile": "area"
+    },
+    "e5de64ad480b0623a4800b6c3fe35d105bc55e0eaa95718ac4738bf309a274f6": {
+      "url": "/vendor/lighting/e5de64ad480b0623a4800b6c3fe35d105bc55e0eaa95718ac4738bf309a274f6.json",
+      "area": "clearing",
+      "lighting": "silver",
+      "surfaces": "projected",
+      "profile": "area"
+    },
+    "1f2eba43c977c21895c94407dbd354460411b03197e93c3638dac671f6b3bb32": {
+      "url": "/vendor/lighting/1f2eba43c977c21895c94407dbd354460411b03197e93c3638dac671f6b3bb32.json",
+      "area": "homestead",
+      "lighting": "golden",
+      "surfaces": "projected",
+      "profile": "area"
+    },
+    "c634249d761733ea847c08894cbc462f59cb0fbe171cb48baad66ac58a20b93f": {
+      "url": "/vendor/lighting/c634249d761733ea847c08894cbc462f59cb0fbe171cb48baad66ac58a20b93f.json",
+      "area": "homestead",
+      "lighting": "silver",
+      "surfaces": "projected",
+      "profile": "area"
+    },
+    "f86cf09dabed9ab14824ee89e1b8fbd8083b9705fd835a107b720afadb62cc7f": {
+      "url": "/vendor/lighting/f86cf09dabed9ab14824ee89e1b8fbd8083b9705fd835a107b720afadb62cc7f.json",
+      "area": "homestead",
+      "lighting": "moonlit",
+      "surfaces": "projected",
+      "profile": "woodland-night"
+    },
+    "3bbc1e52bd6faf9ac7de0017182c9417359e2041429d331e8b10d95ef8b4d76e": {
+      "url": "/vendor/lighting/3bbc1e52bd6faf9ac7de0017182c9417359e2041429d331e8b10d95ef8b4d76e.json",
+      "area": "homestead",
+      "lighting": "dark",
+      "surfaces": "projected",
+      "profile": "woodland-night"
+    },
+    "6a0bc340b342727dde98e5923de2d25e48619fd182b4ef93235b9129aaf53e8e": {
+      "url": "/vendor/lighting/6a0bc340b342727dde98e5923de2d25e48619fd182b4ef93235b9129aaf53e8e.json",
+      "area": "homestead",
+      "lighting": "misty",
+      "surfaces": "projected",
+      "profile": "woodland-night"
+    },
+    "742f1fbb33c953a9dc936bcb51e54e9b3aa11baa7c469719d7e1ee69275208ff": {
+      "url": "/vendor/lighting/742f1fbb33c953a9dc936bcb51e54e9b3aa11baa7c469719d7e1ee69275208ff.json",
+      "area": "clearing",
+      "lighting": "moonlit",
+      "surfaces": "projected",
+      "profile": "woodland-night"
+    },
+    "fb3b831677395c32ea92792d582067a2658c0816a0f2a7efeb0d129d085e591a": {
+      "url": "/vendor/lighting/fb3b831677395c32ea92792d582067a2658c0816a0f2a7efeb0d129d085e591a.json",
+      "area": "clearing",
+      "lighting": "dark",
+      "surfaces": "projected",
+      "profile": "woodland-night"
+    },
+    "baf221f1059efd92aa2eb8bb14317abb2018bd942790df05fff91acfdaa48c4b": {
+      "url": "/vendor/lighting/baf221f1059efd92aa2eb8bb14317abb2018bd942790df05fff91acfdaa48c4b.json",
+      "area": "clearing",
+      "lighting": "misty",
+      "surfaces": "projected",
+      "profile": "woodland-night"
+    }
+  }
+}

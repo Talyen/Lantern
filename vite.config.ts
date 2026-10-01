@@ -6,9 +6,10 @@ import { resolve, sep, extname } from 'node:path';
 // Large private imports are unwatched. Serve newly converted files without restarting Vite's public-file index.
 function privateLibrary(): Plugin {
   return { name: 'lantern-private-library', configureServer(server) {
-    const root = resolve('public/vendor/synty/library');
+    const root = resolve('public/vendor');
+    server.middlewares.use('/__level-owner', (_request, response) => { response.setHeader('Content-Type', 'application/json'); response.end(JSON.stringify({ token: process.env.LANTERN_LEVEL_SESSION ?? null })); });
     server.middlewares.use(async (request, response, next) => {
-      const prefix = '/vendor/synty/library/';
+      const prefix = '/vendor/';
       if (!request.url?.startsWith(prefix)) return next();
       try {
         const path = resolve(root, decodeURIComponent(request.url.split('?')[0].slice(prefix.length)));
@@ -18,7 +19,7 @@ function privateLibrary(): Plugin {
         response.setHeader('Content-Type', mime[extname(path)] ?? 'application/octet-stream');
         response.setHeader('Cache-Control', 'no-cache');
         createReadStream(path).on('error', () => response.destroy()).pipe(response);
-      } catch { response.statusCode = 404; response.end('Private library asset unavailable'); }
+      } catch { response.statusCode = 404; response.end('Private vendor asset unavailable'); }
     });
   } };
 }

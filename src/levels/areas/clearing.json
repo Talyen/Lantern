@@ -1,0 +1,2427 @@
+{
+  "version": 1,
+  "id": "clearing",
+  "name": "Forest Clearing",
+  "kind": "encounter",
+  "terminal": true,
+  "envelope": {
+    "width": 33.10344827586208,
+    "depth": 26.33363185108522,
+    "apron": 4,
+    "yaw": 0.7853981633974483,
+    "reference": {
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1.45
+    },
+    "screen": [
+      16.55172413793104,
+      13.16681592554261
+    ]
+  },
+  "layout": {
+    "boundary": {
+      "kind": "polygon",
+      "points": [
+        [
+          -21.0142,
+          2.3935
+        ],
+        [
+          2.3935,
+          -21.0142
+        ],
+        [
+          21.0142,
+          -2.3935
+        ],
+        [
+          -2.3935,
+          21.0142
+        ]
+      ]
+    },
+    "player": {
+      "position": [
+        -2.8284,
+        2.8284
+      ],
+      "yaw": 2.356194490192345
+    },
+    "enemy": {
+      "position": [
+        3.8891,
+        -3.8891
+      ],
+      "yaw": -0.7853981633974483
+    }
+  },
+  "seed": 137,
+  "props": [
+    {
+      "id": "woodland-ground",
+      "position": [
+        0,
+        -0.2,
+        0
+      ],
+      "yaw": 0.7853981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": false,
+      "receiveShadow": true,
+      "terrain": true,
+      "primitive": {
+        "kind": "box",
+        "size": [
+          70,
+          0.4,
+          64
+        ],
+        "color": "#68523d",
+        "surface": "woodland",
+        "patches": [
+          {
+            "center": [
+              -9.5459,
+              9.5459
+            ],
+            "radius": 2.6,
+            "color": "#806b50",
+            "strength": 0.75
+          },
+          {
+            "center": [
+              -8.4853,
+              7.0711
+            ],
+            "radius": 2.6,
+            "color": "#806b50",
+            "strength": 0.75
+          },
+          {
+            "center": [
+              -7.0711,
+              4.2426
+            ],
+            "radius": 2.6,
+            "color": "#806b50",
+            "strength": 0.75
+          },
+          {
+            "center": [
+              -4.2426,
+              2.8284
+            ],
+            "radius": 2.6,
+            "color": "#806b50",
+            "strength": 0.75
+          },
+          {
+            "center": [
+              -1.4142,
+              1.4142
+            ],
+            "radius": 2.6,
+            "color": "#806b50",
+            "strength": 0.75
+          },
+          {
+            "center": [
+              0.7071,
+              -0.7071
+            ],
+            "radius": 2.6,
+            "color": "#806b50",
+            "strength": 0.75
+          },
+          {
+            "center": [
+              2.1213,
+              -2.1213
+            ],
+            "radius": 2.6,
+            "color": "#806b50",
+            "strength": 0.75
+          },
+          {
+            "center": [
+              4.2426,
+              -4.2426
+            ],
+            "radius": 5.6,
+            "color": "#897458",
+            "strength": 0.8
+          },
+          {
+            "center": [
+              2.1213,
+              -7.7782
+            ],
+            "radius": 2.8,
+            "color": "#897458",
+            "strength": 0.85
+          },
+          {
+            "center": [
+              4.2426,
+              -11.3137
+            ],
+            "radius": 3.4,
+            "color": "#756047",
+            "strength": 0.8
+          },
+          {
+            "center": [
+              -9.1924,
+              14.8492
+            ],
+            "radius": 3.5,
+            "color": "#874739",
+            "strength": 0.16
+          },
+          {
+            "center": [
+              14.1421,
+              2.8284
+            ],
+            "radius": 4,
+            "color": "#AF8050",
+            "strength": 0.16
+          },
+          {
+            "center": [
+              -5.6569,
+              -9.8995
+            ],
+            "radius": 3.5,
+            "color": "#AD9145",
+            "strength": 0.16
+          }
+        ]
+      }
+    },
+    {
+      "id": "chest",
+      "position": [
+        7.0711,
+        0,
+        -7.0711
+      ],
+      "yaw": -0.7853981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "url": "/vendor/synty/chest.glb"
+      },
+      "height": 0.85
+    },
+    {
+      "id": "goblin-tent",
+      "position": [
+        2.8284,
+        0,
+        -12.7279
+      ],
+      "yaw": 2.356194490192345,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "goblin-war-camp:model:buildings-sm-bld-tent-small-04"
+      },
+      "height": 2.5
+    },
+    {
+      "id": "bedroll",
+      "position": [
+        4.9497,
+        0,
+        -9.1924
+      ],
+      "yaw": -0.7853981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "goblin-war-camp:model:props-sm-prop-bedroll-02"
+      }
+    },
+    {
+      "id": "supplies",
+      "position": [
+        8.4853,
+        0,
+        -8.4853
+      ],
+      "yaw": 0.5,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "goblin-war-camp:model:props-sm-prop-crate-01"
+      }
+    },
+    {
+      "id": "barrel",
+      "position": [
+        9.6167,
+        0,
+        -7.3539
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "goblin-war-camp:model:props-sm-prop-barrel-01"
+      }
+    },
+    {
+      "id": "sitting-log",
+      "position": [
+        -2.1213,
+        0,
+        -7.7782
+      ],
+      "yaw": 0.7853981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-log-02"
+      },
+      "height": 0.6
+    },
+    {
+      "id": "pine-0",
+      "position": [
+        -15.5563,
+        0,
+        8.4853
+      ],
+      "yaw": 0.0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-tree-pine-01"
+      },
+      "height": 6
+    },
+    {
+      "id": "pine-1",
+      "position": [
+        -9.1924,
+        0,
+        14.8492
+      ],
+      "yaw": 1.71,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-tree-pine-02"
+      },
+      "height": 6.4
+    },
+    {
+      "id": "pine-2",
+      "position": [
+        -4.2426,
+        0,
+        14.1421
+      ],
+      "yaw": 3.42,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-tree-pine-03"
+      },
+      "height": 7
+    },
+    {
+      "id": "pine-3",
+      "position": [
+        0.0,
+        0,
+        12.7279
+      ],
+      "yaw": 5.13,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-tree-pine-01"
+      },
+      "height": 6.8
+    },
+    {
+      "id": "pine-4",
+      "position": [
+        4.9497,
+        0,
+        10.6066
+      ],
+      "yaw": 6.84,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-tree-pine-02"
+      },
+      "height": 7
+    },
+    {
+      "id": "pine-5",
+      "position": [
+        9.5459,
+        0,
+        6.7175
+      ],
+      "yaw": 8.55,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-tree-pine-03"
+      },
+      "height": 7.4
+    },
+    {
+      "id": "pine-6",
+      "position": [
+        14.1421,
+        0,
+        2.8284
+      ],
+      "yaw": 10.26,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-tree-pine-01"
+      },
+      "height": 6.8
+    },
+    {
+      "id": "pine-7",
+      "position": [
+        17.6777,
+        0,
+        -3.5355
+      ],
+      "yaw": 11.969999999999999,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-tree-pine-02"
+      },
+      "height": 6
+    },
+    {
+      "id": "pine-8",
+      "position": [
+        16.2635,
+        0,
+        -9.1924
+      ],
+      "yaw": 13.68,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-tree-pine-03"
+      },
+      "height": 6.8
+    },
+    {
+      "id": "pine-9",
+      "position": [
+        10.6066,
+        0,
+        -14.8492
+      ],
+      "yaw": 15.39,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-tree-pine-01"
+      },
+      "height": 6
+    },
+    {
+      "id": "pine-10",
+      "position": [
+        -12.0208,
+        0,
+        2.1213
+      ],
+      "yaw": 17.1,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-tree-pine-02"
+      },
+      "height": 5.8
+    },
+    {
+      "id": "pine-11",
+      "position": [
+        -9.1924,
+        0,
+        -3.5355
+      ],
+      "yaw": 18.81,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-tree-pine-03"
+      },
+      "height": 6
+    },
+    {
+      "id": "pine-12",
+      "position": [
+        -5.6569,
+        0,
+        -9.8995
+      ],
+      "yaw": 20.52,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-tree-pine-01"
+      },
+      "height": 5.8
+    },
+    {
+      "id": "pine-13",
+      "position": [
+        2.1213,
+        0,
+        -16.2635
+      ],
+      "yaw": 22.23,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-tree-pine-02"
+      },
+      "height": 5.5
+    },
+    {
+      "id": "pine-14",
+      "position": [
+        -5.6569,
+        0,
+        19.799
+      ],
+      "yaw": 23.939999999999998,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-tree-pine-03"
+      },
+      "height": 6
+    },
+    {
+      "id": "pine-15",
+      "position": [
+        21.2132,
+        0,
+        -4.2426
+      ],
+      "yaw": 25.65,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-tree-pine-01"
+      },
+      "height": 6
+    },
+    {
+      "id": "pine-16",
+      "position": [
+        -19.799,
+        0,
+        4.2426
+      ],
+      "yaw": 27.36,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-tree-pine-02"
+      },
+      "height": 6
+    },
+    {
+      "id": "rock-0",
+      "position": [
+        -6.364,
+        0,
+        10.6066
+      ],
+      "yaw": 0.0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "url": "/vendor/synty/art-lab/rock-painterly.glb"
+      },
+      "height": 1.5
+    },
+    {
+      "id": "rock-1",
+      "position": [
+        -2.8284,
+        0,
+        7.0711
+      ],
+      "yaw": 1.3,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "url": "/vendor/synty/art-lab/rock-painterly.glb"
+      },
+      "height": 1.1
+    },
+    {
+      "id": "rock-2",
+      "position": [
+        2.1213,
+        0,
+        3.5355
+      ],
+      "yaw": 2.6,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "url": "/vendor/synty/art-lab/rock-painterly.glb"
+      },
+      "height": 1.4
+    },
+    {
+      "id": "rock-3",
+      "position": [
+        6.364,
+        0,
+        2.1213
+      ],
+      "yaw": 3.9000000000000004,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "url": "/vendor/synty/art-lab/rock-painterly.glb"
+      },
+      "height": 1.2
+    },
+    {
+      "id": "rock-4",
+      "position": [
+        -12.7279,
+        0,
+        7.0711
+      ],
+      "yaw": 5.2,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "url": "/vendor/synty/art-lab/rock-painterly.glb"
+      },
+      "height": 1.2
+    },
+    {
+      "id": "rock-5",
+      "position": [
+        -8.4853,
+        0,
+        1.4142
+      ],
+      "yaw": 6.5,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "url": "/vendor/synty/art-lab/rock-painterly.glb"
+      },
+      "height": 1
+    },
+    {
+      "id": "rock-6",
+      "position": [
+        -4.9497,
+        0,
+        -3.5355
+      ],
+      "yaw": 7.800000000000001,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "url": "/vendor/synty/art-lab/rock-painterly.glb"
+      },
+      "height": 1.2
+    },
+    {
+      "id": "rock-7",
+      "position": [
+        7.0711,
+        0,
+        -14.1421
+      ],
+      "yaw": 9.1,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "url": "/vendor/synty/art-lab/rock-painterly.glb"
+      },
+      "height": 1.4
+    },
+    {
+      "id": "rock-8",
+      "position": [
+        16.2635,
+        0,
+        -3.5355
+      ],
+      "yaw": 10.4,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "url": "/vendor/synty/art-lab/rock-painterly.glb"
+      },
+      "height": 1.2
+    },
+    {
+      "id": "fallen-log",
+      "position": [
+        -1.5556,
+        0,
+        9.7581
+      ],
+      "yaw": 0.4,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-log-02"
+      },
+      "height": 0.65
+    },
+    {
+      "id": "fern-1",
+      "position": [
+        6.3365,
+        0,
+        -15.8499
+      ],
+      "yaw": 5.15364826100068,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": false,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-fern-01"
+      },
+      "height": 0.4220721233899361
+    },
+    {
+      "id": "fern-3",
+      "position": [
+        16.4491,
+        0,
+        -4.449
+      ],
+      "yaw": 0.8556161033685823,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": false,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-fern-01"
+      },
+      "height": 0.4839130656099647
+    },
+    {
+      "id": "fern-5",
+      "position": [
+        -19.6558,
+        0,
+        2.8775
+      ],
+      "yaw": 0.8891266834746974,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": false,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-fern-01"
+      },
+      "height": 0.6409658774060056
+    },
+    {
+      "id": "fern-6",
+      "position": [
+        3.2394,
+        0,
+        -14.6422
+      ],
+      "yaw": 5.399394785750948,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": false,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-fern-01"
+      },
+      "height": 0.5776363513325017
+    },
+    {
+      "id": "fern-7",
+      "position": [
+        15.7693,
+        0,
+        -5.1156
+      ],
+      "yaw": 0.061079938504080146,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": false,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-fern-01"
+      },
+      "height": 0.41164757609765035
+    },
+    {
+      "id": "fern-8",
+      "position": [
+        -9.9248,
+        0,
+        -5.3813
+      ],
+      "yaw": 3.2057971032043975,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": false,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-fern-01"
+      },
+      "height": 0.4250437750969614
+    },
+    {
+      "id": "fern-9",
+      "position": [
+        -5.1234,
+        0,
+        8.5595
+      ],
+      "yaw": 3.4134356303844986,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": false,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-fern-01"
+      },
+      "height": 0.6313021366881502
+    },
+    {
+      "id": "fern-10",
+      "position": [
+        4.766,
+        0,
+        2.4866
+      ],
+      "yaw": 4.935778083163057,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": false,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-fern-01"
+      },
+      "height": 0.31350900629768885
+    },
+    {
+      "id": "fern-12",
+      "position": [
+        -1.8105,
+        0,
+        -15.7555
+      ],
+      "yaw": 5.327962054970152,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": false,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-fern-01"
+      },
+      "height": 0.5515929116034115
+    },
+    {
+      "id": "fern-13",
+      "position": [
+        1.4216,
+        0,
+        12.878
+      ],
+      "yaw": 0.8398755344790418,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": false,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-fern-01"
+      },
+      "height": 0.6300679904005065
+    },
+    {
+      "id": "fern-14",
+      "position": [
+        11.3945,
+        0,
+        0.3505
+      ],
+      "yaw": 4.897218520653897,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": false,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-fern-01"
+      },
+      "height": 0.380703724317496
+    },
+    {
+      "id": "fern-15",
+      "position": [
+        -2.2736,
+        0,
+        7.9131
+      ],
+      "yaw": 0.9443566299005512,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": false,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-fern-01"
+      },
+      "height": 0.4648952068689547
+    },
+    {
+      "id": "fern-17",
+      "position": [
+        11.7981,
+        0,
+        1.9722
+      ],
+      "yaw": 5.654109768027125,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": false,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-fern-01"
+      },
+      "height": 0.43626052376690383
+    },
+    {
+      "id": "fern-18",
+      "position": [
+        8.098,
+        0,
+        7.3061
+      ],
+      "yaw": 0.6266373943034445,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": false,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-fern-01"
+      },
+      "height": 0.352160941831333
+    },
+    {
+      "id": "fern-19",
+      "position": [
+        -2.7751,
+        0,
+        -10.1027
+      ],
+      "yaw": 4.100226484734896,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": false,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-fern-01"
+      },
+      "height": 0.569883449157038
+    },
+    {
+      "id": "fern-20",
+      "position": [
+        8.3951,
+        0,
+        4.327
+      ],
+      "yaw": 5.389740489696317,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": false,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-fern-01"
+      },
+      "height": 0.404936602347031
+    },
+    {
+      "id": "fern-21",
+      "position": [
+        5.7153,
+        0,
+        -16.1133
+      ],
+      "yaw": 1.2207911702683405,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": false,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-fern-01"
+      },
+      "height": 0.5426176531997937
+    },
+    {
+      "id": "fern-22",
+      "position": [
+        6.6845,
+        0,
+        3.8187
+      ],
+      "yaw": 4.882171489669688,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": false,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-fern-01"
+      },
+      "height": 0.4379280205258649
+    },
+    {
+      "id": "fern-23",
+      "position": [
+        -6.5339,
+        0,
+        -1.2934
+      ],
+      "yaw": 2.3825992285144935,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": false,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-fern-01"
+      },
+      "height": 0.6457989998528056
+    },
+    {
+      "id": "fern-24",
+      "position": [
+        8.3621,
+        0,
+        -0.5462
+      ],
+      "yaw": 4.906514237962287,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": false,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-fern-01"
+      },
+      "height": 0.31492073025962003
+    },
+    {
+      "id": "fern-25",
+      "position": [
+        13.538,
+        0,
+        0.8214
+      ],
+      "yaw": 1.9127752079534095,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": false,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-fern-01"
+      },
+      "height": 0.3335113161407101
+    },
+    {
+      "id": "fern-26",
+      "position": [
+        14.8256,
+        0,
+        -5.6148
+      ],
+      "yaw": 4.521652106961262,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": false,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-fern-01"
+      },
+      "height": 0.30466971967148815
+    },
+    {
+      "id": "fern-27",
+      "position": [
+        -12.75,
+        0,
+        -4.5475
+      ],
+      "yaw": 1.2172453890280057,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": false,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-fern-01"
+      },
+      "height": 0.3217218276111699
+    },
+    {
+      "id": "fern-29",
+      "position": [
+        1.6149,
+        0,
+        3.0634
+      ],
+      "yaw": 0.8524064204114935,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": false,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-fern-01"
+      },
+      "height": 0.5169082467815451
+    },
+    {
+      "id": "fern-30",
+      "position": [
+        2.383,
+        0,
+        -19.0492
+      ],
+      "yaw": 5.256044963645895,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": false,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-fern-01"
+      },
+      "height": 0.36886612818047954
+    },
+    {
+      "id": "fern-32",
+      "position": [
+        -0.2743,
+        0,
+        -12.3779
+      ],
+      "yaw": 2.632452742984211,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": false,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-fern-01"
+      },
+      "height": 0.5728874467161706
+    },
+    {
+      "id": "fern-34",
+      "position": [
+        -9.6152,
+        0,
+        2.6518
+      ],
+      "yaw": 5.034474562493768,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": false,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-fern-01"
+      },
+      "height": 0.6342434119602283
+    },
+    {
+      "id": "fern-35",
+      "position": [
+        0.7498,
+        0,
+        9.4073
+      ],
+      "yaw": 4.727900162813107,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": false,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-fern-01"
+      },
+      "height": 0.47835102197594764
+    },
+    {
+      "id": "fern-38",
+      "position": [
+        13.5311,
+        0,
+        -8.4093
+      ],
+      "yaw": 1.7433892174686345,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": false,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-fern-01"
+      },
+      "height": 0.4285928661814822
+    },
+    {
+      "id": "fern-40",
+      "position": [
+        9.0983,
+        0,
+        -12.6494
+      ],
+      "yaw": 4.096066560272394,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": false,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-fern-01"
+      },
+      "height": 0.5004964186419932
+    },
+    {
+      "id": "fern-41",
+      "position": [
+        11.0331,
+        0,
+        4.747
+      ],
+      "yaw": 1.9741092147719346,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": false,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-fern-01"
+      },
+      "height": 0.32964560430170897
+    },
+    {
+      "id": "fern-42",
+      "position": [
+        -15.3468,
+        0,
+        2.8256
+      ],
+      "yaw": 5.170898317084407,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": false,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-fern-01"
+      },
+      "height": 0.5912074731836173
+    },
+    {
+      "id": "fern-43",
+      "position": [
+        1.4666,
+        0,
+        2.3176
+      ],
+      "yaw": 6.206770800105317,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": false,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-fern-01"
+      },
+      "height": 0.4859637171149011
+    },
+    {
+      "id": "fern-44",
+      "position": [
+        -13.4845,
+        0,
+        4.6356
+      ],
+      "yaw": 0.3055610720652942,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": false,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-fern-01"
+      },
+      "height": 0.31293837046593453
+    },
+    {
+      "id": "fern-45",
+      "position": [
+        -10.9518,
+        0,
+        0.2456
+      ],
+      "yaw": 1.7818669515305936,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": false,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-fern-01"
+      },
+      "height": 0.5128826093797085
+    },
+    {
+      "id": "fern-47",
+      "position": [
+        7.5228,
+        0,
+        2.3149
+      ],
+      "yaw": 2.798720552213426,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": false,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-fern-01"
+      },
+      "height": 0.541146953409943
+    },
+    {
+      "id": "fern-50",
+      "position": [
+        1.2936,
+        0,
+        13.6319
+      ],
+      "yaw": 2.7706656309767177,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": false,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-fern-01"
+      },
+      "height": 0.3010526031237017
+    },
+    {
+      "id": "fern-51",
+      "position": [
+        -16.5358,
+        0,
+        5.4301
+      ],
+      "yaw": 0.8468467196430717,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": false,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-fern-01"
+      },
+      "height": 0.5705597876807991
+    },
+    {
+      "id": "bush-0",
+      "position": [
+        -4.9497,
+        0,
+        16.2635
+      ],
+      "yaw": 0.0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-bush-01"
+      },
+      "height": 1.1
+    },
+    {
+      "id": "bush-1",
+      "position": [
+        0.7071,
+        0,
+        14.8492
+      ],
+      "yaw": 1.3,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-bush-01"
+      },
+      "height": 1.1
+    },
+    {
+      "id": "bush-2",
+      "position": [
+        6.364,
+        0,
+        10.6066
+      ],
+      "yaw": 2.6,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-bush-01"
+      },
+      "height": 1.1
+    },
+    {
+      "id": "bush-3",
+      "position": [
+        12.0208,
+        0,
+        4.9497
+      ],
+      "yaw": 3.9000000000000004,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-bush-01"
+      },
+      "height": 1.1
+    },
+    {
+      "id": "bush-4",
+      "position": [
+        16.9706,
+        0,
+        -1.4142
+      ],
+      "yaw": 5.2,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-bush-01"
+      },
+      "height": 1.1
+    },
+    {
+      "id": "bush-5",
+      "position": [
+        16.2635,
+        0,
+        -6.364
+      ],
+      "yaw": 6.5,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-bush-01"
+      },
+      "height": 1.1
+    },
+    {
+      "id": "bush-6",
+      "position": [
+        6.364,
+        0,
+        -16.2635
+      ],
+      "yaw": 7.800000000000001,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-bush-01"
+      },
+      "height": 1.1
+    },
+    {
+      "id": "bush-7",
+      "position": [
+        0.0,
+        0,
+        -15.5563
+      ],
+      "yaw": 9.1,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-bush-01"
+      },
+      "height": 1.1
+    },
+    {
+      "id": "bush-8",
+      "position": [
+        -5.6569,
+        0,
+        -11.3137
+      ],
+      "yaw": 10.4,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-bush-01"
+      },
+      "height": 1.1
+    },
+    {
+      "id": "bush-9",
+      "position": [
+        -9.8995,
+        0,
+        -5.6569
+      ],
+      "yaw": 11.700000000000001,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-bush-01"
+      },
+      "height": 1.1
+    },
+    {
+      "id": "bush-10",
+      "position": [
+        -15.5563,
+        0,
+        1.4142
+      ],
+      "yaw": 13.0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-bush-01"
+      },
+      "height": 1.1
+    },
+    {
+      "id": "bush-11",
+      "position": [
+        -16.2635,
+        0,
+        6.364
+      ],
+      "yaw": 14.3,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-bush-01"
+      },
+      "height": 1.1
+    }
+  ],
+  "scatter": [],
+  "reserved": [
+    {
+      "id": "combat",
+      "center": [
+        3.8891,
+        -3.8891
+      ],
+      "radius": 3.5,
+      "role": "combat"
+    },
+    {
+      "id": "home-arrival",
+      "center": [
+        -9.5459,
+        9.5459
+      ],
+      "radius": 2,
+      "role": "arrival"
+    },
+    {
+      "id": "fire-arrival",
+      "center": [
+        0.7071,
+        -7.0711
+      ],
+      "radius": 2,
+      "role": "arrival"
+    },
+    {
+      "id": "path-0",
+      "center": [
+        -9.5459,
+        9.5459
+      ],
+      "radius": 1.7,
+      "role": "route"
+    },
+    {
+      "id": "path-1",
+      "center": [
+        -8.4853,
+        7.0711
+      ],
+      "radius": 1.7,
+      "role": "route"
+    },
+    {
+      "id": "path-2",
+      "center": [
+        -7.0711,
+        4.2426
+      ],
+      "radius": 1.7,
+      "role": "route"
+    },
+    {
+      "id": "path-3",
+      "center": [
+        -4.2426,
+        2.8284
+      ],
+      "radius": 1.7,
+      "role": "route"
+    },
+    {
+      "id": "path-4",
+      "center": [
+        -1.4142,
+        1.4142
+      ],
+      "radius": 1.7,
+      "role": "route"
+    },
+    {
+      "id": "path-5",
+      "center": [
+        0.7071,
+        -0.7071
+      ],
+      "radius": 1.7,
+      "role": "route"
+    },
+    {
+      "id": "path-6",
+      "center": [
+        2.1213,
+        -2.1213
+      ],
+      "radius": 1.7,
+      "role": "route"
+    }
+  ],
+  "gates": [
+    {
+      "id": "west",
+      "role": "entrance",
+      "position": [
+        -10.9955,
+        10.9955
+      ],
+      "yaw": -0.7853981633974483,
+      "width": 3,
+      "depth": 2,
+      "arrival": {
+        "position": [
+          -9.5459,
+          9.5459
+        ],
+        "yaw": 2.356194490192345
+      },
+      "destination": {
+        "area": "homestead",
+        "gate": "clearing-path"
+      }
+    }
+  ],
+  "lighting": {
+    "profile": "woodland-dusk",
+    "overrides": {
+      "sun": {
+        "shadowExtent": 25
+      }
+    }
+  },
+  "effects": {
+    "water": [],
+    "fires": [
+      {
+        "id": "entrance-fire",
+        "position": [
+          2.1213,
+          -7.7782
+        ],
+        "asset": {
+          "libraryId": "alpine-mountain:model:props-sm-prop-campfire-01"
+        },
+        "height": 0.45,
+        "emitterHeight": 0.45,
+        "intensity": 11,
+        "shadow": true,
+        "role": "campfire"
+      }
+    ]
+  },
+  "campfires": [
+    {
+      "id": "entrance-fire",
+      "name": "Forest Clearing",
+      "position": [
+        2.1213,
+        -7.7782
+      ],
+      "arrival": {
+        "position": [
+          0.7071,
+          -7.0711
+        ],
+        "yaw": 2.356194490192345
+      },
+      "heals": true
+    }
+  ],
+  "chests": [
+    {
+      "id": "camp-chest",
+      "prop": "chest",
+      "position": [
+        7.0711,
+        -7.0711
+      ],
+      "scrolls": 2
+    }
+  ],
+  "views": [
+    {
+      "id": "entrance",
+      "target": [
+        -9.5459,
+        0.9,
+        9.5459
+      ]
+    },
+    {
+      "id": "center",
+      "target": [
+        -2.8284,
+        0.9,
+        2.8284
+      ]
+    },
+    {
+      "id": "exit",
+      "target": [
+        3.8891,
+        0.9,
+        -3.8891
+      ]
+    },
+    {
+      "id": "review-1",
+      "target": [
+        5.6569,
+        0.9,
+        -7.0711
+      ]
+    },
+    {
+      "id": "review-2",
+      "target": [
+        -7.0711,
+        0.9,
+        5.6569
+      ]
+    }
+  ],
+  "inspection": {
+    "position": [
+      -2.8284,
+      7.0711
+    ]
+  },
+  "traversal": {
+    "obstacles": [
+      {
+        "id": "chest",
+        "position": [
+          7.0711,
+          0.425,
+          -7.0711
+        ],
+        "size": [
+          2.19,
+          0.85,
+          0.965
+        ],
+        "yaw": -0.7853981633974483
+      },
+      {
+        "id": "goblin-tent",
+        "position": [
+          2.8284,
+          1.25,
+          -12.7279
+        ],
+        "size": [
+          4.993,
+          2.5,
+          4.663
+        ],
+        "yaw": 2.356194490192345
+      },
+      {
+        "id": "supplies",
+        "position": [
+          8.4853,
+          0.4,
+          -8.4853
+        ],
+        "size": [
+          0.8,
+          0.8,
+          0.8
+        ],
+        "yaw": 0.5
+      },
+      {
+        "id": "barrel",
+        "position": [
+          9.6167,
+          0.55,
+          -7.3539
+        ],
+        "size": [
+          1,
+          1.1,
+          1
+        ],
+        "yaw": 0
+      },
+      {
+        "id": "sitting-log",
+        "position": [
+          -2.1213,
+          0.3,
+          -7.7782
+        ],
+        "size": [
+          0.657,
+          0.6,
+          3.44
+        ],
+        "yaw": 0.7853981633974483
+      },
+      {
+        "id": "pine-2",
+        "position": [
+          -4.2426,
+          3.5,
+          14.1421
+        ],
+        "size": [
+          0.55,
+          7,
+          0.55
+        ],
+        "yaw": 3.42
+      },
+      {
+        "id": "pine-3",
+        "position": [
+          0.0,
+          3.4,
+          12.7279
+        ],
+        "size": [
+          0.55,
+          6.8,
+          0.55
+        ],
+        "yaw": 5.13
+      },
+      {
+        "id": "pine-4",
+        "position": [
+          4.9497,
+          3.5,
+          10.6066
+        ],
+        "size": [
+          0.55,
+          7,
+          0.55
+        ],
+        "yaw": 6.84
+      },
+      {
+        "id": "pine-5",
+        "position": [
+          9.5459,
+          3.7,
+          6.7175
+        ],
+        "size": [
+          0.55,
+          7.4,
+          0.55
+        ],
+        "yaw": 8.55
+      },
+      {
+        "id": "pine-7",
+        "position": [
+          17.6777,
+          3.0,
+          -3.5355
+        ],
+        "size": [
+          0.55,
+          6,
+          0.55
+        ],
+        "yaw": 11.969999999999999
+      },
+      {
+        "id": "pine-10",
+        "position": [
+          -12.0208,
+          2.9,
+          2.1213
+        ],
+        "size": [
+          0.55,
+          5.8,
+          0.55
+        ],
+        "yaw": 17.1
+      },
+      {
+        "id": "pine-11",
+        "position": [
+          -9.1924,
+          3.0,
+          -3.5355
+        ],
+        "size": [
+          0.55,
+          6,
+          0.55
+        ],
+        "yaw": 18.81
+      },
+      {
+        "id": "pine-12",
+        "position": [
+          -5.6569,
+          2.9,
+          -9.8995
+        ],
+        "size": [
+          0.55,
+          5.8,
+          0.55
+        ],
+        "yaw": 20.52
+      },
+      {
+        "id": "pine-13",
+        "position": [
+          2.1213,
+          2.75,
+          -16.2635
+        ],
+        "size": [
+          0.55,
+          5.5,
+          0.55
+        ],
+        "yaw": 22.23
+      },
+      {
+        "id": "rock-0",
+        "position": [
+          -6.364,
+          0.75,
+          10.6066
+        ],
+        "size": [
+          3.577,
+          1.5,
+          1.763
+        ],
+        "yaw": 0.0
+      },
+      {
+        "id": "rock-1",
+        "position": [
+          -2.8284,
+          0.55,
+          7.0711
+        ],
+        "size": [
+          2.623,
+          1.1,
+          1.293
+        ],
+        "yaw": 1.3
+      },
+      {
+        "id": "rock-2",
+        "position": [
+          2.1213,
+          0.7,
+          3.5355
+        ],
+        "size": [
+          3.339,
+          1.4,
+          1.645
+        ],
+        "yaw": 2.6
+      },
+      {
+        "id": "rock-3",
+        "position": [
+          6.364,
+          0.6,
+          2.1213
+        ],
+        "size": [
+          2.862,
+          1.2,
+          1.41
+        ],
+        "yaw": 3.9000000000000004
+      },
+      {
+        "id": "rock-4",
+        "position": [
+          -12.7279,
+          0.6,
+          7.0711
+        ],
+        "size": [
+          2.862,
+          1.2,
+          1.41
+        ],
+        "yaw": 5.2
+      },
+      {
+        "id": "rock-5",
+        "position": [
+          -8.4853,
+          0.5,
+          1.4142
+        ],
+        "size": [
+          2.385,
+          1,
+          1.175
+        ],
+        "yaw": 6.5
+      },
+      {
+        "id": "rock-6",
+        "position": [
+          -4.9497,
+          0.6,
+          -3.5355
+        ],
+        "size": [
+          2.862,
+          1.2,
+          1.41
+        ],
+        "yaw": 7.800000000000001
+      },
+      {
+        "id": "rock-7",
+        "position": [
+          7.0711,
+          0.7,
+          -14.1421
+        ],
+        "size": [
+          3.339,
+          1.4,
+          1.645
+        ],
+        "yaw": 9.1
+      },
+      {
+        "id": "rock-8",
+        "position": [
+          16.2635,
+          0.6,
+          -3.5355
+        ],
+        "size": [
+          2.862,
+          1.2,
+          1.41
+        ],
+        "yaw": 10.4
+      },
+      {
+        "id": "fallen-log",
+        "position": [
+          -1.5556,
+          0.325,
+          9.7581
+        ],
+        "size": [
+          0.712,
+          0.65,
+          3.727
+        ],
+        "yaw": 0.4
+      }
+    ]
+  }
+}
