@@ -100,6 +100,10 @@ test('native APFS clones are independent and overlapping asset changes require e
     await writeFile(join(second.path, 'public/vendor/model.glb'), 'second combined model');
     await assert.rejects(finishTask(ctx, second), /Asset conflicts/);
     assert.equal(await readFile(join(ctx.main, 'public/vendor/model.glb'), 'utf8'), 'first model');
+    // Asset-only changes can advance without a new source commit; old acknowledgements cannot overwrite them.
+    await writeFile(join(ctx.main, 'public/vendor/model.glb'), 'newer main model');
+    await assert.rejects(finishTask(ctx, await readJSON(taskPath(ctx, second.id)), { resolvedAssets: ['model.glb'] }), /Asset conflicts/);
+    assert.equal(await readFile(join(ctx.main, 'public/vendor/model.glb'), 'utf8'), 'newer main model');
     await finishTask(ctx, await readJSON(taskPath(ctx, second.id)), { resolvedAssets: ['model.glb'] });
     assert.equal(await readFile(join(ctx.main, 'public/vendor/model.glb'), 'utf8'), 'second combined model');
   } finally { await ctx.dispose(); }

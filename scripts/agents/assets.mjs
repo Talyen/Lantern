@@ -54,18 +54,18 @@ export async function prepareAssets(ctx, task, mainHead, resolved = []) {
   const index = await assetIndex(local);
   const changed = new Set(task.assetChanges ?? []);
   for (const name of new Set([...Object.keys(index), ...Object.keys(task.assetIndex ?? {})])) if (index[name] !== task.assetIndex?.[name]) changed.add(name);
-  const edits = [], conflicts = [];
+  const edits = [], conflicts = [], conflictHashes = {};
   for (const name of changed) {
     const [before, mine, theirs] = await Promise.all([fileHash(safeAsset(baseline, name)), fileHash(safeAsset(local, name)), fileHash(safeAsset(current, name))]);
     if (mine === theirs) continue;
     if (before !== theirs && mine !== before) {
-      const acknowledged = resolved.includes(name) && task.assetConflictBase === mainHead && task.assetConflicts?.includes(name);
-      if (!acknowledged) { conflicts.push(name); continue; }
+      const acknowledged = resolved.includes(name) && task.assetConflictBase === mainHead && task.assetConflicts?.includes(name) && task.assetConflictHashes?.[name] === theirs;
+      if (!acknowledged) { conflicts.push(name); conflictHashes[name] = theirs; continue; }
     }
     if (mine !== before) edits.push(name);
   }
   if (conflicts.length) {
-    task.assetConflicts = conflicts; task.assetConflictBase = mainHead; task.status = 'needs-asset-repair'; await saveTask(ctx, task);
+    task.assetConflicts = conflicts; task.assetConflictHashes = conflictHashes; task.assetConflictBase = mainHead; task.status = 'needs-asset-repair'; await saveTask(ctx, task);
     throw new Error(`Asset conflicts: ${conflicts.join(', ')}. Reconcile/re-export these artifacts; then pass --resolved-assets with a JSON list of reviewed paths for this main revision.`);
   }
   // Freeze the combined asset input before checks. Preserve old task files until the swap succeeds.
@@ -86,7 +86,7 @@ export async function prepareAssets(ctx, task, mainHead, resolved = []) {
   await rm(baseline, { recursive: true, force: true });
   if (existsSync(current)) await privateTree(current, baseline);
   task.assetIndex = await assetIndex(local); task.assetChanges = edits; task.mainAssetIdentity = mainIdentity;
-  delete task.assetConflicts; delete task.assetConflictBase;
+  delete task.assetConflicts; delete task.assetConflictHashes; delete task.assetConflictBase;
   await saveTask(ctx, task);
   await rm(previous, { recursive: true, force: true });
   return assetIdentity(task.assetIndex);

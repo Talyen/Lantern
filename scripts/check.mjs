@@ -30,10 +30,10 @@ await cli(async () => {
     const inputs = await checkInputs(args['--base']);
     const full = !!args['--full'], files = inputs.files;
     const docsOnly = files.length > 0 && files.every(name => name.endsWith('.md'));
-    const code = !docsOnly && (files.length === 0 || files.some(name => /\.(?:[cm]?js|ts|py)$/.test(name) || /^(?:package|tsconfig|vitest)/.test(name)));
+    const code = !docsOnly && (files.length === 0 || files.some(name => /\.(?:[cm]?js|ts|py|json)$/.test(name) || /^(?:package|tsconfig|vitest)/.test(name)));
     const docs = full || files.some(name => name.endsWith('.md') || name === 'package.json');
     const levels = full || files.some(name => /^src\/levels\/|^assets\/(?:library-selection|lighting-bakes|environment-surfaces)/.test(name));
-    const build = full || !!args['--assets'] || files.some(name => /^(?:package(?:-lock)?\.json|vite\.config\.ts|index\.html|electron\/|scripts\/build\.mjs|scripts\/assets\/|scripts\/lib\/assets\.mjs)/.test(name));
+    const build = full || !!args['--assets'] || files.some(name => /^(?:package(?:-lock)?\.json|vite\.config\.ts|index\.html|electron\/|scripts\/build\.mjs|scripts\/assets\/|scripts\/lib\/assets\.mjs|assets\/(?:library-selection|lighting-bakes|playable-characters)\.json)/.test(name));
     const key = `${inputs.signature}-${full}-${!!args['--assets']}`;
     const cachePath = resolve(root, '.local/checks/cache.json');
     const cache = await readJSON(cachePath, null);
