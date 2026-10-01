@@ -24,7 +24,7 @@ export function packCharacter(characterUrl, catalogPath, output) {
   character.animations = [];
   const chosen = catalog.defaults;
   for (const [name, original] of Object.entries(chosen)) {
-    const clip = pack.clips.find((c) => c.name === original);
+    const clip = pack.clips.find((c) => c.id === original || c.name === original);
     if (!clip) throw new Error(`Missing retained clip: ${original}`);
     const { json, bin: motion } = readGlb(resolve(root, 'public', clip.url.slice(1)));
     if (json.animations.length !== 1) throw new Error(`Expected one clip: ${original}`);

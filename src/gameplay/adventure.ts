@@ -1,11 +1,12 @@
 import { createEncounter, playerMaxHealth, type Encounter } from './encounter';
 import type { Point, Spawn } from './area';
 import type { AreaDefinition, Campfire, Chest } from '../levels/types';
+import { itemIds, normalizeLoadout, type ItemId, type Loadout } from './equipment';
 
 export const characterSaveKey = 'lantern.character.v1';
 export const scrollLimit = 99;
 export const homeArea = 'homestead';
-export type CharacterSave = { version: 1; scrolls: number; campfires: string[] };
+export type CharacterSave = { version: 2; scrolls: number; campfires: string[]; equipment: ItemId[]; loadout: Loadout; wood: number; xp: { woodcutting: number; axeCombat: number }; campEquipmentClaimed: boolean };
 export type ScrollDrop = { id: string; position: Point };
 export type PortalLink = { area: string; departure: Spawn };
 type AreaSession = { encounter?: Encounter; drops: ScrollDrop[]; dropRolled: boolean; chests: Record<string, { opened: boolean; remaining: number }> };
@@ -15,7 +16,7 @@ export const near = (point: Point, target: Point, radius: number) => Math.hypot(
 
 /** Continuing character state and inactive area snapshots; no rendering/browser dependencies. */
 export class Adventure {
-  character: CharacterSave = { version: 1, scrolls: 3, campfires: ['homestead/camp'] };
+  character: CharacterSave = { version: 2, scrolls: 3, campfires: ['homestead/camp'], equipment: ['axe'], loadout: { main: 'axe', off: null }, wood: 0, xp: { woodcutting: 0, axeCombat: 0 }, campEquipmentClaimed: false };
   portal: PortalLink | null = null;
   castRemaining = 0;
   saveError = '';
@@ -27,8 +28,18 @@ export class Adventure {
       const raw = storage.getItem(characterSaveKey);
       if (raw) {
         const value = JSON.parse(raw);
-        if (value?.version !== 1 || !Number.isInteger(value.scrolls) || value.scrolls < 0 || value.scrolls > scrollLimit || !Array.isArray(value.campfires) || !value.campfires.every((id: unknown) => typeof id === 'string')) throw new Error('Invalid character save');
-        this.character = { version: 1, scrolls: value.scrolls, campfires: [...new Set<string>([...this.character.campfires, ...value.campfires])] };
+        if (![1, 2].includes(value?.version) || !Number.isInteger(value.scrolls) || value.scrolls < 0 || value.scrolls > scrollLimit || !Array.isArray(value.campfires) || !value.campfires.every((id: unknown) => typeof id === 'string')) throw new Error('Invalid character save');
+        if (value.version === 2) {
+          const counter = (number: unknown) => typeof number === 'number' && Number.isSafeInteger(number) && number >= 0;
+          if (!Array.isArray(value.equipment) || !value.equipment.every((id: ItemId) => itemIds.includes(id)) || !counter(value.wood) || !counter(value.xp?.woodcutting) || !counter(value.xp?.axeCombat) || typeof value.campEquipmentClaimed !== 'boolean'
+            || !value.loadout || !(value.loadout.main === null || itemIds.includes(value.loadout.main) && value.loadout.main !== 'shield') || ![null, 'shield'].includes(value.loadout.off)
+            || value.loadout.main && !value.equipment.includes(value.loadout.main) || value.loadout.off && !value.equipment.includes(value.loadout.off)) throw new Error('Invalid equipment save');
+          this.character = { version: 2, scrolls: value.scrolls, campfires: [...new Set<string>([...this.character.campfires, ...value.campfires])], equipment: [...new Set<ItemId>(value.equipment)], loadout: normalizeLoadout(value.loadout), wood: value.wood, xp: { woodcutting: value.xp.woodcutting, axeCombat: value.xp.axeCombat }, campEquipmentClaimed: value.campEquipmentClaimed };
+        } else {
+          this.character.scrolls = value.scrolls;
+          this.character.campfires = [...new Set<string>([...this.character.campfires, ...value.campfires])];
+          this.save();
+        }
       }
     } catch { this.saveError = 'Unable to load progress. Check local storage before restarting.'; }
   }
@@ -37,6 +48,15 @@ export class Adventure {
     try { this.storage?.setItem(characterSaveKey, JSON.stringify(this.character)); this.saveError = ''; }
     catch { this.saveError = 'Unable to save progress. Allow local storage before restarting.'; }
   }
+  /** Commit only after the coordinator has prepared the matching models and motions. */
+  commitEquipment(loadout: Loadout): boolean {
+    if (loadout.main && !this.character.equipment.includes(loadout.main) || loadout.off && !this.character.equipment.includes(loadout.off)) return false;
+    this.character.loadout = normalizeLoadout(loadout); this.save(); return true;
+  }
+  grantHarvest(wood = 1, xp = 10): void {
+    this.character.wood += wood; this.character.xp.woodcutting += xp; this.save();
+  }
+  grantAxeCombatXp(amount = 10): void { this.character.xp.axeCombat += amount; this.save(); }
   session(id = this.currentArea!): AreaSession {
     let session = this.sessions.get(id);
     if (!session) { session = { drops: [], dropRolled: false, chests: {} }; this.sessions.set(id, session); }
@@ -83,9 +103,14 @@ export class Adventure {
   openChest(encounter: Encounter, area: AreaDefinition, chest: Chest): boolean {
     if (this.currentArea !== area.id || encounter.player.hp <= 0 || encounter.enemy.hp > 0 || this.castRemaining > 0 || !near([encounter.player.x, encounter.player.z], chest.position, 1.8)) return false;
     const state = this.chest(area, chest), collected = Math.min(state.remaining, scrollLimit - this.character.scrolls);
-    const changed = !state.opened || collected > 0;
+    const equipment = area.id === 'clearing' && !this.character.campEquipmentClaimed;
+    const changed = !state.opened || collected > 0 || equipment;
     state.opened = true; state.remaining -= collected; this.character.scrolls += collected;
-    if (collected) this.save();
+    if (equipment) {
+      this.character.equipment = [...new Set<ItemId>([...this.character.equipment, 'sword', 'shield', 'bow', 'staff'])];
+      this.character.campEquipmentClaimed = true;
+    }
+    if (collected || equipment) this.save();
     return changed;
   }
   destinations(areas: Record<string, AreaDefinition>): { area: AreaDefinition; fire: Campfire; available: boolean }[] {

@@ -1,11 +1,11 @@
 import RAPIER from '@dimforge/rapier3d-compat';
 import { DEFAULT_QUERY_FILTER, findPath, type NavMesh } from 'navcat';
-import { generateSoloNavMesh } from 'navcat/blocks';
+import { buildNavigation, type NavigationGeometry } from './navigation';
 import { constrain, type Boundary } from './area';
 import type { ActorId, ActorState, Movement } from './encounter';
 
 export type Surface = { positions: number[]; indices: number[] };
-export type Obstacle = { id: string; position: [number, number, number]; size: [number, number, number]; yaw: number };
+export type Obstacle = { id: string; position: [number, number, number]; size: [number, number, number]; yaw: number; tree?: boolean };
 export type Traversal = { obstacles: Obstacle[]; surfaces?: Surface[] };
 const radius = .3, halfHeight = .55, centerHeight = radius + halfHeight + .02;
 let initialization: Promise<void> | undefined;
@@ -28,7 +28,14 @@ export class MovementWorld implements Movement {
   private readonly controller = this.world.createCharacterController(.015);
   private readonly actors = { player: this.world.createCollider(RAPIER.ColliderDesc.capsule(halfHeight, radius).setSensor(true)), enemy: this.world.createCollider(RAPIER.ColliderDesc.capsule(halfHeight, radius).setSensor(true)) };
   private readonly solid = new Set<number>();
-  private readonly nav: NavMesh;
+  private nav!: NavMesh;
+  private readonly baseSurfaces: Surface[];
+  private readonly obstacles = new Map<string, { definition: Obstacle; collider: RAPIER.Collider; felled: boolean }>();
+  private navigationWorker?: Worker;
+  private navigationRevision = 0;
+  private navigationPending = false;
+  private navigationPostQueued = false;
+  private queuedNavigation?: NavigationGeometry;
   private path: [number, number, number][] = [];
   private target = [Infinity, Infinity];
   private pathAge = Infinity;
@@ -42,20 +49,54 @@ export class MovementWorld implements Movement {
     const started = performance.now();
     this.controller.enableAutostep(.3, .15, false); this.controller.enableSnapToGround(.3);
     this.controller.setMaxSlopeClimbAngle(Math.PI / 4); this.controller.setMinSlopeSlideAngle(Math.PI / 4);
-    const surfaces = [ground(boundary), ...(traversal.surfaces ?? [])];
-    for (const surface of surfaces) {
+    this.baseSurfaces = [ground(boundary), ...(traversal.surfaces ?? [])];
+    for (const surface of this.baseSurfaces) {
       const collider = this.world.createCollider(RAPIER.ColliderDesc.trimesh(new Float32Array(surface.positions), new Uint32Array(surface.indices)));
       this.solid.add(collider.handle);
     }
     for (const obstacle of traversal.obstacles) {
       const collider = this.world.createCollider(RAPIER.ColliderDesc.cuboid(...obstacle.size.map(v => v / 2) as [number, number, number]).setTranslation(...obstacle.position).setRotation({ x: 0, y: Math.sin(obstacle.yaw / 2), z: 0, w: Math.cos(obstacle.yaw / 2) }));
-      this.solid.add(collider.handle); surfaces.push(box(obstacle));
+      this.solid.add(collider.handle); this.obstacles.set(obstacle.id, { definition: obstacle, collider, felled: false });
     }
-    const positions: number[] = [], indices: number[] = [];
-    for (const surface of surfaces) { const offset = positions.length / 3; positions.push(...surface.positions); indices.push(...surface.indices.map(i => i + offset)); }
-    this.nav = generateSoloNavMesh({ positions, indices }, { cellSize: .1, cellHeight: .1, walkableRadiusWorld: .35, walkableRadiusVoxels: 4, walkableHeightWorld: 1.8, walkableHeightVoxels: 18, walkableClimbWorld: .3, walkableClimbVoxels: 3, walkableSlopeAngleDegrees: 45, borderSize: 0, minRegionArea: 0, mergeRegionArea: 8, maxSimplificationError: 1.1, maxEdgeLength: 12, maxVerticesPerPoly: 6, detailSampleDistance: .6, detailSampleMaxError: .1 }).navMesh;
+    this.rebuildNavigation();
     this.world.step();
     this.generationMs = performance.now() - started;
+  }
+  private rebuildNavigation(background = false): void {
+    const surfaces = [...this.baseSurfaces, ...[...this.obstacles.values()].filter(o => !o.felled).map(o => box(o.definition))];
+    const positions: number[] = [], indices: number[] = [];
+    for (const surface of surfaces) { const offset = positions.length / 3; positions.push(...surface.positions); indices.push(...surface.indices.map(i => i + offset)); }
+    this.reset();
+    ++this.navigationRevision;
+    if (background && typeof Worker !== 'undefined') {
+      this.navigationPending = true;
+      if (!this.navigationWorker) {
+        this.navigationWorker = new Worker(new URL('./navigation-worker.ts', import.meta.url), { type: 'module' });
+        this.navigationWorker.onmessage = (event: MessageEvent<{ revision: number; nav?: NavMesh; error?: string }>) => {
+          if (this.disposed || event.data.revision !== this.navigationRevision) return;
+          if (!event.data.nav) throw new Error(`Tree navigation could not update: ${event.data.error ?? 'missing navigation result'}`);
+          this.nav = event.data.nav; this.navigationPending = false; this.reset();
+        };
+        this.navigationWorker.onerror = event => { throw new Error(`Tree navigation could not update: ${event.message}`); };
+      }
+      this.queuedNavigation = { positions, indices };
+      if (!this.navigationPostQueued) {
+        this.navigationPostQueued = true;
+        // Applying session depletion on area arrival may change many trees in the same turn.
+        queueMicrotask(() => {
+          this.navigationPostQueued = false;
+          if (!this.disposed) this.navigationWorker?.postMessage({ revision: this.navigationRevision, geometry: this.queuedNavigation });
+        });
+      }
+    } else { this.nav = buildNavigation({ positions, indices }); this.navigationPending = false; }
+  }
+  /** Collision commits immediately; expensive routes refresh off the gameplay thread. */
+  setTreeFelled(id: string, felled: boolean): void {
+    const obstacle = this.obstacles.get(id);
+    if (this.disposed || !obstacle?.definition.tree || obstacle.felled === felled) return;
+    obstacle.felled = felled; obstacle.collider.setEnabled(!felled);
+    if (felled) this.solid.delete(obstacle.collider.handle); else this.solid.add(obstacle.collider.handle);
+    this.world.step(); this.rebuildNavigation(true);
   }
   move(id: ActorId, actor: ActorState, dx: number, dz: number, dt: number): void {
     if (this.disposed) return;
@@ -67,6 +108,10 @@ export class MovementWorld implements Movement {
     actor.y = Math.max(0, actor.y + delta.y);
   }
   direction(from: ActorState, to: ActorState, dt: number): { x: number; z: number } {
+    if (this.navigationPending) {
+      // Until fresh routes arrive, use clear direct travel or wait; never follow a stale path into regrowth.
+      return this.lineOfSight(from, to) ? { x: to.x - from.x, z: to.z - from.z } : { x: 0, z: 0 };
+    }
     this.pathAge += dt;
     if (this.pathAge >= .25 || Math.hypot(to.x - this.target[0], to.z - this.target[1]) >= .4) {
       const result = findPath(this.nav, [from.x, from.y, from.z], [to.x, to.y, to.z], [.6, 1, .6], DEFAULT_QUERY_FILTER);
@@ -82,6 +127,15 @@ export class MovementWorld implements Movement {
     if (length < .001) return true;
     return !this.world.castRay(new RAPIER.Ray({ x: from.x, y: from.y + .9, z: from.z }, { x: dx / length, y: dy / length, z: dz / length }), length, true, undefined, undefined, undefined, undefined, c => this.solid.has(c.handle));
   }
+  /** Earliest solid intersection along the exact projectile segment, expressed as 0–1 travel. */
+  segmentHit(from: { x: number; y: number; z: number }, to: { x: number; y: number; z: number }): number | null {
+    if (this.disposed) return null;
+    const dx = to.x - from.x, dy = to.y - from.y, dz = to.z - from.z, length = Math.hypot(dx, dy, dz);
+    if (length < .000001) return null;
+    const hit = this.world.castRay(new RAPIER.Ray(from, { x: dx / length, y: dy / length, z: dz / length }), length, true, undefined, undefined, undefined, undefined, c => this.solid.has(c.handle));
+    return hit ? hit.timeOfImpact / length : null;
+  }
+  get navigationReady(): boolean { return !this.navigationPending && !this.disposed; }
   reset(): void { this.path = []; this.target = [Infinity, Infinity]; this.pathAge = Infinity; }
-  dispose(): void { if (this.disposed) return; this.disposed = true; this.world.free(); }
+  dispose(): void { if (this.disposed) return; this.disposed = true; this.navigationWorker?.terminate(); this.world.free(); }
 }

@@ -99,7 +99,7 @@ export async function checkAssets(playable = false) {
     const catalog = JSON.parse(await readFile(catalogPath, 'utf8'));
     if (catalog.version !== 1 || !Array.isArray(catalog.packs) || !catalog.defaults) throw new Error(`Invalid ${who} animation catalog`);
     const pack = catalog.packs.find(item => item.id === 'mixamo');
-    if (!pack || states.some(state => !pack.clips.some(clip => clip.name === catalog.defaults[state] && clip.category === state))) throw new Error(`${config.name} default motion set unavailable`);
+    if (!pack || states.some(state => !pack.clips.some(clip => (clip.id === catalog.defaults[state] || clip.name === catalog.defaults[state]) && clip.category === state))) throw new Error(`${config.name} default motion set unavailable`);
     for (const pack of catalog.packs) {
       if (pack.id !== 'mixamo') throw new Error(`Unsupported animation provider: ${pack.id}`);
       for (const clip of pack.clips) {

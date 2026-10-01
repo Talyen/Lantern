@@ -30,12 +30,12 @@ test('quality presets update existing shadows without changing authored light pr
   expect(particlePresets).toEqual({ low: { capacity: .5, emission: .55, weather: 24 }, medium: { capacity: .75, emission: .75, weather: 40 }, high: { capacity: 1, emission: 1, weather: 60 } });
 });
 
-test('depth of field defaults, saved modes and temporary comparison URLs', () => {
+test('graphics modes preserve defaults, saved choices and temporary comparison URLs', () => {
   const storage = new Map<string, string>();
   vi.stubGlobal('location', { search: '' });
   vi.stubGlobal('localStorage', { getItem: (key: string) => storage.get(key) ?? null, setItem: (key: string, value: string) => storage.set(key, value) });
   try {
-    expect(readSettings()).toMatchObject({ dof: 'cinematic', sharpness: .5 });
+    expect(readSettings()).toMatchObject({ dof: 'cinematic', sharpness: .5, outlines: true });
     for (const dof of depthOfFieldModes) {
       saveSettings({ ...defaults(), dof, exposure: .8 });
       expect([readSettings().dof, readSettings().exposure]).toEqual([dof, .8]);
@@ -51,17 +51,21 @@ test('depth of field defaults, saved modes and temporary comparison URLs', () =>
     expect(parseSettings(JSON.parse('{"dof":0.6}')).dof).toBe('cinematic');
     expect(parseSettings({}, new URLSearchParams('dof=0.6')).dof).toBe('cinematic');
     expect(parseSettings({}, new URLSearchParams('dof=unknown')).dof).toBe('cinematic');
-    for (const enabled of [true, false]) {
-      saveSettings({ ...defaults(), atmosphericParticles: enabled });
+    for (const key of ['atmosphericParticles', 'outlines'] as const) for (const enabled of [true, false]) {
+      saveSettings({ ...defaults(), [key]: enabled });
       for (const value of enabled ? ['off', 'false'] : ['on', 'true']) {
-        vi.stubGlobal('location', { search: `?atmosphericParticles=${value}` });
-        expect(readSettings().atmosphericParticles).toBe(!enabled);
+        vi.stubGlobal('location', { search: `?${key}=${value}` });
+        expect(readSettings()[key]).toBe(!enabled);
         const saved = JSON.parse(storage.get(settingsKey)!);
-        expect(saved.atmosphericParticles).toBe(enabled);
+        expect(saved[key]).toBe(enabled);
       }
       vi.stubGlobal('location', { search: '' });
-      expect(readSettings().atmosphericParticles).toBe(enabled);
+      expect(readSettings()[key]).toBe(enabled);
     }
+    expect(parseSettings(JSON.parse('{"outlines":"true"}'), new URLSearchParams('outlines=unknown')).outlines).toBe(true);
+    expect(migrateSettings({ defaultsVersion: 4, outlines: true, sharpness: .3 })).toMatchObject({ outlines: true, sharpness: .3 });
+    saveSettings(defaults());
+    expect(readSettings().outlines).toBe(true);
     storage.set(settingsKey, JSON.stringify({ defaultsVersion: 2, volumetricLighting: false, atmosphericParticles: false, dof: 'off' }));
     vi.stubGlobal('location', { search: '?dof=off&volumetricLighting=off&atmosphericParticles=off' });
     expect([readSettings().dof, readSettings().atmosphericParticles]).toEqual(['off', false]);

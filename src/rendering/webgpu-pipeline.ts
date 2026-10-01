@@ -1,4 +1,4 @@
-import { ACESFilmicToneMapping, RenderPipeline, Color, Vector2, Vector3, type Node, type OrthographicCamera, type PerspectiveCamera, type Scene, type WebGPURenderer, type TextureNode, type QuadMesh, type Texture } from 'three/webgpu';
+import { ACESFilmicToneMapping, RenderPipeline, BlendMode, NormalBlending, Color, Vector2, Vector3, type Node, type OrthographicCamera, type PerspectiveCamera, type Scene, type WebGPURenderer, type TextureNode, type QuadMesh, type Texture } from 'three/webgpu';
 import { Fn, context, dot, float, mix, mrt, normalView, orthographicDepthToViewZ, perspectiveDepthToViewZ, output, pass, rtt, screenUV, smoothstep, toneMapping, uniform, uv, vec2, vec3, vec4, velocity } from 'three/tsl';
 import { ao } from 'three/addons/tsl/display/GTAONode.js';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
@@ -7,6 +7,7 @@ import type { AreaLighting } from '../levels/types';
 import { fsrTemporal } from './fsr-temporal';
 import { upscaleRatio, type GraphicsSettings } from './graphics-settings';
 import { SettingsPreparation } from './settings-preparation';
+import { outlinedColor, outlineStrength } from './outlines';
 
 type FSRNode = ReturnType<typeof fsrTemporal>;
 // Restrained focus profiles, applied to the stabilized output. Focus distance continues to track the camera target.
@@ -20,6 +21,7 @@ class PipelineGraph {
   private graphKey = '';
   private depthJitter = uniform(new Vector2());
   private depthTexel = uniform(new Vector2());
+  private outlineScale = uniform(1);
   private look?: AreaLighting;
   private shadowTint = uniform(new Color(1, 1, 1));
   private highlightTint = uniform(new Color(1, 1, 1));
@@ -59,7 +61,13 @@ class PipelineGraph {
     this.scale = 1 / upscaleRatio(settings.upscaleQuality);
     const scenePass = pass(this.scene, this.camera, { samples: 0 });
     scenePass.setResolutionScale(this.scale);
-    scenePass.setMRT(mrt({ output, normal: normalView, velocity }));
+    const sceneMRT = settings.outlines ? mrt({ output, normal: normalView, velocity, outline: vec4(outlineStrength(), 0, 0, output.a) }) : mrt({ output, normal: normalView, velocity });
+    if (settings.outlines) {
+      sceneMRT.setClearColor('outline', 0, 0);
+      // Transparent effects soften the mask by their actual opacity instead of erasing whole quads.
+      sceneMRT.setBlendMode('outline', new BlendMode(NormalBlending));
+    }
+    scenePass.setMRT(sceneMRT);
     this.scenePass = scenePass;
     this.resources.push(scenePass); this.sceneResources.push(scenePass);
     const color = scenePass.getTextureNode('output');
@@ -71,6 +79,10 @@ class PipelineGraph {
       return texture;
     };
     let beauty: Node<'vec4'> = vec4(color);
+    if (settings.outlines) {
+      const distance = (value: Node<'float'>) => ('isOrthographicCamera' in this.camera ? orthographicDepthToViewZ : perspectiveDepthToViewZ)(value, uniform(this.camera.near), uniform(this.camera.far)).negate();
+      beauty = outlinedColor(color, scenePass.getTextureNode('outline'), depth, distance, this.outlineScale, this.depthTexel);
+    }
     if (settings.ao > 0) {
       // Independent geometry inputs avoid a cycle: AO is consumed while shading
       // the beauty pass, through the material's native indirect-light occlusion.
@@ -173,6 +185,7 @@ class PipelineGraph {
       }
     }
     this.look = look; this.settings = { ...settings };
+    this.outlineScale.value = this.scale;
     if (this.fsr?.upscaler) this.fsr.upscaler.settings.sharpness = settings.sharpness;
     this.exposure.value = settings.exposure; this.saturation.value = saturation;
     this.aoStrength.value = settings.ao;
@@ -201,7 +214,7 @@ class PipelineGraph {
 
   diagnostics() {
     const rt = this.scenePass?.renderTarget;
-    return { ready: this.prepared, method: 'fsr-temporal', dof: this.settings.dof, dofStage: 'resolved-output',
+    return { ready: this.prepared, method: 'fsr-temporal', outlines: this.settings.outlines, outlineStage: this.settings.outlines ? 'pre-fsr' : 'off', sceneAttachments: rt?.textures.length ?? 0, dof: this.settings.dof, dofStage: 'resolved-output',
       sceneWidth: rt?.width ?? 0, sceneHeight: rt?.height ?? 0,
       outputWidth: this.renderer.domElement.width, outputHeight: this.renderer.domElement.height,
       reconstructionScale: this.scale, renderedFrames: this.successfulFrames,
@@ -248,7 +261,7 @@ class PipelineGraph {
 }
 
 function graphSignature(settings: GraphicsSettings): string {
-  return JSON.stringify([settings.dof !== 'off', settings.ao > 0, settings.bloom > 0]);
+  return JSON.stringify([settings.dof !== 'off', settings.ao > 0, settings.bloom > 0, settings.outlines]);
 }
 type PipelineRequest = { settings: GraphicsSettings; saturation: number; look?: AreaLighting };
 /** One shared graph owner. Keep the committed graph until its replacement is ready. */

@@ -187,3 +187,85 @@ test('WASD commits dodge travel and facing; a stationary dodge uses the latest p
   stepExploration(state, .05, { ...idle, aim: { x: 10, z: 0 } });
   expect(state.player.yaw).toBeCloseTo(Math.PI / 2);
 });
+
+test('safe and cleared attacks accept buffered input within recovery, keep committed aim and disable empty hands', () => {
+  const safe = { boundary: { kind: 'circle' as const, center: [0,0] as [number,number], radius: 20 }, player: { position: [0,0] as [number,number], yaw: 0 } };
+  const state = createEncounter('playing',safe);
+  state.player.lock = state.attackCooldown = .14;
+  expect(attack(state,timing.player,false,{x:10,z:0})).toEqual([]);
+  for (let i=0;i<3;i++) stepExploration(state,.04,{...idle,aim:{x:0,z:10}},undefined,timing);
+  const accepted = stepExploration(state,.04,{...idle,aim:{x:0,z:10}},undefined,timing);
+  expect(accepted).toContainEqual({type:'animation',actor:'player',motion:'attack'});
+  expect(state.player.yaw).toBe(Math.PI/2);
+  for (let i=0;i<17;i++) stepExploration(state,.05,idle,undefined,timing);
+  expect(dodge(state,{x:0,z:1},false)).toEqual([]);
+  for (let i=0;i<3;i++) stepExploration(state,.05,idle,undefined,timing);
+  expect(state.dodgeRemaining).toBeGreaterThan(0);
+  resetEncounter(state);
+  expect(state.pending).toBeNull();
+  state.phase='won';
+  expect(attack(state,timing.player,false)).toContainEqual({type:'animation',actor:'player',motion:'attack'});
+  stepExploration(state,1,idle,undefined,timing);
+  state.weapon=null;
+  expect(attack(state,timing.player,false)).toEqual([]);
+  expect(state.projectiles).toEqual([]);
+});
+
+test('a held shield halves frontal damage and walking speed, while rear hits interrupt and dodge releases it', () => {
+  const front = closeEncounter(); front.shield=true; front.enemy.attackTime=.4; front.enemyCooldown=999;
+  stepEncounter(front,.03,{...idle,block:true},timing);
+  expect(front.player.hp).toBe(90); expect(front.blocking).toBe(true);
+  expect(attack(front,timing.player,false)).toEqual([]);
+  stepEncounter(front,.1,{...idle,x:1,block:true,aim:{x:0,z:10}},timing);
+  expect(front.player.x).toBeCloseTo(.16);
+  expect(dodge(front,{x:1,z:0},false)).toContainEqual({type:'animation',actor:'player',motion:'dodge'});
+  expect(front.blocking).toBe(false);
+  const rear = closeEncounter(); rear.shield=true; rear.player.yaw=Math.PI; rear.enemy.attackTime=.4; rear.enemyCooldown=999;
+  const hit = stepEncounter(rear,.03,{...idle,block:true},timing);
+  expect(rear.player.hp).toBe(80); expect(rear.blocking).toBe(false);
+  expect(hit).toContainEqual({type:'animation',actor:'player',motion:'hit'});
+});
+
+test('ranged releases are timed, swept walls stop damage, and released arrows hit once without becoming Axe combat', () => {
+  const world: import('../src/gameplay/encounter').Movement = {
+    move: (_id,actor,x,z) => { actor.x+=x; actor.z+=z; },
+    direction: (from,to) => ({x:to.x-from.x,z:to.z-from.z}), lineOfSight: () => true,
+    segmentHit: (from,to) => from.z<=2 && to.z>=2 ? (2-from.z)/(to.z-from.z) : null,
+  };
+  const ranged: Timings = {...timing,player:{attack:.8,hit:.3,contacts:[.28]}};
+  const blocked = closeEncounter(); blocked.weapon='staff'; blocked.enemy.z=4; blocked.enemyCooldown=999;
+  attack(blocked,ranged.player,false,{x:0,z:10});
+  stepEncounter(blocked,.27,idle,ranged,world);
+  expect(blocked.projectiles).toHaveLength(0);
+  stepEncounter(blocked,.02,idle,ranged,world);
+  expect(blocked.projectiles).toHaveLength(1);
+  stepEncounter(blocked,.25,idle,ranged,world);
+  expect(blocked.projectiles).toHaveLength(0); expect(blocked.enemy.hp).toBe(100);
+  const clear = closeEncounter(); clear.weapon='bow'; clear.enemy.z=4; clear.enemyCooldown=999;
+  attack(clear,ranged.player,false,{x:0,z:10});
+  stepEncounter(clear,.27,idle,ranged); stepEncounter(clear,.02,idle,ranged);
+  // Changing equipped weapons while an arrow travels cannot change its damage source.
+  clear.weapon='axe';
+  const hit = stepEncounter(clear,.15,idle,ranged);
+  expect(clear.enemy.hp).toBe(50); expect(clear.projectiles).toHaveLength(0);
+  expect(hit.filter(event=>event.type==='hit' && event.actor==='enemy')).toHaveLength(1);
+  expect(hit).not.toContainEqual({type:'axeXp'});
+  stepEncounter(clear,.1,idle,ranged);
+  expect(clear.enemy.hp).toBe(50);
+  const behind=closeEncounter(); behind.weapon='bow'; behind.enemy.x=.4; behind.enemy.z=-.05; behind.enemy.lock=999;
+  attack(behind,ranged.player,false,{x:0,z:10}); stepEncounter(behind,.3,idle,ranged);
+  expect(behind.enemy.hp).toBe(100);
+});
+
+test('a contact pose fully replaces a manually phased locomotion pose', async () => {
+  const THREE=await import('three'), {makeActor,attachCharacter,play,updateActor}=await import('../src/clearing/actors');
+  const state=createEncounter('playing').player, actor=makeActor(new THREE.Scene(),state), model=new THREE.Group(), body=new THREE.Group(); body.name='body';
+  const geometry=new THREE.BoxGeometry(1,1,1), material=new THREE.MeshBasicMaterial(); model.add(body,new THREE.Mesh(geometry,material));
+  const clip=(name:string,x:number)=>new THREE.AnimationClip(name,1,[new THREE.VectorKeyframeTrack('body.position',[0,1],[x,0,0,x,0,0])]);
+  attachCharacter(actor,model,[clip('idle',0),clip('run',1),clip('attack',3),clip('hit',0),clip('death',0)],1);
+  updateActor(actor,state,.01,false); play(actor,'run'); state.z+=.1; updateActor(actor,state,.05,false);
+  state.z+=.3; updateActor(actor,state,.15,false);
+  const presented=actor.root.getObjectByName('body')!; expect(presented.position.x).toBeCloseTo(1);
+  play(actor,'attack'); updateActor(actor,state,.15,false); expect(presented.position.x).toBeCloseTo(3);
+  actor.mixer!.stopAllAction(); geometry.dispose(); material.dispose();
+});

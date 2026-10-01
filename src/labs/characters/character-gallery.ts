@@ -8,6 +8,7 @@ import { AreaLightingResources } from '../../rendering/area-lighting';
 import { resolveLighting } from '../../levels/lighting';
 import { WebGPUPipeline } from '../../rendering/webgpu-pipeline';
 import { defaults } from '../../rendering/graphics-settings';
+import { markOutline } from '../../rendering/outlines';
 import './character-gallery.css';
 
 type Motion = 'idle' | 'run' | 'attack';
@@ -158,6 +159,7 @@ async function select(index: number, id: string): Promise<void> {
     const wrapper = new THREE.Group(); wrapper.add(model); wrapper.scale.setScalar(1.8 / height); wrapper.updateMatrixWorld(true);
     const bounds = new THREE.Box3().setFromObject(wrapper), center = bounds.getCenter(new THREE.Vector3()); wrapper.position.set(-center.x, -bounds.min.y, -center.z);
     model.traverse(object => { if (object instanceof THREE.Mesh) { object.castShadow = true; object.receiveShadow = true; } });
+    markOutline(model, 'actor');
     stage.scene.add(wrapper); stage.model = model; stage.mixer = new THREE.AnimationMixer(model);
     stage.release = () => { stage.mixer?.stopAllAction(); stage.mixer?.uncacheRoot(model); wrapper.removeFromParent(); disposeModel(model); stage.release = () => {}; };
     stage.error = ''; stage.pipeline.resetHistory(); await applyMotion(index, generation); refreshCaption(index);

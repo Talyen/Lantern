@@ -36,6 +36,12 @@ def bone_map(rig):
         for segment in (1, 2, 3):
             candidates[f'IndexFinger_0{segment}_{side}'] = [f'index_0{segment}_{lower}', f'B-indexFinger0{segment}.{side}', f'mixamorig:{mix}HandIndex{segment}']
             candidates[f'Finger_0{segment}_{side}'] = [f'middle_0{segment}_{lower}', f'B-middleFinger0{segment}.{side}', f'mixamorig:{mix}HandMiddle{segment}']
+    # Keep the imported Mixamo names for these fingers so retained model joints remain compatible.
+    for mix in ['Left', 'Right']:
+        for finger in ['Ring', 'Pinky']:
+            for segment in [1, 2, 3]:
+                name = f'mixamorig:{mix}Hand{finger}{segment}'
+                candidates[name] = [name]
     for target, options in candidates.items():
         match = next((n for n in options if n in names), None)
         if match:
@@ -61,7 +67,7 @@ def category(name):
     return 'other'
 
 
-def bake(target, source, original, name, output, mapping=None, sample_range=None):
+def bake(target, source, original, name, output, mapping=None, sample_range=None, output_duration=None):
     # Gallery consumers may omit optional fingers absent from their target rig.
     mapping = bone_map(source) if mapping is None else mapping
     missing_targets = set(mapping) - set(target.data.bones.keys())
@@ -73,8 +79,9 @@ def bake(target, source, original, name, output, mapping=None, sample_range=None
     for track in list(source.animation_data.nla_tracks): source.animation_data.nla_tracks.remove(track)
     fps = bpy.context.scene.render.fps / bpy.context.scene.render.fps_base
     start, end = sample_range or original.frame_range
-    duration = (end - start) / fps
-    samples = max(1, math.ceil(duration * 30))
+    source_duration = (end - start) / fps
+    duration = output_duration or source_duration
+    samples = max(1, round(duration * 30))
     target.animation_data_create()
     action = bpy.data.actions.new(name)
     target.animation_data.action = action
@@ -88,9 +95,13 @@ def bake(target, source, original, name, output, mapping=None, sample_range=None
     target_hip_rest = tw @ target.data.bones['Hips'].head_local
     ratio = target_hip_rest.z / source_hip_rest.z if abs(source_hip_rest.z) > 0.01 else 1
     previous = {}
+    left_heights = []
+    hip_start = None
+    hip_end = None
     for frame in range(samples + 1):
-        source_frame = min(end, start + frame / 30 * fps)
+        source_frame = min(end, start + frame / samples * (end - start))
         bpy.context.scene.frame_set(math.floor(source_frame), subframe=source_frame % 1)
+        left_heights.append((source.matrix_world @ source.pose.bones[mapping['Ankle_L']].head).z)
         desired = {}
         for bone in target.data.bones:
             rest = target_rest[bone.name]
@@ -114,6 +125,8 @@ def bake(target, source, original, name, output, mapping=None, sample_range=None
             pb.scale = (1, 1, 1)
             pb.keyframe_insert('rotation_quaternion', frame=frame, group=bone.name)
         hip_world = source.matrix_world @ source.pose.bones[mapping['Hips']].head
+        if hip_start is None: hip_start = hip_world.copy()
+        hip_end = hip_world.copy()
         vertical = (hip_world.z - source_hip_rest.z) * ratio
         # Z is Blender world up. Horizontal displacement is intentionally not baked.
         delta = tw.inverted().to_3x3() @ Vector((0, 0, vertical))
@@ -134,4 +147,5 @@ def bake(target, source, original, name, output, mapping=None, sample_range=None
     target.animation_data.action = None
     bpy.data.actions.remove(action)
     bpy.context.scene.render.fps = round(fps)
-    return {'duration': round(samples / 30, 4), 'mappedBones': len(mapping), 'bakeVersion': 2}
+    travel = (hip_end - hip_start) * ratio
+    return {'duration': round(samples / 30, 4), 'sourceDuration': round(source_duration, 4), 'rootVelocity': [round(travel.x / duration, 4), round(-travel.y / duration, 4)], 'phaseOffset': round(left_heights.index(min(left_heights)) / samples, 4), 'mappedBones': len(mapping), 'bakeVersion': 5}

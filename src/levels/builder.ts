@@ -3,13 +3,15 @@ import { texture, positionWorld, mix, vec2, vec3, smoothstep, mx_noise_float } f
 import soilUrl from '../../assets/textures/soil-painterly.png?url';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { environmentSurface, prepareEnvironmentMaterials, type SurfaceMode } from '../assets/environment-surfaces';
+import { environmentOutlineEligible, environmentSurface, prepareEnvironmentMaterials, type SurfaceMode } from '../assets/environment-surfaces';
+import { markOutline } from '../rendering/outlines';
 import { assetLibrary, updateAssetLods, type AssetInstance } from '../assets/asset-library';
 import { createGrass } from '../rendering/grass';
 import { Portal } from '../rendering/portal';
 import { resolveLocalLight } from './local-lighting';
 import type { CoreEffects } from '../rendering/effects';
 import { generateDecoration } from './decoration';
+import { treeDefinitions } from './trees';
 import type { AreaDefinition, AssetRef, Placement, Primitive } from './types';
 const loader = new GLTFLoader();
 const cache = new Map<string, Promise<THREE.Group>>();
@@ -35,6 +37,8 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
   const grass = createGrass(area, area.grass ?? []); root.add(grass.root);
   const animated = new Set<THREE.Object3D>();
   const chests = new Map<string, { hinge: THREE.Group; opened: boolean }>();
+  const trees = treeDefinitions(area), treeIds = new Map(trees.map(t => [t.id, t]));
+  const treeModels = new Map<string, { object: THREE.Object3D; stump: THREE.Mesh; rotation: [number, number]; hitAge: number; felled: boolean }>();
   const portals = (area.effects.portals ?? []).map(definition => { const portal = new Portal(definition, root); portal.root.userData.transient = true; return portal; });
   const missing: string[] = [], foliage: THREE.Object3D[] = [], fires: THREE.PointLight[] = []; let shadow: THREE.PointLight | null = null;
   const material = (p: Primitive) => { root.userData.lightingProcedural.push(p); const m = new MeshStandardNodeMaterial({ color: p.color, roughness: 1, side: p.doubleSided ? THREE.DoubleSide : THREE.FrontSide });
@@ -91,6 +95,7 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
     else g = new THREE.DodecahedronGeometry(s[0], 0);
     ownedGeometry.add(g); return g;
   };
+  const outlined = (p: Placement) => !treeIds.has(p.id) && !p.terrain && !p.foliage && !p.decoration && (p.asset ? environmentOutlineEligible(p.asset) : p.primitive?.surface !== 'woodland');
   async function asset(ref: AssetRef, allowVariant = true): Promise<THREE.Group> {
     const variant = allowVariant && environmentSurface(ref, surfaceMode);
     if (variant) { try { return await asset({ url: variant }, false); } catch { /* Optional prepared art falls back to its original source. */ } }
@@ -115,7 +120,21 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
     }
     model.position.fromArray(p.position);
     model.rotation.y += p.yaw; model.scale.multiply(new THREE.Vector3(...p.scale)); model.name = p.id;
+    const tree = treeIds.get(p.id);
+    if (tree) {
+      // Keep tree roots intact through batching, independently of foliage/surface variants.
+      model.userData.harvestTree = p.id; model.traverse(o => animated.add(o));
+      const stumpGeometry = new THREE.CylinderGeometry(tree.radius * .91, tree.radius * 1.12, .25, 9);
+      const bark = new MeshStandardNodeMaterial({ color: '#514031', roughness: .95 });
+      const cut = new MeshStandardNodeMaterial({ color: '#94744d', roughness: 1 });
+      ownedGeometry.add(stumpGeometry); ownedMaterial.add(bark); ownedMaterial.add(cut);
+      const stump = new THREE.Mesh(stumpGeometry, [bark, cut, bark]);
+      stump.name = `${p.id}:stump`; stump.position.set(p.position[0], p.position[1] + .125, p.position[2]); stump.rotation.y = p.yaw;
+      stump.castShadow = p.castShadow; stump.receiveShadow = true; stump.visible = false; stump.userData.transient = true;
+      animated.add(stump); root.add(stump); treeModels.set(p.id, { object: model, stump, rotation: [model.rotation.x, model.rotation.z], hitAge: Infinity, felled: false });
+    }
     model.traverse(o => { if (o instanceof THREE.Mesh) { o.castShadow = p.castShadow; o.receiveShadow = p.receiveShadow; if (p.foliage) { animated.add(o); o.geometry = o.geometry.clone(); ownedGeometry.add(o.geometry); } } });
+    if (outlined(p)) markOutline(model, 'prop');
     root.add(model); if (p.foliage) foliage.push(model);
   }
   for (const surface of area.traversal?.surfaces ?? []) {
@@ -124,10 +143,14 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
   }
   const props = [...area.props, ...generateDecoration(area)];
   const batches = new Map<string, Placement[]>();
-  for (const p of props.filter(p => p.primitive)) { const key = JSON.stringify([p.primitive, p.castShadow, p.receiveShadow, !!p.foliage]); const batch = batches.get(key) ?? []; batch.push(p); batches.set(key, batch); }
+  for (const p of props.filter(p => p.primitive)) {
+    if (treeIds.has(p.id)) { transform(new THREE.Mesh(geometry(p.primitive!), material(p.primitive!)), p); continue; }
+    const key = JSON.stringify([p.primitive, p.castShadow, p.receiveShadow, !!p.foliage, outlined(p)]); const batch = batches.get(key) ?? []; batch.push(p); batches.set(key, batch);
+  }
   for (const batch of batches.values()) {
     const p = batch[0], mesh = new THREE.InstancedMesh(geometry(p.primitive!), material(p.primitive!), batch.length), matrix = new THREE.Object3D();
     mesh.name = p.id; mesh.castShadow = p.castShadow; mesh.receiveShadow = p.receiveShadow; mesh.userData.ids = batch.map(p => p.id);
+    if (outlined(p)) markOutline(mesh, 'prop');
     batch.forEach((p, i) => { matrix.position.fromArray(p.position); matrix.rotation.set(0, p.yaw, 0); matrix.scale.fromArray(p.scale); matrix.updateMatrix(); mesh.setMatrixAt(i, matrix.matrix); }); mesh.computeBoundingSphere(); root.add(mesh); if (p.foliage) foliage.push(mesh);
   }
   try {
@@ -177,19 +200,31 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
     for (let parent: THREE.Object3D | null = o; parent; parent = parent.parent) if (lodRoots.has(parent as THREE.Group) || !parent.visible) return;
     const materials = Array.isArray(o.material) ? o.material : [o.material];
     if (materials.some(m => m.transparent) || !o.visible || o.matrixWorld.determinant() <= 0) return;
-    const key = JSON.stringify([o.geometry.uuid, materials.map(m => m.uuid), o.castShadow, o.receiveShadow]);
+    const key = JSON.stringify([o.geometry.uuid, materials.map(m => m.uuid), o.castShadow, o.receiveShadow, o.userData.outlineStrength ?? 0]);
     const batch = staticBatches.get(key) ?? []; batch.push(o); staticBatches.set(key, batch);
   });
   for (const meshes of staticBatches.values()) if (meshes.length > 1) {
     const first = meshes[0], batch = new THREE.InstancedMesh(first.geometry, first.material, meshes.length);
     batch.name = `instances:${first.name}`; batch.castShadow = first.castShadow; batch.receiveShadow = first.receiveShadow;
+    batch.userData.outlineStrength = first.userData.outlineStrength ?? 0;
     meshes.forEach((mesh, i) => { batch.setMatrixAt(i, mesh.matrixWorld); mesh.removeFromParent(); }); batch.computeBoundingSphere(); root.add(batch);
   }
   function update(camera: THREE.Camera, dt = 0): void {
     for (const instance of instances) updateAssetLods(instance.object, camera);
     for (const { hinge, opened } of chests.values()) hinge.rotation.x = THREE.MathUtils.damp(hinge.rotation.x, opened ? -1.25 : 0, 8, dt);
+    for (const tree of treeModels.values()) {
+      tree.hitAge += dt;
+      const tilt = !tree.felled && tree.hitAge < .36 ? Math.sin(tree.hitAge * 38) * .013 * (1 - tree.hitAge / .36) : 0;
+      tree.object.rotation.x = tree.rotation[0] + tilt; tree.object.rotation.z = tree.rotation[1] + tilt * .6;
+    }
   }
   function setChestOpened(id: string, opened: boolean): void { const chest = chests.get(id); if (chest) chest.opened = opened; }
+  function setTreeState(id: string, felled: boolean): void {
+    const tree = treeModels.get(id); if (!tree) return;
+    tree.felled = felled; tree.object.visible = !felled; tree.stump.visible = felled; tree.hitAge = Infinity;
+    [tree.object.rotation.x, tree.object.rotation.z] = tree.rotation;
+  }
+  function treeHit(id: string): void { const tree = treeModels.get(id); if (tree && !tree.felled) tree.hitAge = 0; }
   function activate(effects: CoreEffects): void {
     effects.addGrass(grass);
     for (const model of foliage) effects.addFoliage(model);
@@ -202,6 +237,6 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
     }
   }
   function dispose(): void { portals.forEach(p => p.dispose()); if (disposed) return; disposed = true; grass.dispose(); root.removeFromParent(); root.traverse(o => { if (o instanceof THREE.InstancedMesh) o.dispose(); if (o instanceof THREE.Light) o.dispose(); }); instances.forEach(i => i.release()); ownedGeometry.forEach(g => g.dispose()); ownedMaterial.forEach(m => m.dispose()); ownedTextures.forEach(t => t.dispose()); }
-  return { root, area, missing, fires, portals, get shadow() { return shadow; }, update, setChestOpened, activate, dispose };
+  return { root, area, missing, fires, portals, trees, get shadow() { return shadow; }, update, setChestOpened, setTreeState, treeHit, activate, dispose };
 }
 export type AreaInstance = Awaited<ReturnType<typeof buildArea>>;

@@ -71,6 +71,16 @@ Examples of stronger choices:
 
 These examples guide visual decisions; they do not authorize unrelated redesigns or changes to combat rules.
 
+## Loot presentation (planned)
+
+Ground loot should feel physical and readable within the weathered autumn world: small recognizable objects briefly toss, tumble, and settle, with restrained landing and collection sounds. Keep combat as the focal point; avoid persistent loot beams, glow, and constant idle motion.
+
+Use mixed-case Pirata One Gothic names on compact smoky charcoal backplates, with warm ivory lettering, muted gold for gold, and a restrained brass hover edge. Show only the item name. Separate crowded labels into quiet non-overlapping rows, keep text at a stable screen size across zoom, and link hover to the matching object. Labels remain readable over scenery. The [loot design](LOOT.md#labels-and-visual-treatment) owns starting colors, sizes, distances, and interaction rules; this direction is planned rather than implemented. Review Gothic readability, object recognition, and combat visibility in golden and silver at both zoom extremes.
+
+## Optional outlines
+
+Outlines add soft warm-charcoal definition inside the visible silhouettes of characters, equipment and selected solid camp/rock props. Actors receive stronger contours than scenery. Preserve painterly materials and existing light; dark contours never become a bright rim in deep shadow. Terrain, grass, plants, scattered detail and effects remain quiet. Default/reset is On. Width stays close to 1.5–2 output pixels, with continuous coverage and pre-FSR temporal reconstruction. Judge the result in motion as well as matched stills: no distracting edge crawl, flicker, jagged steps, changing thickness or trails at gameplay scale. Review both woodland moods, night references and zoom extremes with DOF Off before retaining a tuning change.
+
 ## Visual review
 
 Inspect the running result or local captures at gameplay scale. Use the existing [level authoring loop](LEVEL_DESIGN.md#fast-iteration) for areas. Record specific visible evidence in short working notes alongside captures, rather than numerical scores or claims such as "premium" or "polished."

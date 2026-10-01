@@ -4,6 +4,7 @@ import { createEncounter } from '../src/gameplay/encounter';
 import homestead from '../src/levels/areas/homestead.json';
 import clearing from '../src/levels/areas/clearing.json';
 import type { AreaDefinition } from '../src/levels/types';
+import { equipItem } from '../src/gameplay/equipment';
 const home = homestead as unknown as AreaDefinition, field = clearing as unknown as AreaDefinition;
 const memory = () => { const data = new Map<string, string>(); return { data, getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => { data.set(key, value); } }; };
 
@@ -94,4 +95,26 @@ test('the guarded chest retains overflow and grants its reward once per outing',
   state.character.scrolls = 95; state.openChest(encounter, field, chest); state.openChest(encounter, field, chest);
   expect([state.character.scrolls, state.chest(field, chest).remaining]).toEqual([96, 0]);
   expect(new Adventure(storage).chest(field, chest)).toEqual({ opened: false, remaining: 2 });
+});
+
+test('legacy characters gain an Axe, equipment rewards persist once, and gathering stays separate from combat', () => {
+  const storage = memory(); storage.setItem(characterSaveKey, JSON.stringify({ version: 1, scrolls: 7, campfires: ['clearing/camp'] }));
+  const state = new Adventure(storage, () => 1), encounter = createEncounter('playing');
+  expect([state.character.version, state.character.scrolls, state.character.loadout.main, state.character.equipment]).toEqual([2, 7, 'axe', ['axe']]);
+  expect(state.commitEquipment({ main: 'bow', off: null })).toBe(false);
+  const chest = field.chests![0]; state.enter(encounter, field, { position: chest.position, yaw: 0 }); encounter.enemy.hp = 0;
+  state.openChest(encounter, field, chest); state.openChest(encounter, field, chest);
+  expect(state.character.equipment).toEqual(['axe', 'sword', 'shield', 'bow', 'staff']);
+  expect(state.commitEquipment({ main: 'axe', off: 'shield' })).toBe(true);
+  state.commitEquipment(equipItem(state.character.loadout, 'bow'));
+  expect(state.character.loadout).toEqual({ main: 'bow', off: null });
+  expect(state.character.equipment).toContain('shield');
+  state.grantHarvest(); state.grantAxeCombatXp();
+  const restored = new Adventure(storage);
+  expect([restored.character.wood, restored.character.xp]).toEqual([1, { woodcutting: 10, axeCombat: 10 }]);
+  expect(restored.character.loadout).toEqual({ main: 'bow', off: null });
+  restored.enter(encounter, field, { position: chest.position, yaw: 0 }); encounter.enemy.hp = 0;
+  restored.openChest(encounter, field, chest);
+  expect(restored.character.equipment).toHaveLength(5);
+  expect(restored.character.campEquipmentClaimed).toBe(true);
 });

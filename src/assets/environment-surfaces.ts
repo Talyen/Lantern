@@ -10,6 +10,13 @@ export function environmentSurface(ref: AssetRef, mode: SurfaceMode = 'projected
   return mode === 'projected' ? variant?.url : variant?.sourceUrl;
 }
 
+/** Authored solid families only; plants and campfire effects remain quiet in outline mode. */
+export function environmentOutlineEligible(ref: AssetRef): boolean {
+  const id = 'libraryId' in ref ? ref.libraryId : ref.url;
+  const asset = variants.get(id) ?? manifest.assets.find(asset => asset.url === id || 'sourceUrl' in asset && asset.sourceUrl === id);
+  return !!asset && ['backpack', 'barrel', 'bedroll', 'chest', 'crate', 'lantern', 'log', 'rock', 'tent'].includes(asset.kind);
+}
+
 /** Native node copy preserves authored maps, intensities and render state, sharing cached textures. */
 export function copyStandardNodeMaterial(source: THREE.MeshStandardMaterial | MeshStandardNodeMaterial): MeshStandardNodeMaterial {
   return new MeshStandardNodeMaterial().copy(source);

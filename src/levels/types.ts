@@ -12,6 +12,7 @@ export type Primitive = { kind: 'box' | 'cylinder' | 'pebble' | 'tent'; size: nu
 export type Placement = {
   id: string; position: [number, number, number]; yaw: number; scale: [number, number, number];
   asset?: AssetRef; primitive?: Primitive; height?: number; foliage?: boolean; decoration?: boolean; terrain?: boolean;
+  harvest?: { kind: 'tree'; radius?: number };
   castShadow: boolean; receiveShadow: boolean; fallback?: AssetRef;
 };
 export type Region = { id: string; center: Point; radius: number; role: 'combat' | 'arrival' | 'route' };
@@ -23,7 +24,7 @@ export type AreaDefinition = {
   version: 1; id: string; name: string; legacy?: boolean; terminal?: boolean; chests?: Chest[]; kind?: 'safe' | 'encounter'; campfires?: Campfire[]; portalArrival?: Spawn;
   envelope: { width: number; depth: number; apron: number; yaw: number; reference: { width: number; height: number; zoom: number }; screen: [number, number] };
   layout: EncounterLayout; traversal?: Traversal; seed: number; props: Placement[];
-  scatter: { id: string; count: number; radius: [number, number]; primitive: Primitive; excludedIds: string[] }[];
+  scatter: { id: string; count: number; radius: [number, number]; primitive: Primitive; harvest?: Placement['harvest']; excludedIds: string[] }[];
   grass?: GrassPatch[];
   reserved: Region[]; gates: Gate[]; lighting: AreaLighting | LightingRecipe;
   effects: { portals?: PortalDefinition[]; water: { id: string; position: Point; width: number; length: number; flow: number }[]; fires: { id: string; position: Point; asset: AssetRef; height: number; emitterHeight?: number; intensity?: number; role?: LocalLightRole; color?: string; distance?: number; shadow?: boolean }[] };

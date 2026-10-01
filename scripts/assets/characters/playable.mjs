@@ -18,13 +18,12 @@ await cli(async () => {
       writeFileSync(catalogPath, JSON.stringify(catalog, null, 2) + '\n');
     }
   }
-  if (args['--motions-only']) { console.log('Prepared compatible motions and repacked retained surfaces.'); return; }
   // Register comparisons without replacing the full private gallery roster.
   const galleryPath = resolve(root, 'public/vendor/character-gallery/catalog.json');
   const gallery = existsSync(galleryPath) ? JSON.parse(readFileSync(galleryPath, 'utf8')) : { version: 1, complete: true, expectedCount: 0, characters: [] };
   const labels = { 'dark-brass': 'Dark steel / brass / crimson', 'silver-gold': 'Silver / gold / blue', 'ivory-gold': 'Ivory / gold / teal', 'grim-gold': 'Charcoal iron / worn gold', 'grim-crimson': 'Charcoal iron / crimson', 'iron-gold-crimson': 'Iron / gold / crimson', 'iron-copper-teal': 'Iron / copper / teal', 'slate-bronze-blue': 'Slate / bronze / blue' };
   const paladin = JSON.parse(readFileSync(resolve(root, 'public/vendor/characters/paladin/catalog.json'), 'utf8'));
-  const sampleMotions = catalog => Object.fromEntries(['idle', 'run', 'attack'].map(role => [role, catalog.packs[0].clips.find(clip => clip.name === catalog.defaults[role])]));
+  const sampleMotions = catalog => Object.fromEntries(['idle', 'run', 'attack'].map(role => [role, catalog.packs[0].clips.find(clip => clip.id === catalog.defaults[role] || clip.name === catalog.defaults[role])]));
   for (const [id, label] of Object.entries(labels)) {
     const row = { id: `paladin-${id}`, name: `Paladin · ${label}`, family: 'Paladin variants', url: config.player.variants[id], motions: sampleMotions(paladin), status: 'ready' };
     const existing = gallery.characters.findIndex(character => character.id === row.id);
@@ -40,5 +39,6 @@ await cli(async () => {
   }
   mkdirSync(dirname(galleryPath), { recursive: true });
   writeFileSync(galleryPath, JSON.stringify(gallery, null, 2) + '\n');
+  if (args['--motions-only']) { console.log('Prepared compatible motions, repacked retained surfaces, and refreshed gallery motion references.'); return; }
   console.log(args['--player-only'] ? 'Prepared Paladin variants.' : 'Prepared Paladin variants and Goblin gameplay art.');
 });

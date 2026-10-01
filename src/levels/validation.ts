@@ -41,6 +41,7 @@ export function validateAreas(input: Record<string, AreaDefinition>): string[] {
         if (typeof prop.castShadow !== 'boolean' || typeof prop.receiveShadow !== 'boolean') fail('shadow flags must be explicit booleans');
         if (!!prop.asset === !!prop.primitive) fail('choose exactly one asset or primitive');
         if (prop.primitive?.surface !== undefined && prop.primitive.surface !== 'woodland') fail('unknown ground surface');
+        if (prop.harvest && (prop.harvest.kind !== 'tree' || prop.harvest.radius !== undefined && (!Number.isFinite(prop.harvest.radius) || prop.harvest.radius <= 0))) fail('invalid tree harvest metadata');
         if (prop.primitive?.patches !== undefined) {
           if (prop.primitive.surface !== 'woodland' || !Array.isArray(prop.primitive.patches)) fail('patches require a woodland surface and a list');
           else for (const patch of prop.primitive.patches) {
@@ -70,7 +71,10 @@ export function validateAreas(input: Record<string, AreaDefinition>): string[] {
         const prop = area.props.find(p => p.id === chest.prop);
         if (!prop?.asset || Math.hypot(prop.position[0] - chest.position[0], prop.position[2] - chest.position[1]) > .1) fail('chest must reference its placed asset');
       }
-      for (const scatter of area.scatter) { id(scatter.id); if (!Number.isInteger(scatter.count) || scatter.count < 0 || scatter.count > 2000 || !finite(scatter.radius, 2) || scatter.radius[0] < 0 || scatter.radius[1] < scatter.radius[0]) fail('invalid scatter count/radius'); }
+      for (const scatter of area.scatter) {
+        id(scatter.id); if (!Number.isInteger(scatter.count) || scatter.count < 0 || scatter.count > 2000 || !finite(scatter.radius, 2) || scatter.radius[0] < 0 || scatter.radius[1] < scatter.radius[0]) fail('invalid scatter count/radius');
+        if (scatter.harvest && (scatter.harvest.kind !== 'tree' || scatter.harvest.radius !== undefined && (!Number.isFinite(scatter.harvest.radius) || scatter.harvest.radius <= 0))) fail('invalid tree harvest metadata');
+      }
       for (const patch of area.grass ?? []) {
         id(patch.id);
         if (!finite(patch.center, 2) || !finite(patch.radii, 2) || patch.radii.some(r => r <= 0 || r > 20) || !finite([patch.yaw, patch.density]) || patch.density <= 0 || patch.density > 400 || boundaryDistance(boundary, patch.center) < 0) fail('invalid grass patch');

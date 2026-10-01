@@ -1,6 +1,5 @@
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { defaultSelection, loadCombatMotions, motionStates, stateChoices, type CombatMotions, type MotionCatalog, type MotionSelection } from '../animation/combat-animations';
-import characters from '../../assets/playable-characters.json';
+import { defaultSelection, getMotionCatalog, loadCombatMotions, motionStates, stateChoices, type CombatMotions, type MotionCatalog, type MotionSelection } from '../animation/combat-animations';
 import type { ActorId } from '../gameplay/encounter';
 
 type MotionOptionsContext = {
@@ -55,15 +54,7 @@ export function createMotionOptions(loader: GLTFLoader, ctx: MotionOptionsContex
   async function initializeMotionSets(): Promise<void> {
     motionLoading = true;
     try {
-      const catalogs = await Promise.all((['player', 'enemy'] as const).map(async who => {
-        const response = await fetch(characters[who].catalog);
-        if (!response.ok) throw new Error('Run npm run assets:export-character to prepare compatible motions.');
-        const catalog = await response.json() as MotionCatalog;
-        if (catalog.version !== 1 || !catalog.packs?.length) throw new Error('Animation catalog unavailable.');
-        catalog.packs = catalog.packs.filter(pack => pack.id === 'mixamo');
-        if (!catalog.packs.length) throw new Error('Mixamo motions unavailable.');
-        return catalog;
-      }));
+      const catalogs = await Promise.all((['player', 'enemy'] as const).map(who => getMotionCatalog(who)));
       motionCatalogs = { player: catalogs[0], enemy: catalogs[1] };
       for (const [who, select] of [['player', playerMotions], ['enemy', enemyMotions]] as const) {
         select.replaceChildren(...motionCatalogs[who].packs.map(pack => new Option(pack.label, pack.id)));
@@ -88,5 +79,12 @@ export function createMotionOptions(loader: GLTFLoader, ctx: MotionOptionsContex
     }
     finally { motionLoading = false; }
   }
-  return { get loading() { return motionLoading; }, initialize: initializeMotionSets };
+  return { get loading() { return motionLoading; }, initialize: initializeMotionSets,
+    reflect(selected: CombatMotions): void {
+      if (!motionCatalogs?.player) return;
+      activePlayerPack=selected.choices.idle.pack.id;
+      activePlayerSelection=Object.fromEntries(motionStates.map(role=>[role,selected.choices[role].value])) as MotionSelection;
+      playerMotions.value=activePlayerPack; renderMoveChoices(activePlayerPack,activePlayerSelection);
+    },
+  };
 }

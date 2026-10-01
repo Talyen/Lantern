@@ -12,5 +12,11 @@
   "goblin-war-camp:model:props-sm-prop-barrel-01",
   "goblin-war-camp:model:props-sm-prop-bedroll-02",
   "goblin-war-camp:model:props-sm-prop-crate-01",
-  "viking-realm:model:sm-prop-lantern-01"
+  "goblin-war-camp:model:weapons-sm-wep-axe-02",
+  "goblin-war-camp:model:weapons-sm-wep-bow-02",
+  "goblin-war-camp:model:weapons-sm-wep-shield-02",
+  "goblin-war-camp:model:weapons-sm-wep-staff-01",
+  "goblin-war-camp:model:weapons-sm-wep-sword-01",
+  "viking-realm:model:sm-prop-lantern-01",
+  "viking-realm:model:sm-wep-arrow-01"
 ]
