@@ -39,15 +39,17 @@ Prepared variants cover the three selected pines, rock, log, bush, fern, crate, 
 
 Run `node scripts/assets/surfaces/environment.mjs --help` for the local exporter. Default bakes are 1024 pixels. Runtime prefers available variants and falls back to original optional scenery. An authored-surface comparison is available only in development authoring.
 
-## Dark woodland and amber refuge
+## Golden woodland and amber refuge
 
-Homestead and Forest Clearing use one fixed `woodland-night` / Moonlit baseline. Outside light pools, subdued cool illumination preserves paths, tree masses and nearby enemies; distant detail recedes. Within the lantern and campfire pools, warm earth, autumn color, faces and armor regain definition. Darkness comes from restrained hemisphere, directional and environment energy, not reduced player exposure or a global orange filter.
+Homestead and Forest Clearing use the approved A (Balanced honey-gold) direction as one fixed Golden appearance from `woodland-dusk` (Woodland golden hour). Honey-gold sunlight brings out copper, rust and ochre, while restrained cool sky fill and local bounce keep shaded ground readable without flattening the light. Preserve deep tree/prop shadows and material color. Use full material saturation and lighter grading than the earlier muted Golden look; do not compensate with higher player exposure or a global orange filter.
+
+The sun and local flames both have a strong presence. Sunlight is honey-gold; campfires and lanterns are deeper amber, so their nearby pools remain distinct even during daylight. The earlier readable-dark `woodland-night` appearance remains available for targeted development comparisons.
 
 Campfires, torches and lanterns share amber `#ffad55` illumination. Distinguish them through intensity, reach, emitter height and subtle flicker. Campfires have broad pools with world shadows; the personal lantern follows the rig and uses an elevated effective emitter plus short-range warm owner bounce to reach torso and face while turning. Native point-light falloff feathers warmth into the dark surroundings. Keep bright centers controlled rather than whitening every nearby surface with bloom.
 
-Travel, Return Home and restart use the same baseline; there is no random gameplay mood or day/night clock. Area overrides may adjust light direction or coverage without changing this identity. Future enclosed areas should preserve the warm-light/dark-surroundings relationship while adapting their environment and probe volumes to the space.
+Travel, Return Home and restart use the same Golden baseline; there is no random gameplay mood or day/night clock. Area overrides may adjust light direction or coverage without changing this identity. Future enclosed areas should retain strong local warmth and readable shadow contrast while adapting their environment and probe volumes to the space.
 
-Golden/Silver and Deep/Misty night remain development comparison looks during this first direction review. They are not normal gameplay variants. Studio remains a neutral asset-inspection profile. Retire comparison alternatives after accepting the baseline; do not replace useful inspection lighting with gameplay darkness.
+Silver and Moonlit/Deep/Misty night remain development comparison looks. They are not normal gameplay variants. Studio remains a neutral asset-inspection profile. Gameplay uses only the approved Golden baseline; inspection and targeted development comparisons remain available.
 
 ## Acceptance and evidence
 
@@ -111,4 +113,4 @@ Matched native WebGPU views cover both areas in golden and silver at zoom 0.9, 1
 
 ## Shared lighting profiles
 
-The fixed `woodland-night` baseline is resolved centrally for both playable areas. Keep family-wide tuning in profiles and intentional local differences in area overrides. Golden/Silver and Deep/Misty night remain development references; neutral comparisons use `studio`. See [lighting authoring](LIGHTING.md) for recipes, probe preparation, reference views and cache ownership.
+The fixed Golden `woodland-dusk` baseline is resolved centrally for both playable areas. Keep family-wide tuning in profiles and intentional local differences in area overrides. Silver and Moonlit/Deep/Misty night remain development references; neutral comparisons use `studio`. See [lighting authoring](LIGHTING.md) for recipes, probe preparation, reference views and cache ownership.

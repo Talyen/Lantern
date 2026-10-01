@@ -92,4 +92,4 @@ Copy this brief into an area's task or private review notes:
 
 Licensed sources, GLBs, generated bakes and captures remain private under `.local/` or `public/vendor/`. Never submit Synty models/textures/renders to ImageGen. Original text-prompted textures can follow the existing local projection pipeline. Preview/capture/measurement do not modify build selections, export art, or publish anything.
 
-Environment palette, material treatment, the fixed dark woodland baseline and local surface preparation follow [the art direction](ART_DIRECTION.md).
+Environment palette, material treatment, the fixed Golden woodland baseline and local surface preparation follow [the art direction](ART_DIRECTION.md).

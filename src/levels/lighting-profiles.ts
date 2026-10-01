@@ -14,16 +14,17 @@ export type LightingProfile = { label: string; defaultMode?: LightingMode; entry
 
 /** Shared art recipes. Areas select a profile and override only intentional differences. */
 export const lightingProfiles = {
+  // Approved A reference: honey-gold sunlight, readable cool shade and distinct amber flames.
   'woodland-dusk': {
-    label: 'Woodland dusk', defaultMode: 'golden', entryModes: ['golden', 'silver'],
+    label: 'Woodland golden hour', defaultMode: 'golden',
     lighting: {
-      background: '#54534a', fogNear: 27, fogFar: 60, saturation: .86,
-      ambient: { sky: '#c1cbc6', ground: '#766a54', intensity: .45 },
-      sun: { color: '#ffe0ad', intensity: 2.6, position: [-24, 18, 10], shadowExtent: 27 },
-      environment: { sky: '#859597', horizon: '#b3ad96', ground: '#484338', sunColor: '#ffe0ad', sunIntensity: 1.6, intensity: .85, rotation: 0 },
-      grade: { shadows: '#c4cfca', highlights: '#ffecd4', strength: .12 },
+      background: '#46443b', fogNear: 27, fogFar: 60, saturation: 1,
+      ambient: { sky: '#b2c6d0', ground: '#6b5840', intensity: .34 },
+      sun: { color: '#ffdaa0', intensity: 2.4, position: [-24, 18, 10], shadowExtent: 27 },
+      environment: { sky: '#82969a', horizon: '#c7b48e', ground: '#443b2e', sunColor: '#ffdaa0', sunIntensity: 1.6, intensity: .75, rotation: 0 },
+      grade: { shadows: '#bdcbd0', highlights: '#ffe6bc', strength: .06 },
     },
-    autoProbes: { spacing: 6, bottom: .6, height: 3, padding: 1, intensity: .7, bounces: 1 },
+    autoProbes: { spacing: 6, bottom: .6, height: 3, padding: 1, intensity: .55, bounces: 1 },
     moods: {
       golden: {},
       silver: {
@@ -33,7 +34,7 @@ export const lightingProfiles = {
       },
     },
   },
-  // Gameplay baseline: subdued, readable woodland; amber flames carry the focal contrast.
+  // Readable-dark comparison: subdued woodland with focal amber flame pools.
   'woodland-night': {
     label: 'Woodland night', defaultMode: 'moonlit',
     lighting: {

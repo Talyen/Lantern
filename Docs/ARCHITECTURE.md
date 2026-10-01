@@ -89,7 +89,7 @@ Preparation is serialized and suspends presentation while the renderer is captur
 
 The verified Paladin/Goblin legacy FBX material conversion clears imported untextured metalness: Blender maps Phong ReflectionFactor to Metallic, which incorrectly makes body skin/cloth conductive. Authored color, normal and specular textures survive. PBR GLB sources and projected Paladin metallic masks bypass this correction.
 
-Environment palette, material treatment, the fixed dark woodland baseline and local surface preparation follow [the art direction](ART_DIRECTION.md).
+Environment palette, material treatment, the fixed Golden woodland baseline and local surface preparation follow [the art direction](ART_DIRECTION.md).
 
 `player-lantern.ts` owns the optional personal lantern prototype, its privately loaded cage model, warm primary point light and short-range owner bounce. The coordinator stages profile choices, commits successful changes and toggles the personal light without rebuilding the area. The light attaches to the verified player rig and stays outside static scenery/probe preparation. Renderer disposal on page exit releases the native device along with lighting/effect resources.
 

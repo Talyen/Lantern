@@ -20,9 +20,9 @@ test('area profiles provide complete lighting, scoped moods, automatic coverage 
   const overridden = resolveAreaLighting({ ...area, lighting: { profile: 'woodland-dusk', overrides: { fogFar: 80, fill: { intensity: .8 }, probes: false } } }, 'silver');
   expect(overridden.fogFar).toBe(80); expect(overridden.fill!.intensity).toBe(.8); expect(overridden.probes).toBeUndefined();
   for (const lighting of [homestead.lighting, clearing.lighting]) {
-    expect(lighting.profile).toBe('woodland-night');
+    expect(lighting.profile).toBe('woodland-dusk');
     expect(entryLightingModesFor(lighting as AreaDefinition['lighting'])).toEqual([]);
-    expect(defaultLightingModeFor(lighting as AreaDefinition['lighting'])).toBe('moonlit');
+    expect(defaultLightingModeFor(lighting as AreaDefinition['lighting'])).toBe('golden');
   }
   expect(resolveAreaLighting({ ...area, lighting: { profile: 'woodland-night' } }, 'dark').sun.intensity).toBeLessThan(silver.sun.intensity);
   expect(golden.fill).toBeUndefined();

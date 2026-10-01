@@ -8,7 +8,7 @@ Lighting is shared game infrastructure. New areas select an art profile instead 
 
 ```json
 "lighting": {
-  "profile": "woodland-night",
+  "profile": "woodland-dusk",
   "overrides": {
     "fogFar": 70,
     "sun": { "shadowExtent": 30 }
@@ -16,7 +16,7 @@ Lighting is shared game infrastructure. New areas select an art profile instead 
 }
 ```
 
-Homestead and Forest Clearing share the fixed `woodland-night` / Moonlit baseline. Subdued cool ambient/environment light keeps paths, tree masses and nearby enemies readable beyond the warm light pools; distant detail recedes. Gameplay never randomly selects a daytime mood. `woodland-dusk` Golden/Silver remains a development comparison profile during the direction review. `studio` provides neutral comparison lighting and has no outdoor mood variations. A future cave or interior profile should explicitly choose its sky/environment, key light, fill, fog and grading, and declare only the moods that make sense there. Do not apply outdoor moonlight or sunlight overrides globally.
+Homestead and Forest Clearing use approved A (Balanced honey-gold) as fixed Golden from `woodland-dusk`, labelled Woodland golden hour. Honey-gold direct sun and deeper amber flame pools have distinct roles. Full material saturation, readable cool hemisphere/environment fill, restrained diffuse bounce and light grading preserve richer autumn color without uniformly bright ground. Sun strength is balanced against local lights rather than raised indiscriminately. Warm sunlight and deep tree shadows retain contrast; the stronger shared amber flames remain distinct local sources. Gameplay does not randomly select a mood. Silver and `woodland-night` remain development comparisons for targeted inspection. `studio` provides neutral comparison lighting and has no outdoor mood variations. A future cave or interior profile should explicitly choose its sky/environment, key light, fill, fog and grading, and declare only the moods that make sense there. Do not apply outdoor moonlight or sunlight overrides globally.
 
 Keep deliberate overrides beside the area definition. Modify the profile for changes intended across its whole family. A complete legacy lighting definition is still supported and opts out of profile moods; use this compatibility form for existing areas, not as the default for new authoring. Unknown profiles and invalid resolved settings fail level validation. Profile edits refresh the authoring scene while retaining its camera and selected mood.
 
@@ -53,7 +53,7 @@ npm run levels:dev -- --area=homestead
 npm run lighting:bake -- --area=homestead --lighting=all --surfaces=projected
 ```
 
-The command uses the existing owned native WebGPU preview, exports half-float irradiance atlases under ignored `public/vendor/lighting/`, and updates `assets/lighting-bakes.json` with metadata references. `--area=all` prepares every registered area with probes; `--lighting=moonlit|dark|misty|default` selects a night appearance; Golden/Silver is available with `--profile=woodland-dusk`. Surface comparison uses `--surfaces=authored`. Never run preparation concurrently with another preview owner or final build gate.
+The command uses the existing owned native WebGPU preview, exports half-float irradiance atlases under ignored `public/vendor/lighting/`, and updates `assets/lighting-bakes.json` with metadata references. `--area=all` prepares every registered area with probes; `--lighting=golden|silver|default` selects a dusk appearance; Moonlit/Deep/Misty night is available with `--profile=woodland-night`. Surface comparison uses `--surfaces=authored`. Never run preparation concurrently with another preview owner or final build gate.
 
 Gameplay loads a matching prepared atlas when available, otherwise it bakes live. Missing, stale or invalid prepared data never replaces the preceding scene with broken lighting; live preparation remains available and diagnostics report the prepared-data failure. Original assets and derived bakes remain private. Build staging copies only indexed private lighting outputs; superseded local bakes remain private and are not staged; source-only builds can omit it. Inspect inventory and applicable licensing before any distribution.
 
@@ -63,7 +63,7 @@ Each renderer has a global least-recently-used budget: **8 sky environments / 32
 
 ## Visual reference and handoff
 
-Maintain a small reference set: a normal dark-woodland view containing the player lantern, campfire and unlit surroundings, plus the character gallery and animation lab under `studio`. Earlier Golden/Silver references remain private comparison evidence. When the first interior and enclosed dark area exist, add their fixed views to this set with their corresponding profiles. Do not create production areas solely to fill a lighting checklist.
+Maintain a small reference set: a normal gameplay view containing Golden sunlight, shaded scenery, the player lantern and a campfire, plus the character gallery and animation lab under `studio`. Earlier Golden/Silver references remain private comparison evidence. When the first interior and enclosed dark area exist, add their fixed views to this set with their corresponding profiles. Do not create production areas solely to fill a lighting checklist.
 
 Review the Paladin and Goblin under matched camera, pose, exposure and graphics settings. Require readable faces/material detail, grounded shadows, preserved highlights and useful warm/cool separation. Check movement, zoom extremes, narrow windows, travel, failed preparation and stable repeated visits. Compare prepared loading with live baking. For content changes, use the existing level capture tools and keep licensed-art images private under `.local/`.
 
@@ -71,15 +71,15 @@ Finish with playable asset validation and `npm run check`, after closing the own
 
 ## Candidate woodland directions
 
-A matched local review compared Golden, Silver, a warm-key/neutral-sky direction and soft overcast. That review recommended warm neutral, with overcast as a quieter alternative; the later dark-woodland direction supersedes that recommendation. These two alternatives remain comparison experiments, not default profile changes. Choose the scene art direction before deciding whether any entry variation or day/night behavior is useful. Private captures and exact trial overrides live under `.local/lighting-system/comparison/`.
+A matched local review compared Golden, Silver, a warm-key/neutral-sky direction and soft overcast. That review recommended warm neutral, with overcast as a quieter alternative; later readable-dark and richer Golden trials explore stronger light contrast instead. These two alternatives remain comparison experiments, not default profile changes. The approved A reference and fixed Golden baseline above supersede those earlier recommendations. Private captures and exact trial overrides live under `.local/lighting-system/comparison/`.
 
 ## Fixed-night baseline and player lantern
 
-`woodland-night` is a fixed profile: it defaults to Moonlit on entry and never randomly selects a daytime look. Deep night and Misty night are authoring variants. Both playable areas now use the same Moonlit baseline; Woodland dusk retains entry variations only when explicitly selected for development comparisons. Neutral Studio remains fixed. In the authoring preview, choose **Profile → Woodland night**, then the light variant. The **Lantern** checkbox controls a personal warm light and optional cage model attached to the Paladin's Hips bone. It follows movement and dodges, has a seven-metre range, and is excluded from static probe bakes. It uses the shared lantern strength/color without a weaker player-only override. The effective emitter sits above and forward of the cage to reach the torso and face rather than concentrating illumination at the belt. A second amber point approximates owner bounce on the opposite side of the torso, with 35% of the primary strength and a 2.8 m cutoff, so turning does not make the owner a black silhouette. Both emitters follow the rig and are excluded from static bakes. They remain unshadowed to preserve owner readability; campfires keep their world shadows. Fuel, equipment ownership and healing are outside this lighting prototype.
+`woodland-night` is a fixed profile: it defaults to Moonlit on entry and never randomly selects a daytime look. Deep night and Misty night are authoring variants. The playable areas use approved fixed Golden; Moonlit remains the readable-dark comparison. Neither profile randomly changes its entry appearance. Neutral Studio remains fixed. In the authoring preview, choose **Profile → Woodland night**, then the light variant. The **Lantern** checkbox controls a personal warm light and optional cage model attached to the Paladin's Hips bone. It follows movement and dodges, has a seven-metre range, and is excluded from static probe bakes. It uses the shared lantern strength/color without a weaker player-only override. The effective emitter sits above and forward of the cage to reach the torso and face rather than concentrating illumination at the belt. A second amber point approximates owner bounce on the opposite side of the torso, with 35% of the primary strength and a 2.8 m cutoff, so turning does not make the owner a black silhouette. Both emitters follow the rig and are excluded from static bakes. They remain unshadowed to preserve owner readability; campfires keep their world shadows. Fuel, equipment ownership and healing are outside this lighting prototype.
 
 The personal lantern is enabled by default in normal browser and desktop play, including production builds. Development comparisons can disable it with `?lantern=off` or the authoring checkbox. It remains attached across area travel and encounter resets.
 
-A normal development play URL can use `/?profile=woodland-night&lighting=moonlit`; `dark` and `misty` select the other variants. Moonlit is the normal gameplay baseline. Deep/Misty night and the dusk profile remain development comparisons during this first direction review.
+A normal development play URL can use `/?profile=woodland-night&lighting=moonlit`; `dark` and `misty` select the other variants. Moonlit/Deep/Misty night are development comparisons with approved fixed Golden as the gameplay baseline.
 
 `npm run lighting:bake -- --area=all --profile=woodland-night --lighting=all` prepares the three night variants for each area. The moving personal lantern is never baked into their illumination. Private matched captures and the rig/movement/travel checks are in `.local/lighting-system/night-lantern/`.
 
