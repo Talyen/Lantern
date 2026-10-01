@@ -347,6 +347,27 @@
       "name": "Block Right",
       "category": "walk",
       "speed": 1.7
+    },
+    "goblin-cast-idle": {
+      "sourceId": "3d50ea4358fe",
+      "name": "Goblin Casting Idle",
+      "category": "idle",
+      "duration": 1,
+      "trim": [
+        0,
+        0.2
+      ]
+    },
+    "goblin-cast": {
+      "sourceId": "3d50ea4358fe",
+      "name": "Goblin Cast",
+      "category": "attack",
+      "duration": 1.6,
+      "trim": [
+        0.15,
+        1.815
+      ],
+      "contact": 0.8
     }
   },
   "player": {
@@ -468,7 +489,8 @@
         "blockForward": "block-forward",
         "blockBackward": "block-backward",
         "blockLeft": "block-left",
-        "blockRight": "block-right"
+        "blockRight": "block-right",
+        "grip": "bow-idle"
       },
       "unarmed": {
         "idle": "axe-idle",
@@ -516,6 +538,14 @@
         "attack": "goblin-attack",
         "hit": "goblin-hit",
         "death": "goblin-death"
+      },
+      "staff": {
+        "idle": "goblin-cast-idle",
+        "run": "goblin-forward",
+        "attack": "goblin-cast",
+        "hit": "goblin-hit",
+        "death": "goblin-death",
+        "grip": "bow-idle"
       }
     },
     "audit": [

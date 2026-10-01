@@ -118,3 +118,25 @@ test('legacy characters gain an Axe, equipment rewards persist once, and gatheri
   expect(restored.character.equipment).toHaveLength(5);
   expect(restored.character.campEquipmentClaimed).toBe(true);
 });
+
+test('the alternate caster survives travel and death with health, rewards and camp safety intact', () => {
+  const state=new Adventure(memory(),()=>0,'caster'), encounter=createEncounter('playing');
+  state.enter(encounter,field);
+  expect(encounter.enemyKind).toBe('caster');
+  encounter.enemy.hp=50; encounter.engaged=true;
+  expect(state.fireSafe(field,field.campfires![0],encounter)).toBe(false);
+  state.enter(encounter,home,undefined,true);
+  expect(encounter.player.hp).toBe(100);
+  state.enter(encounter,field);
+  expect([encounter.enemyKind,encounter.enemy.hp,encounter.engaged]).toEqual(['caster',50,true]);
+  encounter.enemy.hp=0; state.step(encounter,field,.01);
+  const chest=field.chests![0]; encounter.player.x=chest.position[0]; encounter.player.z=chest.position[1];
+  expect(state.openChest(encounter,field,chest)).toBe(true);
+  const scrolls=state.character.scrolls;
+  state.enter(encounter,home,undefined,true); state.enter(encounter,field);
+  expect([encounter.enemyKind,encounter.enemy.hp,encounter.phase]).toEqual(['caster',0,'won']);
+  expect(state.fireSafe(field,field.campfires![0],encounter)).toBe(true);
+  expect(state.openChest(encounter,field,chest)).toBe(false);
+  expect(state.character.scrolls).toBe(scrolls);
+  expect(state.session(field.id).drops).toHaveLength(1);
+});

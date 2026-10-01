@@ -269,3 +269,70 @@ test('a contact pose fully replaces a manually phased locomotion pose', async ()
   play(actor,'attack'); updateActor(actor,state,.15,false); expect(presented.position.x).toBeCloseTo(3);
   actor.mixer!.stopAllAction(); geometry.dispose(); material.dispose();
 });
+
+test('a caster plants its feet, commits aim, releases one bolt and exposes its recovery', () => {
+  const state = createEncounter('playing', { boundary: {kind:'circle',center:[0,0],radius:30}, player:{position:[0,4],yaw:0}, enemy:{position:[0,0],yaw:0} }, 'caster');
+  const castTiming: Timings = {...timing,enemy:{attack:1.6,hit:.35,contacts:[.8]}};
+  state.enemyCooldown=0;
+  stepEncounter(state,.05,idle,castTiming);
+  expect(state.enemy.attackTime).toBe(.05);
+  expect(state.enemy.yaw).toBe(0);
+  state.player.x=2;
+  for(let i=0;i<14;i++) stepEncounter(state,.05,idle,castTiming);
+  expect(state.projectiles).toHaveLength(0);
+  stepEncounter(state,.05,idle,castTiming);
+  expect(state.projectiles).toHaveLength(1);
+  expect(state.projectiles[0]).toMatchObject({owner:'enemy',kind:'bolt',dx:0,dz:1});
+  expect([state.enemy.x,state.enemy.z,state.enemy.yaw]).toEqual([0,0,0]);
+  for(let i=0;i<16;i++) stepEncounter(state,.05,idle,castTiming);
+  expect(state.enemy.attackTime).toBe(-1);
+  expect(state.enemyCooldown).toBeGreaterThan(0);
+  expect(state.player.hp).toBe(100);
+  for(let i=0;i<32;i++) stepEncounter(state,.05,idle,castTiming);
+  expect(state.player.hp).toBe(100);
+  resetEncounter(state);
+  expect(state.enemyKind).toBe('caster');
+});
+
+test('damaging a caster during windup prevents the release, and a defeated caster clears its bolts', () => {
+  const state=closeEncounter(); state.enemyKind='caster'; state.enemy.attackTime=.4; state.enemyCooldown=999;
+  const clocks={...timing,enemy:{attack:1.6,hit:.35,contacts:[.8]}};
+  attack(state,timing.player,false);
+  stepEncounter(state,.43,idle,clocks);
+  expect(state.enemy.hp).toBe(50);
+  expect(state.enemy.attackTime).toBe(-1);
+  for(let i=0;i<12;i++) stepEncounter(state,.05,idle,clocks);
+  expect(state.projectiles).toEqual([]);
+  state.projectiles.push({id:1,owner:'enemy',kind:'bolt',x:8,y:1.08,z:8,dx:1,dz:0,remaining:12});
+  attack(state,timing.player,false);
+  stepEncounter(state,.43,idle,clocks);
+  expect(state.phase).toBe('won');
+  expect(state.projectiles).toEqual([]);
+});
+
+test('enemy bolts sweep into the player once, stop at terrain, and respect dodge and incoming shield direction', () => {
+  const shot = () => {
+    const state=closeEncounter(); state.enemyKind='caster'; state.enemyCooldown=999; state.enemy.x=4;
+    state.projectiles.push({id:1,owner:'enemy',kind:'bolt',x:0,y:1.08,z:2,dx:0,dz:-1,remaining:12});
+    return state;
+  };
+  const clear=shot();
+  const events=stepEncounter(clear,.3,idle,timing);
+  expect(clear.player.hp).toBe(80); expect(clear.projectiles).toEqual([]);
+  expect(events.filter(event=>event.type==='hit' && event.actor==='player')).toHaveLength(1);
+  stepEncounter(clear,.3,idle,timing); expect(clear.player.hp).toBe(80);
+  const wall=shot();
+  const movement: import('../src/gameplay/encounter').Movement={move:()=>{},direction:()=>({x:0,z:0}),lineOfSight:()=>true,segmentHit:()=>.2};
+  stepEncounter(wall,.3,idle,timing,movement);
+  expect(wall.player.hp).toBe(100); expect(wall.projectiles).toEqual([]);
+  const evaded=shot(); evaded.projectiles[0].z=.6;
+  dodge(evaded,{x:0,z:1},false);
+  stepEncounter(evaded,.05,idle,timing);
+  expect(evaded.player.hp).toBe(100); expect(evaded.projectiles).toEqual([]);
+  const front=shot(); front.shield=true;
+  stepEncounter(front,.3,{...idle,block:true},timing);
+  expect(front.player.hp).toBe(90); expect(front.blocking).toBe(true);
+  const rear=shot(); rear.shield=true; rear.player.yaw=Math.PI;
+  stepEncounter(rear,.3,{...idle,block:true},timing);
+  expect(rear.player.hp).toBe(80); expect(rear.blocking).toBe(false);
+});

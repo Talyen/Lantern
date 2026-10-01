@@ -6,7 +6,7 @@ import type { Loadout } from '../gameplay/equipment';
 
 export const motionStates = ['idle', 'run', 'attack', 'hit', 'death'] as const;
 export type MotionState = typeof motionStates[number];
-export type AnimationRole = Motion | 'backward' | 'left' | 'right' | 'blockForward' | 'blockBackward' | 'blockLeft' | 'blockRight';
+export type AnimationRole = Motion | 'backward' | 'left' | 'right' | 'blockForward' | 'blockBackward' | 'blockLeft' | 'blockRight' | 'grip';
 export type MotionClip = { id: string; name: string; description?: string; category: string; url: string; duration: number; contact?: number; speed?: number; sourceId?: string; audit?: boolean; phaseOffset?: number };
 export type MotionPack = { id: string; label: string; clips: MotionClip[] };
 export type MotionCatalog = { version: number; packs: MotionPack[]; defaults: Record<AnimationRole, string>; profiles: Record<string, Partial<Record<AnimationRole, string>>> };
@@ -53,7 +53,7 @@ export async function loadCombatMotions(loader: GLTFLoader, catalog: MotionCatal
     return [state, choice];
   })) as Record<MotionState, MotionChoice>;
   const all: Partial<Record<AnimationRole, MotionChoice>> = { ...choices };
-  for (const role of ['dodge', 'block', 'chop', 'backward', 'left', 'right', 'blockForward', 'blockBackward', 'blockLeft', 'blockRight'] as const) {
+  for (const role of ['dodge', 'block', 'chop', 'backward', 'left', 'right', 'blockForward', 'blockBackward', 'blockLeft', 'blockRight', 'grip'] as const) {
     const clip = pack.clips.find(item => item.id === roles[role]);
     if (clip) all[role] = { pack, clip, value: `${pack.id}:${clip.id}` };
   }
@@ -71,9 +71,9 @@ export async function loadEquipmentMotions(loader: GLTFLoader, who: ActorId, loa
   const selection = Object.fromEntries(motionStates.map(role => [role, `mixamo:${profile[role]}`])) as MotionSelection;
   const motions=await loadCombatMotions(loader,catalog,'mixamo',selection,profile);
   if (loadout.main==='staff') {
-    const pack=catalog.packs.find(item=>item.id==='mixamo')!, grip=pack.clips.find(clip=>clip.id==='bow-idle')!;
-    const gripPose=await loadClip(loader,{pack,clip:grip,value:`mixamo:${grip.id}`});
-    for (const [role,clip] of Object.entries(motions.clips)) if (!['death','dodge'].includes(role)) holdStaffArm(clip,motions.clips.idle,gripPose);
+    const gripPose = motions.clips.grip;
+    if (!gripPose) throw new Error('Compatible staff grip is unavailable. Prepare the curated motion profiles.');
+    for (const [role,clip] of Object.entries(motions.clips)) if (!['death','dodge','grip'].includes(role)) holdStaffArm(clip,motions.clips.idle,gripPose);
   }
   return motions;
 }

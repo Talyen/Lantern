@@ -1,9 +1,10 @@
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { defaultSelection, getMotionCatalog, loadCombatMotions, motionStates, stateChoices, type CombatMotions, type MotionCatalog, type MotionSelection } from '../animation/combat-animations';
+import { defaultSelection, getMotionCatalog, loadEquipmentMotions, loadCombatMotions, motionStates, stateChoices, type CombatMotions, type MotionCatalog, type MotionSelection } from '../animation/combat-animations';
+import type { Loadout } from '../gameplay/equipment';
 import type { ActorId } from '../gameplay/encounter';
 
 type MotionOptionsContext = {
-  clearInput: () => void; setRetryEnabled: (enabled: boolean) => void;
+  enemyLoadout: Loadout; clearInput: () => void; setRetryEnabled: (enabled: boolean) => void;
   install: (who: ActorId, motions: CombatMotions) => void; reset: () => void;
 };
 
@@ -38,7 +39,7 @@ export function createMotionOptions(loader: GLTFLoader, ctx: MotionOptionsContex
     ctx.setRetryEnabled(false);
     motionStatus.textContent = 'Loading motion set…';
     try {
-      const motions = await loadCombatMotions(loader, motionCatalogs[who], packId, selection);
+      const motions = who === 'enemy' ? await loadEquipmentMotions(loader, 'enemy', ctx.enemyLoadout) : await loadCombatMotions(loader, motionCatalogs[who], packId, selection);
       ctx.install(who, motions);
       if (who === 'player') { activePlayerPack = packId; activePlayerSelection = selection; renderMoveChoices(packId, selection); }
       else activeEnemyPack = packId;
@@ -61,8 +62,7 @@ export function createMotionOptions(loader: GLTFLoader, ctx: MotionOptionsContex
         select.value = 'mixamo';
       }
       activePlayerSelection = defaultSelection(motionCatalogs.player, activePlayerPack);
-      const enemySelection = defaultSelection(motionCatalogs.enemy, activeEnemyPack);
-      const motions = await Promise.all([loadCombatMotions(loader, motionCatalogs.player, activePlayerPack, activePlayerSelection), loadCombatMotions(loader, motionCatalogs.enemy, activeEnemyPack, enemySelection)]);
+      const motions = await Promise.all([loadCombatMotions(loader, motionCatalogs.player, activePlayerPack, activePlayerSelection), loadEquipmentMotions(loader, 'enemy', ctx.enemyLoadout)]);
       ctx.install('player', motions[0]); ctx.install('enemy', motions[1]);
       renderMoveChoices(activePlayerPack, activePlayerSelection);
       ctx.reset(); enableMotionControls(true);
@@ -76,6 +76,8 @@ export function createMotionOptions(loader: GLTFLoader, ctx: MotionOptionsContex
     } catch (error) {
       for (const select of [playerMotions, enemyMotions]) select.replaceChildren(new Option('Exported Mixamo set', 'compiled'));
       motionStatus.textContent = `Using the exported Mixamo set. ${String(error)}`;
+      // A caster cannot use the embedded Axe action when its Staff preparation is missing.
+      if (ctx.enemyLoadout.main === 'staff') throw error;
     }
     finally { motionLoading = false; }
   }

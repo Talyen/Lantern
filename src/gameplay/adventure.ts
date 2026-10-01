@@ -1,4 +1,4 @@
-import { createEncounter, playerMaxHealth, type Encounter } from './encounter';
+import { createEncounter, playerMaxHealth, type Encounter, type EnemyKind } from './encounter';
 import type { Point, Spawn } from './area';
 import type { AreaDefinition, Campfire, Chest } from '../levels/types';
 import { itemIds, normalizeLoadout, type ItemId, type Loadout } from './equipment';
@@ -22,7 +22,7 @@ export class Adventure {
   saveError = '';
   currentArea: string | null = null;
   private sessions = new Map<string, AreaSession>();
-  constructor(private storage?: Storage, private random = Math.random) {
+  constructor(private storage?: Storage, private random = Math.random, private clearingEnemy: EnemyKind = 'raider') {
     if (!storage) return;
     try {
       const raw = storage.getItem(characterSaveKey);
@@ -68,7 +68,7 @@ export class Adventure {
     if (this.currentArea) this.session().encounter = structuredClone(encounter);
     this.currentArea = area.id;
     const previous = this.session().encounter;
-    const next = createEncounter('playing', area.layout);
+    const next = createEncounter('playing', area.layout, area.id === 'clearing' ? this.clearingEnemy : 'raider');
     if (previous && area.kind !== 'safe') {
       next.enemy = { ...previous.enemy, lock: 0, attackTime: -1, contactIndex: 0 };
       next.enemyCooldown = previous.enemyCooldown;

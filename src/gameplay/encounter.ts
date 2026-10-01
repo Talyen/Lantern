@@ -2,6 +2,7 @@ import type { Weapon } from './equipment';
 import { constrain, legacyLayout, type EncounterLayout } from './area';
 /** Encounter simulation. Positions, clocks and animation timings use world units and seconds. */
 export type ActorId = 'player' | 'enemy';
+export type EnemyKind = 'raider' | 'caster';
 export type Motion = 'idle' | 'run' | 'attack' | 'hit' | 'death' | 'dodge' | 'block' | 'chop';
 export type Phase = 'loading' | 'playing' | 'won' | 'lost';
 export type ActorState = {
@@ -12,10 +13,11 @@ export const playerMaxHealth = 100, enemyMaxHealth = 100, playerMaxMana = 100;
 export const playerAttackDamage = 50, enemyAttackDamage = 20;
 export const enemyNoticeRadius = 6, enemyLeashRadius = 10;
 export const dodgeDuration = 0.45, dodgeDistance = 2.4, dodgeInvulnerability = 0.25, dodgeCooldown = 1;
-export type Projectile = { id: number; kind: 'arrow' | 'bolt'; x: number; y: number; z: number; dx: number; dz: number; remaining: number; firstStep?: number };
+export type Projectile = { id: number; owner: ActorId; kind: 'arrow' | 'bolt'; x: number; y: number; z: number; dx: number; dz: number; remaining: number; firstStep?: number };
+export const casterAttackRange = 6, casterBoltSpeed = 8;
 export type PendingInput = { kind: 'attack' | 'dodge'; remaining: number; aim?: AimPoint; direction?: {x:number;z:number} };
 export type Encounter = {
-  phase: Phase; layout: EncounterLayout; engaged: boolean; returning: boolean; player: ActorState; enemy: ActorState;
+  phase: Phase; layout: EncounterLayout; enemyKind: EnemyKind; engaged: boolean; returning: boolean; player: ActorState; enemy: ActorState;
   weapon: Weapon | null; shield: boolean; blocking: boolean; pending: PendingInput | null; projectiles: Projectile[]; nextProjectile: number;
   attackCooldown: number; invulnerability: number; enemyCooldown: number; playerMana: number;
   dodgeRemaining: number; dodgeCooldown: number; dodgeDirection: { x: number; z: number };
@@ -34,22 +36,22 @@ export type EncounterEvent =
   | { type: 'animation'; actor: ActorId; motion: Motion }
   | { type: 'hit'; actor: ActorId }
   | { type: 'axeXp' }
-  | { type: 'label'; value: 'MOVE TO BEGIN' | 'DEFEAT THE RAIDER' | 'RAIDER ATTACKING' }
+  | { type: 'label'; value: 'MOVE TO BEGIN' | 'DEFEAT THE RAIDER' | 'RAIDER ATTACKING' | 'DEFEAT THE CASTER' | 'CASTER ATTACKING' }
   | { type: 'outcome'; won: boolean };
 
-export function createEncounter(phase: Phase = 'loading', layout: EncounterLayout = legacyLayout): Encounter {
+export function createEncounter(phase: Phase = 'loading', layout: EncounterLayout = legacyLayout, enemyKind: EnemyKind = 'raider'): Encounter {
   const actor = (x: number, z: number, hp: number, speed: number): ActorState =>
     ({ x, y: 0, z, yaw: 0, hp, speed, lock: 0, attackTime: -1, contactIndex: 0 });
   const enemySpawn = layout.enemy ?? layout.player;
   const player = actor(...layout.player.position, phase === 'loading' ? 0 : playerMaxHealth, 3.2), enemy = actor(...enemySpawn.position, phase === 'loading' ? 0 : enemyMaxHealth, 1.45);
   player.yaw = layout.player.yaw; enemy.yaw = enemySpawn.yaw;
-  return { weapon: 'axe', shield: false, blocking: false, pending: null, projectiles: [], nextProjectile: 0, phase, layout, engaged: false, returning: false, player, enemy,
+  return { weapon: 'axe', shield: false, blocking: false, pending: null, projectiles: [], nextProjectile: 0, phase, layout, enemyKind, engaged: false, returning: false, player, enemy,
     attackCooldown: 0, invulnerability: 0, enemyCooldown: 0.8, playerMana: playerMaxMana,
     dodgeRemaining: 0, dodgeCooldown: 0, dodgeDirection: { x: 0, z: 0 } };
 }
 export function resetEncounter(state: Encounter): EncounterEvent[] {
   const { weapon, shield } = state;
-  Object.assign(state, createEncounter('playing', state.layout), { weapon, shield });
+  Object.assign(state, createEncounter('playing', state.layout, state.enemyKind), { weapon, shield });
   return [{ type: 'label', value: 'MOVE TO BEGIN' },
     { type: 'animation', actor: 'player', motion: 'idle' }, { type: 'animation', actor: 'enemy', motion: 'idle' }];
 }
@@ -65,7 +67,7 @@ export function attack(state: Encounter, timing: ActorTiming, paused: boolean, a
   state.attackCooldown = timing.attack;
   state.player.attackTime = 0;
   state.player.contactIndex = 0;
-  return [{ type: 'label', value: 'DEFEAT THE RAIDER' }, { type: 'animation', actor: 'player', motion: 'attack' }];
+  return [{ type: 'label', value: state.enemyKind === 'caster' ? 'DEFEAT THE CASTER' : 'DEFEAT THE RAIDER' }, { type: 'animation', actor: 'player', motion: 'attack' }];
 }
 /** Dodge is numeric simulation state; the animation never decides displacement or immunity. */
 export function dodge(state: Encounter, direction: { x: number; z: number }, paused: boolean, aim?: AimPoint): EncounterEvent[] {
@@ -136,12 +138,13 @@ function preparePlayer(state: Encounter, dt: number, input: Input, timing: Actor
   }
   return [];
 }
-function hit(state: Encounter, actor: ActorId, timing: Timings, events: EncounterEvent[], source?: Weapon): void {
+function hit(state: Encounter, actor: ActorId, timing: Timings, events: EncounterEvent[], source?: Weapon, incoming?: { x: number; z: number }): void {
   if (state[actor].hp <= 0 || actor === 'player' && state.invulnerability > 0) return;
   const target = state[actor];
   let damage = actor === 'enemy' ? playerAttackDamage : enemyAttackDamage;
   if (actor === 'player' && state.blocking) {
-    const dx = state.enemy.x - target.x, dz = state.enemy.z - target.z, distance = Math.hypot(dx,dz);
+    // Projectiles are blocked by their incoming direction, even if the caster has moved.
+    const dx = incoming?.x ?? state.enemy.x - target.x, dz = incoming?.z ?? state.enemy.z - target.z, distance = Math.hypot(dx,dz);
     if (distance && (Math.sin(target.yaw)*dx + Math.cos(target.yaw)*dz) / distance >= .5) damage *= .5;
   }
   target.hp = Math.max(0, target.hp - damage);
@@ -156,7 +159,7 @@ function hit(state: Encounter, actor: ActorId, timing: Timings, events: Encounte
   if (!blocked) events.push({type:'animation',actor,motion:'hit'});
   if (target.hp <= 0) {
     const won = actor === 'enemy'; state.phase = won ? 'won' : 'lost'; state.pending = null; state.blocking = false;
-    if (!won) state.projectiles = [];
+    state.projectiles = won ? state.projectiles.filter(projectile => projectile.owner === 'player') : [];
     events.push({type:'outcome',won}, {type:'animation',actor,motion:'death'});
   }
 }
@@ -168,7 +171,7 @@ function stepPlayerAttack(state: Encounter, dt: number, timing: Timings, events:
     player.contactIndex++;
     if (state.weapon === 'bow' || state.weapon === 'staff') {
       const dx = Math.sin(player.yaw), dz = Math.cos(player.yaw);
-      state.projectiles.push({id: ++state.nextProjectile, kind: state.weapon === 'bow' ? 'arrow' : 'bolt', x:player.x + dx * .35, y:player.y + 1.22, z:player.z + dz * .35, dx, dz, remaining:12, firstStep: Math.min(dt,player.attackTime-timing.player.contacts[player.contactIndex-1])});
+      state.projectiles.push({id: ++state.nextProjectile, owner: 'player', kind: state.weapon === 'bow' ? 'arrow' : 'bolt', x:player.x + dx * .35, y:player.y + 1.22, z:player.z + dz * .35, dx, dz, remaining:12, firstStep: Math.min(dt,player.attackTime-timing.player.contacts[player.contactIndex-1])});
     } else if (state.layout.enemy && enemy.hp > 0) {
       const dx = enemy.x-player.x, dz = enemy.z-player.z, distance = Math.hypot(dx,dz);
       const facing = distance > 0 ? (Math.sin(player.yaw)*dx + Math.cos(player.yaw)*dz)/distance : 0;
@@ -178,23 +181,32 @@ function stepPlayerAttack(state: Encounter, dt: number, timing: Timings, events:
   if (player.attackTime >= timing.player.attack) player.attackTime = -1;
 }
 /** Numeric swept projectiles share terrain collision with movement, never apply damage twice. */
+function advanceProjectile(state: Encounter, projectile: Projectile, dt: number, timing: Timings, events: EncounterEvent[], movementWorld?: Movement): boolean {
+  if (state.phase === 'lost' || projectile.owner === 'enemy' && state.enemy.hp <= 0) return false;
+  const speed = projectile.owner === 'enemy' ? casterBoltSpeed : projectile.kind === 'arrow' ? 24 : 16;
+  const distance = Math.min(projectile.remaining, (projectile.firstStep ?? dt) * speed);
+  projectile.firstStep = undefined;
+  const to = { x: projectile.x + projectile.dx * distance, y: projectile.y, z: projectile.z + projectile.dz * distance };
+  const wall = movementWorld?.segmentHit?.(projectile, to) ?? null;
+  const targetId = projectile.owner === 'player' ? 'enemy' : 'player', target = state[targetId];
+  const x = target.x - projectile.x, z = target.z - projectile.z;
+  const along = x * projectile.dx + z * projectile.dz, perpendicular = Math.abs(x * projectile.dz - z * projectile.dx);
+  const radiusAlong = Math.sqrt(Math.max(0, .42 * .42 - perpendicular * perpendicular));
+  const entry = along - radiusAlong, exit = along + radiusAlong;
+  const targetT = Math.max(0, entry) / Math.max(.0001, distance);
+  if (state.layout.enemy && target.hp > 0 && perpendicular <= .42 && exit >= 0 && entry <= distance && projectile.y >= target.y + .15 && projectile.y <= target.y + 1.6 && (wall === null || targetT < wall)) {
+    hit(state, targetId, timing, events, undefined, { x: -projectile.dx, z: -projectile.dz });
+    return false;
+  }
+  if (wall !== null) return false;
+  projectile.x = to.x; projectile.z = to.z; projectile.remaining -= distance;
+  return projectile.remaining > 0;
+}
 function stepProjectiles(state: Encounter, dt: number, timing: Timings, events: EncounterEvent[], movementWorld?: Movement): void {
-  state.projectiles = state.projectiles.filter(projectile => {
-    const distance = Math.min(projectile.remaining, (projectile.firstStep ?? dt) * (projectile.kind === 'arrow' ? 24 : 16));
-    projectile.firstStep=undefined;
-    const to = {x:projectile.x+projectile.dx*distance,y:projectile.y,z:projectile.z+projectile.dz*distance};
-    const wall = movementWorld?.segmentHit?.(projectile,to) ?? null;
-    const enemy = state.enemy, ex = enemy.x-projectile.x, ez = enemy.z-projectile.z;
-    const along = ex*projectile.dx+ez*projectile.dz, perpendicular = Math.abs(ex*projectile.dz-ez*projectile.dx);
-    const radiusAlong=Math.sqrt(Math.max(0,.42*.42-perpendicular*perpendicular));
-    const entry = along-radiusAlong, exit=along+radiusAlong;
-    const enemyT = Math.max(0,entry) / Math.max(.0001,distance);
-    if (state.layout.enemy && enemy.hp>0 && perpendicular<=.42 && exit>=0 && entry<=distance && projectile.y>=enemy.y+.15 && projectile.y<=enemy.y+1.6 && (wall===null || enemyT<wall)) {
-      hit(state,'enemy',timing,events); return false;
-    }
-    if (wall!==null) return false;
-    projectile.x=to.x; projectile.z=to.z; projectile.remaining-=distance; return projectile.remaining>0;
-  });
+  state.projectiles = state.projectiles.filter(projectile => advanceProjectile(state, projectile, dt, timing, events, movementWorld));
+  // A lethal player projectile may occur after an enemy bolt was retained earlier in the list.
+  if (state.enemy.hp <= 0) state.projectiles = state.projectiles.filter(projectile => projectile.owner === 'player');
+  if (state.player.hp <= 0) state.projectiles = [];
 }
 /** Safe and cleared areas retain attacks and projectile presentation without enemy AI. */
 export function stepExploration(state: Encounter, dt: number, input: Input, movementWorld?: Movement, timing?: Timings): EncounterEvent[] {
@@ -239,6 +251,7 @@ export function stepEncounter(state: Encounter, dt: number, input: Input, timing
     return events;
   }
   if (!state.engaged) { movementWorld?.move('enemy', enemy, 0, 0, dt); return events; }
+  if (state.enemyKind === 'caster') { stepCaster(state, dt, timing, events, movementWorld); return events; }
   // Keep the pre-movement distance: the original encounter uses it to start an enemy strike.
   const distance = Math.hypot(dx, dz);
   if (enemy.lock <= 0 && (distance > 1.45 || movementWorld && !movementWorld.lineOfSight(enemy, player)) && enemy.attackTime < 0) {
@@ -270,4 +283,42 @@ export function stepEncounter(state: Encounter, dt: number, input: Input, timing
     }
   }
   return events;
+}
+
+/** Caster aim commits at windup; damage interrupts it through the same hit owner as melee. */
+function stepCaster(state: Encounter, dt: number, timing: Timings, events: EncounterEvent[], movementWorld?: Movement): void {
+  const { enemy, player } = state;
+  const dx = player.x - enemy.x, dz = player.z - enemy.z, distance = Math.hypot(dx, dz);
+  const visible = !movementWorld || movementWorld.lineOfSight(enemy, player);
+  if (enemy.attackTime < 0 && enemy.lock <= 0 && (distance > casterAttackRange || !visible)) {
+    const desired = movementWorld?.direction(enemy, player, dt) ?? { x: dx, z: dz };
+    const length = Math.hypot(desired.x, desired.z);
+    const x = length ? desired.x / length * dt * enemy.speed : 0, z = length ? desired.z / length * dt * enemy.speed : 0;
+    if (movementWorld) movementWorld.move('enemy', enemy, x, z, dt);
+    else { enemy.x += x; enemy.z += z; }
+    [enemy.x, enemy.z] = constrain(state.layout.boundary, [enemy.x, enemy.z]);
+    if (length) enemy.yaw = Math.atan2(desired.x, desired.z);
+    events.push({ type: 'animation', actor: 'enemy', motion: length ? 'run' : 'idle' });
+  } else {
+    movementWorld?.move('enemy', enemy, 0, 0, dt);
+    if (enemy.attackTime < 0 && enemy.lock <= 0) events.push({ type: 'animation', actor: 'enemy', motion: 'idle' });
+  }
+  if (enemy.attackTime < 0 && enemy.lock <= 0 && state.enemyCooldown <= 0 && distance <= casterAttackRange && visible && Math.abs(player.y - enemy.y) < .8) {
+    enemy.yaw = Math.atan2(dx, dz); enemy.attackTime = 0; enemy.contactIndex = 0;
+    state.enemyCooldown = timing.enemy.attack + .5;
+    events.push({ type: 'label', value: 'CASTER ATTACKING' }, { type: 'animation', actor: 'enemy', motion: 'attack' });
+  }
+  if (enemy.attackTime < 0) return;
+  enemy.attackTime += dt;
+  const release = timing.enemy.contacts[0];
+  if (enemy.contactIndex === 0 && enemy.attackTime >= release) {
+    enemy.contactIndex = 1;
+    const dx = Math.sin(enemy.yaw), dz = Math.cos(enemy.yaw);
+    const projectile: Projectile = { id: ++state.nextProjectile, owner: 'enemy', kind: 'bolt', x: enemy.x + dx * .35, y: enemy.y + 1.08, z: enemy.z + dz * .35, dx, dz, remaining: 12, firstStep: Math.min(dt, enemy.attackTime - release) };
+    if (advanceProjectile(state, projectile, dt, timing, events, movementWorld)) state.projectiles.push(projectile);
+  }
+  if (enemy.attackTime >= timing.enemy.attack) {
+    enemy.attackTime = -1;
+    events.push({ type: 'label', value: 'DEFEAT THE CASTER' }, { type: 'animation', actor: 'enemy', motion: 'idle' });
+  }
 }

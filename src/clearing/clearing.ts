@@ -10,7 +10,7 @@ import { MovementWorld } from '../gameplay/movement';
 import { cameraOffset } from './projection';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { createEncounter, resetEncounter, attack, dodge, stepExploration, stepEncounter, type EncounterEvent, type ActorId, type Timings, type AimPoint } from '../gameplay/encounter';
+import { createEncounter, resetEncounter, attack, dodge, stepExploration, stepEncounter, type EncounterEvent, type ActorId, type Timings, type AimPoint, type EnemyKind } from '../gameplay/encounter';
 import { readSettings } from '../rendering/graphics-settings';
 import { FramePacer } from '../rendering/frame-pacer';
 import { createRenderer } from '../rendering/renderer';
@@ -32,7 +32,7 @@ import characters from '../../assets/playable-characters.json';
 import { loadEquipmentMotions } from '../animation/combat-animations';
 import { normalizeLoadout, type Loadout } from '../gameplay/equipment';
 import { Equipment, type PreparedEquipment } from '../rendering/equipment';
-import { ProjectileVisuals } from '../rendering/projectiles';
+import { ProjectileVisuals, CasterVisuals } from '../rendering/projectiles';
 import { Harvesting } from '../gameplay/harvesting';
 import { traversalWithTrees, type TreeDefinition } from '../levels/trees';
 import '../ui/game.css';
@@ -75,7 +75,9 @@ let areaErrors: string[] = [], updateMs = 0, contentHash = '', characterMissing 
 const travel = new GateTravel();
 let storage: Storage | undefined;
 try { storage = localStorage; } catch { /* Report unavailable storage below. */ }
-const adventure = new Adventure(storage);
+const clearingEnemy: EnemyKind = renderQuery.get('enemy') === 'caster' ? 'caster' : 'raider';
+const enemyLoadout: Loadout = { main: clearingEnemy === 'caster' ? 'staff' : 'axe', off: null };
+const adventure = new Adventure(storage, Math.random, clearingEnemy);
 if (!storage) adventure.saveError = 'Unable to save progress. Allow local storage before restarting.';
 else if (!adventure.saveError) adventure.save();
 let adventureVisuals: AdventureVisuals | undefined;
@@ -87,11 +89,12 @@ renderer.info.autoReset = false;
 let renderedFrames = 0;
 const cameraOwner = createCamera(renderer.domElement);
 const { camera, controls } = cameraOwner;
-const encounter = createEncounter('loading', currentArea.layout);
+const encounter = createEncounter('loading', currentArea.layout, clearingEnemy);
 const player = makeActor(scene, encounter.player);
 const enemy = makeActor(scene, encounter.enemy);
 const playerEquipment = new Equipment(player.root), enemyEquipment = new Equipment(enemy.root,'enemy');
 const projectileVisuals = new ProjectileVisuals(scene);
+const casterVisuals = new CasterVisuals(scene, enemy.root);
 const harvesting = new Harvesting();
 let equipmentLoading = false;
 let chopping: { tree: TreeDefinition; time: number; contacted: boolean } | null = null;
@@ -125,6 +128,7 @@ const menus = new AdventureMenus(clearInput, () => renderer.domElement.focus(), 
 const hud = createHud(() => { if (!motions.loading && !transitioning) void changeArea(homeArea, undefined, true, definitions.homestead.layout.player, true); }, inspect);
 const loader = new GLTFLoader();
 const motions = createMotionOptions(loader, {
+  enemyLoadout,
   clearInput, setRetryEnabled: hud.setRetryEnabled,
   install: (who, clips) => installMotions(who === 'player' ? player : enemy, clips), reset,
 });
@@ -155,7 +159,7 @@ function present(events: EncounterEvent[]): void {
 function resetPresentation(): void {
   clearInput();
   graphics?.effects.clear();
-  encounter.projectiles=[]; projectileVisuals.clear();
+  encounter.projectiles=[]; projectileVisuals.clear(); casterVisuals.clear();
   applyLoadoutState();
   movementWorld?.reset();
   active?.portals.forEach(p => p.reset());
@@ -221,7 +225,7 @@ function syncAdventure(): void {
   menus.update(adventure.character.scrolls, currentArea.id !== homeArea && encounter.player.hp > 0 && adventure.character.scrolls > 0 && adventure.castRemaining === 0, prompt, adventure.castRemaining);
   document.getElementById('save-status')!.textContent = adventure.saveError;
 }
-function paused(): boolean { return Boolean(options?.paused || menus.paused || equipmentLoading || inspecting || motions.loading || graphics?.preparingSettings || frozen || transitioning); }
+function paused(): boolean { return Boolean(clearingEnemy === 'caster' && characterMissing || options?.paused || menus.paused || equipmentLoading || inspecting || motions.loading || graphics?.preparingSettings || frozen || transitioning); }
 function timings(): Timings {
   const timing = (actor: Actor) => ({ attack: duration(actor, 'attack'), hit: duration(actor, 'hit'), contacts: actor.contacts });
   return { player: timing(player), enemy: timing(enemy) };
@@ -302,6 +306,7 @@ function updateGame(dt: number): void {
     }
   }
   projectileVisuals.sync(encounter.projectiles);
+  casterVisuals.sync(encounter, enemy.contacts[0] ?? .8, isPaused ? 0 : dt, currentArea.kind !== 'safe');
   syncAdventure();
   hud.update(encounter, []);
   if (!paused() && encounter.phase !== 'lost' && encounter.phase !== 'loading' && adventure.castRemaining === 0) {
@@ -356,7 +361,7 @@ await Promise.all([(async () => {
     reset();
     await motions.initialize();
     await changeEquipment(adventure.character.loadout,false);
-    const goblinEquipment=await enemyEquipment.stage({main:'axe',off:null}); enemyEquipment.commit(goblinEquipment);
+    const goblinEquipment=await enemyEquipment.stage(enemyLoadout); enemyEquipment.commit(goblinEquipment);
   } catch (error) {
     characterMissing = true; hud.characterUnavailable();
     console.error(error);
@@ -376,7 +381,7 @@ await Promise.all([(async () => {
     focus: () => renderer.domElement.focus(), resetEncounter: reset, inspect,
   });
   graphics = new Graphics({ scene, camera, renderer, controls, sun, ambient, mount, lighting }, options.settings, effects);
-  window.addEventListener('pagehide', () => { graphics?.dispose(); personalLantern?.dispose(); playerEquipment.dispose(); enemyEquipment.dispose(); projectileVisuals.dispose(); adventureVisuals?.dispose(); active?.dispose(); movementWorld?.dispose(); renderer.dispose(); void disposeAreaCache(); }, { once: true });
+  window.addEventListener('pagehide', () => { graphics?.dispose(); personalLantern?.dispose(); playerEquipment.dispose(); enemyEquipment.dispose(); projectileVisuals.dispose(); casterVisuals.dispose(); adventureVisuals?.dispose(); active?.dispose(); movementWorld?.dispose(); renderer.dispose(); void disposeAreaCache(); }, { once: true });
   resize();
   await graphics.initialize();
   requestAnimationFrame(tick);
@@ -389,7 +394,7 @@ await Promise.all([(async () => {
       changeArea, waitFrames, setFrozen: freezePreview, setView: previewView,
       appearance: () => ({ lighting: mood.mode, forcedLighting, profile: forcedProfile, lantern: lanternEnabled, surfaces: surfaceMode }),
       setAppearance: changeAppearance,
-      diagnostics: () => ({ lightingMode: mood.mode, lightingProfile: forcedProfile ?? ('profile' in currentArea.lighting ? currentArea.lighting.profile : 'authored'), lantern: personalLantern?.diagnostics(), surfaces: surfaceMode, area: currentArea.id, revision, renderedRevision, ready: !!active && renderedRevision === revision && !transitioning && !motions.loading && !areaErrors.length && !mount.dataset.renderError, errors: [...areaErrors, ...(mount.dataset.renderError ? [mount.dataset.renderError] : [])], missing: [...(active?.missing ?? []), ...(characterMissing ? ['character'] : [])], contentHash, settings: options!.settings, backend: 'webgpu', updateMs, renderedFrames, phase: encounter.phase, equipment: playerEquipment.diagnostics(), harvest: {chopping: chopping?.tree.id ?? null, trees: active?.trees.map(tree=>({...tree,...harvesting.state(currentArea.id,tree.id)}))}, adventure: { character: adventure.character, portal: adventure.portal, castRemaining: adventure.castRemaining, drops: adventure.session(currentArea.id).drops, chests: adventure.session(currentArea.id).chests, fires: (currentArea.campfires ?? []).map(fire => ({ id: fire.id, safe: adventure.fireSafe(currentArea, fire, encounter) })) }, encounter: { player: { ...encounter.player }, enemy: { ...encounter.enemy }, engaged: encounter.engaged, returning: encounter.returning, playerMana: encounter.playerMana, dodgeRemaining: encounter.dodgeRemaining, dodgeCooldown: encounter.dodgeCooldown, blocking: encounter.blocking, projectiles: encounter.projectiles, pending: encounter.pending, animations: { player: player.current, enemy: enemy.current }, navigationReady: movementWorld?.navigationReady ?? false, navigationMs: movementWorld?.generationMs ?? 0 }, camera: { position: camera.position.toArray(), target: controls.target.toArray(), zoom: camera.zoom, viewport: [mount.clientWidth, mount.clientHeight] }, objects: active?.root.children.length ?? 0, resources: { memory: { ...renderer.info.memory }, drawCalls: renderer.info.render.drawCalls, triangles: renderer.info.render.triangles }, graphics: renderer.domElement.dataset.graphics ? JSON.parse(renderer.domElement.dataset.graphics) : null }),
+      diagnostics: () => ({ lightingMode: mood.mode, lightingProfile: forcedProfile ?? ('profile' in currentArea.lighting ? currentArea.lighting.profile : 'authored'), lantern: personalLantern?.diagnostics(), surfaces: surfaceMode, area: currentArea.id, revision, renderedRevision, ready: !!active && renderedRevision === revision && !transitioning && !motions.loading && !areaErrors.length && !mount.dataset.renderError, errors: [...areaErrors, ...(mount.dataset.renderError ? [mount.dataset.renderError] : [])], missing: [...(active?.missing ?? []), ...(characterMissing ? ['character'] : [])], contentHash, settings: options!.settings, backend: 'webgpu', updateMs, renderedFrames, phase: encounter.phase, equipment: playerEquipment.diagnostics(), harvest: {chopping: chopping?.tree.id ?? null, trees: active?.trees.map(tree=>({...tree,...harvesting.state(currentArea.id,tree.id)}))}, adventure: { character: adventure.character, portal: adventure.portal, castRemaining: adventure.castRemaining, drops: adventure.session(currentArea.id).drops, chests: adventure.session(currentArea.id).chests, fires: (currentArea.campfires ?? []).map(fire => ({ id: fire.id, safe: adventure.fireSafe(currentArea, fire, encounter) })) }, encounter: { enemyKind: encounter.enemyKind, enemyEquipment: enemyEquipment.diagnostics(), player: { ...encounter.player }, enemy: { ...encounter.enemy }, engaged: encounter.engaged, returning: encounter.returning, playerMana: encounter.playerMana, dodgeRemaining: encounter.dodgeRemaining, dodgeCooldown: encounter.dodgeCooldown, blocking: encounter.blocking, projectiles: encounter.projectiles, pending: encounter.pending, animations: { player: player.current, enemy: enemy.current }, navigationReady: movementWorld?.navigationReady ?? false, navigationMs: movementWorld?.generationMs ?? 0 }, camera: { position: camera.position.toArray(), target: controls.target.toArray(), zoom: camera.zoom, viewport: [mount.clientWidth, mount.clientHeight] }, objects: active?.root.children.length ?? 0, resources: { memory: { ...renderer.info.memory }, drawCalls: renderer.info.render.drawCalls, triangles: renderer.info.render.triangles }, graphics: renderer.domElement.dataset.graphics ? JSON.parse(renderer.domElement.dataset.graphics) : null }),
     });
   }
 

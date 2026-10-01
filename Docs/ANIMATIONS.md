@@ -52,6 +52,7 @@ The five base roles remain `idle`, `run`, `attack`, `hit` and `death`. Profiles 
 | Player Hit / Death | 0.30 / 1.35 s | — |
 | Player Dodge | 0.45 s simulation | — |
 | Goblin Axe Attack | 1.05 s | Contact 0.46 s |
+| Goblin Cast | 1.60 s | Bolt release 0.80 s |
 | Goblin Hit / Death | 0.35 / 1.55 s | — |
 
 Bakes sample at 30 fps, so actual clip duration can differ from the manifest target by up to half a 30 fps frame. For example, a 0.68 s target currently produces approximately 0.67 s, while the roll produces approximately 0.47 s and is scaled to the 0.45 s simulation clock. Gameplay locks use the prepared clip duration; contacts/releases use the same catalog metadata as the presentation. Do not restore percentage-based contacts or independently maintained timing tables in the coordinator.
@@ -74,9 +75,15 @@ New and migrated characters own and equip an Axe. The defeated clearing camp che
 
 A damaging Axe combat contact grants 10 Axe Combat XP independently of Woodcutting. Levels, skill bonuses, combos, stamina, ammunition consumption, mana costs, skills and ultimates remain deferred. The initial weapon comparison uses the existing 50-point player damage and a 12 m projectile range.
 
+## Solo caster
+
+`/?area=clearing&enemy=caster` uses the same Goblin rig with a Staff. Its free-arm Mixamo cast is independently baked from the verified casting source, with a 1.6-second action and 0.8-second release marker. The staff arm retains the compatible carrying pose and a grip clip baked to Goblin, rather than borrowing Paladin tracks. The normal raider retains its existing Axe profile. Enemy motion-set changes in Options retain the selected archetype's compatible equipment profile.
+
+The native WebGPU review on macOS used normal graphics settings in one managed session. Keyboard approach/sidestep avoided the committed shot with full health; a forward dodge through the bolt followed by an attack during recovery dealt 50 damage without hurting the player. The caster remained planted, and the free-hand charge was revised to follow its actual rig socket. Standing in range produced defeat; Return Home restored 100 health and walking back retained the caster variant. The distant entrance triggers the existing leash recovery/heal rule; focused simulation checks cover wounded state retention before that rule, interruption, projectile obstruction, incoming shield direction and reward continuity. This is targeted acceptance, not cross-platform validation.
+
 ## Comparison and acceptance evidence
 
-Open the [animation comparison route](../src/labs/animations/animation-lab.ts) with `/?lab=animations`. Each lane selects its own Player/Goblin rig and weapon model, browses that rig's compatible clips, and retains independent temporal history in the shared native WebGPU pipeline. Use normal/half/quarter speed, frame steps, linked cycle lengths, scrub, and the contact/release marker to inspect hand placement and timing. Goblin currently has an Axe gameplay profile; other lab equipment models do not imply weapon-specific Goblin gameplay motions.
+Open the [animation comparison route](../src/labs/animations/animation-lab.ts) with `/?lab=animations`. Each lane selects its own Player/Goblin rig and weapon model, browses that rig's compatible clips, and retains independent temporal history in the shared native WebGPU pipeline. Use normal/half/quarter speed, frame steps, linked cycle lengths, scrub, and the contact/release marker to inspect hand placement and timing. Goblin has Axe and Staff gameplay profiles; Staff supplies the alternate solo caster encounter. Other lab equipment models do not imply weapon-specific Goblin gameplay motions.
 
 The representative automated flows cover v1 save migration, unique equipment rewards, two-hand Shield return, separate saved progression, contact/release timing, buffered aim and recovery boundaries, frontal/rear block damage, swept terrain obstruction and exactly-once ranged damage. A presented-pose regression verifies that contact actions fully replace manually phased locomotion. Level flows cover systematic tree identity, depletion/regrowth, occupancy and removed/restored collision/navigation.
 
