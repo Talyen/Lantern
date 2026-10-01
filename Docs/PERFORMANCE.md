@@ -1,5 +1,8 @@
 # Performance and renderer evidence
 
+Ordinary feature work follows the [lean task workflow](DEVELOPMENT.md#working-alongside-other-agents): one relevant preview and fast sanity checks. Benchmarking and the matched protocol below are for a concrete performance issue, requested measurement or release work, not every visual/gameplay edit. Managed scripts queue one heavy operation and one agent GPU inspection while leaving the user's play session alone.
+
+
 Use matched local measurements to judge changes; performance numbers are advisory, not CI gates. Browser resource smoke does not execute the renderer.
 
 ## Current rendering policy

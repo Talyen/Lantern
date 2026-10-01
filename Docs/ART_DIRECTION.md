@@ -49,9 +49,9 @@ Development authoring can force either mood for matched comparisons. It must not
 
 ## Acceptance and evidence
 
-Compare authored and projected scenery with identical camera, pose, zoom, lighting and graphics settings. Review golden and silver at minimum, normal and maximum gameplay zoom. Retain changes only when material regions and silhouettes remain clear, texture repetition/seams are unobtrusive, foliage edges remain intact, and enemies and paths are easy to see. Chest hinges and camp interactions must continue working.
+Use the [lean task workflow](DEVELOPMENT.md#working-alongside-other-agents): one representative preview at normal gameplay scale, plus the changed interaction when relevant. Judge material separation, silhouettes, actor/path readability and the intended composition; fix a visible weakness in the same session. Screenshots are optional and licensed-art captures remain private.
 
-Use representative gameplay flows for movement, animation-delayed hits, victory, defeat, retry, inspection and travel in both moods. Measure using [the performance protocol](PERFORMANCE.md), including texture memory, draw calls and resources after repeated travel. Finish with playable asset validation and the normal handoff gate. Keep local licensed-art captures private and record limitations honestly.
+Matched authored/projected views, alternate moods, zoom extremes, night/studio references and resource measurements are optional targeted tools for a specific uncertainty or requested audit. Do not run every gameplay flow or a benchmark to accept an ordinary visual edit. The fast sanity gate protects basic integration; a screenshot or passing build alone does not establish good design.
 
 ## Design principles
 
@@ -75,15 +75,15 @@ These examples guide visual decisions; they do not authorize unrelated redesigns
 
 Ground loot should feel physical and readable within the weathered autumn world: small recognizable objects briefly toss, tumble, and settle, with restrained landing and collection sounds. Keep combat as the focal point; avoid persistent loot beams, glow, and constant idle motion.
 
-Use mixed-case Pirata One Gothic names on compact smoky charcoal backplates, with warm ivory lettering, muted gold for gold, and a restrained brass hover edge. Show only the item name. Separate crowded labels into quiet non-overlapping rows, keep text at a stable screen size across zoom, and link hover to the matching object. Labels remain readable over scenery. The [loot design](LOOT.md#labels-and-visual-treatment) owns starting colors, sizes, distances, and interaction rules; this direction is planned rather than implemented. Review Gothic readability, object recognition, and combat visibility in golden and silver at both zoom extremes.
+Use mixed-case Pirata One Gothic names on compact smoky charcoal backplates, with warm ivory lettering, muted gold for gold, and a restrained brass hover edge. Show only the item name. Separate crowded labels into quiet non-overlapping rows, keep text at a stable screen size across zoom, and link hover to the matching object. Labels remain readable over scenery. The [loot design](LOOT.md#labels-and-visual-treatment) owns starting colors, sizes, distances, and interaction rules; this direction is planned rather than implemented. Inspect Gothic readability, object recognition and combat visibility in one normal gameplay preview; alternate moods/zooms are optional if a specific readability concern appears.
 
 ## Optional outlines
 
-Outlines add soft warm-charcoal definition inside the visible silhouettes of characters, equipment and selected solid camp/rock props. Actors receive stronger contours than scenery. Preserve painterly materials and existing light; dark contours never become a bright rim in deep shadow. Terrain, grass, plants, scattered detail and effects remain quiet. Default/reset is On. Width stays close to 1.5–2 output pixels, with continuous coverage and pre-FSR temporal reconstruction. Judge the result in motion as well as matched stills: no distracting edge crawl, flicker, jagged steps, changing thickness or trails at gameplay scale. Review both woodland moods, night references and zoom extremes with DOF Off before retaining a tuning change.
+Outlines add soft warm-charcoal definition inside the visible silhouettes of characters, equipment and selected solid camp/rock props. Actors receive stronger contours than scenery. Preserve painterly materials and existing light; dark contours never become a bright rim in deep shadow. Terrain, grass, plants, scattered detail and effects remain quiet. Default/reset is On. Width stays close to 1.5–2 output pixels, with continuous coverage and pre-FSR temporal reconstruction. Judge the result in motion as well as matched stills: no distracting edge crawl, flicker, jagged steps, changing thickness or trails at gameplay scale. For normal tuning, inspect the changed contour in motion in one gameplay preview. Alternate woodland/night references and zoom extremes are targeted diagnostics.
 
 ## Visual review
 
-Inspect the running result or local captures at gameplay scale. Use the existing [level authoring loop](LEVEL_DESIGN.md#fast-iteration) for areas. Record specific visible evidence in short working notes alongside captures, rather than numerical scores or claims such as "premium" or "polished."
+Inspect the running result or local captures at gameplay scale. Use the existing [level authoring loop](LEVEL_DESIGN.md#fast-iteration) for areas. Describe a specific visible result briefly; captures and separate review reports are optional. Avoid numerical scores or unsupported quality claims.
 
 - **Clear focus:** what draws attention first, and does that match the intended composition?
 - **Recognizable Lantern identity:** where do weathered materials, painterly shapes, and amber refuge appear without overwhelming the scene?
@@ -91,7 +91,7 @@ Inspect the running result or local captures at gameplay scale. Use the existing
 - **Readable play:** can the player distinguish actors, contacts, paths, interactions, and menu states at the intended scale?
 - **Finish:** what is the weakest visible part, and does its proportion, alignment, edge treatment, material response, or timing need another pass?
 
-Compare the result with the stated intent, revise the weakest part when needed, and inspect again. Keep licensed-art captures private and retain the existing technical and gameplay acceptance requirements.
+Compare the result with the stated intent, revise the weakest part when needed, and inspect again. Keep licensed-art captures private and use the lean sanity-check policy; expand review only for a concrete reason.
 
 ## Earlier olive-palette review — September 30, 2026
 

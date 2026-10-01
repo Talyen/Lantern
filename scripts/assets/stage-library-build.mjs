@@ -1,7 +1,8 @@
-import { cp, mkdir, rm, copyFile, writeFile, readFile } from 'node:fs/promises';
+import { mkdir, rm, writeFile, readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { resolve, relative, sep } from 'node:path';
+import { resolve, relative } from 'node:path';
 import { cli, parseArgs, root } from '../lib/cli.mjs';
+import { privateCopy, privateTree } from '../agents/copy.mjs';
 import { selectedLibrary, assetPath, inventory, rejectArchives } from '../lib/assets.mjs';
 await cli(async () => {
   const args = parseArgs(process.argv.slice(2));
@@ -17,12 +18,12 @@ await cli(async () => {
   rejectArchives(files);
   await rm(stage, { recursive: true, force: true });
   await mkdir(stage, { recursive: true });
-  if (existsSync(source)) await cp(source, stage, { recursive: true, filter: (path) => path !== library && !path.startsWith(library + sep) && path !== lighting && !path.startsWith(lighting + sep) });
+  if (existsSync(source)) await privateTree(source, stage, { exclude: [library, lighting] });
   for (const asset of selected.values()) {
     const from = assetPath(library, asset.url, '/vendor/synty/library/');
     const target = resolve(output, relative(library, from));
     await mkdir(resolve(target, '..'), { recursive: true });
-    await copyFile(from, target);
+    await privateCopy(from, target);
   }
   if (selected.size) await writeFile(resolve(output, 'catalog.json'), JSON.stringify({ version: 1, complete: true, assets: Object.fromEntries(selected) }));
   const lightingIndex = JSON.parse(await readFile(resolve(root, 'assets/lighting-bakes.json'), 'utf8'));
@@ -30,7 +31,7 @@ await cli(async () => {
     if (!/^[a-f0-9]{64}$/.test(signature) || entry.url !== `/vendor/lighting/${signature}.json`) throw new Error('Invalid prepared lighting reference');
     const from = resolve(source, entry.url.slice(1)), target = resolve(stage, entry.url.slice(1));
     if (!existsSync(from)) continue; // Optional prepared GI; source-only builds bake live.
-    await mkdir(resolve(target, '..'), { recursive: true }); await copyFile(from, target);
+    await mkdir(resolve(target, '..'), { recursive: true }); await privateCopy(from, target);
   }
   const staged = await inventory(stage);
   rejectArchives(staged);

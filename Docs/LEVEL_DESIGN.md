@@ -10,7 +10,7 @@ One standard stage spans **2 viewport widths × 2 viewport heights** of ground c
 
 Use metres, Y-up, ground at Y=0, yaw in radians, positive explicit scale, and stable IDs. A 4 m decorative apron surrounds the design envelope. It is scenery, not additional traversable space. A flat terrain backdrop may extend beyond that apron to cover the allowed camera views; navigation and prop placement remain bounded by the area and decorative apron. Keep ordinary areas mostly flat; explicit movement trials may use shared rendered/collision surface triangles for small slopes and steps. Use banks, cliffs and ruins around the playable space for larger elevation. Terrain asset exports happen separately from placement iterations.
 
-Each area needs a landmark, readable combat space, a clear approach and exit, and a decorative perimeter. Compose from the gameplay camera at several player positions, both allowed zoom extremes, and a narrower viewport. Avoid foreground objects concealing actors, weapon contact or gate openings. Small areas should look deliberate, not uniformly filled.
+Each area needs a landmark, readable combat space, a clear approach and exit, and a decorative perimeter. Compose from one representative gameplay-camera view at normal scale. Other positions, zooms and viewport sizes are targeted tools when a visible concern warrants them. Avoid foreground objects concealing actors, weapon contact or gate openings. Small areas should look deliberate, not uniformly filled.
 
 ## Definitions and ownership
 
@@ -54,24 +54,24 @@ Homestead and Forest Clearing use the weathered autumn palette in [Art Direction
 
 Prerequisites: the project's Node version, installed npm dependencies, `agent-browser` on PATH with its browser installed, and Python 3 with Pillow (already required by asset preparation). Use `brew install agent-browser` and `agent-browser install` if needed. Prepared character and Mixamo art are required for playable verification.
 
-1. `npm run levels:dev -- --area=clearing` starts an owned loopback Vite server and isolated headless browser. The preview requires native WebGPU and defaults to FSR Temporal; reconstruction fallback stays within WebGPU. `--renderer=webgpu` is a compatibility argument; other backends are rejected.
+1. `npm run levels:dev -- --area=clearing` starts an owned loopback Vite server and isolated headless browser. The preview requires native WebGPU and defaults to FSR Temporal; there is no reconstruction or backend fallback. `--renderer=webgpu` is a compatibility argument; other backends are rejected.
 2. Edit area JSON. Vite hot updates preserve renderer/cache, preview camera and graphics settings. Content changes reset temporal history and encounter pose. Frozen previews retain the selected target and zoom. No production build, browser restart or Blender export is needed.
 3. Use Area/View, Play/Freeze and Guides controls, or `npm run levels:capture -- --area=clearing`.
-4. Inspect the resulting contact sheet and individual images locally. Correct one coherent visual concern and repeat.
-5. Use `npm run levels:check` after the area stabilizes, then the documented gameplay smoke and measurement protocol.
-6. `npm run levels:stop` closes only the owned browser/server. Close rendering sessions before the handoff gate.
+4. Inspect one resulting view locally. Correct a visible concern in the same session. `--view ID` selects another view; `--all` explicitly creates the full contact sheet.
+5. Use the fast sanity gate after the area stabilizes and one relevant interaction when behavior changed. Measurements and broad smoke flows are optional targeted checks.
+6. `npm run levels:stop` closes only the owned browser/server. Close rendering sessions after review to release the agent GPU slot.
 
 The development-only route is `/?author=levels&area=<id>`. Scene-code changes may reload the page; data edits are the optimized path. Invalid definitions preserve the last valid scene and report the area/object. Invalid JSON syntax also triggers Vite's error overlay. Superseded asynchronous loads are discarded and released. Readiness means the committed revision has loaded and rendered, not merely that requests started.
 
 `window.lanternAuthoring` exposes diagnostics, area selection, viewpoint/zoom, freeze/play, overlays, clean captures and frame settling. It exists only in development authoring sessions. The CLI uses this bridge through agent-browser rather than screen coordinates. No object gizmos, undo or scene-saving endpoint is included.
 
-Captures freeze simulation, effects and actor pose, reset temporal history, then render settling frames. Clean captures omit authoring/game HUD; overview includes guides. Files under ignored `.local/level-design/<area>/<runtime-prefix>-<revision>/` include five gameplay views, overview, contact sheet and manifest with content hash, settings, asset readiness, errors and timings. A batch fails if its revision, content hash or runtime identity changes. Missing art labels it **incomplete**. Capturing does not constitute visual approval: the designer must inspect the images.
+Captures freeze simulation, effects and actor pose, reset temporal history, then render settling frames. Clean captures omit authoring/game HUD; overview includes guides. Files under ignored `.local/level-design/<area>/<runtime-prefix>-<revision>/` include the requested view and manifest; explicit `--all` adds all gameplay views, overview and contact sheet with content hash, settings, asset readiness, errors and timings. A batch fails if its revision, content hash or runtime identity changes. Missing art labels it **incomplete**. Capturing does not constitute visual approval: the designer must inspect the images.
 
 Warm targets: under 2 s from data update to readiness and under 5 s per clean view. Measure actual results, separate cold asset startup, and report misses rather than hiding them with longer timeouts. The full six-view batch takes longer than one capture. A readiness error or missing character must be resolved before claiming playable/visual completion.
 
 ## AI designer checklist and brief
 
-Read this guide and the area brief before editing. Inspect current data and latest captures. Change one coherent concern; capture and inspect. Compare the result with the intended impression using [the visual review criteria](ART_DIRECTION.md#visual-review), alongside actor visibility, combat ground, entrances/exits, shadows, foreground silhouettes and perimeter seams. Check default/maximum/minimum zoom and a narrow window. Record specific visible evidence and why the revision was retained or revised in a short private review note alongside captures. Finish with gameplay smoke and performance evidence after the composition stabilizes.
+Read this guide and the area brief before editing. Inspect current data. Change one coherent concern and inspect one representative preview; a capture is optional. Compare the result with the intended impression using [the visual review criteria](ART_DIRECTION.md#visual-review), alongside actor visibility, combat ground, entrances/exits, shadows, foreground silhouettes and perimeter seams. Normal gameplay scale is the default. Inspect another view/zoom only when a specific concern needs it. Record the visible outcome briefly; separate review notes, smoke matrices and performance reports are not routine completion requirements.
 
 When using a reference, identify the specific lesson in composition, lighting, material, or motion and how it serves this area's intent. Keep reference use compatible with licensing restrictions; never submit licensed Synty content or local renders to ImageGen.
 

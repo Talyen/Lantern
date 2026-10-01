@@ -10,7 +10,7 @@ const backend = flag('renderer', '');
 if (backend && backend !== 'webgpu') throw new Error('Lantern requires native WebGPU; renderer selection is no longer supported.');
 const aa = flag('aa', '');
 app.setName('Lantern');
-const profile = background ? path.resolve(__dirname, '../.local/electron-check') : path.join(app.getPath('appData'), 'Lantern');
+const profile = background ? path.resolve(__dirname, `../.local/electron-check-${flag('debug-port', 'default')}`) : path.join(app.getPath('appData'), 'Lantern');
 require('node:fs').mkdirSync(profile, { recursive: true });
 app.setPath('userData', profile);
 protocol.registerSchemesAsPrivileged([{ scheme: 'lantern', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }]);

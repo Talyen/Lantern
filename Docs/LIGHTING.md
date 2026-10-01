@@ -24,9 +24,9 @@ Keep deliberate overrides beside the area definition. Modify the profile for cha
 
 ## Autumn woodland review
 
-Autumn color comes from foliage and terrain materials, not a global orange grade or higher exposure. Keep the shared woodland lighting profiles and flame recipes unless matched views demonstrate a specific readability problem. Review both golden and silver at minimum, normal and maximum gameplay zoom, plus a studio material comparison; check that actors, paths, ground contacts and amber refuges remain distinct. Also inspect the night profile when present, without changing its authored mood behavior.
+Autumn color comes from foliage and terrain materials, not a global orange grade or higher exposure. Keep the shared woodland lighting profiles and flame recipes unless matched views demonstrate a specific readability problem. Inspect actors, paths, ground contacts and amber refuges in one representative normal gameplay preview. Golden/silver comparisons, studio/night references and zoom extremes are optional targeted checks for a visible uncertainty or requested lighting audit.
 
-Foliage exports and ground color changes invalidate static irradiance fingerprints. Reload the owned preview/cache after asset exports, then explicitly prepare Homestead and Clearing with `npm run lighting:bake -- --area=homestead --lighting=all --surfaces=projected` and the same command with `--area=clearing`. Keep atlases private and update the existing bake index. Routine checks do not regenerate them.
+Foliage exports and ground color changes invalidate static irradiance fingerprints. Reload the owned preview/cache after affected asset exports. When prepared-atlas work is requested, explicitly prepare affected areas with `npm run lighting:bake -- --area=homestead --lighting=all --surfaces=projected` or the same command with `--area=clearing` when that area is affected. Keep atlases private and update the existing bake index. Routine checks do not regenerate them.
 
 ## Local lights and probe coverage
 

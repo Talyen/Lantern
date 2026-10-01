@@ -30,7 +30,7 @@ The exporter reuses the canonical Mixamo world-space baker with a checked target
 
 `src/labs/characters/` owns the gallery, resource disposal and development-only `window.lanternCharacters` capture bridge. `scripts/assets/characters/` owns private roster conversion and capture tooling. The existing animation exporter owns retargeting mathematics; the character gallery supplies only the mapping appropriate to each target.
 
-After changing the workflow, inspect full-roster contact sheets and motion review pages, verify search/family/favorites and linked comparison controls in a real browser, and run `npm run check`. A failure on one model must leave the other comparison lane usable. Close owned GPU sessions before the final check. Gallery edits do not require gameplay smoke unless gameplay owners also change.
+After changing the workflow, inspect one affected character or gallery interaction in a real preview and run the fast `npm run check`. `characters:capture -- --character ID` targets one character; `--all` explicitly requests a roster batch. Full contact sheets and motion pages are optional catalog-audit tools. A failure on one model must leave the other comparison lane usable. Close owned GPU sessions before the final check. Gallery edits do not require gameplay smoke unless gameplay owners also change.
 
 ## Playable Paladin variants
 

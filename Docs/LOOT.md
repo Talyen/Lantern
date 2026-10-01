@@ -1,5 +1,8 @@
 # Item drops and pickups
 
+Implementation acceptance follows the [lean task workflow](DEVELOPMENT.md#working-alongside-other-agents): inspect one representative loot interaction at normal gameplay scale. Alternate lighting/zoom and broader comparison scenarios below are optional targeted references.
+
+
 This is the agreed design for [Milestone 3](../ROADMAP.md#milestone-3--loot-recovery-and-homestead), with gathering consumers in milestone 4. Gameplay implementation remains outstanding. The current subset has small 3D raider scroll drops with nearby auto-pickup and one stack capped at 99; the clearing chest transfers scrolls directly into inventory. This document does not change runtime APIs or save formats.
 
 ## Drops and collection

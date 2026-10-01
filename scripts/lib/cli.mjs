@@ -29,15 +29,19 @@ export async function cli(main) {
   }
 }
 /** Literal arguments; owned children are stopped on interruption and optional deadlines. */
-export function run(command, args, { timeout = 0, stdio = 'inherit', cwd = root } = {}) {
+export async function run(command, args, { timeout = 0, stdio = 'inherit', cwd = root } = {}) {
+  const resources = await import('../agents/resources.mjs');
+  const grouped = process.platform !== 'win32' && resources.ownsResources();
   return new Promise((resolveRun, reject) => {
-    const child = spawn(command, args, { cwd, stdio, shell: false });
+    const child = spawn(command, args, { cwd, stdio, shell: false, detached: grouped, env: resources.childEnvironment() });
     let interrupted = false;
     let killTimer;
-    const stop = () => { interrupted = true; child.kill('SIGTERM'); killTimer = setTimeout(() => child.kill('SIGKILL'), 2000); };
+    const kill = signal => { try { if (grouped) process.kill(-child.pid, signal); else child.kill(signal); } catch (error) { if (error.code !== 'ESRCH') throw error; } };
+    resources.registerChild(child.pid).catch(() => {});
+    const stop = () => { interrupted = true; kill('SIGTERM'); killTimer = setTimeout(() => kill('SIGKILL'), 2000); };
     process.once('SIGINT', stop); process.once('SIGTERM', stop);
     const timer = timeout ? setTimeout(stop, timeout) : undefined;
-    const cleanup = () => { clearTimeout(timer); clearTimeout(killTimer); process.removeListener('SIGINT', stop); process.removeListener('SIGTERM', stop); };
+    const cleanup = () => { resources.releaseChild(child.pid); clearTimeout(timer); clearTimeout(killTimer); process.removeListener('SIGINT', stop); process.removeListener('SIGTERM', stop); };
     child.once('error', (error) => { cleanup(); reject(error); });
     child.once('exit', (code, signal) => {
       cleanup();

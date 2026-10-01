@@ -13,16 +13,17 @@ Lantern is a desktop-browser fantasy action RPG prototype using Vite, TypeScript
 
 ## Concurrent work and Git
 
-- Prefer the existing checkout on `main`. Do not switch branches, create worktrees, commit, push or open a PR unless requested. If overlapping work cannot safely coexist, explain the conflict and propose sequencing or isolation.
-- Follow the [shared-checkout procedure](Docs/DEVELOPMENT.md#working-alongside-other-agents): record task ownership locally, keep edits disjoint, and coordinate shared files and output-producing commands. Ownership notes are advisory, not locks.
-- Re-read shared files and their current diffs immediately before editing; merge with the latest contents. Never overwrite another agent's changes from an earlier snapshot or treat unfamiliar edits as disposable.
-- Never use destructive Git commands, broad restores, cleans or stashes to clear other work. Stage only reviewed, explicitly authorized paths; coordinate index and commit operations because the checkout shares one Git index.
+- Use `npm run agent:start -- --task <slug>` before feature edits, then use its returned worktree directory for every command. Up to four tasks may work independently. Do not edit main directly during ordinary task work.
+- The [task workflow](Docs/DEVELOPMENT.md#working-alongside-other-agents) authorizes private task branches, reviewed local task commits, and automatic integration into local main. Pushes, PRs and releases still require a user request.
+- One agent owns a task worktree through completion. Routine work requires no inter-agent messages, file reservations, or user-managed merges. Repair conflicts and failed sanity checks in the task, then retry `npm run agent:finish` until integrated.
+- Stage only explicitly reviewed task paths. Never reset, clean, stash, overwrite or terminate another task's work. Preserve private source archives and unexpected main edits.
+- Use managed previews and resource wrappers. Start rendering only for a relevant inspection, then close the owned session. The scripts automatically queue heavy operations and GPU reviews.
 
 ## Owners and commands
 
 Read [architecture](Docs/ARCHITECTURE.md) and [development workflow](Docs/DEVELOPMENT.md) for affected owners, commands and asset preparation. [Level design](Docs/LEVEL_DESIGN.md) owns area conventions and the rapid visual authoring loop. [Performance](Docs/PERFORMANCE.md) owns measurement evidence; [roadmap](ROADMAP.md) owns milestones.
 
-Use `npm run check` for handoff (includes one production build and `git diff --check`). Use `npm run assets:check -- --playable` when verifying prepared art. Inspect status/diffs, preserve existing work, and re-read shared files during concurrent edits. Update the canonical owner when changing an invariant.
+Use `npm run check` for a fast sanity check; `agent:finish` runs it on the integration candidate. Production checks use `npm run check:full` for CI or requested build/release readiness. Inspect the task diff and update the canonical owner when changing an invariant. Prepared-art tasks validate affected references; full playable validation is targeted, not a routine extra step.
 
 ## Asset boundaries
 
@@ -49,7 +50,7 @@ Use `npm run check` for handoff (includes one production build and `git diff --c
 - Keep gameplay and render state explicit in TypeScript. The camera is fixed isometric with follow and scroll zoom; WASD or arrows move, left click attacks, Shift dodges, B toggles Inventory, and Escape toggles Options or closes a menu.
 - Keep the encounter runnable when optional scenery is absent; report missing playable character art clearly.
 - Select animation clips only from a verified compatible rig. Gameplay uses Paladin J Nordstrom for the player and Goblin D Shareyko for the enemy, with curated Mixamo clips baked independently to each rig. The default Paladin surface uses its original authored textures; projected ImageGen surfaces are optional experiments. Original text-prompted surfaces are projected and baked locally. Use Mixamo exclusively for both the clearing and the comparison lab. Do not reintroduce the discarded animation providers. Preserve the full source catalog privately, and lazy-load only selected GLB clips.
-- After gameplay edits, use a short real-browser smoke pass covering movement, hit timing, victory, defeat, retry, and rock inspection. Combine these checks into a few player flows.
+- After gameplay edits, use one short browser interaction flow demonstrating the changed behavior. Choose the relevant portion of the optional smoke references; do not replay the entire game checklist.
 
 ## Artistic responsibility
 
@@ -72,15 +73,16 @@ Follow [the art direction](Docs/ART_DIRECTION.md) for Lantern's visual identity 
 
 ## Testing during the prototype phase
 
-- Rapid iteration is the priority. Keep only a small number of fast, high-value tests that cover broad core behavior through representative player flows.
-- Add an automated test only when it protects an important, established behavior and earns its ongoing runtime and maintenance cost. Prefer extending an existing test over adding another; do not add tests by default for every change or bug fix.
-- Defer edge cases, exhaustive input combinations, speculative failure paths, and defensive test matrices while the design is evolving. Do not pursue coverage percentages or a test count.
-- Test observable outcomes rather than implementation details. Avoid redundant assertions, snapshot churn, elaborate fixtures, and new test infrastructure for small changes. Remove or consolidate tests that duplicate coverage or constrain intentional design changes.
-- Documentation, styling, asset experiments, and other reversible low-impact changes do not need new automated tests. Use focused inspection or a brief browser check as appropriate.
-- Automated Electron checks must use `desktop:check` (or `--background`) and CDP. Do not launch visible or focusable Electron test windows while the user is working; visible runs are for explicitly requested manual review/play.
-- Run the relevant fast checks once after the final change; repeat or broaden them only for new changes or unresolved failures. Use `npm run check` before handoff; it includes the production build and `git diff --check`, so do not repeat those separately on unchanged inputs. Report any unverified core behavior.
-- Revisit this policy when Lantern moves beyond the prototype phase or gains persistent player data or public release requirements.
+- Aim for roughly 80% of effort on feature design, implementation and refinement. Sanity checks should take a small share of ordinary work; observed failures still need repair.
+- Player-facing work normally needs one representative preview session, one relevant route and normal settings. Screenshots are optional. Improve an obvious visible weakness in the same session rather than collecting a review matrix.
+- Documentation needs links and diff inspection, no browser. Internal tooling needs fast checks and one relevant observable outcome. Asset changes need inspection of the affected output and its required references.
+- Do not add tests by default. Extend an existing test only for an important established behavior that warrants lasting protection. Avoid speculative edge cases, coverage targets, elaborate fixtures, implementation assertions and new gameplay test infrastructure.
+- Run relevant checks once after the final edit. Repeat only after relevant changes or observed failures. Unrelated integration changes do not automatically invalidate visual acceptance.
+- Broad gameplay flows, alternate moods/zooms/platforms, full catalogs, benchmarks and contact sheets are optional targeted tools. Expand verification only for a concrete failure, consequential save migration, renderer/dependency initialization change, or an explicit audit/release request; briefly state why.
+- `npm run check` is the lean default. `npm run check:full` retains the full production gate. Neither automatically downloads, exports, bakes lighting, benchmarks, or runs browser matrices.
+- Automated Electron uses hidden non-focusable `desktop:check` and CDP. Managed checks use two Vitest workers; resource leases allow two lightweight checks, one heavy operation and one agent GPU inspection. Leave the user's play session alone.
+- Revisit this policy when Lantern moves beyond the prototype phase or gains public release requirements.
 
 ## Review and handoff
 
-Review the final task-owned diff and surrounding integration, including changes made concurrently. Report the completed behavior, checks actually run, limitations and unresolved findings without log or diff dumps. Separate failures in task-owned changes from unrelated or concurrent failures; never claim the combined checkout is verified if it changed during the check.
+Review the task diff and its integration, finish through automatic local promotion, and report completed behavior, the sanity check performed, and material limitations briefly. Do not claim exhaustive coverage or cross-platform performance from a sanity check.

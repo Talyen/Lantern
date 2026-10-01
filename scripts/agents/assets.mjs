@@ -1,0 +1,103 @@
+import { lstat, readdir, mkdir, rm, rename, readFile } from 'node:fs/promises';
+import { join, resolve, relative, sep } from 'node:path';
+import { createHash } from 'node:crypto';
+import { existsSync } from 'node:fs';
+import { privateCopy, privateTree } from './copy.mjs';
+import { writeJSON, saveTask } from './state.mjs';
+export async function assetIndex(directory) {
+  const result = {};
+  async function walk(path) {
+    const info = await lstat(path, { bigint: true });
+    if (info.isSymbolicLink()) throw new Error(`Runtime assets must be private files, not symlinks: ${path}`);
+    if (info.isDirectory()) { for (const name of await readdir(path)) await walk(join(path, name)); }
+    else if (info.isFile()) result[relative(directory, path)] = `${info.size}:${info.mtimeNs}:${info.ctimeNs}:${info.ino}`;
+  }
+  if (existsSync(directory)) await walk(directory);
+  return result;
+}
+export function assetIdentity(index) { return createHash('sha256').update(JSON.stringify(Object.entries(index).sort())).digest('hex'); }
+export async function fileHash(path) {
+  try { return createHash('sha256').update(await readFile(path)).digest('hex'); }
+  catch (error) { if (error.code === 'ENOENT') return null; throw error; }
+}
+export function safeAsset(base, name) {
+  const path = resolve(base, name);
+  if (!name || !path.startsWith(resolve(base) + sep)) throw new Error(`Invalid asset path: ${name}`);
+  return path;
+}
+export async function snapshotAssets(ctx, task) {
+  const vendor = join(ctx.main, 'public/vendor');
+  const local = join(task.path, 'public/vendor');
+  const baseline = join(task.path, '.local/agents/base-vendor');
+  const staging = join(task.path, '.local/agents/setup-assets');
+  if (!task.assetsStaged) {
+    await rm(staging, { recursive: true, force: true });
+    await mkdir(staging, { recursive: true });
+    if (existsSync(vendor)) { await privateTree(vendor, join(staging, 'vendor')); await privateTree(vendor, join(staging, 'base')); }
+    task.assetsStaged = true; await saveTask(ctx, task);
+  }
+  for (const [from, target] of [[join(staging, 'vendor'), local], [join(staging, 'base'), baseline]]) {
+    if (existsSync(from)) {
+      if (existsSync(target)) throw new Error(`Unexpected asset directory during setup; preserve it: ${target}`);
+      await mkdir(resolve(target, '..'), { recursive: true }); await rename(from, target);
+    }
+  }
+  task.assetIndex = await assetIndex(local); task.assetChanges = []; task.assetsPrepared = true;
+  await saveTask(ctx, task); await rm(staging, { recursive: true, force: true });
+}
+/** Hash only edited artifact paths; untouched catalogs and source archives are not rehashed. */
+export async function prepareAssets(ctx, task, mainHead, resolved = []) {
+  const local = join(task.path, 'public/vendor');
+  const baseline = join(task.path, '.local/agents/base-vendor');
+  const current = join(ctx.main, 'public/vendor');
+  const mainIdentity = assetIdentity(await assetIndex(current));
+  const index = await assetIndex(local);
+  const changed = new Set(task.assetChanges ?? []);
+  for (const name of new Set([...Object.keys(index), ...Object.keys(task.assetIndex ?? {})])) if (index[name] !== task.assetIndex?.[name]) changed.add(name);
+  const edits = [], conflicts = [];
+  for (const name of changed) {
+    const [before, mine, theirs] = await Promise.all([fileHash(safeAsset(baseline, name)), fileHash(safeAsset(local, name)), fileHash(safeAsset(current, name))]);
+    if (mine === theirs) continue;
+    if (before !== theirs && mine !== before) {
+      const acknowledged = resolved.includes(name) && task.assetConflictBase === mainHead && task.assetConflicts?.includes(name);
+      if (!acknowledged) { conflicts.push(name); continue; }
+    }
+    if (mine !== before) edits.push(name);
+  }
+  if (conflicts.length) {
+    task.assetConflicts = conflicts; task.assetConflictBase = mainHead; task.status = 'needs-asset-repair'; await saveTask(ctx, task);
+    throw new Error(`Asset conflicts: ${conflicts.join(', ')}. Reconcile/re-export these artifacts; then pass --resolved-assets with a JSON list of reviewed paths for this main revision.`);
+  }
+  // Freeze the combined asset input before checks. Preserve old task files until the swap succeeds.
+  const combined = join(task.path, '.local/agents/combined-vendor');
+  await rm(combined, { recursive: true, force: true });
+  if (existsSync(current)) await privateTree(current, combined); else await mkdir(combined, { recursive: true });
+  for (const name of edits) {
+    const target = safeAsset(combined, name);
+    await rm(target, { force: true });
+    if (existsSync(safeAsset(local, name))) await privateCopy(safeAsset(local, name), target);
+  }
+  if (assetIdentity(await assetIndex(current)) !== mainIdentity) throw new Error('Main assets changed during snapshot; retry finish.');
+  const previous = join(task.path, '.local/agents/previous-vendor');
+  await rm(previous, { recursive: true, force: true });
+  if (existsSync(local)) await rename(local, previous);
+  await mkdir(resolve(local, '..'), { recursive: true });
+  await rename(combined, local);
+  await rm(baseline, { recursive: true, force: true });
+  if (existsSync(current)) await privateTree(current, baseline);
+  task.assetIndex = await assetIndex(local); task.assetChanges = edits; task.mainAssetIdentity = mainIdentity;
+  delete task.assetConflicts; delete task.assetConflictBase;
+  await saveTask(ctx, task);
+  await rm(previous, { recursive: true, force: true });
+  return assetIdentity(task.assetIndex);
+}
+export async function retainSources(ctx, task) {
+  for (const name of ['animation-packs', 'synty-library']) {
+    const source = join(task.path, '.local', name);
+    if (!existsSync(source)) continue;
+    const archive = join(ctx.main, '.local/agent-archives', task.id, name);
+    if (existsSync(archive)) throw new Error(`Archive already exists; preserve/reconcile it before cleanup: ${archive}`);
+    await privateTree(source, archive);
+  }
+  await writeJSON(join(ctx.main, '.local/agent-archives', task.id, 'retained.json'), { task: task.id, revision: task.candidate, retained: new Date().toISOString() });
+}
