@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { git, context, writeJSON, readJSON, taskPath } from './state.mjs';
+import { git, context, writeJSON, readJSON, taskPath, spaceRequirement } from './state.mjs';
 import { startTask, finishTask, cleanupTask, recover } from './workflow.mjs';
 import { privateTree } from './copy.mjs';
 import { withResource } from './resources.mjs';
@@ -28,6 +28,8 @@ async function edit(task, name, value) { await writeFile(join(task.path, name), 
 test('four concurrent tasks land without lost work and completed cleanup preserves source archives', async () => {
   const ctx = await fixture();
   try {
+    assert.equal(spaceRequirement(ctx.main, false), 20 * 1024 ** 3);
+    assert.equal(spaceRequirement(ctx.main, true), 1024 ** 3);
     const jobs = await Promise.all(['alpha', 'bravo', 'charlie', 'delta'].map(id => startTask(ctx, id)));
     await Promise.all(jobs.map(task => edit(task, `${task.id}.txt`, `${task.id}\n`)));
     await Promise.all(jobs.map(task => finishTask(ctx, task, { paths: [`${task.id}.txt`] })));
@@ -90,6 +92,7 @@ test('native APFS clones are independent and overlapping asset changes require e
   try {
     await mkdir(join(ctx.main, 'public/vendor'), { recursive: true });
     await writeFile(join(ctx.main, 'public/vendor/model.glb'), 'original model');
+    assert.equal(spaceRequirement(ctx.main, true), 20 * 1024 ** 3);
     const first = await startTask(ctx, 'asset-first'), second = await startTask(ctx, 'asset-second');
     await writeFile(join(first.path, 'public/vendor/model.glb'), 'first model');
     assert.equal(await readFile(join(ctx.main, 'public/vendor/model.glb'), 'utf8'), 'original model');

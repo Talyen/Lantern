@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdir, readFile, writeFile, rename, readdir, statfs } from 'node:fs/promises';
@@ -45,9 +46,14 @@ export async function freeSpace(path) {
   const value = await statfs(path, { bigint: true });
   return Number(value.bavail * value.bsize);
 }
+export function spaceRequirement(path, ci = process.env.CI === 'true' || process.env.CI === '1') {
+  const privateInputs = ['public/vendor', '.local/animation-packs', '.local/synty-library'].some(name => existsSync(join(path, name)));
+  // Hosted source-only CI has a smaller disk and never prepares the private catalogs.
+  return (ci && !privateInputs ? 1 : 20) * 1024 ** 3;
+}
 export async function reserveSpace(path) {
-  const available = await freeSpace(path);
-  if (available < 20 * 1024 ** 3) throw new Error(`Large operation needs 20 GiB free; ${(available / 1024 ** 3).toFixed(1)} GiB available. Run agent:cleanup for completed tasks.`);
+  const available = await freeSpace(path), required = spaceRequirement(path);
+  if (available < required) throw new Error(`Operation needs ${required / 1024 ** 3} GiB free; ${(available / 1024 ** 3).toFixed(1)} GiB available. Run agent:cleanup for completed tasks.`);
   return available;
 }
 export async function processIdentity(pid) {
