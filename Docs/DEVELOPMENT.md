@@ -43,11 +43,13 @@ Worktrees stay on main's filesystem. Native macOS `clonefile` creates independen
 
 Prepared `public/vendor` assets are privately cloned at task creation. Run `npm run agent:sources -- --sources animation-packs,synty-library` only for source directories the asset task needs. Never copy `.local` wholesale or install dependencies in another task. Matching lockfile/runtime dependencies are cloned; changed dependencies trigger owned `npm ci`.
 
+The October 1 demonstration measured about 57 MiB of tracked source per worktree and 2.4 GiB of prepared vendor files as logical clones. Roughly 17 GiB of original sources remain lazy and are prepared only for asset work. Initial task setup took 18.5/18.1 seconds before the clone-helper optimization; subsequent setups took 13.6/11.3 seconds. Background disk activity was present, so these observations are neither guaranteed setup timings nor precise physical storage costs per task.
+
 Finish combines current main assets with task-edited artifacts before checking. Overlapping different outputs return `needs-asset-repair`. Reconcile/re-export them against main, then provide `--resolved-assets <json-file>` naming the reviewed conflicted vendor-relative paths. That acknowledgement is bound to the recorded main revision; main moving requires another reconciliation. Unchanged source archives are not repeatedly hashed.
 
 Automatic limits are four task worktrees, two lightweight check jobs (two Vitest workers each), one heavy build/export/install, and one agent GPU-review session. These limits do not close or change the user's own play session. Previews start on demand; closing them releases the GPU resource. Level capture/measure/bake operations borrow their verified owned authoring session's lease.
 
-Large operations require 20 GiB available disk. Clean completed task outputs before retrying when space is low; preserve unfinished tasks and source archives. Staging and production public files also use native clones. Successful check evidence replaces older successful evidence; failure evidence is retained. Captures replace the same task/view output rather than collecting a settings matrix.
+Large operations require 20 GiB available disk; admission also refuses a fifth live worktree. If disk space or task slots are exhausted, the agent runs `agent:status`, cleans completed tasks with `agent:cleanup`, and retries without asking the user to manage resources. Preserve unfinished tasks and source archives. Cleanup retains successful/failure check evidence and preview logs alongside private sources in `.local/agent-archives/<slug>/`. Staging and production public files also use native clones. Successful check evidence replaces older successful evidence; failure evidence is retained. Captures replace the same task/view output rather than collecting a settings matrix.
 
 ### Migration
 
