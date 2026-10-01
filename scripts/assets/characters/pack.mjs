@@ -16,7 +16,7 @@ export function packCharacter(characterUrl, catalogPath, output) {
   }
   const catalog = JSON.parse(readFileSync(catalogPath, 'utf8'));
   const pack = catalog.packs.find((p) => p.id === 'mixamo');
-  if (!pack) throw new Error('Export Mixamo in the animation lab first.');
+  if (!pack) throw new Error('Prepare compatible Mixamo motions first.');
   const { json: character, bin } = readGlb(resolve(root, 'public', characterUrl.slice(1)));
   const buffers = [bin];
   const nodes = new Map(character.nodes.map((node, index) => [node.name, index]));

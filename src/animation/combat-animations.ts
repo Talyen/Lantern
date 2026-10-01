@@ -10,9 +10,7 @@ export type AnimationRole = Motion | 'backward' | 'left' | 'right' | 'blockForwa
 export type MotionClip = { id: string; name: string; description?: string; category: string; url: string; duration: number; contact?: number; speed?: number; sourceId?: string; audit?: boolean; phaseOffset?: number };
 export type MotionPack = { id: string; label: string; clips: MotionClip[] };
 export type MotionCatalog = { version: number; packs: MotionPack[]; defaults: Record<AnimationRole, string>; profiles: Record<string, Partial<Record<AnimationRole, string>>> };
-export type MotionChoice = { pack: MotionPack; clip: MotionClip; value: string };
-export type MotionSelection = Record<MotionState, string>;
-export type CombatMotions = { clips: Record<MotionState, THREE.AnimationClip> & Partial<Record<AnimationRole, THREE.AnimationClip>>; contacts: number[]; runSpeed: number; speeds: Partial<Record<AnimationRole, number>>; chopContact: number; phases: Partial<Record<AnimationRole, number>>; choices: Record<MotionState, MotionChoice> };
+export type CombatMotions = { clips: Record<MotionState, THREE.AnimationClip> & Partial<Record<AnimationRole, THREE.AnimationClip>>; contacts: number[]; runSpeed: number; speeds: Partial<Record<AnimationRole, number>>; chopContact: number; phases: Partial<Record<AnimationRole, number>> };
 const cache = new Map<string, Promise<THREE.AnimationClip>>();
 const catalogs = new Map<string, Promise<MotionCatalog>>();
 export function getMotionCatalog(who: ActorId): Promise<MotionCatalog> {
@@ -25,51 +23,38 @@ export function getMotionCatalog(who: ActorId): Promise<MotionCatalog> {
   }).catch(error => { catalogs.delete(url); throw error; }));
   return catalogs.get(url)!;
 }
-export function stateChoices(catalog: MotionCatalog, packId: string, state: MotionState): MotionChoice[] {
-  const pack = catalog.packs.find(item => item.id === packId);
-  return (pack?.clips.filter(clip => clip.category === state && !clip.audit) ?? []).map(clip => ({ pack: pack!, clip, value: `${pack!.id}:${clip.id}` }));
-}
-export function defaultSelection(catalog: MotionCatalog, packId: string): MotionSelection {
-  return Object.fromEntries(motionStates.map(state => {
-    const match = stateChoices(catalog, packId, state).find(choice => choice.clip.id === catalog.defaults[state]);
-    if (!match) throw new Error(`Missing curated ${state} motion`);
-    return [state, match.value];
-  })) as MotionSelection;
-}
-async function loadClip(loader: GLTFLoader, choice: MotionChoice): Promise<THREE.AnimationClip> {
-  const url = choice.clip.url;
+async function loadClip(loader: GLTFLoader, clip: MotionClip): Promise<THREE.AnimationClip> {
+  const url = clip.url;
   if (!cache.has(url)) cache.set(url, loader.loadAsync(url).then(gltf => {
-    if (gltf.animations.length !== 1) throw new Error(`Invalid motion: ${choice.clip.name}`);
+    if (gltf.animations.length !== 1) throw new Error(`Invalid motion: ${clip.name}`);
     return gltf.animations[0];
   }).catch((error: unknown) => { cache.delete(url); throw error; }));
   return (await cache.get(url)!).clone();
 }
-export async function loadCombatMotions(loader: GLTFLoader, catalog: MotionCatalog, packId: string, selection: MotionSelection, roles: Partial<Record<AnimationRole, string>> = catalog.defaults): Promise<CombatMotions> {
-  const pack = catalog.packs.find(item => item.id === packId);
-  if (!pack) throw new Error('Mixamo catalog unavailable');
-  const choices = Object.fromEntries(motionStates.map(state => {
-    const choice = stateChoices(catalog, packId, state).find(item => item.value === selection[state]);
-    if (!choice) throw new Error(`Unavailable ${state} motion`);
-    return [state, choice];
-  })) as Record<MotionState, MotionChoice>;
-  const all: Partial<Record<AnimationRole, MotionChoice>> = { ...choices };
-  for (const role of ['dodge', 'block', 'chop', 'backward', 'left', 'right', 'blockForward', 'blockBackward', 'blockLeft', 'blockRight', 'grip'] as const) {
-    const clip = pack.clips.find(item => item.id === roles[role]);
-    if (clip) all[role] = { pack, clip, value: `${pack.id}:${clip.id}` };
-  }
-  const clips = Object.fromEntries(await Promise.all(Object.entries(all).map(async ([role, choice]) => {
-    const clip = await loadClip(loader, choice); clip.name = role; return [role, clip];
-  }))) as CombatMotions['clips'];
-  const contact = choices.attack.clip.contact;
-  if (contact === undefined || contact <= 0 || contact >= clips.attack.duration) throw new Error('Attack has no reviewed contact marker. Prepare the curated motion profiles.');
-  return { clips, contacts: [contact], runSpeed: choices.run.clip.speed ?? 4, speeds: Object.fromEntries(Object.entries(all).map(([role, choice]) => [role, choice.clip.speed ?? 4])), chopContact: all.chop?.clip.contact ?? .32, phases: Object.fromEntries(Object.entries(all).map(([role,choice])=>[role,choice.clip.phaseOffset ?? 0])), choices };
-}
 export async function loadEquipmentMotions(loader: GLTFLoader, who: ActorId, loadout: Loadout): Promise<CombatMotions> {
   const catalog = await getMotionCatalog(who);
   const profile = catalog.profiles[`${loadout.main ?? 'unarmed'}${loadout.off ? '-shield' : ''}`];
-  if (!profile) throw new Error('Compatible weapon motions are unavailable.');
-  const selection = Object.fromEntries(motionStates.map(role => [role, `mixamo:${profile[role]}`])) as MotionSelection;
-  const motions=await loadCombatMotions(loader,catalog,'mixamo',selection,profile);
+  const pack = catalog.packs.find(item => item.id === 'mixamo');
+  if (!profile || !pack) throw new Error('Compatible weapon motions are unavailable.');
+  const base = Object.fromEntries(motionStates.map(role => {
+    const clip = pack.clips.find(item => item.id === profile[role] && item.category === role && !item.audit);
+    if (!clip) throw new Error(`Unavailable ${role} motion`);
+    return [role, clip];
+  })) as Record<MotionState, MotionClip>;
+  const all: Partial<Record<AnimationRole, MotionClip>> = { ...base };
+  for (const role of ['dodge', 'block', 'chop', 'backward', 'left', 'right', 'blockForward', 'blockBackward', 'blockLeft', 'blockRight', 'grip'] as const) {
+    const clip = pack.clips.find(item => item.id === profile[role]);
+    if (clip) all[role] = clip;
+  }
+  const clips = Object.fromEntries(await Promise.all(Object.entries(all).map(async ([role, source]) => {
+    const clip = await loadClip(loader, source); clip.name = role; return [role, clip];
+  }))) as CombatMotions['clips'];
+  const contact = base.attack.contact;
+  if (contact === undefined || contact <= 0 || contact >= clips.attack.duration) throw new Error('Attack has no reviewed contact marker. Prepare the curated motion profiles.');
+  const motions: CombatMotions = { clips, contacts: [contact], runSpeed: base.run.speed ?? 4,
+    speeds: Object.fromEntries(Object.entries(all).map(([role, source]) => [role, source.speed ?? 4])),
+    chopContact: all.chop?.contact ?? .32,
+    phases: Object.fromEntries(Object.entries(all).map(([role, source]) => [role, source.phaseOffset ?? 0])) };
   if (loadout.main==='staff') {
     const gripPose = motions.clips.grip;
     if (!gripPose) throw new Error('Compatible staff grip is unavailable. Prepare the curated motion profiles.');

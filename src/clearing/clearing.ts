@@ -27,7 +27,6 @@ import { makeActor, play, attachCharacter, installMotions, updateActor, duration
 import { createInput } from './input';
 import { createCamera } from './camera';
 import { createHud } from '../ui/hud';
-import { createMotionOptions } from '../ui/motion-options';
 import characters from '../../assets/playable-characters.json';
 import { loadEquipmentMotions } from '../animation/combat-animations';
 import { normalizeLoadout, type Loadout } from '../gameplay/equipment';
@@ -115,7 +114,7 @@ async function changeEquipment(requested: Loadout, save = true): Promise<void> {
     if (loadout.main === 'bow') await projectileVisuals.prepareArrow();
     candidate = await playerEquipment.stage(loadout);
     const prepared = await loadEquipmentMotions(loader,'player',loadout);
-    installMotions(player,prepared); motions.reflect(prepared); playerEquipment.commit(candidate); candidate=undefined;
+    installMotions(player,prepared); playerEquipment.commit(candidate); candidate=undefined;
     if (save) adventure.commitEquipment(loadout);
     applyLoadoutState(); encounter.player.lock=0; encounter.player.attackTime=-1; encounter.attackCooldown=0;
     play(player,'idle'); menus.updateCharacter(adventure.character);
@@ -125,16 +124,11 @@ async function changeEquipment(requested: Loadout, save = true): Promise<void> {
 let inspecting = false;
 const input = createInput(renderer.domElement, startAttack, startDodge, interact, openInventory, toggleOptions, () => { encounter.pending=null; encounter.blocking=false; cancelChop(); });
 const menus = new AdventureMenus(clearInput, () => renderer.domElement.focus(), () => { if (!paused()) adventure.beginCast(encounter.player.hp > 0); }, { change: changeEquipment });
-const hud = createHud(() => { if (!motions.loading && !transitioning) void changeArea(homeArea, undefined, true, definitions.homestead.layout.player, true); }, inspect);
+const hud = createHud(() => { if (!equipmentLoading && !transitioning) void changeArea({ kind: 'travel', area: homeArea, transition: true, spawn: definitions.homestead.layout.player, recover: true }); });
 const loader = new GLTFLoader();
-const motions = createMotionOptions(loader, {
-  enemyLoadout,
-  clearInput, setRetryEnabled: hud.setRetryEnabled,
-  install: (who, clips) => installMotions(who === 'player' ? player : enemy, clips), reset,
-});
 function inspect(): void {
   if (!currentArea.inspection) return;
-  clearInput(); inspecting = !inspecting; hud.setInspection(inspecting);
+  clearInput(); inspecting = !inspecting;
   cameraOwner.inspect(inspecting, { x: currentArea.inspection?.position[0] ?? 0, z: currentArea.inspection?.position[1] ?? 0 }); graphics?.resetHistory();
   if (inspecting) cameraOwner.suspendFollow();
   else if (!fixedCamera) cameraOwner.resetFollow(player.root.position);
@@ -205,15 +199,15 @@ function interact(): void {
     menus.openTravel(adventure.destinations(definitions).map(({ area, fire, available }) => ({ name: fire.name, available,
       travel: () => {
         const allowed = () => adventure.canTravel(encounter, sourceArea, sourceFire, area, fire);
-        if (allowed()) void changeArea(area.id, undefined, true, fire.arrival, false, allowed);
+        if (allowed()) void changeArea({ kind: 'travel', area: area.id, transition: true, spawn: fire.arrival, canCommit: allowed });
       },
     })));
   } else if (target?.type === 'tree') beginChop(target.tree);
   else if (target?.type === 'chest') adventure.openChest(encounter, currentArea, target.chest);
   else if (target?.type === 'portal' && adventure.portal) {
     const link = adventure.portal;
-    if (currentArea.id === homeArea) void changeArea(link.area, undefined, true, link.departure).then(ok => { if (ok && adventure.portal === link) { adventure.portal = null; syncAdventure(); } });
-    else void changeArea(homeArea, undefined, true, definitions.homestead.portalArrival);
+    if (currentArea.id === homeArea) void changeArea({ kind: 'travel', area: link.area, transition: true, spawn: link.departure }).then(ok => { if (ok && adventure.portal === link) { adventure.portal = null; syncAdventure(); } });
+    else void changeArea({ kind: 'travel', area: homeArea, transition: true, spawn: definitions.homestead.portalArrival });
   }
 }
 function syncAdventure(): void {
@@ -225,7 +219,7 @@ function syncAdventure(): void {
   menus.update(adventure.character.scrolls, currentArea.id !== homeArea && encounter.player.hp > 0 && adventure.character.scrolls > 0 && adventure.castRemaining === 0, prompt, adventure.castRemaining);
   document.getElementById('save-status')!.textContent = adventure.saveError;
 }
-function paused(): boolean { return Boolean(clearingEnemy === 'caster' && characterMissing || options?.paused || menus.paused || equipmentLoading || inspecting || motions.loading || graphics?.preparingSettings || frozen || transitioning); }
+function paused(): boolean { return Boolean(clearingEnemy === 'caster' && characterMissing || options?.paused || menus.paused || equipmentLoading || inspecting || graphics?.preparingSettings || frozen || transitioning); }
 function timings(): Timings {
   const timing = (actor: Actor) => ({ attack: duration(actor, 'attack'), hit: duration(actor, 'hit'), contacts: actor.contacts });
   return { player: timing(player), enemy: timing(enemy) };
@@ -311,7 +305,7 @@ function updateGame(dt: number): void {
   hud.update(encounter, []);
   if (!paused() && encounter.phase !== 'lost' && encounter.phase !== 'loading' && adventure.castRemaining === 0) {
     const gate = travel.check(currentArea.gates, [encounter.player.x, encounter.player.z]);
-    if (gate) void changeArea(gate.destination.area, gate.destination.gate, true);
+    if (gate) void changeArea({ kind: 'travel', area: gate.destination.area, arrivalId: gate.destination.gate, transition: true });
   }
 }
 function resize(): void {
@@ -348,25 +342,20 @@ function tick(now: number): void {
   if (active && !transitioning) renderedRevision = revision;
   for (const frame of [...frames]) if (--frame.left <= 0) { frames.splice(frames.indexOf(frame), 1); frame.resolve(); }
 }
-await Promise.all([(async () => {
-  try {
-    const requestedVariant = renderQuery.get('paladin') ?? characters.player.defaultVariant;
-    const variants = characters.player.variants;
-    const selectedVariant = (Object.hasOwn(variants, requestedVariant) ? requestedVariant : characters.player.defaultVariant) as keyof typeof variants;
-    const playerUrl = variants[selectedVariant];
-    const [paladin, goblin] = await Promise.all([loader.loadAsync(playerUrl), loader.loadAsync(characters.enemy.model)]);
-    attachCharacter(player, paladin.scene, paladin.animations, characters.player.height);
-    attachCharacter(enemy, goblin.scene, goblin.animations, characters.enemy.height);
-    renderer.domElement.dataset.characters = JSON.stringify({ player: characters.player.name, variant: selectedVariant, enemy: characters.enemy.name });
-    reset();
-    await motions.initialize();
-    await changeEquipment(adventure.character.loadout,false);
-    const goblinEquipment=await enemyEquipment.stage(enemyLoadout); enemyEquipment.commit(goblinEquipment);
-  } catch (error) {
-    characterMissing = true; hud.characterUnavailable();
-    console.error(error);
-  }
-})()]);
+try {
+  const [paladin, goblin] = await Promise.all([loader.loadAsync(characters.player.model), loader.loadAsync(characters.enemy.model)]);
+  attachCharacter(player, paladin.scene, paladin.animations, characters.player.height);
+  attachCharacter(enemy, goblin.scene, goblin.animations, characters.enemy.height);
+  renderer.domElement.dataset.characters = JSON.stringify({ player: characters.player.name, enemy: characters.enemy.name });
+  await changeEquipment(adventure.character.loadout, false);
+  const goblinMotions = await loadEquipmentMotions(loader, 'enemy', enemyLoadout);
+  installMotions(enemy, goblinMotions);
+  const goblinEquipment = await enemyEquipment.stage(enemyLoadout); enemyEquipment.commit(goblinEquipment);
+  reset();
+} catch (error) {
+  characterMissing = true; hud.characterUnavailable();
+  console.error(error);
+}
 
 {
   const [{ Graphics }, { CoreEffects }, { Options }] = await Promise.all([
@@ -378,23 +367,23 @@ await Promise.all([(async () => {
   options = new Options({
     apply: settings => graphics?.apply(settings), flushSettings: () => graphics?.flushSettings(),
     resetMeasurements: () => graphics?.resetMeasurements(), clearInput,
-    focus: () => renderer.domElement.focus(), resetEncounter: reset, inspect,
+    focus: () => renderer.domElement.focus(),
   });
   graphics = new Graphics({ scene, camera, renderer, controls, sun, ambient, mount, lighting }, options.settings, effects);
   window.addEventListener('pagehide', () => { graphics?.dispose(); personalLantern?.dispose(); playerEquipment.dispose(); enemyEquipment.dispose(); projectileVisuals.dispose(); casterVisuals.dispose(); adventureVisuals?.dispose(); active?.dispose(); movementWorld?.dispose(); renderer.dispose(); void disposeAreaCache(); }, { once: true });
   resize();
   await graphics.initialize();
   requestAnimationFrame(tick);
-  await changeArea(currentArea.id);
+  await changeArea({ kind: 'travel', area: currentArea.id });
   if (import.meta.env.DEV && renderQuery.get('author') === 'levels') {
     const { attachAuthoring } = await import('../levels/authoring');
     attachAuthoring({ scene, camera, renderer, definitions: () => definitions, area: () => currentArea, encounter,
       lightingProfiles: lightingProfileOptions, lightingModes: () => supportedLightingModes(effectiveArea(currentArea).lighting),
       exportLighting: () => graphics!.exportLighting(), lighting: () => graphics!.lightingDiagnostics(),
-      changeArea, waitFrames, setFrozen: freezePreview, setView: previewView,
+      changeArea: id => changeArea({ kind: 'travel', area: id }), restart: reset, inspect: () => { inspect(); return inspecting; }, waitFrames, setFrozen: freezePreview, setView: previewView,
       appearance: () => ({ lighting: mood.mode, forcedLighting, profile: forcedProfile, lantern: lanternEnabled, surfaces: surfaceMode }),
       setAppearance: changeAppearance,
-      diagnostics: () => ({ lightingMode: mood.mode, lightingProfile: forcedProfile ?? ('profile' in currentArea.lighting ? currentArea.lighting.profile : 'authored'), lantern: personalLantern?.diagnostics(), surfaces: surfaceMode, area: currentArea.id, revision, renderedRevision, ready: !!active && renderedRevision === revision && !transitioning && !motions.loading && !areaErrors.length && !mount.dataset.renderError, errors: [...areaErrors, ...(mount.dataset.renderError ? [mount.dataset.renderError] : [])], missing: [...(active?.missing ?? []), ...(characterMissing ? ['character'] : [])], contentHash, settings: options!.settings, backend: 'webgpu', updateMs, renderedFrames, phase: encounter.phase, equipment: playerEquipment.diagnostics(), harvest: {chopping: chopping?.tree.id ?? null, trees: active?.trees.map(tree=>({...tree,...harvesting.state(currentArea.id,tree.id)}))}, adventure: { character: adventure.character, portal: adventure.portal, castRemaining: adventure.castRemaining, drops: adventure.session(currentArea.id).drops, chests: adventure.session(currentArea.id).chests, fires: (currentArea.campfires ?? []).map(fire => ({ id: fire.id, safe: adventure.fireSafe(currentArea, fire, encounter) })) }, encounter: { enemyKind: encounter.enemyKind, enemyEquipment: enemyEquipment.diagnostics(), player: { ...encounter.player }, enemy: { ...encounter.enemy }, engaged: encounter.engaged, returning: encounter.returning, playerMana: encounter.playerMana, dodgeRemaining: encounter.dodgeRemaining, dodgeCooldown: encounter.dodgeCooldown, blocking: encounter.blocking, projectiles: encounter.projectiles, pending: encounter.pending, animations: { player: player.current, enemy: enemy.current }, navigationReady: movementWorld?.navigationReady ?? false, navigationMs: movementWorld?.generationMs ?? 0 }, camera: { position: camera.position.toArray(), target: controls.target.toArray(), zoom: camera.zoom, viewport: [mount.clientWidth, mount.clientHeight] }, objects: active?.root.children.length ?? 0, resources: { memory: { ...renderer.info.memory }, drawCalls: renderer.info.render.drawCalls, triangles: renderer.info.render.triangles }, graphics: renderer.domElement.dataset.graphics ? JSON.parse(renderer.domElement.dataset.graphics) : null }),
+      diagnostics: () => ({ lightingMode: mood.mode, lightingProfile: forcedProfile ?? ('profile' in currentArea.lighting ? currentArea.lighting.profile : 'authored'), lantern: personalLantern?.diagnostics(), surfaces: surfaceMode, area: currentArea.id, revision, renderedRevision, ready: !!active && renderedRevision === revision && !transitioning && !areaErrors.length && !mount.dataset.renderError, errors: [...areaErrors, ...(mount.dataset.renderError ? [mount.dataset.renderError] : [])], missing: [...(active?.missing ?? []), ...(characterMissing ? ['character'] : [])], contentHash, settings: options!.settings, backend: 'webgpu', updateMs, renderedFrames, phase: encounter.phase, equipment: playerEquipment.diagnostics(), harvest: {chopping: chopping?.tree.id ?? null, trees: active?.trees.map(tree=>({...tree,...harvesting.state(currentArea.id,tree.id)}))}, adventure: { character: adventure.character, portal: adventure.portal, castRemaining: adventure.castRemaining, drops: adventure.session(currentArea.id).drops, chests: adventure.session(currentArea.id).chests, fires: (currentArea.campfires ?? []).map(fire => ({ id: fire.id, safe: adventure.fireSafe(currentArea, fire, encounter) })) }, encounter: { enemyKind: encounter.enemyKind, enemyEquipment: enemyEquipment.diagnostics(), player: { ...encounter.player }, enemy: { ...encounter.enemy }, engaged: encounter.engaged, returning: encounter.returning, playerMana: encounter.playerMana, dodgeRemaining: encounter.dodgeRemaining, dodgeCooldown: encounter.dodgeCooldown, blocking: encounter.blocking, projectiles: encounter.projectiles, pending: encounter.pending, animations: { player: player.current, enemy: enemy.current }, navigationReady: movementWorld?.navigationReady ?? false, navigationMs: movementWorld?.generationMs ?? 0 }, camera: { position: camera.position.toArray(), target: controls.target.toArray(), zoom: camera.zoom, viewport: [mount.clientWidth, mount.clientHeight] }, objects: active?.root.children.length ?? 0, resources: { memory: { ...renderer.info.memory }, drawCalls: renderer.info.render.drawCalls, triangles: renderer.info.render.triangles }, graphics: renderer.domElement.dataset.graphics ? JSON.parse(renderer.domElement.dataset.graphics) : null }),
     });
   }
 
@@ -419,11 +408,19 @@ async function changeAppearance(appearance: { lighting?: LightingMode | 'random'
   if (appearance.lantern !== undefined && Object.keys(appearance).length === 1) { lanternEnabled = appearance.lantern; personalLantern?.setEnabled(lanternEnabled); return true; }
   const requestedLantern = appearance.lantern ?? (appearance.profile === 'woodland-night' ? true : lanternEnabled);
   const requestedLighting = appearance.lighting === 'random' ? undefined : appearance.lighting ?? forcedLighting;
-  return changeArea(currentArea.id, undefined, false, { position: [encounter.player.x, encounter.player.z], yaw: encounter.player.yaw }, false, undefined,
-    { lantern: requestedLantern, forcedLighting: requestedLighting, forcedProfile: requestedProfile, surfaces: appearance.surfaces ?? surfaceMode, retain: true });
+  return changeArea({ kind: 'refresh', spawn: { position: [encounter.player.x, encounter.player.z], yaw: encounter.player.yaw },
+    appearance: { lantern: requestedLantern, forcedLighting: requestedLighting, forcedProfile: requestedProfile, surfaces: appearance.surfaces ?? surfaceMode } });
 }
 function defaultPreviewZoom(): number { return currentArea.envelope.reference.zoom; }
-async function changeArea(id: string, arrivalId?: string, transition = false, spawn?: Spawn, recover = false, canCommit?: () => boolean, appearance?: { lantern?: boolean; forcedProfile?: LightingProfileId; forcedLighting?: LightingMode; surfaces?: SurfaceMode; retain?: boolean }): Promise<boolean> {
+type AreaAppearance = { lantern?: boolean; forcedProfile?: LightingProfileId; forcedLighting?: LightingMode; surfaces?: SurfaceMode };
+type AreaChange =
+  | { kind: 'travel'; area: string; arrivalId?: string; transition?: boolean; spawn?: Spawn; recover?: boolean; canCommit?: () => boolean }
+  | { kind: 'refresh'; spawn?: Spawn; appearance?: AreaAppearance };
+async function changeArea(change: AreaChange): Promise<boolean> {
+  const id = change.kind === 'travel' ? change.area : currentArea.id;
+  const { arrivalId, transition = false, recover = false, canCommit } = change.kind === 'travel' ? change : {};
+  const appearance = change.kind === 'refresh' ? change.appearance : undefined;
+  const spawn = change.spawn;
   const started = performance.now(), request = ++generation, next = definitions[id];
   const errors = validateDefinitions(definitions);
   if (!next || errors.length) { transitioning = false; fade.style.opacity = '0'; areaErrors = errors.length ? errors : [`Unknown area: ${id}`]; return false; }
@@ -431,7 +428,7 @@ async function changeArea(id: string, arrivalId?: string, transition = false, sp
   const nextSurfaces = appearance?.surfaces ?? surfaceMode;
   const nextProfile = appearance && 'forcedProfile' in appearance ? appearance.forcedProfile : forcedProfile;
   const effective = effectiveArea(next, nextProfile), supportedModes = supportedLightingModes(effective.lighting), entryModes = entryLightingModesFor(effective.lighting);
-  const retain = !!(appearance?.retain || frozen && active?.area.id === id);
+  const retain = !!(change.kind === 'refresh' || frozen && active?.area.id === id);
   const nextMode = nextForced && supportedModes.includes(nextForced) ? nextForced : retain && supportedModes.includes(mood.mode) ? mood.mode : entryModes.length ? mood.choose(false, entryModes) : defaultLightingModeFor(effective.lighting);
   const resolved = { ...next, lighting: resolveLightingFor(effective, nextMode) };
   const savedView = frozen && active?.area.id === id ? { target: controls.target.clone(), zoom: camera.zoom } : null;
@@ -456,12 +453,11 @@ async function changeArea(id: string, arrivalId?: string, transition = false, sp
     adventure.enter(encounter, next, spawn ?? arrival?.arrival ?? next.layout.player, recover);
     adventureVisuals = new AdventureVisuals(candidate.root);
     if (arrival) travel.arrive(arrival.id);
-    inspecting = false; hud.setInspection(false); resetPresentation();
-    document.getElementById('options-inspect')!.hidden = !next.inspection;
+    inspecting = false; resetPresentation();
     syncAdventure(); cameraOwner.inspect(false, { x: 0, z: 0 });
     cameraOwner.resetFollow(player.root.position);
     graphics!.apply(options!.settings); graphics!.resetSceneTime(); revision++; contentHash = hash; areaErrors = [];
-    hud.environmentLoaded(candidate.missing.length ? 0 : 3, !!next.inspection);
+    hud.environmentLoaded(candidate.missing.length ? 0 : 3);
     if (characterMissing) hud.characterUnavailable(); else hud.setAssetStatus(candidate.missing.length ? `Missing art: ${candidate.missing.join(', ')}.` : '');
     if (frozen) freezePreview(true);
     if (savedView) { controls.target.copy(savedView.target); camera.position.copy(controls.target).add(new THREE.Vector3(...cameraOffset)); camera.zoom = savedView.zoom; camera.updateProjectionMatrix(); controls.update(); }
@@ -474,7 +470,7 @@ if (import.meta.hot) import.meta.hot.accept('../levels/registry', async module =
   if (!module) return;
   const errors = validateDefinitions(module.areas);
   if (errors.length) { generation++; transitioning = false; fade.style.opacity = '0'; areaErrors = errors; return; }
-  definitions = module.areas; await changeArea(currentArea.id, undefined, false, undefined, false, undefined, { retain: true });
+  definitions = module.areas; await changeArea({ kind: 'refresh' });
 });
 
 if (import.meta.hot) import.meta.hot.on('vite:error', payload => { generation++; transitioning = false; fade.style.opacity = '0'; areaErrors = [payload.err.message]; });
@@ -482,15 +478,15 @@ if (import.meta.hot) import.meta.hot.on('vite:error', payload => { generation++;
 if (import.meta.hot) import.meta.hot.accept('../levels/lighting', async module => {
   if (!module) return;
   resolveLightingFor = module.resolveAreaLighting; supportedLightingModes = module.lightingModesFor;
-  await changeArea(currentArea.id, undefined, false, undefined, false, undefined, { retain: true });
+  await changeArea({ kind: 'refresh' });
 });
 
 if (import.meta.hot) import.meta.hot.accept('../levels/validation', async module => {
   if (!module) return;
   validateDefinitions = module.validateAreas;
-  await changeArea(currentArea.id, undefined, false, undefined, false, undefined, { retain: true });
+  await changeArea({ kind: 'refresh' });
 });
 
 if (import.meta.hot) window.addEventListener('lightingprofileschanged', () => {
-  void changeArea(currentArea.id, undefined, false, undefined, false, undefined, { retain: true });
+  void changeArea({ kind: 'refresh' });
 });

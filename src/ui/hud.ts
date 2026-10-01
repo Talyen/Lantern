@@ -2,10 +2,9 @@ import * as THREE from 'three';
 import { playerMaxHealth, enemyMaxHealth, playerMaxMana, type Encounter, type EncounterEvent } from '../gameplay/encounter';
 import './orbs.css';
 
-export function createHud(onRetry: () => void, onInspect: () => void) {
+export function createHud(onRetry: () => void) {
   const element = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
   const status = element<HTMLParagraphElement>('asset-status');
-  const rockFocus = element<HTMLButtonElement>('rock-focus');
   const playerHealth = element<HTMLDivElement>('player-health');
   const playerMana = element<HTMLDivElement>('player-mana');
   const enemyHealth = element<HTMLDivElement>('enemy-health');
@@ -28,7 +27,6 @@ export function createHud(onRetry: () => void, onInspect: () => void) {
     retry.hidden = won; resultPanel.hidden = false;
   }
   retry.addEventListener('click', onRetry);
-  rockFocus.addEventListener('click', onInspect);
   return {
     update(encounter: Encounter, events: EncounterEvent[]) {
       for (const event of events) {
@@ -50,9 +48,7 @@ export function createHud(onRetry: () => void, onInspect: () => void) {
     setSafe(value: boolean) { safe = value; if (safe) enemyHealth.hidden = true; },
     dismissResult: () => { resultPanel.hidden = true; },
     reset: () => { resultPanel.hidden = true; damagedFor = 0; enemyHealth.hidden = true; },
-    setRetryEnabled: (enabled: boolean) => { retry.disabled = !enabled; },
-    setInspection: (active: boolean) => { rockFocus.hidden = !active; rockFocus.textContent = 'Return'; },
-    environmentLoaded(count: number, rocks: boolean) { status.textContent = count === 3 ? '' : 'Missing environment art.'; rockFocus.disabled = !rocks; },
+    environmentLoaded(count: number) { status.textContent = count === 3 ? '' : 'Missing environment art.'; },
     characterUnavailable() { status.textContent = 'Character art unavailable. Run npm run assets:export-character to prepare playable art.'; },
     setAssetStatus: (message: string) => { status.textContent = message; },
   };

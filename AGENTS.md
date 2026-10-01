@@ -29,7 +29,7 @@ Use `npm run check` for a fast sanity check; `agent:finish` runs it on the integ
 
 - Keep licensed Synty and Mixamo source files under ignored `.local/`. Keep exported character, terrain, and Synty GLBs under ignored `public/vendor/`. Do not commit or distribute these files as standalone assets.
 - Original text-prompted ImageGen surfaces may live under tracked `assets/textures/`. Do not send Synty models, textures, or renders to image generation tools. Project and bake locally.
-- Check the applicable purchase terms and the contents of `dist/` before any public web deployment; Build staging selects explicit library IDs and copies other vendor directories wholesale; inspect `.local/build-inventory.json`.
+- Check the applicable purchase terms and the contents of `dist/` before any public web deployment; Build staging selects explicit library IDs and referenced gameplay art; inspect `.local/build-inventory.json`.
 
 ## Rendering invariant
 
@@ -49,7 +49,7 @@ Use `npm run check` for a fast sanity check; `agent:finish` runs it on the integ
 
 - Keep gameplay and render state explicit in TypeScript. The camera is fixed isometric with follow and scroll zoom; WASD or arrows move, left click attacks, Shift dodges, B toggles Inventory, and Escape toggles Options or closes a menu.
 - Keep the encounter runnable when optional scenery is absent; report missing playable character art clearly.
-- Select animation clips only from a verified compatible rig. Gameplay uses Paladin J Nordstrom for the player and Goblin D Shareyko for the enemy, with curated Mixamo clips baked independently to each rig. The default Paladin surface uses its original authored textures; projected ImageGen surfaces are optional experiments. Original text-prompted surfaces are projected and baked locally. Use Mixamo exclusively for both the clearing and the comparison lab. Do not reintroduce the discarded animation providers. Preserve the full source catalog privately, and lazy-load only selected GLB clips.
+- Select animation clips only from a verified compatible rig. Gameplay uses Paladin J Nordstrom for the player and Goblin D Shareyko for the enemy, with curated Mixamo clips baked independently to each rig. The playable Paladin uses its original authored textures; retired palette experiments remain privately archived. Original text-prompted surfaces are projected and baked locally. Use Mixamo exclusively for both the clearing and the comparison lab. Do not reintroduce the discarded animation providers. Preserve the full source catalog privately, and lazy-load only selected GLB clips.
 - After gameplay edits, use one short browser interaction flow demonstrating the changed behavior. Choose the relevant portion of the optional smoke references; do not replay the entire game checklist.
 
 ## Artistic responsibility

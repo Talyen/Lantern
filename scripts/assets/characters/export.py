@@ -9,7 +9,7 @@ from pathlib import Path
 import bpy
 
 ROOT = Path(__file__).resolve().parents[3]
-spec = importlib.util.spec_from_file_location('motion_baker', ROOT / 'scripts/assets/mixamo/export-animation-lab.py')
+spec = importlib.util.spec_from_file_location('motion_baker', ROOT / 'scripts/assets/mixamo/baker.py')
 baker = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(baker)
 OUTPUT = ROOT / 'public/vendor/character-gallery'

@@ -1,4 +1,4 @@
-import { open, readFile, readdir, stat } from 'node:fs/promises';
+import { open, readFile, readdir, stat, lstat } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { resolve, relative, sep, extname, dirname } from 'node:path';
 import { root } from './cli.mjs';
@@ -18,6 +18,7 @@ export async function inventory(base, skip = []) {
   if (!existsSync(base)) return files;
   const visit = async (dir) => {
     for (const entry of await readdir(dir, { withFileTypes: true })) {
+      if (entry.name === '.DS_Store') continue;
       const path = resolve(dir, entry.name);
       if (skip.includes(relative(base, path).split(sep).join('/'))) continue;
       if (entry.isSymbolicLink()) throw new Error(`Asset symlink is unsupported: ${relative(base, path)}`);
@@ -75,6 +76,47 @@ export async function selectedLibrary(base = resolve(root, 'public/vendor/synty/
   for (const id of selection) await visit(id);
   return { selection, selected };
 }
+/** The build includes explicit gameplay inputs, never a copy of the development catalog. */
+export async function gameplayAssets(source = resolve(root, 'public')) {
+  const { selection, selected } = await selectedLibrary(resolve(source, 'vendor/synty/library'));
+  const paths = new Set();
+  async function include(path) {
+    if (paths.has(path) || !existsSync(path)) return; // Optional scenery and source-only builds remain supported.
+    const info = await lstat(path);
+    if (info.isSymbolicLink() || !info.isFile()) throw new Error(`Runtime asset must be a private file: ${path}`);
+    paths.add(path);
+    if (extname(path) === '.glb') {
+      const glb = await readGlb(path, source);
+      for (const entry of [...(glb.images ?? []), ...(glb.buffers ?? [])]) {
+        if (entry.uri && !entry.uri.startsWith('data:')) await include(inside(source, resolve(dirname(path), decodeURIComponent(entry.uri))));
+      }
+    }
+  }
+  async function references(value) {
+    if (typeof value === 'string' && value.startsWith('/vendor/')) await include(assetPath(source, value, '/'));
+    else if (value && typeof value === 'object') for (const child of Object.values(value)) await references(child);
+  }
+  for (const asset of selected.values()) await include(assetPath(source, asset.url, '/'));
+  const areaRoot = resolve(root, 'src/levels/areas');
+  for (const name of await readdir(areaRoot)) if (name.endsWith('.json')) await references(JSON.parse(await readFile(resolve(areaRoot, name), 'utf8')));
+  await references(JSON.parse(await readFile(resolve(root, 'assets/textures/environment/manifest.json'), 'utf8')));
+  const characters = JSON.parse(await readFile(resolve(root, 'assets/playable-characters.json'), 'utf8'));
+  for (const config of Object.values(characters)) {
+    await references(config.model); await references(config.catalog);
+    const catalog = assetPath(source, config.catalog, '/');
+    if (existsSync(catalog)) {
+      const data = JSON.parse(await readFile(catalog, 'utf8'));
+      // Complete per-rig catalogs keep every prepared weapon profile valid.
+      for (const pack of data.packs) for (const clip of pack.clips) await references(clip.url);
+    }
+  }
+  const lighting = JSON.parse(await readFile(resolve(root, 'assets/lighting-bakes.json'), 'utf8'));
+  for (const [signature, entry] of Object.entries(lighting.bakes)) {
+    if (!/^[a-f0-9]{64}$/.test(signature) || entry.url !== `/vendor/lighting/${signature}.json`) throw new Error('Invalid prepared lighting reference');
+    await references(entry.url);
+  }
+  return { selection, selected, paths };
+}
 export async function checkAssets(playable = false) {
   const vendor = resolve(root, 'public/vendor');
   const { selection, selected } = await selectedLibrary();
@@ -83,7 +125,7 @@ export async function checkAssets(playable = false) {
   let motionCount = 0, characterCount = 0;
   for (const [who, config] of Object.entries(characters)) {
     const states = who === 'player' ? [...combatStates, 'dodge'] : combatStates;
-    const urls = config.variants ? Object.values(config.variants) : [config.model];
+    const urls = [config.model];
     const models = [];
     for (const url of urls) {
       const path = assetPath(vendor, url);
@@ -110,10 +152,6 @@ export async function checkAssets(playable = false) {
       }
     }
   }
-  for (const dir of ['synty', 'terrain']) {
-    const base = resolve(vendor, dir);
-    if (!existsSync(base)) continue;
-    for (const entry of await readdir(base, { withFileTypes: true })) if (entry.isFile() && entry.name.endsWith('.glb')) await readGlb(resolve(base, entry.name));
-  }
+  await gameplayAssets();
   console.log(`Assets: ${selection.length} selected IDs / ${selected.size} closure entries; ${motionCount} catalog motions; playable character ${characterCount}/2 characters present${characterCount ? '' : ' (asset-free build only)'}.`);
 }

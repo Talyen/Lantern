@@ -1,4 +1,4 @@
-"""Read private Synty meshes and bake original surface studies locally."""
+"""Read private Synty meshes and bake original chest and cliff-rock surfaces locally."""
 import argparse
 import sys
 from pathlib import Path
@@ -11,16 +11,13 @@ parser.add_argument('--textures', type=Path, required=True)
 args = parser.parse_args(sys.argv[sys.argv.index('--') + 1:])
 root = args.source_root
 models = {
-    'wall': ('SM_Bld_Stone_Wall_01.fbx', 'stone'),
-    'pillar': ('SM_Bld_Stone_Pillar_01.fbx', 'stone'),
-    'door': ('SM_Bld_Door_01.fbx', 'wood'),
-    'floor': ('SM_Bld_Dock_Floor_01.fbx', 'wood'),
-    'brazier': ('SM_Prop_Brazier_01.fbx', None),
-    'torch': ('SM_Prop_Torch_01.fbx', None),
+    'chest': ('SM_Prop_Chest_01.fbx', None),
     'rock': ('SM_Env_Rock_Cliff_01.fbx', 'stone'),
 }
 args.output.mkdir(parents=True, exist_ok=True)
+(args.output / 'art-lab').mkdir(exist_ok=True)
 for name, (filename, surface) in models.items():
+    destination = args.output / 'art-lab' if name == 'rock' else args.output
     bpy.ops.wm.read_factory_settings(use_empty=True)
     bpy.ops.import_scene.fbx(filepath=str(root / 'Models' / filename), use_anim=False)
     meshes = [o for o in bpy.context.scene.objects if o.type == 'MESH']
@@ -37,7 +34,7 @@ for name, (filename, surface) in models.items():
     for mesh in meshes:
         mesh.data.materials.clear()
         mesh.data.materials.append(mat)
-    bpy.ops.export_scene.gltf(filepath=str(args.output / f'{name}.glb'), export_format='GLB', export_apply=True)
+    bpy.ops.export_scene.gltf(filepath=str(destination / f'{name}.glb'), export_format='GLB', export_apply=True)
     if not surface:
         continue
     albedo = args.textures / f'{surface}-painterly.png'
@@ -77,7 +74,7 @@ for name, (filename, surface) in models.items():
         bpy.context.scene.render.engine = 'CYCLES'
         bpy.context.scene.cycles.samples = 1
         bpy.ops.object.bake(type='EMIT', margin=12)
-        preview = args.output.parents[3] / '.local' / 'art-lab' / f'{name}-{index}-albedo.png'
+        preview = Path(__file__).resolve().parents[3] / '.local' / 'scenery' / f'{name}-{index}-albedo.png'
         preview.parent.mkdir(parents=True, exist_ok=True)
         baked.filepath_raw = str(preview)
         baked.file_format = 'PNG'
@@ -93,5 +90,5 @@ for name, (filename, surface) in models.items():
         mesh.data.materials.clear()
         mesh.data.materials.append(final)
     bpy.ops.object.select_all(action='SELECT')
-    bpy.ops.export_scene.gltf(filepath=str(args.output / f'{name}-painterly.glb'), export_format='GLB', export_apply=True)
+    bpy.ops.export_scene.gltf(filepath=str(destination / f'{name}-painterly.glb'), export_format='GLB', export_apply=True)
     print(f'Exported original and painterly {name}')

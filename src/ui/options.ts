@@ -11,8 +11,7 @@ type OptionsContext = {
   resetMeasurements: () => void;
   clearInput: () => void;
   focus: () => void;
-  resetEncounter: () => void;
-  inspect: () => void };
+};
 
 export class Options {
   paused = false;
@@ -38,11 +37,6 @@ export class Options {
       ${Object.keys(ranges).map((key) => `<label class="slider-label">${labels[key as NumericSetting]}<output id="value-${key}"></output><input id="option-${key}" type="range" min="${ranges[key as NumericSetting][0]}" max="${ranges[key as NumericSetting][1]}" step="${ranges[key as NumericSetting][2]}" aria-label="${labels[key as NumericSetting]}" /></label>`).join('')}`;
     document.getElementById('options-close')!.addEventListener('click', () => this.close());
     bindMenuDismissal(this.dialog, () => this.close());
-    for (const button of Array.from(document.querySelectorAll<HTMLButtonElement>('[data-options-tab]'))) button.addEventListener('click', () => {
-      const active = button.dataset.optionsTab!;
-      for (const panel of Array.from(document.querySelectorAll<HTMLElement>('[data-options-panel]'))) panel.hidden = panel.dataset.optionsPanel !== active;
-      for (const tab of Array.from(document.querySelectorAll<HTMLButtonElement>('[data-options-tab]'))) tab.setAttribute('aria-selected', String(tab === button));
-    });
     this.input<HTMLSelectElement>('upscaleQuality').addEventListener('change', () => { this.settings.upscaleQuality = this.input<HTMLSelectElement>('upscaleQuality').value as GraphicsSettings['upscaleQuality']; this.apply(); this.save('upscaleQuality'); });
     for (const key of ['shadowQuality', 'particleQuality'] as const) this.input<HTMLSelectElement>(key).addEventListener('change', () => { this.settings[key] = this.input<HTMLSelectElement>(key).value as GraphicsSettings[typeof key]; this.apply(); this.save(key); });
     this.input<HTMLSelectElement>('dof').addEventListener('change', () => {
@@ -62,8 +56,6 @@ export class Options {
       this.settings[key] = value; this.apply(); this.save(key);
     });
     document.getElementById('options-reset')!.addEventListener('click', () => { this.settings = defaults(); this.apply(); this.save(); });
-    document.getElementById('options-restart')!.addEventListener('click', () => { this.close(); this.ctx.resetEncounter(); this.ctx.focus(); });
-    document.getElementById('options-inspect')!.addEventListener('click', () => { this.close(); this.ctx.inspect(); });
   }
   private input<T extends HTMLElement>(name: string): T { return document.getElementById(`option-${name}`) as T; }
   private save(changedKey?: keyof GraphicsSettings): void { saveSettings(this.settings, changedKey); }

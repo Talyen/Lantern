@@ -10,7 +10,6 @@
   <body>
     <div id="app">
       <div id="scene" aria-label="Game"></div>
-      <div class="toolbar"><button id="rock-focus" type="button" hidden disabled>Return</button></div>
       <div id="player-health" class="resource-orb resource-orb--health" role="meter" aria-label="Health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" title="Health · 100 / 100">
         <img class="orb-frame" src="/assets/ui/orbs/health-frame.png" alt="" />
         <div class="orb-vessel"><div class="orb-liquid"><div class="orb-surface"></div><div class="orb-current"></div></div></div>
@@ -43,16 +42,7 @@
       </dialog>
       <dialog id="options-dialog" aria-labelledby="options-title">
         <header class="options-header"><h1 id="options-title">Options</h1><button id="options-close" type="button" aria-label="Close options">Close</button></header>
-        <nav class="options-tabs" role="tablist" aria-label="Options categories"><button type="button" role="tab" aria-selected="true" data-options-tab="graphics">Graphics</button><button type="button" role="tab" aria-selected="false" data-options-tab="animations">Animations</button></nav>
-        <div class="options-content">
-          <section data-options-panel="graphics"><div id="graphics-settings"></div></section>
-          <section data-options-panel="animations" hidden>
-            <div class="motion-pack-row" hidden><label>Player<select class="motion-pack" id="player-motions" disabled><option>Loading…</option></select></label><label>Enemy<select class="motion-pack" id="enemy-motions" disabled><option>Loading…</option></select></label></div>
-            <div class="motion-choices"><label>Idle<select id="motion-idle" disabled></select></label><label>Run<select id="motion-run" disabled></select></label><label>Attack<select id="motion-attack" disabled></select></label><label>Hit<select id="motion-hit" disabled></select></label><label>Death<select id="motion-death" disabled></select></label></div>
-            <p id="motion-status" role="status"></p>
-            <div class="game-actions"><button id="options-inspect" type="button">Inspect rock</button><button id="options-restart" type="button">Restart</button></div>
-          </section>
-        </div>
+        <div class="options-content"><div id="graphics-settings"></div></div>
         <footer class="options-footer"><button id="options-reset" type="button">Reset graphics</button></footer>
       </dialog>
     </div>
