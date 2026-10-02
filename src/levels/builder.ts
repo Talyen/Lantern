@@ -269,7 +269,8 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
     }
     function update(camera: THREE.Camera, dt = 0): void {
       merchant?.update(dt);
-      for (const instance of instances) updateAssetLods(instance.object, camera);
+      // Area instances keep their authored LOD membership for their lifetime.
+      for (const lodRoot of lodRoots) updateAssetLods(lodRoot, camera);
       for (const { hinge, opened } of chests.values()) hinge.rotation.x = THREE.MathUtils.damp(hinge.rotation.x, opened ? -1.25 : 0, 8, dt);
       for (const id of shakingTrees) {
         const tree = treeModels.get(id)!;
