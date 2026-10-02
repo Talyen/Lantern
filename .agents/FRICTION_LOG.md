@@ -15,6 +15,7 @@ Centralized intake for unresolved agent friction while working in Lantern. Keep 
 | Date | Area | Symptom (expected vs actual) |
 |------|------|------------------------------|
 | 2026-10-02 | Click-to-gather approach | A Clearing click on `pine-3` stopped at approximately 1.133 m from its center, outside its 1.125 m interaction range, then abandoned the route without chopping. Clicking from 0.9 m completed all three contacts. [ClickApproach](../src/clearing/click-approach.ts) consumes the final waypoint within 0.18 m while [navigation](../src/gameplay/movement.ts) places the endpoint at 85% of interaction range; that tolerance can exceed the remaining reach margin. This path is unchanged by the runtime performance task; review final-waypoint arrival tolerance separately. |
+| 2026-10-02 | Task dependency snapshots | Main and the freshly created `runtime-performance` worktree lacked `node_modules/eslint`, although the lockfile required it. [Task setup](../scripts/agents/workflow.mjs) stamped the cloned directory with the current manifest signature, so `ensureDependencies` skipped installation and the integration lint stage failed with `MODULE_NOT_FOUND`. A managed `npm ci` repairs this task only; validate the installed dependency snapshot before stamping future clones. |
 
 ## Archive
 
