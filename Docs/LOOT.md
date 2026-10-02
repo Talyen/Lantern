@@ -9,7 +9,7 @@ The bag is a 12 × 8 grid. Sword uses 1 × 3 cells; Axe and Shield use 2 × 3; B
 
 Pickups auto-place without shuffling the bag. Drag to move, merge, equip or drop outside the panel; invalid moves and Escape cancel. Shift-click chooses an amount to split, then click its destination or the world outside the panel. Sort consolidates supplies and packs larger objects first, committing only when everything fits. Equipped-item displacement and asset/motion preparation must succeed before any equipment change commits. Player-dropped supplies wait until the player leaves their pickup radius and returns, or explicitly selects them.
 
-Character save revision 6 retains the existing key, migrates previous equipment/resources/progress, and saves item copies, stacks, positions, equipment slots and individual chest claims. Legacy quantities beyond capacity remain in saved **Unpacked items**; select Collect to transfer what fits or drag/split them into the bag or world. Chest weapons are claimed on collection, so a restart can reoffer unclaimed rewards while preserving already collected claims. Dropping collected equipment does not reset its claim.
+Character save revision 7 retains the existing key, migrates previous equipment/resources/progress, and saves item copies, stacks, positions, equipment slots and individual chest claims. Legacy quantities beyond capacity remain in saved **Unpacked items**; select Collect to transfer what fits or drag/split them into the bag or world. Chest weapons are claimed on collection, so a restart can reoffer unclaimed rewards while preserving already collected claims. Dropping collected equipment does not reset its claim.
 
 ## Drops and collection
 
@@ -64,7 +64,7 @@ Current consumable rewards retain their earlier quantities/chances; guaranteed e
 
 ## Implementation acceptance
 
-Choose the relevant portion of these player flows when implementing, following [Development](DEVELOPMENT.md#commands-and-handoff). Equipment, materials, Health Potions and scrolls are available for current checks; gold scenarios remain future acceptance requirements.
+Choose the relevant portion of these player flows when implementing, following [Development](DEVELOPMENT.md#commands-and-handoff). Equipment, materials, Health Potions and scrolls are available for current checks; gold and trading follow the focused flows below.
 
 1. **Fight and collect:** defeat an enemy, watch its rewards toss and settle, and collect nearby supplies while combat remains active. Click equipment by label and by object; each request collects once, never attacks or auto-equips it.
 2. **Chest and crowded loot:** open a chest, select individual rewards from separated name-only labels, and approach distant gear. Confirm hover identifies the matching object, including when scenery obscures it.
@@ -85,3 +85,26 @@ Inventory's I/II tabs select which equipment set to edit. Both sets keep unique 
 ## Shared equipment and discoveries
 
 Helmet, Body, Gloves, Boots, two Rings, Amulet and Belt are shared across weapon sets. Their fixed catalog properties, slot comparisons, footprints, guaranteed clearing discoveries and revision 6 migration follow [combat and equipment](EQUIPMENT.md). Equipment-only caches can explicitly omit a guard with `guard: null`; the camp chest preserves its consumable rewards. All gear still requires explicit collection and never auto-equips.
+
+
+## Gold and Homestead trading
+
+`src/gameplay/economy.ts` owns fixed prices and the shared gold formula. `rollGold` returns zero for an opted-out source, an enemy without explicit `humanoid: true`, or a failed chance roll. Humanoid undead qualify; beasts do not. Chance is 50%/75%/100% for normal/elite/boss humanoids and 60% for chests. Successful quantities are `(random integer 3–5 + level − 1) × rank multiplier`, with enemy multipliers 1/2/5 and chest multiplier 1. Source `level` overrides area `level`, otherwise level 1 applies. Levels govern rewards only. Enemies support `rank`, `humanoid` and `gold`; chests support `level` and `gold`. Unspecified enemies are ineligible; unspecified chests remain eligible.
+
+Adventure rolls independently of scrolls and equipment, once per defeated enemy life or chest opening, including failed rolls. Travel/death retain those opportunities and uncollected gold. Application restart refreshes adventure areas under the existing session policy. Gold has a name-only muted-gold label and a small tarnished coin pile; it uses shared landing/reach rules and enters the wallet without bag space. Collected gold survives death, travel and restart. The current two-enemy clearing and guarded chest average 6.4 gold before sales; other optional caches add their own chest opportunities. Broader outing balance awaits the expanded route.
+
+Homestead's merchant stall is open from the start, independently of shelter restoration. Click the counter or merchant to approach within 1.8 m and open Shop. The paused menu shows Stock/Buyback beside the bag, selected-item stats/comparisons, fixed prices and the wallet. Gold also appears in Inventory. Each Buy purchases one item into the bag without equipping. Escape, Close, B or a click beginning and ending outside closes Shop and consumes gameplay input.
+
+| Stock | Buy | Sell |
+| --- | ---: | ---: |
+| Health Potion | 5 | — |
+| Sword / Bow | 60 | 15 |
+| Shield | 40 | 10 |
+| Quilted Coat | 80 | 20 |
+| Trail Boots | 60 | 15 |
+
+Stock is unlimited. Other sale values are fixed in the economy catalog: Leather Belt 10; Axe/Staff/Guard Helm 15; Weathered Mail/Duelist Gloves/Hearth Ring 20; Iron Signet/Amber Amulet 25; Iron Broadsword/Yew Longbow 30. Only unequipped bag equipment can be sold. Supplies, materials, equipped gear, stash and recovery overflow are excluded. Purchases do not mark adventure discoveries claimed; sales do not clear those claims.
+
+Buyback retains the last ten sales, newest first, across travel/restart. An eleventh sale removes the oldest. Each entry retains its original item identity and paid sale value; Buy Back costs that value and restores the same item. All transactions validate shop reach/access, current ownership, stock, gold and capacity before committing. Failures change neither wallet nor inventory; successful trades save one coherent snapshot. Revision 7 adds gold and buyback, migrating earlier saves to zero gold and empty buyback without losing other progress. Buyback IDs participate in global container uniqueness and future ID allocation. Existing preservation/backup recovery applies to invalid saves.
+
+For focused acceptance, collect gold with a full bag, return home, inspect stock/comparisons, buy a potion, sell and recover gear, then restart to verify wallet and buyback. Check rejected trades preserve both sides. Use the [lean workflow](DEVELOPMENT.md#working-alongside-other-agents); do not turn this into a full game replay.

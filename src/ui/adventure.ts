@@ -1,11 +1,12 @@
+import { renderEquipmentDetails, statLabel, statValue } from './equipment-details';
 import { bindMenuDismissal } from './menu';
 import type { CharacterSave } from '../gameplay/adventure';
 import { bagWidth, bagHeight, stackLimit, emptyPosition, equipInstance, lootDefinitions, moveItem, sortedItems, transferItem, itemLoadout, type InventoryItem } from '../gameplay/inventory';
 import { progression, shelterRecipe, skillProgress } from '../gameplay/skills';
 import { countItem } from '../gameplay/inventory';
 import type { WeaponSet } from '../gameplay/abilities';
-import { equipmentCatalog, isEquipmentSlot, itemIds, sharedSlots, supportsShield, type EquipmentSlot, type ItemId, type WeaponItem } from '../gameplay/equipment';
-import { resolveCombatStats, type CombatStats } from '../gameplay/combat-stats';
+import { equipmentCatalog, isEquipmentSlot, itemIds, sharedSlots, supportsShield, type EquipmentSlot, type ItemId } from '../gameplay/equipment';
+import { resolveCombatStats } from '../gameplay/combat-stats';
 import { itemIcon } from './item-icons';
 import { setText, setDisabled } from './dom';
 
@@ -140,6 +141,7 @@ export class AdventureMenus {
   }
   private refresh(): void {
     const character = this.character; if (!character) return;
+    setText(document.getElementById('inventory-gold')!, `${character.gold} Gold`);
     this.characterKey = JSON.stringify({...character,restedSeconds:undefined});
     document.getElementById('stash-section')!.hidden=!this.stashMode;this.inventory.classList.toggle('with-stash',this.stashMode);
     this.stashGrid.querySelectorAll('[data-instance]').forEach(el=>el.remove());
@@ -167,7 +169,7 @@ export class AdventureMenus {
     (document.getElementById('stash-sort') as HTMLButtonElement).disabled=this.busy;
     (document.getElementById('inventory-sort') as HTMLButtonElement).disabled = this.busy;
     const stats=resolveCombatStats(character.items,this.viewSet);
-    document.getElementById('loadout-stats')!.replaceChildren(...(['maxHealth','maxMana','armor','damage'] as const).map(key=>{const row=document.createElement('div'),label=document.createElement('span'),value=document.createElement('strong');label.textContent=this.statLabel(key);value.textContent=this.statValue(key,stats[key]);row.append(label,value);return row;}));
+    document.getElementById('loadout-stats')!.replaceChildren(...(['maxHealth','maxMana','armor','damage'] as const).map(key=>{const row=document.createElement('div'),label=document.createElement('span'),value=document.createElement('strong');label.textContent=statLabel(key);value.textContent=statValue(key,stats[key]);row.append(label,value);return row;}));
     this.inventory.setAttribute('aria-busy', String(this.busy)); this.refreshSelection();
   }
   private selectedItem(): InventoryItem | undefined { return this.entries().find(i => i.id === this.selected); }
@@ -185,16 +187,6 @@ export class AdventureMenus {
     const slot = equipmentCatalog[entry.item as ItemId].slot;
     return slot === 'ring' ? this.ringSlot : slot;
   }
-  private statLabel(key: keyof CombatStats): string {
-    return {damage:'Damage',attackRate:'Attack speed',reach:'Reach / Range',armor:'Armor',maxHealth:'Health',maxMana:'Mana',manaRegen:'Mana recovery',moveSpeed:'Movement',family:'Weapon'}[key];
-  }
-  private statValue(key: keyof CombatStats, value: number): string {
-    if(key==='attackRate')return `${Math.round(value*100)}%`;
-    if(key==='reach')return `${Number(value.toFixed(2))} m`;
-    if(key==='moveSpeed')return `${Number(value.toFixed(2))} m/s`;
-    if(key==='manaRegen')return `${Number(value.toFixed(2))}/s`;
-    return String(Number(value.toFixed(2)));
-  }
   private renderComparison(entry: InventoryItem | undefined): void {
     const details=document.getElementById('inventory-item-stats')!,comparison=document.getElementById('inventory-comparison')!;
     details.replaceChildren();comparison.replaceChildren();this.ringChoices.hidden=true;
@@ -206,23 +198,7 @@ export class AdventureMenus {
     }
     this.ringChoices.hidden=definition.slot!=='ring';
     this.ringChoices.querySelectorAll<HTMLElement>('[data-ring]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.ring===this.ringSlot)));
-    const line=(label:string,value:string)=>{const row=document.createElement('div'),name=document.createElement('span'),amount=document.createElement('strong');name.textContent=label;amount.textContent=value;row.append(name,amount);return row;};
-    if(definition.weapon)for(const [key,value] of [['damage',definition.weapon.damage],['attackRate',definition.weapon.rate],['reach',definition.weapon.reach]] as const)details.append(line(this.statLabel(key),this.statValue(key,value)));
-    const labels={armor:'Armor',health:'Health',mana:'Mana',manaRegen:'Mana recovery',damage:'Damage',attackRate:'Attack speed',moveSpeed:'Movement'};
-    for(const [key,value] of Object.entries(definition.bonuses))details.append(line(labels[key as keyof typeof labels],`+${['damage','attackRate','moveSpeed'].includes(key) ? `${Math.round(value*100)}%` : `${value}${key==='manaRegen' ? '/s' : ''}`}`));
-    if(entry.item==='shield')details.append(line('Frontal block','50% damage reduction'));
-    const slot=this.destinationSlot(entry), hand=slot==='main' || slot==='off';
-    const equipped=this.character!.items.find(item=>item.slot===slot && (!hand || (item.weaponSet ?? 0)===this.viewSet));
-    if(equipped?.id===entry.id)return;
-    const label=document.createElement('p');label.textContent=equipped ? `Compared with ${lootDefinitions[equipped.item].name}` : 'Compared with empty slot';comparison.append(label);
-    const candidate=this.character!.items.filter(item=>item.id!==entry.id && !(item.slot===slot && (!hand || (item.weaponSet ?? 0)===this.viewSet)) && !(slot==='main' && !supportsShield(entry.item as WeaponItem) && item.slot==='off' && (item.weaponSet ?? 0)===this.viewSet));
-    candidate.push({...entry,slot,weaponSet:hand ? this.viewSet : undefined});
-    const before=resolveCombatStats(this.character!.items,this.viewSet),after=resolveCombatStats(candidate,this.viewSet);
-    for(const key of ['damage','attackRate','reach','armor','maxHealth','maxMana','manaRegen','moveSpeed'] as const) {
-      const delta=after[key]-before[key];if(Math.abs(delta)<.00001)continue;
-      const amount=key==='attackRate' ? `${Math.round(delta*100)}%` : this.statValue(key,delta);
-      const row=line(this.statLabel(key),`${delta>0 ? '+' : ''}${amount}`);row.dataset.gain=String(delta>0);comparison.append(row);
-    }
+    renderEquipmentDetails(details,comparison,entry,this.character!,this.viewSet,this.destinationSlot(entry));
   }
   private openSplit(entry: InventoryItem): void {
     this.cancelDrag(); this.splitId = entry.id; this.split.hidden = false;

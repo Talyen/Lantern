@@ -29,6 +29,8 @@ export class AdventureVisuals {
   private bark = new MeshStandardNodeMaterial({ color: '#866446', roughness: 1 });
   private potionGlass = new MeshStandardNodeMaterial({color:'#8e3930',roughness:.35});
   private metal = new MeshStandardNodeMaterial({ color: '#b5aca0', roughness: .6, metalness: .4 });
+  private coin = new THREE.CylinderGeometry(.075, .075, .025, 9);
+  private gold = new MeshStandardNodeMaterial({color:'#b49a5b',roughness:.6,metalness:.65});
   private oreGeometry = new THREE.DodecahedronGeometry(1,0);
   private stone = new MeshStandardNodeMaterial({color:'#898478',roughness:1});
   private iron = new MeshStandardNodeMaterial({color:'#756356',roughness:.8,metalness:.2});
@@ -51,7 +53,13 @@ export class AdventureVisuals {
         const root = new THREE.Group(), model = new THREE.Group(); root.add(model); root.userData.dropId = drop.id; this.parent.add(root);
         visual = { root, model, seed: Number(drop.id.match(/\d+/)?.[0] ?? 0), bounds: new THREE.Box3(), boundsMatrix: new THREE.Matrix4(), boundsValid: false };
         this.drops.set(drop.id, visual);
-        if (drop.item === 'scroll') {
+        if (drop.item === 'gold') {
+          for (let i = 0; i < 5; i++) {
+            const coin = new THREE.Mesh(this.coin, this.gold);
+            coin.position.set((i % 3 - 1) * .085, .025 + Math.floor(i / 3) * .03, (i % 2 - .5) * .09);
+            coin.rotation.z = i === 4 ? .18 : 0; model.add(coin);
+          }
+        } else if (drop.item === 'scroll') {
           const scroll = new THREE.Mesh(this.geometry, this.paper), band = new THREE.Mesh(this.geometry, this.ribbon);
           scroll.rotation.z = band.rotation.z = Math.PI / 2; band.scale.set(1.03, .15, 1.03); model.add(scroll, band); model.position.y = .08;
         } else if (drop.item === 'wood') {
@@ -160,6 +168,6 @@ export class AdventureVisuals {
     this.disposed = true; this.portal?.dispose(); this.highlight.removeFromParent();
     this.drops.forEach(v => { v.instance?.release(); disposeSceneInstances(v.root); v.root.removeFromParent(); }); this.drops.clear();
     this.currentDrops.clear(); this.pickCandidates.length = 0; this.pickHits.length = 0;
-    for (const resource of [this.oreGeometry, this.stone, this.iron, this.geometry, this.box, this.arc, this.paper, this.ribbon, this.bark, this.metal, this.potionGlass, this.markerGeometry, this.markerMaterial,this.ring,this.cap,this.cloth]) resource.dispose();
+    for (const resource of [this.coin, this.gold, this.oreGeometry, this.stone, this.iron, this.geometry, this.box, this.arc, this.paper, this.ribbon, this.bark, this.metal, this.potionGlass, this.markerGeometry, this.markerMaterial,this.ring,this.cap,this.cloth]) resource.dispose();
   }
 }

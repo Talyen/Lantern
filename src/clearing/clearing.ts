@@ -1,4 +1,5 @@
 import { registerRuntimeSnapshot } from '../diagnostics/report';
+import { ShopMenu } from '../ui/shop';
 import { parseJson } from '../data/json';
 import { disposeSceneResources, sceneTextures } from '../assets/resource-ownership';
 import { resolveAreaLighting as lightingFor } from '../levels/lighting';
@@ -186,6 +187,12 @@ const menus = new AdventureMenus(clearInput, () => renderer.domElement.focus(), 
   recover: id => inventory.recover(id),
   drop: (id, quantity) => inventory.drop(id, quantity),
 }, cue => audio.play(cue));
+const shop = new ShopMenu({
+  clear: clearInput, focus: () => renderer.domElement.focus(), sound: cue => audio.play(cue),
+  buy: item => { adventure.buy(encounter, currentArea, item); syncAdventure(); },
+  sell: id => { adventure.sell(encounter, currentArea, id); syncAdventure(); },
+  buyBack: id => { adventure.buyBack(encounter, currentArea, id); syncAdventure(); },
+});
 const lootLabels = new LootLabels(mount, selectLoot);
 function selectLoot(id: string): void {
   if (paused() || encounter.player.hp <= 0) return;
@@ -211,6 +218,7 @@ const presentation = new EncounterPresentation(encounter, actors, gameplayAudio,
     adventure.setWeaponSet(set);
     audio.play('equip');
     menus.updateCharacter(adventure.character);
+    shop.update(adventure.character);
   },
   axeXp: () => adventure.grantAxeCombatXp(),
   playerHit: unblocked => {
@@ -243,6 +251,7 @@ const bindingsMenu=new KeybindingsMenu(preferences,()=>adventure.character.actio
 const menuController = new MenuController(
   {
     get adventure() { return menus; },
+    get shop() { return shop; },
     get skills() { return combatUI; },
     get bindings() { return bindingsMenu; },
     get options() { return options; },
@@ -251,6 +260,7 @@ const menuController = new MenuController(
 );
 const interactionActions = new InteractionActions(adventure, encounter, menus, gathering, audio, {
   area: () => currentArea, definitions: () => definitions, paused, changeArea, syncAdventure,
+  openShop: () => { shop.update(adventure.character); shop.open(); },
 });
 function dispatchInput(action: InputAction): void {
   if (action === 'inventory') { menuController.toggleInventory(); return; }
@@ -323,6 +333,7 @@ function syncAdventure(): void {
   gameplayAudio.adventure(adventure.takeEvents());
   if (adventure.castRemaining<=0) audio.stop('return-cast');
   menus.updateCharacter(adventure.character);
+  shop.update(adventure.character);
   menus.update(adventure.character.scrolls, currentArea.id !== homeArea && encounter.player.hp > 0 && adventure.character.scrolls > 0 && adventure.castRemaining === 0, prompt, adventure.castRemaining);
   combatUI?.update();
 }
@@ -470,7 +481,7 @@ function dispose(): void {
   projectileVisuals.dispose();
   casterVisuals.dispose();
   adventureVisuals?.dispose();
-  lootLabels.dispose();
+  shop.dispose(); lootLabels.dispose();
   worldInteractions = undefined;
   active?.dispose();
   movementWorld?.dispose();

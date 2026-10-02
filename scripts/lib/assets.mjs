@@ -102,7 +102,18 @@ export async function gameplayAssets(source = resolve(root, 'public')) {
   }
   for (const asset of selected.values()) await include(assetPath(source, asset.url, '/'));
   const areaRoot = resolve(root, 'src/levels/areas');
-  for (const name of await readdir(areaRoot)) if (name.endsWith('.json')) await references(JSON.parse(await readFile(resolve(areaRoot, name), 'utf8')));
+  for (const name of await readdir(areaRoot)) if (name.endsWith('.json')) {
+    const area = JSON.parse(await readFile(resolve(areaRoot, name), 'utf8'));
+    await references(area);
+    if (area.shop) {
+      const model = assetPath(source, area.shop.merchant.model, '/');
+      if (existsSync(model)) {
+        const data = await readGlb(model, source), idle = data.animations?.find(clip => clip.name === 'idle');
+        if (data.animations?.length !== 1 || !idle || idle.channels.some(channel => !data.nodes[channel.target.node]?.name))
+          throw new Error('Merchant requires one compatible packed neutral Mixamo idle; run assets:export-merchant');
+      }
+    }
+  }
   await references(JSON.parse(await readFile(resolve(root, 'assets/textures/environment/manifest.json'), 'utf8')));
   const characters = JSON.parse(await readFile(resolve(root, 'assets/playable-characters.json'), 'utf8'));
   for (const config of Object.values(characters)) {

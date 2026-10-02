@@ -1,3 +1,4 @@
+import { rollGold, type GoldSource } from '../src/gameplay/economy';
 import { isRecord, parseJson } from '../src/data/json';
 import { expect, test, vi } from 'vitest';
 import { characterBackupKey, decodeCharacter } from '../src/gameplay/character-save';
@@ -7,7 +8,13 @@ import homestead from '../src/levels/areas/homestead.json';
 import clearing from '../src/levels/areas/clearing.json';
 import type { AreaDefinition } from '../src/levels/types';
 import { equipInstance, itemLoadout, moveItem, receive, removeQuantity, sortedItems, validItems, transferItem, type InventoryItem } from '../src/gameplay/inventory';
-const home = homestead as unknown as AreaDefinition, field = clearing as unknown as AreaDefinition;
+const home = homestead as unknown as AreaDefinition;
+// Older reward fixtures isolate equipment/scroll behavior from the new independent gold rolls.
+const authoredField = clearing as unknown as AreaDefinition;
+const field: AreaDefinition = { ...authoredField, layout: { ...authoredField.layout,
+  enemy: { ...authoredField.layout.enemy!, gold: false }, caster: { ...authoredField.layout.caster!, gold: false } },
+  chests: authoredField.chests?.map(chest => ({ ...chest, gold: false })) };
+
 const memory = () => { const data = new Map<string, string>(); return { data, getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => { data.set(key, value); } }; };
 
 test('failed equipment preparation retains saved gear and releases the gate for a successful retry', async () => {
@@ -137,7 +144,7 @@ test('the chest scatters rewards once per session and only collected gear is per
 test('legacy characters migrate equipped copies, resources and claimed rewards without loss', () => {
   const storage = memory(); storage.setItem(characterSaveKey, JSON.stringify({ version: 2, scrolls: 7, campfires: ['clearing/camp'], equipment: ['axe', 'sword', 'shield', 'bow', 'staff'], loadout: { main: 'bow', off: null }, wood: 12000, xp: { woodcutting: 20, axeCombat: 30 }, campEquipmentClaimed: true }));
   const state = new Adventure(storage, () => 1), encounter = createEncounter('playing');
-  expect([state.character.version, state.character.scrolls, state.character.loadout.main]).toEqual([6, 7, 'bow']);
+  expect([state.character.version, state.character.scrolls, state.character.loadout.main]).toEqual([7, 7, 'bow']);
   expect(state.character.equipment).toEqual(['bow', 'axe', 'sword', 'shield', 'staff']);
   expect(state.character.wood).toBe(12000); expect(state.character.items.some(i => i.slot === 'overflow')).toBe(true);
   expect(validItems(state.character.items)).toBe(true);
@@ -312,7 +319,7 @@ test('revision 3 migration preserves a full bag and grants starter potions only 
   const storage=memory(),items:InventoryItem[]=Array.from({length:96},(_,i)=>({id:`full-${i}`,item:'wood',quantity:99,slot:'bag',x:i%12,y:Math.floor(i/12)}));
   items.push({id:'item-20',item:'axe',quantity:1,slot:'main',x:0,y:0});
   storage.setItem(characterSaveKey,JSON.stringify({version:3,items,campfires:['homestead/camp'],xp:{woodcutting:30,axeCombat:40},campClaims:['sword']}));
-  const migrated=new Adventure(storage);expect(migrated.character.version).toBe(6);expect(migrated.character.items.filter(i=>i.item!=='potion')).toEqual(items);
+  const migrated=new Adventure(storage);expect(migrated.character.version).toBe(7);expect(migrated.character.items.filter(i=>i.item!=='potion')).toEqual(items);
   expect(migrated.character.items.find(i=>i.item==='potion')).toMatchObject({slot:'overflow',quantity:3});
   migrated.setActionBar(['sweep','piercing-shot',null,null,'axe-basic','shield-basic']);migrated.setWeaponSet(1);
   const restored=new Adventure(storage);expect(restored.character).toEqual(migrated.character);expect(restored.character.items.filter(i=>i.item==='potion')).toHaveLength(1);
@@ -333,7 +340,7 @@ test('revision 4 Homestead progress migrates with combat controls and starter po
   const items:InventoryItem[]=[{id:'item-42',item:'sword',quantity:1,slot:'main',x:0,y:0},{id:'item-43',item:'scroll',quantity:5,slot:'bag',x:0,y:0}];
   const stash:InventoryItem[]=[{id:'item-900',item:'iron',quantity:99,slot:'bag',x:0,y:0}];
   storage.setItem(characterSaveKey,JSON.stringify({version:4,items,stash,shelterRestored:true,restedSeconds:123,campfires:['homestead/camp'],xp:{woodcutting:327.5,mining:47.5,axeCombat:60},campClaims:['sword']}));
-  const migrated=new Adventure(storage);expect(migrated.character.version).toBe(6);expect(migrated.character.stash).toEqual(stash);expect(migrated.character.shelterRestored).toBe(true);expect(migrated.character.restedSeconds).toBe(123);expect(migrated.character.xp.mining).toBe(47.5);expect(migrated.character.actionBar[4]).toBe('sword-basic');expect(migrated.character.potions).toBe(3);
+  const migrated=new Adventure(storage);expect(migrated.character.version).toBe(7);expect(migrated.character.stash).toEqual(stash);expect(migrated.character.shelterRestored).toBe(true);expect(migrated.character.restedSeconds).toBe(123);expect(migrated.character.xp.mining).toBe(47.5);expect(migrated.character.actionBar[4]).toBe('sword-basic');expect(migrated.character.potions).toBe(3);
   const restored=new Adventure(storage);expect(restored.character).toEqual(migrated.character);expect(restored.character.potions).toBe(3);expect(new Set([...restored.character.items,...restored.character.stash].map(i=>i.id)).size).toBe(restored.character.items.length+restored.character.stash.length);
 });
 
@@ -482,10 +489,10 @@ test('shared equipment stays across swaps, accepts only its slots, and full-bag 
   expect(()=>moveItem(full,'helm',0,0,1,()=> 'new')).toThrow();expect(full).toEqual(before);
 });
 
-test('revision 5 migrates losslessly and revision 6 retains shared slots, stash and all discovery claims', () => {
+test('revision 5 migrates losslessly and current saves retain shared slots, stash and all discovery claims', () => {
   const storage=memory(),adventure=new Adventure(storage);
   const old={...adventure.character,version:5,campClaims:['sword','shield'],shelterRestored:true,restedSeconds:123,stash:[{id:'stored',item:'iron',quantity:7,slot:'bag',x:0,y:0}],xp:{woodcutting:31,mining:22,axeCombat:17}};
-  const migrated=decodeCharacter(JSON.stringify(old));expect(migrated.version).toBe(6);expect(migrated.items).toEqual(old.items);expect(migrated.stash).toEqual(old.stash);expect(migrated.campClaims).toEqual(old.campClaims);
+  const migrated=decodeCharacter(JSON.stringify(old));expect(migrated.version).toBe(7);expect(migrated.items).toEqual(old.items);expect(migrated.stash).toEqual(old.stash);expect(migrated.campClaims).toEqual(old.campClaims);
   expect(migrated.items.some(item=>item.slot==='helmet')).toBe(false);
   migrated.items.push({id:'helm',item:'guard-helm',quantity:1,slot:'helmet',x:0,y:0});migrated.campClaims.push('guard-helm','yew-longbow');
   expect(decodeCharacter(JSON.stringify(migrated))).toEqual(migrated);
@@ -511,4 +518,100 @@ test('unguarded caches and caster gear are claimed only on collection and reoffe
   adventure.enter(encounter,home,undefined,true);adventure.enter(encounter,field);expect(adventure.session().drops.filter(drop=>drop.claim)).toHaveLength(5);
   const restored=new Adventure(storage,()=>1);restored.enter(encounter,field,{position:cache.position,yaw:0});restored.openChest(encounter,field,cache);encounter.enemies.caster.hp=0;restored.step(encounter,field,.01);
   expect(restored.session().drops.filter(drop=>drop.claim).map(drop=>drop.item)).toEqual(['trail-boots','leather-belt','iron-broadsword','yew-longbow','amber-amulet']);
+});
+
+
+test('gold eligibility, independent chance boundaries and reward levels share one formula', () => {
+  const sample = (source: GoldSource, chance: number, amount: number) => {
+    const draws = [chance, amount]; return rollGold(source, () => draws.shift()!);
+  };
+  const random = vi.fn(() => 0);
+  expect(rollGold({kind:'enemy'}, random)).toBe(0);
+  expect(rollGold({kind:'enemy',humanoid:false,rank:'boss'}, random)).toBe(0);
+  expect(rollGold({kind:'chest',gold:false}, random)).toBe(0);
+  expect(random).not.toHaveBeenCalled();
+  expect(sample({kind:'enemy',humanoid:true}, .5, 0)).toBe(0);
+  expect(sample({kind:'enemy',humanoid:true}, .49, 0)).toBe(3);
+  expect(sample({kind:'enemy',humanoid:true,areaLevel:5}, 0, .99)).toBe(9);
+  expect(sample({kind:'enemy',humanoid:true,rank:'elite',areaLevel:5}, .74, .99)).toBe(18);
+  expect(sample({kind:'enemy',humanoid:true,rank:'boss',level:1,areaLevel:5}, .99, .99)).toBe(25);
+  expect(sample({kind:'chest',level:5}, .6, 0)).toBe(0);
+  expect(sample({kind:'chest',level:5}, .59, 0)).toBe(7);
+});
+
+test('gold auto-collects only after landing without bag space, and unreachable gold remains intact', () => {
+  const state = new Adventure(memory()), encounter = createEncounter('playing'); state.enter(encounter, field);
+  state.character.items = Array.from({length:96}, (_,i) => ({id:`full-${i}`,item:'wood',quantity:99,slot:'bag',x:i%12,y:Math.floor(i/12)}));
+  const before = structuredClone(state.character.items), point: [number,number] = [encounter.player.x,encounter.player.z];
+  const drop = state.spawnDrop('gold', 5, point);
+  state.step(encounter,field,.54); expect(state.character.gold).toBe(0);
+  state.canCollectGround = () => false;
+  state.step(encounter,field,.02); expect(state.session().drops).toContain(drop); expect(state.character.gold).toBe(0);
+  state.canCollectGround = () => true;
+  state.step(encounter,field,.01); expect(state.character.gold).toBe(5);
+  expect(state.character.items).toEqual(before); expect(state.session().drops).not.toContain(drop);
+});
+
+test('successful and failed gold rolls cannot repeat through travel, death or chest reopening', () => {
+  for (const draw of [0,.8]) {
+    const random = vi.fn(() => draw), state = new Adventure(memory(),random), encounter = createEncounter('playing');
+    state.enter(encounter, authoredField); encounter.enemies.enemy.hp = 0; state.step(encounter,authoredField,.01);
+    const calls = random.mock.calls.length, drops = structuredClone(state.session().drops);
+    state.enter(encounter,home,home.layout.player,true); state.enter(encounter,authoredField); state.step(encounter,authoredField,.01);
+    expect(random).toHaveBeenCalledTimes(calls); expect(state.session().drops.map(drop=>drop.id)).toEqual(drops.map(drop=>drop.id));
+    const chest = authoredField.chests![0]; encounter.player.x = chest.position[0]; encounter.player.z = chest.position[1];
+    expect(state.openChest(encounter,authoredField,chest)).toBe(true);
+    const openedCalls = random.mock.calls.length;
+    expect(state.openChest(encounter,authoredField,chest)).toBe(false); expect(random).toHaveBeenCalledTimes(openedCalls);
+    expect(state.session().drops.filter(drop=>drop.item==='gold')).toHaveLength(draw === 0 ? 2 : 0);
+    state.closeSave();
+  }
+});
+
+function trading() {
+  const storage = memory(), state = new Adventure(storage), encounter = createEncounter('playing');
+  state.enter(encounter,home,{position:home.shop!.position,yaw:0}); state.character.gold=100;
+  return {storage,state,encounter};
+}
+
+test('buy, sell and buyback commit coherent saves and restore the same equipment identity', () => {
+  const {storage,state,encounter} = trading();
+  state.buy(encounter,home,'sword'); const sword = state.character.items.find(entry=>entry.item==='sword')!;
+  expect([state.character.gold,sword.slot]).toEqual([40,'bag']);
+  state.sell(encounter,home,sword.id); expect(state.character.gold).toBe(55);
+  expect(state.character.buyback).toEqual([{id:sword.id,item:'sword',price:15}]);
+  state.buyBack(encounter,home,sword.id); expect(state.character.items.find(entry=>entry.id===sword.id)?.item).toBe('sword');
+  expect(state.character.gold).toBe(40); expect(state.character.buyback).toEqual([]);
+  state.buy(encounter,home,'potion'); expect([state.character.gold,state.character.potions]).toEqual([35,4]);
+  state.sell(encounter,home,sword.id);
+  const restored = new Adventure(storage); expect(restored.character.gold).toBe(50); expect(restored.character.buyback).toEqual(state.character.buyback);
+  expect(state.character.campClaims).toEqual([]); state.closeSave(); restored.closeSave();
+});
+
+test('invalid, unaffordable and full-bag trades leave wallet, items and buyback unchanged', () => {
+  const {state,encounter} = trading();
+  const unchanged = (operation: () => void) => { const before = JSON.stringify(state.character); expect(operation).toThrow(); expect(JSON.stringify(state.character)).toBe(before); };
+  unchanged(()=>state.sell(encounter,home,state.character.items.find(item=>item.slot==='main')!.id));
+  unchanged(()=>state.sell(encounter,home,state.character.items.find(item=>item.item==='potion')!.id));
+  unchanged(()=>state.buy(encounter,home,'iron')); unchanged(()=>state.buyBack(encounter,home,'missing'));
+  state.character.gold=0; unchanged(()=>state.buy(encounter,home,'potion'));
+  state.character.gold=100; encounter.player.x=50; unchanged(()=>state.buy(encounter,home,'potion')); encounter.player.x=home.shop!.position[0];
+  state.character.items = Array.from({length:96}, (_,i) => ({id:`full-${i}`,item:'wood',quantity:99,slot:'bag',x:i%12,y:Math.floor(i/12)}));
+  state.character.buyback=[{id:'item-8000',item:'sword',price:15}];
+  unchanged(()=>state.buy(encounter,home,'potion')); unchanged(()=>state.buyBack(encounter,home,'item-8000')); state.closeSave();
+});
+
+test('buyback retains only the last ten, migrates revision 6 without gifts and reserves saved identities', () => {
+  const {state,encounter,storage} = trading(); state.character.items=[];
+  const ids: string[]=[];
+  for(let i=0;i<11;i++){const id=`item-${9000+i}`;receive(state.character.items,'sword',1,state.newId,id);ids.push(id);}
+  for(const id of ids)state.sell(encounter,home,id);
+  expect(state.character.buyback.map(entry=>entry.id)).toEqual(ids.slice(1).reverse());
+  const restored=new Adventure(storage); expect(Number(restored.newId().slice(5))).toBeGreaterThan(9010);
+  const duplicate={...state.character,items:[{id:ids[10],item:'sword',quantity:1,slot:'bag',x:0,y:0}]};
+  expect(()=>decodeCharacter(JSON.stringify(duplicate))).toThrow('Duplicate buyback identity');
+  const legacy={...state.character,version:6,gold:undefined,buyback:undefined};
+  const migrated=decodeCharacter(JSON.stringify(legacy));expect(migrated.version).toBe(7);expect(migrated.gold).toBe(0);expect(migrated.buyback).toEqual([]);
+  expect(migrated.items).toEqual(legacy.items); expect(migrated.campClaims).toEqual(legacy.campClaims);
+  state.closeSave();restored.closeSave();
 });

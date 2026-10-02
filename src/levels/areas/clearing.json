@@ -53,14 +53,20 @@
         3.8891,
         -3.8891
       ],
-      "yaw": -0.7853981633974483
+      "yaw": -0.7853981633974483,
+      "level": 1,
+      "rank": "normal",
+      "humanoid": true
     },
     "caster": {
       "position": [
         -10,
         -5
       ],
-      "yaw": 0.72
+      "yaw": 0.72,
+      "level": 1,
+      "rank": "normal",
+      "humanoid": true
     }
   },
   "seed": 137,
@@ -2696,5 +2702,6 @@
       "yew-longbow",
       "amber-amulet"
     ]
-  }
+  },
+  "level": 1
 }

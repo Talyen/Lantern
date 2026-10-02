@@ -1,8 +1,9 @@
+import { rollGold, shopStock, sellPrices, buybackLimit } from './economy';
 import { validBar, type ActionBar, type WeaponSet } from './abilities';
 import { applyEquipment, createEncounter, enemyIds, type Encounter, type EnemyId } from './encounter';
 import type { Point, Spawn } from './area';
 import type { AreaDefinition, Campfire, Chest } from '../levels/types';
-import { isEquipmentSlot, type ItemId } from './equipment';
+import { isEquipmentSlot, itemIds, type ItemId } from './equipment';
 import { character, type CharacterSave } from './character-save';
 import { CharacterPersistence, type StorageSource } from './character-persistence';
 export { characterSaveKey } from './character-save';
@@ -14,7 +15,8 @@ import { progression, progressMultiplier, shelterRecipe, type Skill, type Gather
 export const scrollLimit = stackLimit;
 export const homeArea = 'homestead';
 export const dropLandingSeconds = .55, pickupRadius = 1.5;
-export type GroundDrop = { id: string; item: LootItem; quantity: number; position: Point; origin: Point; height: number; age: number; claim?: ItemId; instanceId?: string; blocked?: boolean; harvestXp?: { skill: GatheringSkill; perUnit: number } };
+export type GroundItem = LootItem | 'gold';
+export type GroundDrop = { id: string; item: GroundItem; quantity: number; position: Point; origin: Point; height: number; age: number; claim?: ItemId; instanceId?: string; blocked?: boolean; harvestXp?: { skill: GatheringSkill; perUnit: number } };
 export type ReturnSpawn = Spawn & { height?: number };
 export type PortalLink = { area: string; departure: ReturnSpawn };
 type AreaSession = { encounter?: Encounter; drops: GroundDrop[]; dropRolled: Partial<Record<EnemyId, boolean>>; chests: Record<string, { opened: boolean; remaining: number }> };
@@ -23,7 +25,7 @@ export const fireKey = (area: string, fire: string) => `${area}/${fire}`;
 export const near = (point: Point, target: Point, radius: number) => Math.hypot(point[0] - target[0], point[1] - target[1]) <= radius;
 
 /** Continuing character state and inactive area snapshots; no rendering/browser dependencies. */
-export type AdventureEvent = { type: 'chestOpen' | 'returnCast' | 'portalOpen' | 'portalClose' | 'fireDiscovered' | 'healing' | 'potionUse'; position?: {x:number;z:number} } | {type:'lootDrop' | 'lootLand' | 'lootPickup'; item:LootItem; position:{x:number;z:number}};
+export type AdventureEvent = { type: 'chestOpen' | 'returnCast' | 'portalOpen' | 'portalClose' | 'fireDiscovered' | 'healing' | 'potionUse'; position?: {x:number;z:number} } | {type:'lootDrop' | 'lootLand' | 'lootPickup'; item:GroundItem; position:{x:number;z:number}};
 export class Adventure {
   private events: AdventureEvent[] = [];
   private healing = false;
@@ -50,7 +52,7 @@ export class Adventure {
   }
   private adoptCharacter(value: CharacterSave): void {
     this.character = value;
-    for (const entry of [...value.items, ...value.stash]) this.sequence = Math.max(this.sequence, Number(entry.id.match(/^item-(\d+)$/)?.[1] ?? 0));
+    for (const entry of [...value.items, ...value.stash, ...value.buyback]) this.sequence = Math.max(this.sequence, Number(entry.id.match(/^item-(\d+)$/)?.[1] ?? 0));
   }
   async prepareSave(): Promise<void> {
     const loaded = await this.persistence.initialize();
@@ -78,7 +80,7 @@ export class Adventure {
     this.notice = ''; this.noticeTime = 0; this.healing = false; this.atShelter = false;
     this.checkpoint = 0; this.events = [];
   }
-  spawnDrop(item: LootItem, quantity: number, origin: Point, options: Partial<Pick<GroundDrop, 'claim' | 'instanceId' | 'blocked' | 'harvestXp'>> = {}): GroundDrop {
+  spawnDrop(item: GroundItem, quantity: number, origin: Point, options: Partial<Pick<GroundDrop, 'claim' | 'instanceId' | 'blocked' | 'harvestXp'>> = {}): GroundDrop {
     const point = this.placeGround(origin, this.session().drops.length);
     const drop: GroundDrop = { id: this.newId(), item, quantity, origin: [...origin], ...point, age: 0, ...options };
     this.session().drops.push(drop); this.events.push({type:'lootDrop',item,position:{x:drop.position[0],z:drop.position[1]}}); return drop;
@@ -104,14 +106,51 @@ export class Adventure {
     if (!drop || drop.age < dropLandingSeconds || !near(point, drop.position, pickupRadius)) return false;
     if (!this.canCollectGround(drop)) { if (manual) this.message('Can’t reach item'); return false; }
     if (drop.blocked && !manual) return false;
-    const amount = receive(this.character.items, drop.item, drop.quantity, this.newId, drop.instanceId);
-    if (!amount) { if (manual) this.message('Inventory full'); return false; }
+    const amount = drop.item === 'gold' ? Math.min(drop.quantity, Number.MAX_SAFE_INTEGER - this.character.gold) : receive(this.character.items, drop.item, drop.quantity, this.newId, drop.instanceId);
+    if (drop.item === 'gold') this.character.gold += amount;
+    if (!amount) { if (manual) this.message(drop.item === 'gold' ? 'Gold wallet is full' : 'Inventory full'); return false; }
     this.events.push({type:'lootPickup',item:drop.item,position:{x:drop.position[0],z:drop.position[1]}});
     if (drop.harvestXp) this.awardXp(drop.harvestXp.skill, amount * drop.harvestXp.perUnit);
     drop.quantity -= amount;
     if (drop.claim) this.character.campClaims = [...new Set([...this.character.campClaims, drop.claim])];
     if (!drop.quantity) this.session().drops.splice(this.session().drops.indexOf(drop), 1);
     this.save(); return true;
+  }
+  private assertShop(encounter: Encounter, area: AreaDefinition): void {
+    if (this.currentArea !== homeArea || area.id !== this.currentArea || area.kind !== 'safe' || !area.shop || encounter.player.hp <= 0
+      || encounter.player.lock > 0 || encounter.dodgeRemaining > 0 || !['playing','won'].includes(encounter.phase)
+      || this.castRemaining > 0 || !near([encounter.player.x, encounter.player.z], area.shop.position, 1.8))
+      throw new Error('Shop is out of reach.');
+  }
+  buy(encounter: Encounter, area: AreaDefinition, item: LootItem): void {
+    this.assertShop(encounter, area);
+    const offer = shopStock.find(offer => offer.item === item);
+    if (!offer) throw new Error('Item is not for sale.');
+    if (this.character.gold < offer.price) throw new Error('Not enough gold.');
+    const items = structuredClone(this.character.items);
+    if (receive(items, item, 1, this.newId) !== 1) throw new Error('Inventory full.');
+    this.character.items = items; this.character.gold -= offer.price; this.save();
+  }
+  sell(encounter: Encounter, area: AreaDefinition, id: string): void {
+    this.assertShop(encounter, area);
+    const entry = this.character.items.find(entry => entry.id === id);
+    if (!entry || entry.slot !== 'bag' || !itemIds.includes(entry.item as ItemId)) throw new Error('Select equipment from your bag.');
+    const item = entry.item as ItemId, price = sellPrices[item];
+    if (!Number.isSafeInteger(this.character.gold + price)) throw new Error('Gold wallet is full.');
+    this.character.items = this.character.items.filter(entry => entry.id !== id);
+    this.character.gold += price;
+    this.character.buyback = [{ id, item, price }, ...this.character.buyback].slice(0, buybackLimit);
+    this.save();
+  }
+  buyBack(encounter: Encounter, area: AreaDefinition, id: string): void {
+    this.assertShop(encounter, area);
+    const entry = this.character.buyback.find(entry => entry.id === id);
+    if (!entry) throw new Error('Item is no longer available.');
+    if (this.character.gold < entry.price) throw new Error('Not enough gold.');
+    const items = structuredClone(this.character.items);
+    if (receive(items, entry.item, 1, this.newId, entry.id) !== 1) throw new Error('Inventory full.');
+    this.character.items = items; this.character.gold -= entry.price;
+    this.character.buyback = this.character.buyback.filter(other => other.id !== id); this.save();
   }
   grantHarvest(item: 'wood' | 'stone' | 'iron', quantity: number, skill: GatheringSkill, xpPerUnit: number, position: Point): void {
     this.spawnDrop(item,quantity,position,{harvestXp:{skill,perUnit:xpPerUnit}});
@@ -189,6 +228,8 @@ export class Adventure {
     if (this.currentArea !== area.id || encounter.player.hp <= 0 || !chestUnlocked(encounter,chest) || this.castRemaining > 0 || !near([encounter.player.x, encounter.player.z], chest.position, 1.8)) return false;
     const state = this.chest(area, chest); if (state.opened) return false;
     this.events.push({type:'chestOpen',position:{x:chest.position[0],z:chest.position[1]}});
+    const gold = rollGold({ kind: 'chest', areaLevel: area.level, level: chest.level, gold: chest.gold }, this.random);
+    if (gold) this.spawnDrop('gold', gold, chest.position);
     if (state.remaining) this.spawnDrop('scroll', state.remaining, chest.position);
     if (chest.potions) this.spawnDrop('potion',chest.potions,chest.position);
     this.guaranteedEquipment(chest.equipment ?? [],chest.position);
@@ -227,6 +268,8 @@ export class Adventure {
       if (enemy.home && enemy.hp <= 0 && !session.dropRolled[id]) {
         session.dropRolled[id] = true;
         if (this.random() < .5) this.spawnDrop('scroll', 1, [enemy.x, enemy.z]);
+        const gold = rollGold({ ...area.layout[id], kind: 'enemy', areaLevel: area.level }, this.random);
+        if (gold) this.spawnDrop('gold', gold, [enemy.x, enemy.z]);
         this.guaranteedEquipment(area.enemyEquipment?.[id] ?? [],[enemy.x,enemy.z]);
       }
     }
@@ -234,7 +277,7 @@ export class Adventure {
       if (drop.age < dropLandingSeconds && drop.age + dt >= dropLandingSeconds) this.events.push({type:'lootLand',item:drop.item,position:{x:drop.position[0],z:drop.position[1]}});
       drop.age += dt;
       if (drop.blocked && !near(point, drop.position, pickupRadius)) drop.blocked = false;
-      if (lootDefinitions[drop.item].stackable) this.pickup(drop.id, point);
+      if (drop.item === 'gold' || lootDefinitions[drop.item].stackable) this.pickup(drop.id, point);
     }
     if (this.castRemaining > 0) {
       this.castRemaining = Math.max(0, this.castRemaining - dt);

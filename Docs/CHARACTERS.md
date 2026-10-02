@@ -39,3 +39,7 @@ Gameplay and the animation lab use the original authored Paladin and Goblin mode
 `npm run assets:export-character` updates the two playable entries in an existing gallery catalog, or creates a minimal playable catalog if the full gallery is absent. After a full gallery export, run that command with `--motions-only` to refresh the playable entries. `--player-only` limits preparation to Paladin. Its packed defaults retain dodge.
 
 The eight projected Paladin palettes and their original inputs/recipes are privately archived through the cleanup task, as described in [development](ASSET_PREPARATION.md#required-playable-character-and-motions). They no longer appear in the gallery or gameplay.
+
+## Homestead merchant
+
+`npm run assets:export-merchant` prepares only Peasant Man (`mixamo-5fb4b535-034a-4011-af3b-2880391547a5`) and neutral Mixamo Idle (`2b810890b52a`) using the existing checked world-space baker. Clone only animation sources into the owned task with `agent:sources -- --sources animation-packs`. Original color/UVs remain authored; legacy Phong reflection is corrected to diffuse clothing/skin. The packed `/vendor/characters/merchant/model.glb` contains one rig-compatible `idle`. Intermediate model, motion, catalog and provenance remain private; builds select only the packed area-referenced model and its dependencies, excluding gallery assets. Inspect the merchant's feet, idle and clothing at gameplay scale. This command never alters Paladin or Goblin outputs.

@@ -1,3 +1,4 @@
+import { createMerchant } from '../rendering/merchant';
 import { SceneCache } from '../assets/scene-cache';
 import { disposeSceneInstances, isMesh } from '../assets/resource-ownership';
 import { MeshStandardNodeMaterial } from 'three/webgpu';
@@ -40,6 +41,7 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
   const animated = new Set<THREE.Object3D>();
   const interactables = new Map<string,THREE.Object3D>();
   const chests = new Map<string, { hinge: THREE.Group; opened: boolean }>();
+  let merchant: Awaited<ReturnType<typeof createMerchant>> | undefined;
   let shelter: ReturnType<typeof createShelter> | undefined;
   const resources = resourceDefinitions(area), mineralModels = new Map<string, THREE.Object3D>();
   const trees = treeDefinitions(area), treeIds = new Map(trees.map(t => [t.id, t]));
@@ -141,6 +143,7 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
       const resource = resources.find(n => n.id === p.id);
       if(resource?.kind==='iron')model.traverse(o=>{if(isMesh(o) && o.material instanceof MeshStandardNodeMaterial){const ore=o.material.clone();ore.colorNode=mix(color('#5e5b52'),color('#89654e'),smoothstep(.25,.65,sin(positionWorld.x.mul(13).add(positionWorld.z.mul(8))).mul(.5).add(.5)));ore.roughness=.85;ownedMaterial.add(ore);o.material=ore;}});
       if (resource && resource.kind !== 'tree') { model.userData.harvestResource=p.id; model.traverse(o=>animated.add(o)); model.userData.resourceScaleY=model.scale.y; mineralModels.set(p.id,model); interactables.set(`resource/${p.id}`,model); }
+      if (area.shop?.prop === p.id) { interactables.set(`shop/${area.shop.id}`, model); model.traverse(object => animated.add(object)); }
       const tree = treeIds.get(p.id);
       const chest=area.chests?.find(chest=>chest.prop===p.id);
       const fire=area.campfires?.find(fire=>Math.hypot(fire.position[0]-p.position[0],fire.position[1]-p.position[2])<.2);
@@ -224,6 +227,13 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
     root.userData.lightingSources = [...lightingSources];
     // Batch opaque repeated asset primitives without flattening skins, wind or native LOD ownership.
     const staticBatches = new Map<string, THREE.Mesh[]>();
+    if (area.shop) {
+      try {
+        merchant = await createMerchant(area.shop); root.add(merchant.root);
+        merchant.root.traverse(object => animated.add(object));
+        interactables.set(`merchant/${area.shop.id}`, merchant.root);
+      } catch (error) { missing.push(`Merchant: ${error instanceof Error ? error.message : String(error)}`); }
+    }
     root.updateMatrixWorld(true);
     const lodRoots = new Set(instances.filter(i => (i.object.userData.lods as unknown[] | undefined)?.length).map(i => i.object));
     root.traverse(o => {
@@ -241,6 +251,7 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
       meshes.forEach((mesh, i) => { batch.setMatrixAt(i, mesh.matrixWorld); mesh.removeFromParent(); }); batch.computeBoundingSphere(); root.add(batch);
     }
     function update(camera: THREE.Camera, dt = 0): void {
+      merchant?.update(dt);
       for (const instance of instances) updateAssetLods(instance.object, camera);
       for (const { hinge, opened } of chests.values()) hinge.rotation.x = THREE.MathUtils.damp(hinge.rotation.x, opened ? -1.25 : 0, 8, dt);
       for (const id of shakingTrees) {
@@ -290,7 +301,7 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
   function dispose(): void {
     if (disposed) return;
     disposed = true;
-    shelter?.dispose(); portals.forEach(p => p.dispose()); grass?.dispose();
+    merchant?.dispose(); shelter?.dispose(); portals.forEach(p => p.dispose()); grass?.dispose();
     root.removeFromParent();
     instances.forEach(i => i.release());
     disposeSceneInstances(root);

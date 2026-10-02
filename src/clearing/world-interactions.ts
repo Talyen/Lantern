@@ -21,7 +21,7 @@ export type WorldInteraction = WorldTarget & (
   | { type: 'resource'; resource: ResourceDefinition }
   | { type: 'chest'; chest: Chest }
   | { type: 'fire'; fire: Campfire }
-  | { type: 'portal' | 'shelter' | 'stash' }
+  | { type: 'portal' | 'shelter' | 'stash' | 'shop' }
 );
 
 /** Build stable descriptors once; gameplay still decides eligibility at query time. */
@@ -48,6 +48,11 @@ function areaTargets(area: AreaDefinition, active: AreaInstance): WorldInteracti
       key: `fire/${fire.id}`, name: 'Travel', type: 'fire', fire,
       position: fire.position, range: 3, height: 0, obstacleId: fire.id, object,
     });
+  }
+  if (area.shop) for (const key of [`shop/${area.shop.id}`, `merchant/${area.shop.id}`]) {
+    const object = active.interactables.get(key);
+    if (object) targets.push({ key, name: 'Shop', type: 'shop', position: area.shop.position,
+      range: 1.8, height: 0, obstacleId: area.shop.prop, object });
   }
   if (area.shelter) {
     const site = area.shelter;

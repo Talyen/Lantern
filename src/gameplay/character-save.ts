@@ -10,12 +10,15 @@ import {
   type InventoryItem,
   type LootItem,
 } from './inventory';
+import { buybackLimit, type BuybackEntry } from './economy';
 import { progression } from './skills';
 
 export const characterSaveKey = 'lantern.character.v1';
 export const characterBackupKey = `${characterSaveKey}.backup`;
 export type CharacterSave = {
-  version: 6;
+  version: 7;
+  gold: number;
+  buyback: BuybackEntry[];
   activeSet: WeaponSet;
   actionBar: ActionBar;
   items: InventoryItem[];
@@ -39,7 +42,9 @@ export function character(
   ],
 ): CharacterSave {
   const value = {
-    version: 6 as const,
+    version: 7 as const,
+    gold: 0,
+    buyback: [] as BuybackEntry[],
     activeSet: 0 as WeaponSet,
     actionBar: initialBar(weaponFamily(itemLoadout(items).main)),
     items,
@@ -82,7 +87,7 @@ export function decodeCharacter(raw: string): CharacterSave {
   const value = parseJson(raw);
   const counter = (n: unknown): n is number =>
     typeof n === 'number' && Number.isFinite(n) && n >= 0 && n <= Number.MAX_SAFE_INTEGER;
-  if (!isRecord(value) || typeof value.version !== 'number' || ![1, 2, 3, 4, 5, 6].includes(value.version)
+  if (!isRecord(value) || typeof value.version !== 'number' || ![1, 2, 3, 4, 5, 6, 7].includes(value.version)
     || !Array.isArray(value.campfires) || !value.campfires.every((id: unknown): id is string => typeof id === 'string'))
     throw new Error('Invalid character save');
   const hasHome = value.version >= 5 || (value.version === 4 && value.stash !== undefined);
@@ -159,6 +164,21 @@ export function decodeCharacter(raw: string): CharacterSave {
       result.xp = legacyXp;
       if (claimed) result.campClaims = ['sword', 'shield', 'bow', 'staff'];
     }
+  }
+  if (value.version >= 7) {
+    if (!Number.isSafeInteger(value.gold) || !counter(value.gold) || !Array.isArray(value.buyback)
+      || value.buyback.length > buybackLimit) throw new Error('Invalid gold save');
+    const buyback: BuybackEntry[] = [];
+    for (const entry of value.buyback) {
+      if (!isRecord(entry) || typeof entry.id !== 'string' || !entry.id || !isItemId(entry.item)
+        || !Number.isSafeInteger(entry.price) || !counter(entry.price) || entry.price < 1)
+        throw new Error('Invalid buyback save');
+      buyback.push({ id: entry.id, item: entry.item, price: entry.price });
+    }
+    const ids = [...result.items, ...result.stash, ...buyback].map(entry => entry.id);
+    if (new Set(ids).size !== ids.length) throw new Error('Duplicate buyback identity');
+    result.gold = value.gold;
+    result.buyback = buyback;
   }
   result.campfires = [...new Set<string>(['homestead/camp', ...value.campfires])];
   if (!hasCombat) {

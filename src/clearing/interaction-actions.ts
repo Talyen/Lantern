@@ -13,6 +13,7 @@ type InteractionContext = {
   paused(): boolean;
   changeArea(change: AreaTravel): Promise<boolean>;
   syncAdventure(): void;
+  openShop(): void;
 };
 
 /** Executes reached world targets; area preparation and commit remain with the coordinator. */
@@ -35,6 +36,7 @@ export class InteractionActions {
     switch (target.type) {
       case 'resource': this.gathering.select(target.resource); break;
       case 'shelter': this.menus.openRepair(); break;
+      case 'shop': context.openShop(); break;
       case 'stash': this.menus.openInventory(true); break;
       case 'chest': adventure.openChest(encounter, area, target.chest); break;
       case 'fire': {

@@ -50,7 +50,8 @@
     "desktop:verify": "node scripts/desktop/candidate.mjs verify",
     "desktop:publish": "node scripts/desktop/candidate.mjs publish",
     "desktop:dispatch": "node scripts/desktop/candidate.mjs dispatch",
-    "desktop:package": "node scripts/desktop/package.mjs"
+    "desktop:package": "node scripts/desktop/package.mjs",
+    "assets:export-merchant": "node scripts/agents/run.mjs --resource heavy -- node scripts/assets/characters/merchant.mjs"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "0.21.0",

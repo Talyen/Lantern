@@ -2248,6 +2248,139 @@
       "asset": {
         "libraryId": "generic:model:sm-gen-env-tree-pine-03"
       }
+    },
+    {
+      "id": "merchant-counter",
+      "position": [
+        -5,
+        0,
+        4.3
+      ],
+      "yaw": 0,
+      "scale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-prop-table-01"
+      }
+    },
+    {
+      "id": "merchant-crate",
+      "position": [
+        -6.25,
+        0,
+        5.1
+      ],
+      "yaw": 0,
+      "scale": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-prop-crate-01"
+      }
+    },
+    {
+      "id": "merchant-potion",
+      "position": [
+        -4.8,
+        0.6412,
+        4.3
+      ],
+      "yaw": 0,
+      "scale": [
+        0.6,
+        0.6,
+        0.6
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "libraryId": "generic:model:sm-gen-prop-potion-01"
+      }
+    },
+    {
+      "id": "merchant-awning",
+      "position": [
+        -6.1,
+        2.05,
+        5.1
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "primitive": {
+        "kind": "tent",
+        "size": [
+          1.6,
+          0.16,
+          1.4
+        ],
+        "color": "#89715a",
+        "doubleSided": true
+      }
+    },
+    {
+      "id": "merchant-post-0",
+      "position": [
+        -6.85,
+        1.025,
+        5.7
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "primitive": {
+        "kind": "box",
+        "size": [
+          0.12,
+          2.05,
+          0.12
+        ],
+        "color": "#68523d"
+      }
+    },
+    {
+      "id": "merchant-post-1",
+      "position": [
+        -5.35,
+        1.025,
+        5.7
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "primitive": {
+        "kind": "box",
+        "size": [
+          0.12,
+          2.05,
+          0.12
+        ],
+        "color": "#68523d"
+      }
     }
   ],
   "scatter": [],
@@ -2383,6 +2516,19 @@
         "emitterHeight": 0.45,
         "shadow": true,
         "role": "campfire"
+      },
+      {
+        "id": "merchant-lantern",
+        "position": [
+          -3.65,
+          1.45,
+          5.3
+        ],
+        "asset": {
+          "libraryId": "viking-realm:model:sm-prop-lantern-01"
+        },
+        "height": 0.28,
+        "role": "lantern"
       }
     ]
   },
@@ -3017,6 +3163,34 @@
           0.2
         ],
         "yaw": 0
+      },
+      {
+        "id": "merchant-counter",
+        "position": [
+          -5,
+          0.31875,
+          4.2151
+        ],
+        "size": [
+          1.7893,
+          0.6375,
+          0.9346
+        ],
+        "yaw": 0
+      },
+      {
+        "id": "merchant",
+        "position": [
+          -5,
+          0.85,
+          5.2
+        ],
+        "size": [
+          0.5,
+          1.7,
+          0.5
+        ],
+        "yaw": 0
       }
     ]
   },
@@ -3084,5 +3258,22 @@
       -3.05,
       -0.9
     ]
+  },
+  "shop": {
+    "id": "merchant",
+    "prop": "merchant-counter",
+    "position": [
+      -5,
+      3.4
+    ],
+    "merchant": {
+      "model": "/vendor/characters/merchant/model.glb",
+      "position": [
+        -5,
+        5.2
+      ],
+      "yaw": 0,
+      "height": 1.7
+    }
   }
 }

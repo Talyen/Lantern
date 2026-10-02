@@ -1,8 +1,9 @@
+import type { EnemyRewards } from './economy';
 /** Ground-plane geometry and gate state; no browser or renderer dependencies. */
 export type Point = [number, number];
 export type Boundary = { kind: 'circle'; center: Point; radius: number } | { kind: 'polygon'; points: Point[] };
 export type Spawn = { position: Point; yaw: number };
-export type EncounterLayout = { boundary: Boundary; player: Spawn; enemy?: Spawn; caster?: Spawn };
+export type EncounterLayout = { boundary: Boundary; player: Spawn; enemy?: Spawn & EnemyRewards; caster?: Spawn & EnemyRewards };
 export type Gate = { id: string; role: 'entrance' | 'exit' | 'branch'; position: Point; yaw: number; width: number; depth: number; arrival: Spawn; destination: { area: string; gate: string } };
 export const legacyLayout: EncounterLayout = { boundary: { kind: 'circle', center: [0, 0], radius: 6.55 }, player: { position: [-2.3, 1.7], yaw: 0 }, enemy: { position: [2.1, -1.5], yaw: 0 } };
 export function boundaryDistance(boundary: Boundary, point: Point): number {

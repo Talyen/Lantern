@@ -35,7 +35,7 @@ export class LootLabels {
       const drop = this.drops.get(id)!;
       let layout = this.labels.get(drop.id);
       if (!layout) {
-        const label = document.createElement('button'); label.type = 'button'; label.className = 'loot-label'; label.dataset.drop = drop.id; label.textContent = lootDefinitions[drop.item].name;
+        const label = document.createElement('button'); label.type = 'button'; label.className = 'loot-label'; label.dataset.drop = drop.id; label.textContent = drop.item === 'gold' ? 'Gold' : lootDefinitions[drop.item].name; label.classList.toggle('gold', drop.item === 'gold');
         label.onpointerdown = event => { if (event.button !== 0) return; event.preventDefault(); event.stopPropagation(); this.select(drop.id); };
         label.oncontextmenu = event => event.preventDefault();
         label.onclick = event => { event.preventDefault(); event.stopPropagation(); if (event.detail === 0) this.select(drop.id); };

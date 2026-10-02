@@ -99,3 +99,10 @@ Copy this brief into an area's task or private review notes:
 Licensed sources, GLBs, generated bakes and captures remain private under `.local/` or `public/vendor/`. Never submit Synty models/textures/renders to ImageGen. Original text-prompted textures can follow the existing local projection pipeline. Preview/capture/measurement do not modify build selections, export art, or publish anything.
 
 Environment palette, material treatment, the fixed Golden woodland baseline and local surface preparation follow [the art direction](ART_DIRECTION.md).
+
+
+## Shop and gold reward metadata
+
+Area definitions can author positive integer `level`; enemy spawns can override `level` and add `rank: "normal" | "elite" | "boss"`, `humanoid: true` and `gold: false` opt-outs. Chest `level` overrides area level and `gold: false` disables its opportunity. This metadata affects the [gold formula](LOOT.md#gold-and-homestead-trading), not combat stats or player progression. Humanoid eligibility is explicit and includes humanoid undead.
+
+Homestead's optional `shop` names a stable `id`, counter `prop`, interaction `position: [x,z]`, and `merchant` with private `model` URL, `position`, `yaw` and display `height`. Counter and merchant share the shop interaction; keep counter collision aligned and its approach clear. The animated merchant stays outside static lighting capture. The counter, clustered supplies and lantern remain authored area scenery under shared Golden lighting.

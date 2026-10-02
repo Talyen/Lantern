@@ -4,7 +4,7 @@ import { resolveLocalLight } from './local-lighting.ts';
 import { inReserved } from './decoration.ts';
 import { boundaryDistance, insideGate } from '../gameplay/area.ts';
 import type { AreaDefinition, AssetRef } from './types.ts';
-export function assetReferences(area: AreaDefinition): AssetRef[] { return [...area.props.flatMap(p => [p.asset, p.fallback].filter((a): a is AssetRef => !!a)), ...area.effects.fires.map(f => f.asset), ...(area.shelter ? [{libraryId:'generic:model:sm-gen-prop-chest-01'}] : [])]; }
+export function assetReferences(area: AreaDefinition): AssetRef[] { return [...area.props.flatMap(p => [p.asset, p.fallback].filter((a): a is AssetRef => !!a)), ...area.effects.fires.map(f => f.asset), ...(area.shop ? [{url:area.shop.merchant.model}] : []), ...(area.shelter ? [{libraryId:'generic:model:sm-gen-prop-chest-01'}] : [])]; }
 export { inReserved, generateDecoration } from './decoration.ts';
 /** Validation is shared by live preview and Node tooling. Errors identify the area/object. */
 export function validateAreas(input: Record<string, AreaDefinition>): string[] {
@@ -16,6 +16,16 @@ export function validateAreas(input: Record<string, AreaDefinition>): string[] {
     const ids = new Set<string>(); const id = (value: string) => { owner = `${key}/${value}`; if (typeof value !== 'string' || !/^[a-z][a-z0-9-]*$/.test(value) || ids.has(value)) fail('invalid or duplicate stable object ID'); ids.add(value); };
     try {
       if (area.version !== 1 || area.id !== key || !/^[a-z][a-z0-9-]*$/.test(key)) fail('expected version 1 and a stable area ID');
+      const reward = (source: { level?: number; gold?: boolean }) => {
+        if (source.level !== undefined && (!Number.isSafeInteger(source.level) || source.level < 1)) fail('reward level must be a positive integer');
+        if (source.gold !== undefined && typeof source.gold !== 'boolean') fail('gold eligibility must be boolean');
+      };
+      reward(area);
+      for (const spawn of [area.layout.enemy, area.layout.caster]) if (spawn) {
+        reward(spawn);
+        if (spawn.humanoid !== undefined && typeof spawn.humanoid !== 'boolean') fail('humanoid eligibility must be boolean');
+        if (spawn.rank !== undefined && !['normal','elite','boss'].includes(spawn.rank)) fail('unknown enemy reward rank');
+      }
       const e = area.envelope;
       if (!finite([e.width, e.depth, e.apron, e.yaw, e.reference.width, e.reference.height, e.reference.zoom, ...e.screen]) || e.width <= 0 || e.depth <= 0 || e.apron < 0) fail('invalid design envelope');
       if (!Number.isInteger(area.seed)) fail('decoration seed must be an integer');
@@ -33,6 +43,15 @@ export function validateAreas(input: Record<string, AreaDefinition>): string[] {
         if (!finite(fire.position, 2) || !finite(fire.arrival.position, 2) || !Number.isFinite(fire.arrival.yaw) || boundaryDistance(boundary, fire.position) < 0 || boundaryDistance(boundary, fire.arrival.position) < 0) fail('campfire and arrival must be inside the walkable boundary');
         if (!area.effects.fires.some(effect => effect.id === fire.id)) fail('interactive campfire needs a fire effect');
         if (fire.heals !== undefined && typeof fire.heals !== 'boolean') fail('heals must be boolean');
+      }
+      if (area.shop) {
+        id(area.shop.id);
+        const shop = area.shop, merchant = shop.merchant;
+        if (area.id !== 'homestead' || area.kind !== 'safe' || !area.props.some(prop => prop.id === shop.prop)
+          || !finite(shop.position, 2) || boundaryDistance(boundary, shop.position) < 0
+          || !finite(merchant.position, 2) || boundaryDistance(boundary, merchant.position) < 0
+          || !Number.isFinite(merchant.yaw) || !Number.isFinite(merchant.height) || merchant.height <= 0)
+          fail('invalid Homestead shop');
       }
       if (area.shelter && (!finite(area.shelter.position,2) || !finite(area.shelter.stash,2) || !Number.isFinite(area.shelter.yaw) || boundaryDistance(boundary,area.shelter.position)<0 || boundaryDistance(boundary,area.shelter.stash)<0)) fail('invalid shelter position');
       if (area.portalArrival && (!finite(area.portalArrival.position, 2) || !Number.isFinite(area.portalArrival.yaw) || boundaryDistance(boundary, area.portalArrival.position) < 0)) fail('invalid portal arrival');
@@ -70,6 +89,7 @@ export function validateAreas(input: Record<string, AreaDefinition>): string[] {
         if (!finite(portal.position, 3) || !finite([portal.yaw, portal.width, portal.height]) || portal.width <= 0 || portal.height <= 0) fail('invalid portal transform');
       }
       for (const chest of area.chests ?? []) {
+        reward(chest);
         if (chest.guard !== undefined && chest.guard !== null && (!['enemy','caster'].includes(chest.guard) || !area.layout[chest.guard])) fail('chest guard must name a placed enemy');
         id(chest.id);
         if (!finite(chest.position, 2) || boundaryDistance(boundary, chest.position) < 0 || !Number.isInteger(chest.scrolls) || chest.scrolls < 0) fail('invalid chest position/reward');
