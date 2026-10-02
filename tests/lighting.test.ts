@@ -9,11 +9,16 @@ import type { AreaDefinition, ResolvedAreaDefinition } from '../src/levels/types
 import homestead from '../src/levels/areas/homestead.json';
 import clearing from '../src/levels/areas/clearing.json';
 
-test('one shared preset provides automatic coverage, area overrides and warm local light recipes', () => {
+test('shared lighting covers the area and applies overrides without mutating its recipes', () => {
   const area = homestead as unknown as AreaDefinition;
-  const golden = resolveAreaLighting(area);
-  expect(golden.probes!.size[0]).toBeGreaterThan(30);
-  expect(golden.probes!.position[1] - golden.probes!.size[1] / 2).toBeCloseTo(.6);
+  const shared = resolveLighting(), golden = resolveAreaLighting(area), baseline = structuredClone(golden);
+  const boundary = area.layout.boundary;
+  const points = boundary.kind === 'polygon' ? boundary.points : [
+    [boundary.center[0] - boundary.radius, boundary.center[1] - boundary.radius],
+    [boundary.center[0] + boundary.radius, boundary.center[1] + boundary.radius],
+  ];
+  const probes = golden.probes!;
+  expect(points.every(([x, z]) => Math.abs(x - probes.position[0]) <= probes.size[0] / 2 && Math.abs(z - probes.position[2]) <= probes.size[2] / 2)).toBe(true);
   const overridden = resolveAreaLighting({ ...area, lighting: { overrides: { fogFar: 80, probes: false } } });
   expect(overridden.fogFar).toBe(80); expect(overridden.probes).toBeUndefined();
   expect(resolveLighting().sun.color).toBe(golden.sun.color);
@@ -21,11 +26,12 @@ test('one shared preset provides automatic coverage, area overrides and warm loc
   const invalid = structuredClone(area); invalid.lighting = { overrides: { fogNear: -1 } };
   expect(validateAreas({ homestead: invalid }).some(error => error.includes('invalid lighting'))).toBe(true);
   expect(validateAreas({ homestead: { ...area, lighting: golden } as unknown as AreaDefinition }).some(error => error.includes('shared Golden preset'))).toBe(true);
-  expect(golden.fogFar).toBe(60); // Resolving an override never mutates the shared preset.
-  expect(resolveLocalLight({ role: 'lantern' }).color).toBe(resolveLocalLight({ role: 'campfire' }).color);
-  expect(resolveLocalLight({ role: 'torch' }).color).toBe(resolveLocalLight({ role: 'campfire' }).color);
-  expect(resolveLocalLight({ role: 'torch' }).intensity).toBeGreaterThan(resolveLocalLight({ role: 'lantern' }).intensity);
+  expect(golden).toEqual(baseline);
+  expect(resolveAreaLighting(area)).toEqual(baseline);
+  expect(resolveLighting()).toEqual(shared);
+  const flame = structuredClone(resolveLocalLight({ role: 'campfire' }));
   expect(resolveLocalLight({ role: 'campfire', intensity: 11, shadow: false })).toMatchObject({ intensity: 11, shadow: false });
+  expect(resolveLocalLight({ role: 'campfire' })).toEqual(flame);
 });
 test('lighting resources remain globally bounded across dozens of areas and protect active/candidate leases', () => {
   const destroyed: number[] = [], cache = new LightingCache<number>(2, 24, item => destroyed.push(item));

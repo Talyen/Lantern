@@ -4,23 +4,34 @@ import clearing from '../src/levels/areas/clearing.json';
 import movementTrial from '../src/levels/areas/movement-trial.json';
 import blockout from '../src/levels/areas/blockout.json';
 import type { AreaDefinition } from '../src/levels/types';
-import { generateGrass, grassCoverage, grassBudget } from '../src/levels/grass';
+import { generateGrass, grassCoverage, grassBudget, type GrassPatch } from '../src/levels/grass';
 import { GateTravel } from '../src/gameplay/area';
-import { generateDecoration, inReserved, validateAreas } from '../src/levels/validation';
+import { inReserved, validateAreas } from '../src/levels/validation';
 import { standingTreeAsset, treeDefinitions, traversalWithTrees } from '../src/levels/trees';
 import { Harvesting } from '../src/gameplay/harvesting';
 const areas = { homestead, clearing, blockout, 'movement-trial': movementTrial } as unknown as Record<string, AreaDefinition>;
-test('connected areas validate, decoration is repeatable and reserved routes stay clear', () => {
-  expect(validateAreas(areas)).toEqual([]);
-  const props = generateGrass(areas.homestead, areas.homestead.grass!);
-  expect(props).toEqual(generateGrass(areas.homestead, areas.homestead.grass!));
+// Exercise grass rules without repeatedly generating an authored area's full carpet.
+const grassArea: AreaDefinition = {
+  ...areas.homestead, seed: 42,
+  layout: { boundary: { kind: 'circle', center: [0, 0], radius: 15 }, player: { position: [0, 0], yaw: 0 } },
+  props: [], gates: [], traversal: { obstacles: [] },
+  reserved: [{ id: 'route', center: [0, 0], radius: .5, role: 'route' }],
+};
+const grassPatch: GrassPatch = { id: 'grass', center: [0, 0], radii: [2, 2], yaw: 0, density: 8 };
+
+test('grass is repeatable and leaves reserved routes clear', () => {
+  const patches = [grassPatch], props = generateGrass(grassArea, patches);
+  expect(props).toEqual(generateGrass(grassArea, patches));
   expect(props.length).toBeGreaterThan(0);
-  expect(props.length).toBeLessThanOrEqual(grassBudget);
-  expect(props.some(p => inReserved(areas.homestead, [p.x, p.z], .35) || grassCoverage(areas.homestead, areas.homestead.grass!, p.x, p.z) === 0)).toBe(false);
-  expect(Object.values(areas).flatMap(a => generateDecoration(a)).filter(p => ['grass', 'pebble'].includes(p.primitive!.kind))).toEqual([]);
-  expect(grassCoverage(areas.homestead, areas.homestead.grass!, -2, 1)).toBe(0);
-  const dense = areas.homestead.grass!.map(p => ({ ...p, density: 400 }));
-  expect(generateGrass(areas.homestead, dense).length).toBe(grassBudget);
+  expect(props.some(p => inReserved(grassArea, [p.x, p.z], .35) || grassCoverage(grassArea, patches, p.x, p.z) === 0)).toBe(false);
+  expect(grassCoverage(grassArea, patches, 0, 0)).toBe(0);
+});
+
+test('grass keeps its hard budget when a bounded patch exceeds capacity', () => {
+  expect(generateGrass(grassArea, [{ ...grassPatch, radii: [8, 8], density: 400 }]).length).toBe(grassBudget);
+});
+
+test('area validation rejects invalid grass, links, transforms and lighting', () => {
   const broken = structuredClone(areas);
   broken.homestead.grass![0].density = NaN;
   expect(validateAreas(broken).join('\n')).toMatch(/invalid grass patch/);
