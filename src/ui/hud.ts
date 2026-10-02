@@ -10,14 +10,25 @@ export function createHud(onRetry: () => void) {
   const enemyHealth = element<HTMLDivElement>('enemy-health');
   const healthBars: Record<EnemyId, HTMLDivElement> = {};
   enemyHealth.hidden = true;
+  const roster: EnemyId[] = [];
+  const rosterMembers = new Set<EnemyId>();
   function bars(encounter: Encounter): void {
-    for (const id of Object.keys(healthBars)) if (!encounter.enemyIds.includes(id)) { healthBars[id].remove(); delete healthBars[id]; delete enemyValues[id]; delete damagedFor[id]; delete enemyTransforms[id]; }
+    const ids = encounter.enemyIds;
+    // Compare values so in-place roster edits and reordered/replaced arrays work.
+    let unchanged = roster.length === ids.length;
+    for (let index = 0; unchanged && index < ids.length; index++) unchanged = roster[index] === ids[index];
+    if (unchanged) return;
+    rosterMembers.clear();
+    for (const id of ids) rosterMembers.add(id);
+    for (const id in healthBars) if (!rosterMembers.has(id)) { healthBars[id].remove(); delete healthBars[id]; delete enemyValues[id]; delete damagedFor[id]; delete enemyTransforms[id]; }
     for (const id of encounter.enemyIds) if (!healthBars[id]) {
       const bar = enemyHealth.cloneNode(true) as HTMLDivElement; bar.id = `health-${id}`;
       const enemy = encounter.enemies[id];
       bar.setAttribute('aria-label', `${enemy.rig === 'skeleton' ? enemy.kind === 'caster' ? 'Bone Caster' : 'Skeleton Warrior' : enemy.kind === 'caster' ? 'Caster' : 'Goblin'} health`);
       enemyHealth.after(bar); healthBars[id] = bar; damagedFor[id] = 0;
     }
+    roster.length = ids.length;
+    for (let index = 0; index < ids.length; index++) roster[index] = ids[index];
   }
   const resultPanel = element<HTMLDivElement>('result-panel');
   const resultTitle = element<HTMLHeadingElement>('result-title');
@@ -26,13 +37,15 @@ export function createHud(onRetry: () => void) {
   const anchor = new THREE.Vector3();
   const damagedFor: Record<EnemyId,number> = {};
   let safe = false;
-  const resources = new WeakMap<HTMLElement, string>();
+  const resources = new WeakMap<HTMLElement, { count: number; max: number }>();
   const enemyValues: Partial<Record<EnemyId, number>> = {};
   const enemyTransforms: Partial<Record<EnemyId, string>> = {};
   function resource(orb: HTMLElement, name: string, value: number, max: number): void {
     const count = Math.max(0, Math.min(max, value));
-    if (resources.get(orb) === `${count}/${max}`) return;
-    resources.set(orb, `${count}/${max}`);
+    const previous = resources.get(orb);
+    if (previous?.count === count && previous.max === max) return;
+    if (previous) { previous.count = count; previous.max = max; }
+    else resources.set(orb, { count, max });
     orb.style.setProperty('--fill', String(count / max));
     orb.dataset.empty = String(count === 0);
     orb.setAttribute('aria-valuemax',String(max));

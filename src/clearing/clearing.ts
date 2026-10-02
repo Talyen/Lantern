@@ -381,7 +381,7 @@ function renderFrame(dt: number): boolean {
   if (!inspecting && !paused() && !fixedCamera && encounter.player.hp > 0) {
     cameraOwner.follow(player.root.position, dt);
   } else cameraOwner.suspendFollow();
-  for (const id of Object.keys(actors)) {
+  for (const id in actors) {
     const actor = actors[id];
     const state = id === 'player' ? encounter.player : encounter.enemies[id];
     updateActor(actor, state, dt, paused(), id==='player' && encounter.blocking);
