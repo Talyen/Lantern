@@ -1,11 +1,12 @@
 import { expect, test, vi } from 'vitest';
 import { Matrix4, OrthographicCamera, Vector3, Object3D, Node, NodeFrame, type NodeBuilder, type TextureNode } from 'three/webgpu';
 import { velocity } from 'three/tsl';
+import type * as TSL from 'three/tsl';
 import { fsrTemporal } from '../src/rendering/fsr-temporal';
 
 const hooks = vi.hoisted(() => ({ before: [] as (() => void)[], after: [] as (() => void)[] }));
 vi.mock('three/tsl', async importOriginal => ({
-  ...await importOriginal<typeof import('three/tsl')>(),
+  ...await importOriginal<typeof TSL>(),
   OnBeforeRenderPipeline: (callback: () => void) => hooks.before.push(callback),
   OnAfterRenderPipeline: (callback: () => void) => hooks.after.push(callback),
 }));
