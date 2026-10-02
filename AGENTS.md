@@ -6,7 +6,7 @@ Lantern is a desktop-browser fantasy action RPG prototype using Vite, TypeScript
 
 ## Load only relevant context
 
-Start with [the daily workflow](Docs/DEVELOPMENT.md) and [task routing](Docs/ARCHITECTURE.md#task-routing), or run `npm run agent:context -- --topic <topic>`. Follow the linked instructions for affected work and read owners/consumers before editing. Detailed runtime contracts, asset recipes and interaction flows are separate references; historical evidence is optional. Use `agent:inspect` for bounded area/motion/audio records rather than reading whole manifests. Tool help lists supported flags.
+Start with [the daily workflow](Docs/DEVELOPMENT.md) and [task routing](Docs/ARCHITECTURE.md#task-routing), or run `npm run agent:context -- --topic <topic>`. Follow the linked instructions for affected work and read owners/consumers before editing. Detailed runtime contracts, asset recipes and interaction flows are separate references; historical evidence is optional. Use `agent:inspect` for bounded area/motion/audio records rather than reading whole manifests. Use `agent:context -- --topic <topic> --include-docs --consumers` for bounded sections and direct import consumers, `agent:source` for symbols/line spans, and `agent:diagnostics` for saved check failures. [Read-only tool help](Docs/DEVELOPMENT_REFERENCE.md#read-only-agent-tools) owns budgets and continuation.
 
 ## Working style
 

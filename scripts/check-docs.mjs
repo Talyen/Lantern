@@ -2,34 +2,8 @@ import { readFile, readdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { resolve, dirname, extname } from 'node:path';
 import { cli, parseArgs, root } from './lib/cli.mjs';
+import { headingIds } from './lib/markdown.mjs';
 import { readRoutes } from './agents/context.mjs';
-
-// GitHub-style heading IDs, including duplicate suffixes; fenced examples are not headings.
-function headingIds(text) {
-  const ids = new Set();
-  let fence;
-  let previous = '';
-  for (const line of text.split(/\r?\n/)) {
-    const marker = line.match(/^ {0,3}(`{3,}|~{3,})/);
-    if (fence) {
-      if (marker && marker[1][0] === fence[0] && marker[1].length >= fence.length && !line.slice(marker[0].length).trim()) fence = undefined;
-      previous = '';
-      continue;
-    }
-    if (marker) { fence = marker[1]; previous = ''; continue; }
-    const heading = line.match(/^ {0,3}#{1,6}(?:\s+(.+?)\s*#*\s*|\s*)$/)?.[1]
-      ?? (previous.trim() && /^ {0,3}(?:=+|-+)\s*$/.test(line) ? previous.trim() : undefined);
-    if (heading !== undefined) {
-      const base = heading.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/<[^>]*>/g, '').replace(/[*`~]/g, '')
-        .toLowerCase().replace(/[^\p{L}\p{M}\p{N}_\-\s]/gu, '').replace(/\s/g, '-');
-      let id = base;
-      for (let suffix = 1; ids.has(id); suffix++) id = `${base}-${suffix}`;
-      ids.add(id);
-      previous = '';
-    } else previous = line;
-  }
-  return ids;
-}
 
 await cli(async () => {
   const args = parseArgs(process.argv.slice(2));

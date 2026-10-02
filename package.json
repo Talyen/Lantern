@@ -43,7 +43,9 @@
     "main:dev": "node scripts/agents/cli.mjs main",
     "audio:prepare": "node scripts/assets/audio/prepare.mjs",
     "agent:context": "node scripts/agents/context.mjs",
-    "agent:inspect": "node scripts/agents/inspect.mjs"
+    "agent:inspect": "node scripts/agents/inspect.mjs",
+    "agent:source": "node scripts/agents/source.mjs",
+    "agent:diagnostics": "node scripts/agents/diagnostics.mjs"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "0.21.0",

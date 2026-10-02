@@ -1,6 +1,6 @@
 # Graphics settings
 
-Options contains Graphics and Sound, opens Keybindings, and pauses play while open. Escape opens/closes the menu. [Gameplay sound](AUDIO.md) owns sound controls and defaults; [combat controls](DEVELOPMENT.md#combat-controls-and-focused-acceptance) owns input remapping. This page owns the graphics reference. Runtime defaults and parsing belong to `src/rendering/graphics-settings.ts`, with quality recipes in `src/rendering/quality-presets.ts`.
+Options contains Graphics and Sound, opens Keybindings, and pauses play while open. Escape opens/closes the menu. [Gameplay sound](AUDIO.md) owns sound controls and defaults; [combat controls](SMOKE_REFERENCES.md#combat-controls-and-focused-acceptance) owns input remapping. This page owns the graphics reference. Runtime defaults and parsing belong to `src/rendering/graphics-settings.ts`, with quality recipes in `src/rendering/quality-presets.ts`.
 
 ## Controls and defaults
 

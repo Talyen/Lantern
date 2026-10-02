@@ -4,7 +4,7 @@ Open `/?lab=characters` on the local development server to browse the private ro
 
 ## Preparation and captures
 
-Use the project's Node version and installed npm dependencies. Conversion runs in Blender's bundled Python (`bpy`); contact sheets run separately with `python3` on PATH and require Pillow in that interpreter. Captures also require `agent-browser` on PATH with its browser installed and native WebGPU available. See [capture-tool installation](LEVEL_DESIGN.md#fast-iteration) and the [private asset workflow](DEVELOPMENT.md#private-asset-workflow) for Blender, Synty library import and Mixamo acquisition.
+Use the project's Node version and installed npm dependencies. Conversion runs in Blender's bundled Python (`bpy`); contact sheets run separately with `python3` on PATH and require Pillow in that interpreter. Captures also require `agent-browser` on PATH with its browser installed and native WebGPU available. See [capture-tool installation](LEVEL_DESIGN.md#fast-iteration) and the [private asset workflow](ASSET_PREPARATION.md) for Blender, Synty library import and Mixamo acquisition.
 
 Run preparation in an owned task worktree. Clone only the needed private sources with `npm run agent:sources -- --sources animation-packs,synty-library`. Prepare inputs in this order; reuse existing complete outputs when available:
 
@@ -38,4 +38,4 @@ Gameplay and the animation lab use the original authored Paladin and Goblin mode
 
 `npm run assets:export-character` updates the two playable entries in an existing gallery catalog, or creates a minimal playable catalog if the full gallery is absent. After a full gallery export, run that command with `--motions-only` to refresh the playable entries. `--player-only` limits preparation to Paladin. Its packed defaults retain dodge.
 
-The eight projected Paladin palettes and their original inputs/recipes are privately archived through the cleanup task, as described in [development](DEVELOPMENT.md#required-playable-character-and-motions). They no longer appear in the gallery or gameplay.
+The eight projected Paladin palettes and their original inputs/recipes are privately archived through the cleanup task, as described in [development](ASSET_PREPARATION.md#required-playable-character-and-motions). They no longer appear in the gallery or gameplay.

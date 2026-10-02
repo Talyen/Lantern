@@ -35,7 +35,7 @@ Inventory, equipment, materials, Woodcutting/Mining/Axe Combat XP, collected che
 
 Gather Wood, Stone and Iron to repair the Homestead shelter, unlock its stash and refresh Rested. See [gathering and shelter](Docs/GATHERING.md).
 
-The public repository contains source and original generated surface studies. Playable Mixamo Paladin/Goblin character art and compatible animations must be prepared privately; missing character art produces an actionable import message. Optional scenery can be absent. See the [asset workflow](Docs/DEVELOPMENT.md#private-asset-workflow).
+The public repository contains source and original generated surface studies. Playable Mixamo Paladin/Goblin character art and compatible animations must be prepared privately; missing character art produces an actionable import message. Optional scenery can be absent. See the [asset workflow](Docs/ASSET_PREPARATION.md).
 
 ```sh
 npm run check       # change-aware local sanity gate

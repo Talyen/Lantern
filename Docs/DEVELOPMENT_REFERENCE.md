@@ -23,6 +23,12 @@ npm run agent:cleanup -- --task menu-docs
 
 Replace the example slug, reviewed paths and commit message with the task's actual scope. A documentation task needs no preview; player-facing tasks use their one relevant private preview before finish.
 
+## Integration contracts
+
+`npm run agent:status` reports used/total worktree capacity, task paths, preview URLs, lifecycle/check state, promotion journal and free disk space. Registry and OS-managed locks live under Git's common directory, so every worktree sees the same state. Locks release when their owning process exits; no age-based lock stealing. A durable promotion journal lets the next start/finish/main-preview operation complete interrupted promotion. Unexpected main changes require agent repair and are never reset or stashed away.
+
+Finish stages only named reviewed paths and refuses a pre-existing staged index. Commit before the final checks so `check --base <sha>` examines candidate changes, not just a clean working-tree diff. Checks belong to their exact revision/assets; main advancing triggers preparation and relevant checks again. Broken candidates never block unrelated tasks from attempting promotion.
+
 ## Private assets and resource use
 
 Worktrees stay on main's filesystem. Native macOS `clonefile` creates independent asset/dependency copies sharing initial storage; ordinary writes allocate changed blocks. Node's clone-copy option is unsupported on this machine and is not used. There is no silent large-copy fallback. Do not use writable symlinks or hardlinks. Clone sizes are logical, not additional physical disk usage.
@@ -36,6 +42,51 @@ Automatic limits default to eight task worktrees, one static-check job, one heav
 Set a repository-local override with `git config --local lantern.maxWorktrees 12`; remove it with `git config --local --unset lantern.maxWorktrees` to restore eight. The setting must be a positive integer and is shared by every worktree. Lowering it preserves existing tasks and waits for usage to fall below the new limit. Every task not yet cleaned consumes a slot, including integrated tasks awaiting cleanup. Admission releases the promotion lock while waiting so other tasks can finish and be cleaned.
 
 Local/private-asset operations require 20 GiB available disk; admission waits at the configured worktree limit. Asset-free CI with no private vendor/source directories uses a 1 GiB reserve, since [standard hosted runners](https://docs.github.com/en/actions/reference/runners/github-hosted-runners) advertise 14 GB storage. CI containing private inputs retains the 20 GiB reserve. If disk space or task slots are exhausted, the agent runs `agent:status`, cleans completed tasks with `agent:cleanup`, and retries without asking the user to manage resources. Preserve unfinished tasks and source archives. Cleanup retains successful/failure check evidence and preview logs alongside private sources in `.local/agent-archives/<slug>/`. Staging and production public files also use native clones. Successful check evidence replaces older successful evidence; failure evidence is retained. Captures replace the same task/view output rather than collecting a settings matrix.
+
+## Read-only agent tools
+
+`agent:context` reads the canonical [routing table](ARCHITECTURE.md#task-routing) and current Git state; it does not cache a second owner map. Without `--topic`, it lists topics. `--json` returns structured output. `--include-docs` reads the routed sections; `--consumers` lists direct literal relative imports, re-exports and `require` consumers with file/line locations. It does not infer aliases, computed imports or transitive consumers. Dirty paths are limited to 20 with an omitted count; use `git status --short` for the complete inventory before editing/staging.
+
+`agent:inspect` reads tracked area, motion or audio data without preparing assets. Without `--section` it reports available sections and their sizes. Choose an area or `--source motion` / `--source audio`; dotted sections support nested objects and array indexes. Results preserve source order and values, include record IDs/paths, and report total matches and `nextOffset`. Default pages contain at most 10 records and 12,000 output characters. Use `--limit` (1–50), `--offset`, `--query`, exact `--id`, or comma-separated dotted `--fields` to narrow output. Missing selected fields are omitted. Oversized single records require a narrower field selection; values are never silently shortened.
+
+```sh
+npm run agent:inspect -- --source motion --section player.profiles --id sword
+npm run agent:inspect -- --source audio --section cues --query magic --fields clips,gain
+npm run agent:inspect -- --area clearing --section props --offset 10 --limit 5
+```
+
+`agent:status` defaults to active tasks. `--task SLUG` includes one task, even when archived; `--all` includes cleaned tasks. `--json` exposes the detailed selected records, including full retained check evidence. Use `--all --json` for the complete historical view. Current worktree, capacity, resource owners and pending promotion remain visible in the compact view. Last-check references identify the tested revision; they do not certify uncommitted edits. Check failures print a bounded diagnostic excerpt and retain complete stage logs.
+
+### Documentation and source reads
+
+Documentation content shares a default 12,000-character budget (`--max-chars` accepts 1,000–50,000). Reports include original line spans, shown/total lines, oversized-line notices and `nextOffset`. Continue one section with `--doc PATH#HEADING --offset N`; offsets count lines within that section. A bare document path reads the whole document within the same budget. The Markdown heading parser is shared with documentation validation, including duplicate headings and fenced examples. Metadata is outside the content budget.
+
+```sh
+npm run agent:context -- --topic combat --include-docs --consumers
+npm run agent:context -- --doc Docs/RUNTIME.md#save-recovery
+npm run agent:source -- --file src/clearing/clearing.ts
+npm run agent:source -- --file src/clearing/clearing.ts --symbol updateGame
+npm run agent:source -- --file src/clearing/clearing.ts --start-line 1 --end-line 60
+```
+
+`agent:source` uses the installed TypeScript parser to list top-level TS/JS declarations and named class/interface members. Select a symbol (for example `Encounter.step`) or an exact line range to read its source. Default symbol pages contain 20 records; selected-source pages contain 100 complete lines. `--limit`, `--offset` and `--max-chars` bound output and report continuation. Offsets count records for lists and lines within selected spans. Overloads with the same name return their combined span. Source inspection excludes private/generated directories and changes no files.
+
+Consumer pages default to 20 records, with a 12,000-character content budget and `nextOffset`; use `--limit` (1–50), `--offset` and `--max-chars`. Owners remain defined only by [task routing](ARCHITECTURE.md#task-routing); discovery scans current tracked/unignored TS/JS without writing a dependency map. Documentation and consumers have separate budgets when requested together. For a source import not represented by this lookup, use scoped `rg` and inspect its real consumer.
+
+### Saved failure diagnostics
+
+Checks already retain complete stage logs and print a bounded initial excerpt. `agent:diagnostics` reads that evidence without taking a check lease or rerunning validation:
+
+```sh
+npm run agent:diagnostics -- --evidence .local/checks/TIMESTAMP
+npm run agent:diagnostics -- --evidence .local/checks/TIMESTAMP --stage types
+```
+
+Use the actual evidence directory printed by checks or `agent:status`. Explicit evidence paths resolve from the caller and may point to retained task archives. Without `--stage`, list failed/skipped stages. With it, return diagnostic matches, original log line numbers, available file headers and preceding context; logs without recognizable diagnostics return nonempty lines. Pages use `--offset`, `--limit` (1–50) and `--max-chars`; complete logs remain at the reported path. Match discovery is heuristic, not a complete diagnostic parser; inspect the full log for missing context.
+
+### Assessing context cost
+
+For a few representative tasks, compare tool calls, returned characters and repeated reads. Use section/symbol reads and a scoped consumer lookup before whole files. Character budgets are proxies for tokens; these tools do not claim tokenizer accuracy or measured savings. Reassess routing when an agent repeatedly needs omitted contracts. This is context-output inspection, not a GPU benchmark or authorization for additional tests.
 
 ## Level authoring
 

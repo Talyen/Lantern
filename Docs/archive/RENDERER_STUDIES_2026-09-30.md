@@ -20,7 +20,7 @@ Laptop quality capped pixel ratio at 1, reduced bloom luminance/blur resolution 
 
 At the time of this study, the original text-generated surfaces were `assets/textures/stone-painterly.png`, `soil-painterly.png`, and `wood-painterly.png`. They share broad painted shapes and restrained variation, with no baked directional lighting. No Synty source, texture, or render was submitted to ImageGen. The bake projects each surface locally and exports 1024px color textures; characters and foliage retain their palette materials.
 
-Current retained scenery preparation is documented in the [optional scenery and surface workflow](../DEVELOPMENT.md#optional-scenery-and-surface-studies).
+Current retained scenery preparation is documented in the [optional scenery and surface workflow](../ASSET_PREPARATION.md#optional-scenery-and-surface-studies).
 
 The exporter reads seven Synty models (including the existing rock) from the private local library and creates original/painterly variants under ignored `public/vendor/synty/art-lab/`. Ground is baked to ignored `public/vendor/terrain/ground-painterly.glb`. UV previews stay in ignored `.local/art-lab/`. Missing experiments are reported and available original meshes remain visible. Licensed models, bakes, and comparison captures remain local; the existing deployment packaging boundary still applies.
 
@@ -56,7 +56,7 @@ The retired **Inspect edges · lens off** control temporarily removed AO, bloom,
 
 These measurements used the local Electron shell. Current launch and hidden-check commands are maintained in [Development](../DEVELOPMENT.md#commands-and-handoff); retired AA comparison arguments are no longer supported.
 
-At this stage, Electron 44.5.1 served the private build on an ephemeral loopback port, with sandboxing and context isolation enabled and Node integration disabled. Public deployment was not configured. The visible window was centered and fit within 90% of the display's work area, capped at 1280×900. The current shell uses the secure local origin described in [Development](../DEVELOPMENT.md#current-graphics-options). On this MacBook Air that produced a 1280×745 outer window inside a 1470×828 work area.
+At this stage, Electron 44.5.1 served the private build on an ephemeral loopback port, with sandboxing and context isolation enabled and Node integration disabled. Public deployment was not configured. The visible window was centered and fit within 90% of the display's work area, capped at 1280×900. The current shell uses the secure local origin described in [Development](../GRAPHICS.md). On this MacBook Air that produced a 1280×745 outer window inside a 1470×828 work area.
 
 Automated runs used **desktop:check**: the window stayed hidden, was non-focusable, and did not focus on navigation. On macOS the app used accessory activation policy and hid its Dock entry. Background throttling was disabled so rendering checks continued while hidden. The verification run reported `visible:false` and `focused:false`. Use the visible desktop commands only when explicitly reviewing or playing the app; automated checks must use background mode.
 
