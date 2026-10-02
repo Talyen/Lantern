@@ -8,6 +8,8 @@ export class InteractionHighlight {
   private root=new THREE.Group();
   private target:THREE.Object3D | null=null;
   private scale=new THREE.Vector3();
+  private position=new THREE.Vector3();
+  private rotation=new THREE.Quaternion();
   private parts:{source:THREE.Mesh;mesh:THREE.Mesh;material:MeshBasicNodeMaterial;width:ReturnType<typeof uniform>}[]=[];
   constructor(parent:THREE.Object3D){this.root.userData.transient=true;parent.add(this.root);}
   select(target:THREE.Object3D | null):void{
@@ -28,7 +30,8 @@ export class InteractionHighlight {
     for(const part of this.parts){
       let visible=true;for(let object:THREE.Object3D | null=part.source;object;object=object.parent)if(!object.visible)visible=false;
       part.mesh.visible=visible;part.source.updateWorldMatrix(true,false);part.mesh.matrix.copy(part.source.matrixWorld);
-      part.source.getWorldScale(scale);part.width.value=worldWidth/Math.max(.001,Math.max(scale.x,scale.y,scale.z));
+      // The world matrix is already current; getWorldScale would refresh its ancestors again.
+      part.source.matrixWorld.decompose(this.position,this.rotation,scale);part.width.value=worldWidth/Math.max(.001,Math.max(scale.x,scale.y,scale.z));
     }
   }
   clear():void{this.parts.forEach(part=>part.material.dispose());this.parts=[];this.root.clear();this.target=null;}

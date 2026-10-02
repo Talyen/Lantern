@@ -11,6 +11,7 @@ export class ProjectileVisuals {
   private arrows?: AssetInstance;
   private loading?: Promise<void>;
   private disposed = false;
+  private liveIds = new Set<number>();
   private objects = new Map<number, THREE.Object3D>();
   private boltGeometry = new THREE.SphereGeometry(.045, 8, 6);
   private boltMaterial = new MeshBasicNodeMaterial({color:'#ffd29a'});
@@ -23,7 +24,9 @@ export class ProjectileVisuals {
     }).catch((error: unknown) => { this.loading = undefined; throw error; });
   }
   sync(projectiles: Projectile[]): void {
-    for (const [id, object] of this.objects) if (!projectiles.some(projectile=>projectile.id===id)) { disposeSceneInstances(object); object.removeFromParent(); this.objects.delete(id); }
+    this.liveIds.clear();
+    for (const projectile of projectiles) this.liveIds.add(projectile.id);
+    for (const [id, object] of this.objects) if (!this.liveIds.has(id)) { disposeSceneInstances(object); object.removeFromParent(); this.objects.delete(id); }
     for (const projectile of projectiles) {
       let object = this.objects.get(projectile.id);
       if (!object) {
@@ -35,7 +38,7 @@ export class ProjectileVisuals {
       object.position.set(projectile.x,projectile.y,projectile.z); object.rotation.y=Math.atan2(projectile.dx,projectile.dz);
     }
   }
-  clear(): void { disposeSceneInstances(this.root); this.root.clear(); this.objects.clear(); }
+  clear(): void { disposeSceneInstances(this.root); this.root.clear(); this.objects.clear(); this.liveIds.clear(); }
   dispose(): void { this.disposed=true; this.clear(); this.root.removeFromParent(); this.arrows?.release(); this.boltGeometry.dispose(); this.boltMaterial.dispose(); this.enemyBoltMaterial.dispose(); }
 }
 
