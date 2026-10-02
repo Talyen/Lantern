@@ -130,6 +130,44 @@ def rounded_box(name, center, size, surface, rig, bone, bevel=.008):
     return obj
 
 
+def collar(source, surface):
+    obj = copy_surface(source, 'Fitted broad collar', surface,
+                       lambda p: p.z > 1.465 and abs(p.x) < .14, .004,
+                       planes=[((0, 0, 1.465), (0, 0, 1)), ((.14, 0, 0), (1, 0, 0)), ((-.14, 0, 0), (1, 0, 0))])
+    for vertex in obj.data.vertices:
+        vertex.co.x *= 1.04
+        vertex.co.y = .008 + (vertex.co.y - .008) * 1.045
+        if abs(vertex.co.x) > .055:
+            vertex.co.x *= 1.03
+    obj.modifiers.new('Collar thickness', 'SOLIDIFY').thickness = .003
+    edge = obj.modifiers.new('Soft collar edge', 'BEVEL')
+    edge.width = .0015
+    edge.segments = 2
+    return obj
+
+
+def cloth_hems(rig, surface):
+    for side in [-1, 1]:
+        for front in [True, False]:
+            points, faces = [], []
+            columns, rows = 8, 6
+            for row in range(rows + 1):
+                v = row / rows
+                z = 1.032 - .148 * v
+                radius_x = .193 + .027 * v
+                radius_y = (.149 + .005 * v) if front else (.083 + .009 * v)
+                for column in range(columns + 1):
+                    u = column / columns
+                    x = .024 + .006 * v + (.143 + .003 * v) * u
+                    y = radius_y * math.sqrt(max(.05, 1 - (x / radius_x) ** 2))
+                    points.append((side * x, -y if front else y, z))
+            for row in range(rows):
+                for column in range(columns):
+                    a = row * (columns + 1) + column
+                    faces.append((a, a + 1, a + columns + 2, a + columns + 1))
+            patch('Curved split cloth panel', points, faces, surface, rig, bone_weights('Hips'))
+
+
 def hair(rig, surface):
     points, faces = [], []
     sides, rings = 72, 24
@@ -201,19 +239,20 @@ def build():
     body.data.update()
     source_shirt = original['Ch01_Shirt']
     jacket = copy_surface(source_shirt, 'Open short jacket', leather,
-                          lambda p: 1.015 < p.z < 1.475 and abs(p.x) < .355 and not (p.y < -.012 and abs(p.x) < .045 + max(0, p.z - 1.08) * .15), .008,
-                          planes=[((0, 0, 1.015), (0, 0, 1)), ((0, 0, 1.475), (0, 0, 1)), ((.355, 0, 0), (1, 0, 0)), ((-.355, 0, 0), (1, 0, 0)), ((.045, 0, 1.08), (1, 0, -.15)), ((-.045, 0, 1.08), (-1, 0, -.15))])
+                          lambda p: p.z > 1.015 and abs(p.x) < .355 and not (p.z > 1.475 and abs(p.x) < .13) and not (p.y < -.012 and abs(p.x) < .045 + max(0, p.z - 1.08) * .15), .008,
+                          planes=[((0, 0, 1.015), (0, 0, 1)), ((0, 0, 1.475), (0, 0, 1)), ((.13, 0, 0), (1, 0, 0)), ((-.13, 0, 0), (1, 0, 0)), ((.355, 0, 0), (1, 0, 0)), ((-.355, 0, 0), (1, 0, 0)), ((.045, 0, 1.08), (1, 0, -.15)), ((-.045, 0, 1.08), (-1, 0, -.15))])
     solid = jacket.modifiers.new('Jacket edge thickness', 'SOLIDIFY')
     solid.thickness = .004
-    shirt = copy_surface(source_shirt, 'Travel shirt', cloth, lambda p: p.z > 1.025,
-                         planes=[((0, 0, 1.025), (0, 0, 1))])
+    shirt = copy_surface(source_shirt, 'Travel shirt', cloth, lambda p: p.z > 1.025 and not (p.z > 1.48 and abs(p.x) < .13),
+                         planes=[((0, 0, 1.025), (0, 0, 1)), ((0, 0, 1.48), (0, 0, 1)), ((.13, 0, 0), (1, 0, 0)), ((-.13, 0, 0), (1, 0, 0))])
+    collar(source_shirt, leather)
     bpy.data.objects.remove(source_shirt, do_unlink=True)
     for vertex in shirt.data.vertices:
         x = abs(vertex.co.x)
         if x > .25:
             vertex.co.x = math.copysign(.25 + (x - .25) * 2.0, vertex.co.x)
             side = 'L' if vertex.co.x > 0 else 'R'
-            lower = max(0, min(1, (abs(vertex.co.x) - .4) / .2))
+            lower = max(0, min(1, (abs(vertex.co.x) - .43) / .07))
             for group in list(vertex.groups):
                 shirt.vertex_groups[group.group].remove([vertex.index])
             for bone, weight in [(f'Shoulder_{side}', 1 - lower), (f'Elbow_{side}', lower)]:
@@ -222,14 +261,7 @@ def build():
     shirt.data.update()
     pants = original['Ch01_Pants']
     assign(pants, cloth)
-    # Short panel hems follow the hips; keep clear of knee articulation.
-    for side in [-1, 1]:
-        points = [(side * .018, -.147, 1.04), (side * .154, -.13, 1.04), (side * .166, -.132, .9), (side * .028, -.157, .9)]
-        patch('Split cloth hem', points, [(0, 1, 2, 3)], cloth, rig, bone_weights('Hips'))
-        points = [(side * .018, .094, 1.04), (side * .154, .08, 1.04), (side * .166, .085, .9), (side * .028, .1, .9)]
-        patch('Rear split cloth hem', points, [(3, 2, 1, 0)], cloth, rig, bone_weights('Hips'))
-        points = [(side * .055, -.09, 1.49), (side * .123, -.05, 1.475), (side * .145, -.119, 1.38), (side * .09, -.156, 1.35), (side * .045, -.12, 1.43)]
-        patch('Broad jacket collar', points, [(0, 1, 2, 3, 4)], leather, rig, bone_weights('Spine_03'))
+    cloth_hems(rig, cloth)
     for side, suffix in [(1, 'L'), (-1, 'R')]:
         def arm_weights(point, suffix=suffix):
             hand = max(0, min(1, (abs(point.x) - .56) / .13))
@@ -240,9 +272,14 @@ def build():
                           planes=[((.68, 0, 0), (1, 0, 0)), ((.78, 0, 0), (1, 0, 0)), ((-.68, 0, 0), (1, 0, 0)), ((-.78, 0, 0), (1, 0, 0))])
     gloves.modifiers.new('Glove thickness', 'SOLIDIFY').thickness = .002
     belt = tube('Waist belt', [(0, -.008, 1.002), (0, -.008, 1.041)], [(.174, .147), (.177, .147)], 'z', leather, rig, bone_weights('Hips'), sides=32)
+    waist = [vertex.co.copy() for obj in [shirt, jacket] for vertex in obj.data.vertices if abs(vertex.co.z - 1.023) < .025]
     for vertex in belt.data.vertices:
-        if vertex.co.y > -.008:
-            vertex.co.y = -.008 + (vertex.co.y + .008) * .64
+        direction = Vector((vertex.co.x, vertex.co.y + .008, 0)).normalized()
+        aligned = [point for point in waist if Vector((point.x, point.y + .008, 0)).normalized().dot(direction) > .98]
+        if aligned:
+            radius = max(Vector((point.x, point.y + .008, 0)).dot(direction) for point in aligned) + .007
+            vertex.co.x = direction.x * radius
+            vertex.co.y = -.008 + direction.y * radius
     rounded_box('Belt buckle', (0, -.163, 1.023), (.055, .014, .047), metal, rig, 'Hips', .004)
     rounded_box('Travel pouch', (.162, -.112, .963), (.085, .05, .105), leather, rig, 'Hips')
     boots = copy_surface(pants, 'Boot shafts', leather, lambda p: .12 < p.z < .445, .008,
