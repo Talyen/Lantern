@@ -1,10 +1,11 @@
-export const inputActions = ['slot0','slot1','slot2','slot3','slot4','slot5','moveUp','moveDown','moveLeft','moveRight','dodge','swap','potion','portal','zoomIn','zoomOut','inventory','skills','options'] as const;
+export const actionSlotInputs = ['slot0', 'slot1', 'slot2', 'slot3', 'slot4', 'slot5'] as const;
+export const inputActions = [...actionSlotInputs,'moveUp','moveDown','moveLeft','moveRight','dodge','swap','potion','portal','zoomIn','zoomOut','inventory','skills','options'] as const;
 export type InputAction = typeof inputActions[number];
 export type BindingPair = [string | null,string | null];
 export type Bindings = Record<InputAction,BindingPair>;
 export const bindingKey='lantern.bindings.v1';
 export const inputGroups: {name:string; actions:InputAction[]}[] = [
-  {name:'Action Bar',actions:['slot0','slot1','slot2','slot3','slot4','slot5']},
+  {name:'Action Bar',actions:[...actionSlotInputs]},
   {name:'Movement',actions:['moveUp','moveDown','moveLeft','moveRight']},
   {name:'Combat & Utility',actions:['dodge','swap','potion','portal']},
   {name:'Camera',actions:['zoomIn','zoomOut']},

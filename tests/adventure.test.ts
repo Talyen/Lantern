@@ -9,6 +9,37 @@ import { equipInstance, itemLoadout, moveItem, receive, removeQuantity, sortedIt
 const home = homestead as unknown as AreaDefinition, field = clearing as unknown as AreaDefinition;
 const memory = () => { const data = new Map<string, string>(); return { data, getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => { data.set(key, value); } }; };
 
+test('failed equipment preparation retains saved gear and releases the gate for a successful retry', async () => {
+  const THREE = await import('three');
+  const { makeActor } = await import('../src/clearing/actors');
+  const { InventoryController } = await import('../src/clearing/inventory');
+  const storage = memory(), adventure = new Adventure(storage), encounter = createEncounter('won');
+  await adventure.prepareSave();
+  const player = makeActor(new THREE.Scene(), encounter.player);
+  player.mixer = new THREE.AnimationMixer(player.root);
+  const prepare = vi.fn().mockRejectedValueOnce(new Error('Missing weapon art')).mockResolvedValue(undefined);
+  const inventory = new InventoryController(adventure, encounter, player, { prepare }, { play: () => {} }, {
+    clearInput: () => {}, equipmentBlocked: () => false,
+    updateCharacter: () => {}, syncAdventure: () => {},
+  });
+  const original = structuredClone(adventure.character.items), saved = storage.data.get(characterSaveKey);
+  const axe = original.find(item => item.slot === 'main')!;
+  const next = moveItem(original, axe.id, 2, 0, 1, adventure.newId);
+
+  await expect(inventory.change(next)).rejects.toThrow('Missing weapon art');
+  expect(adventure.character.items).toEqual(original);
+  expect(storage.data.get(characterSaveKey)).toBe(saved);
+  expect(inventory.loading).toBe(false);
+
+  await inventory.change(next);
+  expect(itemLoadout(adventure.character.items).main).toBeNull();
+  expect(encounter.weapon).toBeNull();
+  expect(decodeCharacter(storage.data.get(characterSaveKey)!)?.items).toEqual(next);
+  await inventory.change(moveItem(next, axe.id, 4, 0, 1, adventure.newId));
+  expect(prepare).toHaveBeenCalledTimes(2);
+  adventure.closeSave();
+});
+
 test('home recovery, campfire travel and defeat preserve the outing and collected scrolls', () => {
   const state = new Adventure(memory(), () => 0), encounter = createEncounter('playing');
   state.enter(encounter, home); expect(state.destinations({ homestead: home, clearing: field }).map(d => d.area.id)).toEqual([]);

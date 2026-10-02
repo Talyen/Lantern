@@ -1,4 +1,4 @@
-import { keyboardInput, actionNames, bindingConflict, bindingLabel, defaultBindings, inputActions, inputGroups, validBinding, type Bindings, type InputAction, type InputPreferences } from '../input/bindings';
+import { keyboardInput, actionSlotInputs, actionNames, bindingConflict, bindingLabel, defaultBindings, inputActions, inputGroups, validBinding, type Bindings, type InputAction, type InputPreferences } from '../input/bindings';
 import { abilities, type ActionBar } from '../gameplay/abilities';
 import { abilityIcon } from './ability-icons';
 import { bindMenuDismissal } from './menu';
@@ -63,7 +63,7 @@ export class KeybindingsMenu {
       const section=document.createElement('section'),title=document.createElement('h3');title.textContent=group.name;section.append(title);
       for(const action of group.actions){
         const row=document.createElement('div');row.className='binding-row';const label=document.createElement('span');label.className='binding-action';
-        const slot=action.startsWith('slot') ? Number(action.slice(4)) : -1,id=slot>=0 ? bar[slot] : null;
+        const slot=actionSlotInputs.findIndex(input=>input===action),id=slot>=0 ? bar[slot] : null;
         if(id){const icon=document.createElement('span');icon.className='binding-icon';icon.innerHTML=abilityIcon(id);label.append(icon);}
         const text=document.createElement('span');text.textContent=actionNames[action];label.append(text);
         if(slot>=0){const ability=document.createElement('small');ability.textContent=id ? abilities[id].name : 'Empty';text.append(ability);}

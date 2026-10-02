@@ -1,7 +1,7 @@
 import { abilities, abilityIds, abilitySet, type AbilityId, type ActionBar } from '../gameplay/abilities';
 import type { CharacterSave } from '../gameplay/adventure';
 import type { Encounter } from '../gameplay/encounter';
-import { bindingLabel, type InputAction, type InputPreferences } from '../input/bindings';
+import { bindingLabel, actionSlotInputs, type InputPreferences } from '../input/bindings';
 import { abilityIcon } from './ability-icons';
 import { itemIcon } from './item-icons';
 import { setText, setAttribute, setDisabled } from './dom';
@@ -36,7 +36,7 @@ export class CombatUI {
     this.utilities=[this.potion,this.portal].map(button=>({button,count:button.querySelector('.supply-count')!,key:button.querySelector('kbd')!}));
     this.potion.onclick=()=>{if(!this.paused){this.ctx.potion();this.ctx.focus();}};this.portal.onclick=()=>{if(!this.paused){this.ctx.portal();this.ctx.focus();}};this.bar.append(this.potion);
     const slots=document.createElement('div');slots.className='action-slots';
-    for(let i=0;i<6;i++){
+    for(const [i] of actionSlotInputs.entries()){
       const button=document.createElement('button');button.type='button';button.className='action-slot';button.dataset.slot=String(i);button.innerHTML='<span class="ability-icon"></span><span class="cooldown-value"></span><kbd></kbd>';
       this.slots.push({button,icon:button.querySelector<HTMLElement>('.ability-icon')!,cooldown:button.querySelector<HTMLElement>('.cooldown-value')!,key:button.querySelector('kbd')!});
       button.onclick=event=>{if(performance.now()<this.ignoreClickUntil)return;if(this.paused && !this.drag?.active && this.selected && this.ctx.canEdit()){const bar=[...this.ctx.character().actionBar];bar[i]=this.selected;this.ctx.assign(bar);this.update();}else if(!this.paused && event.detail===0){const id=this.ctx.character().actionBar[i];if(id){this.ctx.activate(id);this.ctx.focus();}}};
@@ -113,7 +113,7 @@ export class CombatUI {
       const fill=String(id && abilities[id].cooldown ? cooldown/abilities[id].cooldown : 0);
       if(button.style.getPropertyValue('--cooldown')!==fill)button.style.setProperty('--cooldown',fill);
       setText(cooldownValue,cooldown>0 ? String(Math.ceil(cooldown)) : '');
-      setText(key,bindingLabel(preferences[`slot${index}` as InputAction].find(Boolean) ?? null));
+      setText(key,bindingLabel(preferences[actionSlotInputs[index]].find(Boolean) ?? null));
       const tooltip=id ? this.tooltip(id) : 'Empty';
       setAttribute(button,'title',tooltip);setAttribute(button,'aria-label',id ? tooltip : `Empty slot ${index+1}`);setDisabled(button,this.paused && !this.ctx.canEdit());
     });
