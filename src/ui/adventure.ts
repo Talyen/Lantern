@@ -32,6 +32,7 @@ type Drag = {
   offsetY: number;
   active: boolean;
   carried: boolean;
+  pointer?: number;
 };
 /** Menus submit complete inventory operations; simulation remains the owner of transfers. */
 export class AdventureMenus {
@@ -97,6 +98,7 @@ export class AdventureMenus {
     };
     this.inventory.addEventListener('pointerdown', event => {
       if (event.button !== 0 || this.busy || !this.split.hidden) return;
+      if (this.drag && !this.drag.carried && this.drag.pointer !== event.pointerId) return;
       if (this.drag?.carried) { event.preventDefault(); event.stopPropagation(); void this.release(event.clientX, event.clientY).catch(this.failed); return; }
       const target = (event.target as HTMLElement).closest<HTMLElement>('[data-instance]'); if (!target) return;
       const entry = this.entries().find(i => i.id === target.dataset.instance); if (!entry) return;
@@ -104,10 +106,10 @@ export class AdventureMenus {
       if (event.shiftKey && entry.quantity > 1) { event.preventDefault(); this.openSplit(entry); return; }
       const rect = target.getBoundingClientRect();
       target.setPointerCapture(event.pointerId);
-      this.drag = { container:this.container(entry.id), id: entry.id, quantity: entry.quantity, startX: event.clientX, startY: event.clientY, offsetX: event.clientX - rect.left, offsetY: event.clientY - rect.top, active: false, carried: false };
+      this.drag = { container:this.container(entry.id), id: entry.id, quantity: entry.quantity, startX: event.clientX, startY: event.clientY, offsetX: event.clientX - rect.left, offsetY: event.clientY - rect.top, active: false, carried: false, pointer: event.pointerId };
     });
     window.addEventListener('pointermove', event => {
-      const drag = this.drag; if (!drag) return;
+      const drag = this.drag; if (!drag || !drag.carried && drag.pointer !== event.pointerId) return;
       if (!drag.active && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) > 5) {
         drag.active = true; const entry = this.entries().find(i => i.id === drag.id); if (entry) this.showGhost(entry);
       }
@@ -115,8 +117,8 @@ export class AdventureMenus {
       this.ghost.style.left = `${event.clientX - drag.offsetX}px`; this.ghost.style.top = `${event.clientY - drag.offsetY}px`;
       this.previewPlacement(event.clientX, event.clientY);
     });
-    window.addEventListener('pointerup', event => { if (event.button === 0 && this.drag && !this.drag.carried) void this.release(event.clientX, event.clientY).catch(this.failed); });
-    window.addEventListener('pointercancel', () => this.cancelDrag());
+    window.addEventListener('pointerup', event => { if (event.button === 0 && this.drag && !this.drag.carried && this.drag.pointer === event.pointerId) void this.release(event.clientX, event.clientY).catch(this.failed); });
+    window.addEventListener('pointercancel', event => { if (this.drag?.carried || this.drag?.pointer === event.pointerId) this.cancelDrag(); });
     window.addEventListener('blur', () => this.cancelDrag());
     this.inventory.addEventListener('keydown', event => { if (event.key === 'Escape' && (this.drag || !this.split.hidden)) { event.preventDefault(); event.stopPropagation(); this.cancelDrag(); } });
   }

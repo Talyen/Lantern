@@ -64,6 +64,8 @@ export class Adventure {
   placeGround: (origin: Point, index: number) => { position: Point; height: number } = origin => ({ position: [...origin], height: 0 });
   canCollectGround: (drop: GroundDrop) => boolean = () => true;
   private sessions = new Map<string, AreaSession>();
+  private inactiveOccupants: { areaId: string; position: Point }[] = [];
+  inactiveEnemyOccupants(): readonly { areaId: string; position: Point }[] { return this.inactiveOccupants; }
   private sequence = 3;
   newId = (): string => `item-${++this.sequence}`;
   private readonly persistence: CharacterPersistence;
@@ -126,6 +128,7 @@ export class Adventure {
   /** Restart refreshes the outing while retaining permanent character progress. */
   restart(): void {
     this.sessions.clear();
+    this.inactiveOccupants = [];
     this.portal = null;
     this.castRemaining = 0;
     this.cancelPickup();
@@ -260,6 +263,12 @@ export class Adventure {
     const health = this.currentArea ? encounter.player.hp : null;
     if (this.currentArea) this.session().encounter = structuredClone(encounter);
     this.currentArea = area.id;
+    // Inactive snapshots remain fixed until re-entry; cache their living occupants for renewal.
+    this.inactiveOccupants = [...this.sessions].flatMap(([areaId, session]) =>
+      areaId === this.currentArea || !session.encounter ? [] : session.encounter.enemyIds.flatMap(id => {
+        const enemy = session.encounter!.enemies[id];
+        return enemy.home && enemy.hp > 0 ? [{ areaId, position: [enemy.x, enemy.z] as Point }] : [];
+      }));
     enterAreaEncounter(encounter, area, {
       previous: this.session().encounter, character: this.character, arrival, recover, health,
     });

@@ -1,4 +1,5 @@
 import { resolve, relative, isAbsolute } from 'node:path';
+import { realpathSync } from 'node:fs';
 import { root, UsageError } from '../lib/cli.mjs';
 
 export function integer(value, fallback, min, max, name) {
@@ -10,7 +11,10 @@ export function budget(args) { return integer(args['--max-chars'], 12000, 1000, 
 export function repositoryPath(name) {
   const path = resolve(root, name), local = relative(root, path).replaceAll('\\', '/');
   if (!local || local.startsWith('../') || isAbsolute(local) || /^(?:\.local|node_modules|public\/vendor|dist)(?:\/|$)/.test(local)) throw new UsageError('Choose a repository source or documentation path, excluding private/generated directories.');
-  return { path, local };
+  const canonical = realpathSync(path), canonicalLocal = relative(realpathSync(root), canonical).replaceAll('\\', '/');
+  if (!canonicalLocal || canonicalLocal.startsWith('../') || isAbsolute(canonicalLocal) || /^(?:\.local|node_modules|public\/vendor|dist)(?:\/|$)/.test(canonicalLocal))
+    throw new UsageError('Choose a repository source or documentation path, excluding private/generated directories.');
+  return { path: canonical, local };
 }
 // Budgets count source characters, excluding the small report envelope. Never split a line.
 export function linePage(lines, offset, maxChars, limit = 200) {

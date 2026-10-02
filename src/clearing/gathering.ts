@@ -107,6 +107,7 @@ export class GatheringController {
     if (this.selected && !gatheringSafe(this.encounter, area.kind)) this.cancel();
     const occupants = this.occupants;
     occupants.length = 0;
+    occupants.push(...this.adventure.inactiveEnemyOccupants());
     const playerOccupant = this.occupantRecords.player;
     playerOccupant.areaId = area.id; playerOccupant.position[0] = player.x; playerOccupant.position[1] = player.z;
     occupants.push(playerOccupant);

@@ -199,11 +199,13 @@ export function preparePlayer(state: Encounter, dt: number, input: Input, timing
   const prepared = { events: [] as EncounterEvent[], attackElapsed: dt, attackOffset: 0,
     movementElapsed: state.dodgeRemaining > 0 ? dt : Math.max(0, dt - state.player.lock) };
   const validAtUnlock = availableAfter <= (pending?.remaining ?? 0) + 1e-6;
-  // Finish an existing roll before accepting an input at its within-frame unlock.
+  // Resolve landing before held shielding and buffered actions become eligible.
   // Its remaining travel belongs to the roll, not the newly accepted action.
-  if (pending && validAtUnlock && availableAfter <= dt && state.dodgeRemaining > 0) {
+  if (state.dodgeRemaining > 0 && state.dodgeRemaining <= dt &&
+    (input.block && state.shield || pending && validAtUnlock && availableAfter <= dt)) {
+    const landedAfter = state.dodgeRemaining;
     prepared.events.push(...movePlayer(state, state.dodgeRemaining, input, movementWorld));
-    prepared.movementElapsed = Math.max(0, dt - availableAfter);
+    prepared.movementElapsed = Math.max(0, dt - Math.max(landedAfter, state.player.lock, pending ? availableAfter : 0));
   }
   advancePlayerClocks(state, dt);
   state.blocking = !!(input.block && state.shield && state.player.lock <= 0 && state.dodgeRemaining === 0);

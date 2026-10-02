@@ -48,7 +48,7 @@ export class CombatUI {
         this.ctx.activate(id);this.ctx.focus();
       };
       button.onpointerdown=event=>{
-        if(event.button!==0)return;
+        if(event.button!==0 || this.drag && this.drag.pointer!==event.pointerId || this.heldPointer!==null && this.heldPointer!==event.pointerId)return;
         const id=this.ctx.character().actionBar[i];
         if(this.paused){if(!this.ctx.canEdit() || !id || this.selected)return;this.drag={id,slot:i,x:event.clientX,y:event.clientY,active:false,pointer:event.pointerId};button.setPointerCapture(event.pointerId);}
         else if(id){event.preventDefault();this.held=abilities[id].activation==='hold' ? id : null;this.heldPointer=this.held ? event.pointerId : null;this.heldKey=null;this.ctx.activate(id);}
@@ -65,7 +65,7 @@ export class CombatUI {
     this.dialog.addEventListener('cancel',event=>{event.preventDefault();this.close();});
     let outside=false;this.dialog.addEventListener('pointerdown',event=>{outside=event.target===this.dialog;});this.dialog.addEventListener('click',event=>{if(outside && event.target===this.dialog)this.close();outside=false;});
     this.ghost.className='ability-ghost';this.dialog.append(this.ghost);
-    window.addEventListener('pointermove',event=>{if(!this.drag)return;if(Math.hypot(event.clientX-this.drag.x,event.clientY-this.drag.y)>5)this.drag.active=true;if(!this.drag.active)return;this.ghost.innerHTML=abilityIcon(this.drag.id);this.ghost.hidden=false;this.ghost.style.left=`${event.clientX}px`;this.ghost.style.top=`${event.clientY}px`;this.buttons.forEach(button=>{const rect=button.getBoundingClientRect();button.classList.toggle('drop-target',event.clientX>=rect.left && event.clientX<=rect.right && event.clientY>=rect.top && event.clientY<=rect.bottom);});});
+    window.addEventListener('pointermove',event=>{if(!this.drag || event.pointerId!==this.drag.pointer)return;if(Math.hypot(event.clientX-this.drag.x,event.clientY-this.drag.y)>5)this.drag.active=true;if(!this.drag.active)return;this.ghost.innerHTML=abilityIcon(this.drag.id);this.ghost.hidden=false;this.ghost.style.left=`${event.clientX}px`;this.ghost.style.top=`${event.clientY}px`;this.buttons.forEach(button=>{const rect=button.getBoundingClientRect();button.classList.toggle('drop-target',event.clientX>=rect.left && event.clientX<=rect.right && event.clientY>=rect.top && event.clientY<=rect.bottom);});});
     window.addEventListener('pointerup',event=>{
       if(event.button!==0)return;
       if(event.pointerId===this.heldPointer){this.held=null;this.heldPointer=null;}
@@ -77,7 +77,7 @@ export class CombatUI {
       this.selected=null;this.ctx.assign(bar);this.update();this.renderTree();
     });
     window.addEventListener('keyup',event=>{if(event.key===this.heldKey){event.preventDefault();this.held=null;this.heldKey=null;this.ctx.focus();}});
-    window.addEventListener('pointercancel',()=>this.clearHold());window.addEventListener('blur',()=>this.clearHold());this.ghost.hidden=true;this.update();
+    window.addEventListener('pointercancel',event=>{if(event.pointerId===this.heldPointer || event.pointerId===this.drag?.pointer)this.clearHold();});window.addEventListener('blur',()=>this.clearHold());this.ghost.hidden=true;this.update();
   }
   get paused():boolean{return this.dialog.open;}
   get blocking():boolean{return this.held==='shield-basic';}
@@ -90,7 +90,7 @@ export class CombatUI {
       const button=document.createElement('button');button.type='button';button.className='skill-node';button.innerHTML=abilityIcon(id);button.title=this.tooltip(id);button.setAttribute('aria-label',abilities[id].name);button.disabled=!this.ctx.canEdit();
       const label=document.createElement('span');label.textContent=abilities[id].motion==='attack' || abilities[id].motion==='block' ? 'Basic' : abilities[id].name;button.append(label);button.setAttribute('aria-pressed',String(this.selected===id));
       button.onclick=()=>{if(performance.now()<this.ignoreClickUntil)return;this.selected=this.selected===id ? null : id;this.renderTree();};
-      button.onpointerdown=event=>{if(event.button===0 && this.ctx.canEdit()){this.drag={id,x:event.clientX,y:event.clientY,active:false,pointer:event.pointerId};button.setPointerCapture(event.pointerId);}};this.nodes.append(button);
+      button.onpointerdown=event=>{if(event.button===0 && this.ctx.canEdit() && (!this.drag || this.drag.pointer===event.pointerId)){this.drag={id,x:event.clientX,y:event.clientY,active:false,pointer:event.pointerId};button.setPointerCapture(event.pointerId);}};this.nodes.append(button);
     }
     if(['sword','bow'].includes(this.family)){const locked=document.createElement('button');locked.type='button';locked.className='skill-node locked';locked.disabled=true;locked.innerHTML='<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M15 22v-7a9 9 0 0 1 18 0v7M11 22h26v19H11zM24 29v5"/></svg><span>Ultimate</span>';locked.title='Locked';this.nodes.append(locked);}
     this.status.textContent=this.ctx.canEdit() ? this.selected ? `${abilities[this.selected].name} · Choose a slot` : '' : 'Assignments unavailable in combat.';

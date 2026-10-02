@@ -676,16 +676,20 @@ test('authored packs advance player clocks once and resolve sweeps, projectiles 
   resetEncounter(state);expect(state.enemyIds.map(id=>state.enemies[id].hp)).toEqual(state.enemyIds.map(()=>enemyMaxHealth));
 });
 
-test('holding a shield blocks only contacts after attack recovery has finished', () => {
-  for (const [impactTime, health] of [[.01, 80], [.03, 90]] as const) {
+test('holding a shield blocks only contacts after attack or dodge recovery has finished', () => {
+  for (const recovery of ['attack', 'dodge'] as const) for (const [impactTime, health] of [[.01, 80], [.03, 90]] as const) {
     const state = createEncounter('playing', {
       boundary: { kind: 'circle', center: [0, 0], radius: 20 },
       player: { position: [0, 0], yaw: 0 }, caster: { position: [0, 4], yaw: Math.PI },
     });
     sets(state, [{ main: 'axe', off: 'shield' }, { main: null, off: null }]);
-    state.player.lock = .02;
-    state.projectiles.push({ id: 1, owner: 'caster', kind: 'bolt', x: 0, y: 1, z: .42 + impactTime * 8, dx: 0, dz: -1, remaining: 12 });
-    stepExploration(state, .04, { ...idle, block: true }, undefined, timing);
+    if (recovery === 'attack') state.player.lock = .02;
+    else {
+      state.dodgeRemaining = .02;
+      state.dodgeDirection = { x: 1, z: 0 };
+    }
+    state.projectiles.push({ id: 1, owner: 'caster', kind: 'bolt', x: recovery === 'dodge' ? dodgeDistance / .45 * .02 : 0, y: 1, z: .42 + impactTime * 8, dx: 0, dz: -1, remaining: 12 });
+    stepExploration(state, .04, { ...idle, block: true, aim: { x: 0, z: 5 } }, undefined, timing);
     expect(state.player.hp).toBe(health);
   }
 });

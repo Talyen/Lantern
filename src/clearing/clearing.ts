@@ -275,7 +275,11 @@ function dispatchInput(action: InputAction): void {
     case 'portal': castReturn(); break;
   }
 }
-function usePotion():void {if(!paused()){adventure.usePotion(encounter);syncAdventure();}}
+function usePotion(): void {
+  if (paused()) return;
+  if (adventure.usePotion(encounter)) interruptApproach();
+  syncAdventure();
+}
 function castReturn():void {if(!paused()){interruptApproach();adventure.beginCast(encounter.player.hp>0);syncAdventure();}}
 const combatUI = new CombatUI({
   character: () => adventure.character, encounter: () => encounter, preferences,
