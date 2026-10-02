@@ -254,7 +254,7 @@ def bake(row, textures, output, size):
         packed=np.stack([field_pixels(baked['height'])[:,:,0],field_pixels(baked['cavity'])[:,:,0],field_pixels(baked['eligibility'])[:,:,0]*distance,np.ones_like(distance)],axis=-1)
         from material_fields import field_image
         basename=Path(row['filename']).stem+'-'+str(meshes.index(mesh))+'-surface.png'
-        surface_map=field_image(mesh.name+' surface data',packed,output/basename)
+        field_image(mesh.name+' surface data',packed,output/basename)
         mat=bpy.data.materials.new(mesh.name+' warm grimdark');mat.use_nodes=True;nodes=mat.node_tree.nodes;links=mat.node_tree.links;bsdf=nodes.get('Principled BSDF')
         for channel,socket in [('color','Base Color'),('roughness','Roughness'),('metalness','Metallic')]:
             tex=nodes.new('ShaderNodeTexImage');tex.image=baked[channel];links.new(tex.outputs['Color'],bsdf.inputs[socket])

@@ -2,7 +2,6 @@
 
 Sources stay private. Motion is sampled at 30 fps, retaining vertical hip motion.
 """
-import json
 import math
 import bpy
 from mathutils import Quaternion, Vector

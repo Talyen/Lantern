@@ -1,3 +1,4 @@
+import { parseJson } from '../data/json';
 export const actionSlotInputs = ['slot0', 'slot1', 'slot2', 'slot3', 'slot4', 'slot5'] as const;
 export const inputActions = [...actionSlotInputs,'moveUp','moveDown','moveLeft','moveRight','dodge','swap','potion','portal','zoomIn','zoomOut','inventory','skills','options'] as const;
 export type InputAction = typeof inputActions[number];
@@ -52,7 +53,7 @@ export class InputPreferences {
   private failures = 0;
   constructor(private source?: BindingStorage | (() => BindingStorage)) {
     if (!source) return;
-    try { const raw=this.storage()!.getItem(bindingKey); if (!raw) return; const saved=JSON.parse(raw); if (!validBindings(saved)) throw new Error('Invalid bindings'); this.value=saved; }
+    try { const raw=this.storage()!.getItem(bindingKey); if (!raw) return; const saved=parseJson(raw); if (!validBindings(saved)) throw new Error('Invalid bindings'); this.value=saved; }
     catch (error) { this.error=String(error); }
   }
   private storage(): BindingStorage | undefined { return typeof this.source === 'function' ? this.source() : this.source; }

@@ -1,3 +1,4 @@
+import { isMesh } from '../assets/resource-ownership';
 import * as THREE from 'three';
 import { MeshBasicNodeMaterial, type NodeMaterial, type Node } from 'three/webgpu';
 import { positionLocal, normalLocal, uniform, vec3 } from 'three/tsl';
@@ -13,7 +14,7 @@ export class InteractionHighlight {
     if(this.target===target)return;
     this.clear();this.target=target;if(!target)return;
     target.traverse(object=>{
-      if(!(object instanceof THREE.Mesh) || object instanceof THREE.SkinnedMesh || object instanceof THREE.InstancedMesh)return;
+      if(!isMesh(object) || object instanceof THREE.SkinnedMesh || object instanceof THREE.InstancedMesh)return;
       const original=(Array.isArray(object.material) ? object.material[0] : object.material) as NodeMaterial;
       const material=new MeshBasicNodeMaterial({color:'#ab8d58',side:THREE.BackSide,depthWrite:false,transparent:true,opacity:.75,alphaTest:original.alphaTest,map:(original as NodeMaterial & {map?:THREE.Texture | null}).map});
       const width=uniform(.01);material.positionNode=vec3((original.positionNode as Node<'vec3'> | null) ?? positionLocal).add(normalLocal.mul(width));

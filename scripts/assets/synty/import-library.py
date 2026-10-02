@@ -112,7 +112,6 @@ def unity_metadata(entries, args):
     bundles = sorted({e['source'].split('/')[0] for e in entries if e['origin'] == 'unity' and e['pack'] in args.packs})
     results = []
     for bundle in bundles:
-        source = PRIVATE / 'sources' / bundle
         fingerprint = hashlib.sha256((digest(ROOT/'scripts/assets/synty/library/ExportMetadata.cs') + ''.join(sorted(e.get('sourceHash','') for e in entries if e['source'].startswith(bundle+'/')))).encode()).hexdigest()
         out = PRIVATE / 'metadata' / (bundle + '.json')
         stamp = out.with_suffix('.stamp')

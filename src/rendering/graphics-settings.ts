@@ -1,3 +1,4 @@
+import { isRecord, parseJson } from '../data/json';
 import { qualityLevels, type QualityLevel } from './quality-presets';
 export const frameRateLimits = [60, 120, 144, 240, 0] as const;
 export type FrameRateLimit = typeof frameRateLimits[number];
@@ -29,8 +30,9 @@ export type NumericSetting = keyof typeof ranges;
 export const defaultsVersion = 6;
 export type SavedSettings = Partial<GraphicsSettings> & { defaultsVersion?: number; quality?: 'laptop' | 'enhanced' };
 /** Apply this visual-default revision once; later player choices remain authoritative. */
-export function migrateSettings(saved: SavedSettings): GraphicsSettings {
+export function migrateSettings(value: unknown): GraphicsSettings {
   // Preserve applicable preferences; retiring rendering methods changes no other choices.
+  const saved = isRecord(value) ? value : {};
   const level = saved.quality === 'laptop' ? 'low' : 'high';
   const migrated = { ...saved, shadowQuality: saved.shadowQuality ?? level, particleQuality: saved.particleQuality ?? level };
   return parseSettings(migrated);
@@ -38,20 +40,21 @@ export function migrateSettings(saved: SavedSettings): GraphicsSettings {
 export function saveSettings(settings: GraphicsSettings, changedKey?: keyof GraphicsSettings): void {
   try {
     // Save only an explicitly edited control so comparison URL values stay temporary.
-    const persisted = changedKey ? { ...migrateSettings(JSON.parse(localStorage.getItem(settingsKey) ?? '{}') ?? {}), [changedKey]: settings[changedKey] } : settings;
+    const persisted = changedKey ? { ...migrateSettings(parseJson(localStorage.getItem(settingsKey) ?? '{}')), [changedKey]: settings[changedKey] } : settings;
     localStorage.setItem(settingsKey, JSON.stringify({ ...persisted, defaultsVersion }));
   } catch { /* Current settings still apply. */ }
 }
 export function readSettings(): GraphicsSettings {
-  let saved: SavedSettings = {};
-  try { saved = JSON.parse(localStorage.getItem(settingsKey) ?? '{}') ?? {}; } catch { /* Defaults remain usable. */ }
+  let saved: Record<string, unknown> = {};
+  try { const value = parseJson(localStorage.getItem(settingsKey) ?? '{}'); if (isRecord(value)) saved = value; } catch { /* Defaults remain usable. */ }
   const query = new URLSearchParams(location.search);
   const migrated = migrateSettings({ fpsLimit: defaults(query).fpsLimit, ...saved });
   // Persist before URL overrides so temporary comparison URLs do not become preferences.
   if (saved.defaultsVersion !== defaultsVersion) saveSettings(migrated);
   return parseSettings(migrated, query);
 }
-export function parseSettings(saved: Partial<GraphicsSettings> = {}, query = new URLSearchParams()): GraphicsSettings {
+export function parseSettings(value: unknown = {}, query = new URLSearchParams()): GraphicsSettings {
+  const saved = isRecord(value) ? value : {};
   const result = defaults(query);
   for (const key of ['atmosphericParticles', 'outlines', 'textureDepth'] as const) {
     if (typeof saved[key] === 'boolean') result[key] = saved[key];

@@ -1,4 +1,4 @@
-import { sceneTextures } from '../../assets/resource-ownership';
+import { sceneTextures, isMesh, isTexture } from '../../assets/resource-ownership';
 import { applyShadowQuality } from '../../rendering/quality-presets';
 import * as THREE from 'three';
 import { MeshStandardNodeMaterial } from 'three/webgpu';
@@ -75,7 +75,7 @@ const stages = await Promise.all([0, 1].map(async index => {
   const pipeline = new WebGPUPipeline(renderer, scene, laneCamera, focus); pipeline.configure(settings, look.saturation ?? 1, look); await pipeline.ready();
   return { index, mount, renderer, lighting, scene, camera: laneCamera, pipeline, focus, generation: 0, motionGeneration: 0, character: undefined as Character | undefined, model: undefined as THREE.Group | undefined, mixer: undefined as THREE.AnimationMixer | undefined, action: undefined as THREE.AnimationAction | undefined, error: '', clips: new Map<Motion, THREE.AnimationClip>(), release: () => {} };
 }));
-const controls = new OrbitControls(camera, document.querySelector<HTMLElement>('.character-stages')!);
+const controls = new OrbitControls(camera, document.querySelector<HTMLElement>('.character-stages'));
 controls.target.set(0, 0.9, 0); controls.enablePan = false; controls.minDistance = 2.8; controls.maxDistance = 9; controls.maxPolarAngle = Math.PI * 0.9;
 function setView(view: string): void {
   const distance = 5.2;
@@ -89,9 +89,10 @@ let disposed = false;
 function disposeModel(model: THREE.Object3D): void {
   sceneTextures(model);
   const textures = new Set<THREE.Texture>(), materials = new Set<THREE.Material>(), geometries = new Set<THREE.BufferGeometry>();
-  model.traverse(object => { if (object instanceof THREE.Mesh) {
-    geometries.add(object.geometry); if (object instanceof THREE.SkinnedMesh) object.skeleton.dispose();
-    for (const material of Array.isArray(object.material) ? object.material : [object.material]) { materials.add(material); for (const value of Object.values(material)) if (value instanceof THREE.Texture) textures.add(value); }
+  model.traverse(object => { if (isMesh(object)) {
+    geometries.add(object.geometry); const meshMaterials = Array.isArray(object.material) ? object.material : [object.material];
+    if (object instanceof THREE.SkinnedMesh) object.skeleton.dispose();
+    for (const material of meshMaterials) { materials.add(material); for (const value of Object.values(material)) if (isTexture(value)) textures.add(value); }
   } });
   textures.forEach(texture => texture.dispose()); materials.forEach(material => material.dispose()); geometries.forEach(geometry => geometry.dispose());
 }
@@ -128,7 +129,7 @@ async function applyMotion(index: number, generation: number): Promise<void> {
   try {
     let clip = stage.clips.get(role);
     if (!clip) {
-      const gltf = await loader.loadAsync(row.motions[role]!.url);
+      const gltf = await loader.loadAsync(row.motions[role].url);
       clip = gltf.animations[0];
       if (!clip) throw new Error('Motion has no animation');
       for (const track of clip.tracks) {
@@ -160,7 +161,7 @@ async function select(index: number, id: string): Promise<void> {
     // Parent normalization preserves skeletal root transforms and original proportions.
     const wrapper = new THREE.Group(); wrapper.add(model); wrapper.scale.setScalar(1.8 / height); wrapper.updateMatrixWorld(true);
     const bounds = new THREE.Box3().setFromObject(wrapper), center = bounds.getCenter(new THREE.Vector3()); wrapper.position.set(-center.x, -bounds.min.y, -center.z);
-    model.traverse(object => { if (object instanceof THREE.Mesh) { object.castShadow = true; object.receiveShadow = true; } });
+    model.traverse(object => { if (isMesh(object)) { object.castShadow = true; object.receiveShadow = true; } });
     markOutline(model, 'actor');
     stage.scene.add(wrapper); stage.model = model; stage.mixer = new THREE.AnimationMixer(model);
     stage.release = () => { stage.mixer?.stopAllAction(); stage.mixer?.uncacheRoot(model); wrapper.removeFromParent(); disposeModel(model); stage.release = () => {}; };
@@ -215,4 +216,4 @@ const bridge = {
   },
 };
 if (import.meta.env.DEV) Object.assign(window, { lanternCharacters: bridge });
-window.addEventListener('pagehide', () => { disposed = true; observer.disconnect(); controls.dispose(); for (const stage of stages) { stage.generation++; stage.release(); stage.pipeline.dispose(); stage.lighting.dispose(); disposeModel(stage.scene); void stage.renderer.dispose().catch(error => console.error('Unable to release graphics.', error)); } }, { once: true });
+window.addEventListener('pagehide', () => { disposed = true; observer.disconnect(); controls.dispose(); for (const stage of stages) { stage.generation++; stage.release(); stage.pipeline.dispose(); stage.lighting.dispose(); disposeModel(stage.scene); void stage.renderer.dispose().catch((error: unknown) => console.error('Unable to release graphics.', error)); } }, { once: true });

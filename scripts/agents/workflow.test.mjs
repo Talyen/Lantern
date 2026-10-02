@@ -143,6 +143,10 @@ test('light handoff excludes suites and builds even for packaging and workflow c
   }
   assert.deepEqual(names(['AGENTS.md']), ['docs', 'index-diff', 'diff']);
   for (const file of ['src/entry.ts', 'eslint.config.js', 'eslint/rules.mjs', 'eslint/rules.test.mjs']) assert.ok(names([file]).includes('lint'), file);
+  for (const file of ['eslint.config.js', 'eslint/rules.mjs', 'eslint/rules.test.mjs', 'scripts/check-rendering.mjs', 'scripts/lint.mjs', 'ruff.config.json', 'stylelint.config.js']) assert.ok(names([file]).includes('lint-policy'), file);
+  assert.ok(names(['scripts/agents/native.py']).includes('lint-python'));
+  assert.ok(names(['src/ui/game.css']).includes('lint-css'));
+  assert.ok(!names(['src/entry.ts']).includes('lint-policy'));
   assert.ok(names(['src/levels/lighting.ts']).includes('levels'));
   const full = names([], { '--full': true });
   for (const stage of ['lint', 'lint-policy', 'tests', 'workflow', 'build', 'inventory', 'preview']) assert.ok(full.includes(stage));

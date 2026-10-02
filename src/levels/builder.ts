@@ -1,5 +1,5 @@
 import { SceneCache } from '../assets/scene-cache';
-import { disposeSceneInstances } from '../assets/resource-ownership';
+import { disposeSceneInstances, isMesh } from '../assets/resource-ownership';
 import { MeshStandardNodeMaterial } from 'three/webgpu';
 import { texture, mix, vec2, vec3, positionWorld, color, sin, smoothstep } from 'three/tsl';
 import environmentManifest from '../../assets/textures/environment/manifest.json';
@@ -29,7 +29,8 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
   const root = new THREE.Group(); root.name = area.id; root.userData.surfaceMode = surfaceMode;
   const lightingSources = new Set<string>(), textureReady: Promise<void>[] = [];
   root.userData.lightingSources = [];
-  root.userData.lightingProcedural = [];
+  const lightingProcedural: unknown[] = [];
+  root.userData.lightingProcedural = lightingProcedural;
   const ownedTextures = new Set<THREE.Texture>();
   const ownedGeometry = new Set<THREE.BufferGeometry>(), ownedMaterial = new Set<THREE.Material>(), instances: AssetInstance[] = [];
   const sceneLeases: (() => void)[] = [];
@@ -65,22 +66,22 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
       const family = environmentManifest.assets.find(a => a.id === id)?.kind;
       if (!family || !['pine', 'bush', 'fern', 'rock', 'log'].includes(family)) return [];
       return [{ center: [p.position[0], p.position[2]], radius: family === 'pine' ? 2.7 : family === 'rock' ? 1.8 : 1.3,
-        color: family === 'rock' ? '#777568' : '#71533c', strength: family === 'pine' ? .78 : .6, layer: family === 'rock' ? 'rocky-soil' : 'litter' } as GroundPatch];
+        color: family === 'rock' ? '#777568' : '#71533c', strength: family === 'pine' ? .78 : .6, layer: family === 'rock' ? 'rocky-soil' : 'litter' }];
     });
     const material = (p: Primitive) => {
-      root.userData.lightingProcedural.push(p);
+      lightingProcedural.push(p);
       const m = new MeshStandardNodeMaterial({ color: p.color, roughness: 1, side: p.doubleSided ? THREE.DoubleSide : THREE.FrontSide });
       ownedMaterial.add(m);
       if (p.surface === 'woodland') {
         const patches = [...groundPatches, ...(p.patches ?? []), ...(showcase?.ground.patches as GroundPatch[] ?? [])];
-        root.userData.lightingProcedural.push({ woodlandMaterial: woodlandGroundRecipe, patches });
+        lightingProcedural.push({ woodlandMaterial: woodlandGroundRecipe, patches });
         const surface = woodlandMaterial(groundMap, patches);
         m.colorNode = surface.color; m.normalNode = surface.normal; m.roughnessNode = surface.roughness; m.aoNode = surface.cavity;
         if (grass?.coverage) {
           m.map = grass.coverage.texture;
           const coverage = texture(m.map, positionWorld.xz.sub(vec2(...grass.coverage.min)).div(vec2(...grass.coverage.span))).r;
           const grassSoil = { color: '#4b4e32', strength: .28 };
-          root.userData.lightingProcedural.push({ grassSoil });
+          lightingProcedural.push({ grassSoil });
           m.colorNode = mix(m.colorNode, vec3(...new THREE.Color(grassSoil.color).toArray()), coverage.mul(grassSoil.strength));
         }
       }
@@ -120,8 +121,8 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
       const lease = cache.acquire(ref.url, () => loader.loadAsync(ref.url).then(async gltf => { if (ref.url.startsWith('/vendor/synty/environment/')) await prepareEnvironmentMaterials(gltf.scene); return gltf.scene; }));
       sceneLeases.push(lease.release);
       const object = (await lease.scene).clone(true); lightingSources.add(ref.url);
-      for (const url of object.userData.surfaceSources ?? []) lightingSources.add(url);
-      for (const url of object.userData.surfaceMissing ?? []) if (!missing.includes(url)) missing.push(url);
+      for (const url of (object.userData.surfaceSources as string[] | undefined) ?? []) lightingSources.add(url);
+      for (const url of (object.userData.surfaceMissing as string[] | undefined) ?? []) if (!missing.includes(url)) missing.push(url);
       return object;
     }
     function transform(model: THREE.Object3D, p: Placement): void {
@@ -136,7 +137,7 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
       model.position.fromArray(p.position);
       model.rotation.y += p.yaw; model.scale.multiply(new THREE.Vector3(...p.scale)); model.name = p.id;
       const resource = resources.find(n => n.id === p.id);
-      if(resource?.kind==='iron')model.traverse(o=>{if(o instanceof THREE.Mesh && o.material instanceof MeshStandardNodeMaterial){const ore=o.material.clone();ore.colorNode=mix(color('#5e5b52'),color('#89654e'),smoothstep(.25,.65,sin(positionWorld.x.mul(13).add(positionWorld.z.mul(8))).mul(.5).add(.5)));ore.roughness=.85;ownedMaterial.add(ore);o.material=ore;}});
+      if(resource?.kind==='iron')model.traverse(o=>{if(isMesh(o) && o.material instanceof MeshStandardNodeMaterial){const ore=o.material.clone();ore.colorNode=mix(color('#5e5b52'),color('#89654e'),smoothstep(.25,.65,sin(positionWorld.x.mul(13).add(positionWorld.z.mul(8))).mul(.5).add(.5)));ore.roughness=.85;ownedMaterial.add(ore);o.material=ore;}});
       if (resource && resource.kind !== 'tree') { model.userData.harvestResource=p.id; model.traverse(o=>animated.add(o)); model.userData.resourceScaleY=model.scale.y; mineralModels.set(p.id,model); interactables.set(`resource/${p.id}`,model); }
       const tree = treeIds.get(p.id);
       const chest=area.chests?.find(chest=>chest.prop===p.id);
@@ -154,7 +155,7 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
         stump.castShadow = p.castShadow; stump.receiveShadow = true; stump.visible = false; stump.userData.transient = true;
         animated.add(stump); root.add(stump); treeModels.set(p.id, { object: model, stump, rotation: [model.rotation.x, model.rotation.z], hitAge: Infinity, felled: false });
       }
-      model.traverse(o => { if (o instanceof THREE.Mesh) { o.castShadow = p.castShadow; o.receiveShadow = p.receiveShadow; if (p.foliage) { animated.add(o); o.geometry = o.geometry.clone(); ownedGeometry.add(o.geometry); } } });
+      model.traverse(o => { if (isMesh(o)) { o.castShadow = p.castShadow; o.receiveShadow = p.receiveShadow; if (p.foliage) { animated.add(o); o.geometry = o.geometry.clone(); ownedGeometry.add(o.geometry); } } });
       if (outlined(p)) markOutline(model, 'prop');
       root.add(model); if (p.foliage) foliage.push(model);
     }
@@ -184,7 +185,7 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
         if (chest) {
           // This exported chest has a separate lid in its original Z-up mesh coordinates.
           const lid = model.getObjectByName('SM_Prop_Chest_01_Lid');
-          if (lid instanceof THREE.Mesh && lid.parent) {
+          if (isMesh(lid) && lid.parent) {
             lid.geometry.computeBoundingBox();
             const box = lid.geometry.boundingBox!, hinge = new THREE.Group();
             hinge.position.set((box.min.x + box.max.x) / 2, box.min.y, box.max.z);
@@ -213,18 +214,18 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
       if(area.shelter) {
         let chest:THREE.Group;
         try {chest=await asset({libraryId:'generic:model:sm-gen-prop-chest-01'});}catch{missing.push('shelter-stash');chest=new THREE.Group();const body=new THREE.Mesh(geometry({kind:'box',size:[.85,.55,.55],color:'#68523d'}),material({kind:'box',size:[],color:'#68523d'}));body.position.y=.275;chest.add(body);}
-        chest.scale.setScalar(.8); chest.traverse(o=>{if(o instanceof THREE.Mesh)o.castShadow=o.receiveShadow=true;});
+        chest.scale.setScalar(.8); chest.traverse(o=>{if(isMesh(o))o.castShadow=o.receiveShadow=true;});
         shelter=createShelter(area.shelter,shelterRestored,chest); root.add(shelter.root); interactables.set('shelter',shelter.root); if(shelterRestored)interactables.set('stash',chest); shelter.root.traverse(object=>animated.add(object));
-        root.userData.lightingProcedural.push({shelter:area.shelter,restored:shelterRestored});
+        lightingProcedural.push({shelter:area.shelter,restored:shelterRestored});
       }
       await Promise.all(textureReady);
     root.userData.lightingSources = [...lightingSources];
     // Batch opaque repeated asset primitives without flattening skins, wind or native LOD ownership.
     const staticBatches = new Map<string, THREE.Mesh[]>();
     root.updateMatrixWorld(true);
-    const lodRoots = new Set(instances.filter(i => i.object.userData.lods?.length).map(i => i.object));
+    const lodRoots = new Set(instances.filter(i => (i.object.userData.lods as unknown[] | undefined)?.length).map(i => i.object));
     root.traverse(o => {
-      if (!(o instanceof THREE.Mesh) || o instanceof THREE.InstancedMesh || o instanceof THREE.SkinnedMesh || animated.has(o) || Object.values(o.geometry.morphAttributes).some(a => Array.isArray(a) && a.length > 0)) return;
+      if (!isMesh(o) || o instanceof THREE.InstancedMesh || o instanceof THREE.SkinnedMesh || animated.has(o) || Object.values(o.geometry.morphAttributes).some(a => Array.isArray(a) && a.length > 0)) return;
       for (let parent: THREE.Object3D | null = o; parent; parent = parent.parent) if (lodRoots.has(parent as THREE.Group) || !parent.visible) return;
       const materials = Array.isArray(o.material) ? o.material : [o.material];
       if (materials.some(m => m.transparent) || !o.visible || o.matrixWorld.determinant() <= 0) return;
@@ -234,7 +235,7 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
     for (const meshes of staticBatches.values()) if (meshes.length > 1) {
       const first = meshes[0], batch = new THREE.InstancedMesh(first.geometry, first.material, meshes.length);
       batch.name = `instances:${first.name}`; batch.castShadow = first.castShadow; batch.receiveShadow = first.receiveShadow;
-      batch.userData.outlineStrength = first.userData.outlineStrength ?? 0;
+      batch.userData.outlineStrength = (first.userData.outlineStrength as number | undefined) ?? 0;
       meshes.forEach((mesh, i) => { batch.setMatrixAt(i, mesh.matrixWorld); mesh.removeFromParent(); }); batch.computeBoundingSphere(); root.add(batch);
     }
     function update(camera: THREE.Camera, dt = 0): void {
@@ -249,7 +250,7 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
     function setChestOpened(id: string, opened: boolean): void { const chest = chests.get(id); if (chest) chest.opened = opened; }
     function pickResource(ray: THREE.Raycaster): string | null {
       const hits=ray.intersectObjects([...treeModels.values()].filter(t=>!t.felled).map(t=>t.object).concat([...mineralModels.values()].filter(m=>!m.userData.depleted)),true);
-      for(const hit of hits) for(let o:THREE.Object3D|null=hit.object;o;o=o.parent) if(o.userData.harvestTree || o.userData.harvestResource) return o.userData.harvestTree ?? o.userData.harvestResource;
+      for(const hit of hits) for(let o:THREE.Object3D|null=hit.object;o;o=o.parent) if(o.userData.harvestTree || o.userData.harvestResource) { const id: unknown = o.userData.harvestTree ?? o.userData.harvestResource; if(typeof id==='string') return id; }
       return null;
     }
     function setResourceState(id: string, depleted: boolean): void {

@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import type * as THREE from 'three';
 import { mix, vec2, vec3, float, smoothstep, mx_noise_float, positionWorld, normalMap, texture, dFdx, dFdy } from 'three/tsl';
 import earthUrl from '../../assets/textures/environment/showcase/earth-v2.png?url';
 import litterUrl from '../../assets/textures/environment/showcase/litter-v2.png?url';

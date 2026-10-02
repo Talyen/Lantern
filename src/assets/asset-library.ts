@@ -1,4 +1,4 @@
-import { disposeSceneInstances, ownTexture, sceneTextures } from './resource-ownership';
+import { disposeSceneInstances, ownTexture, sceneTextures, isMesh, isTexture } from './resource-ownership';
 import * as THREE from 'three';
 import { prepareStandardMaterials, filterMaterialTexture } from '../rendering/surface-detail';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -61,7 +61,7 @@ export class AssetLibrary {
   }
   private async gltf(id: string): Promise<{ scene: THREE.Group; bindposes?: number[] }> {
     const asset = await this.entry(id);
-    if (!this.gltfs.has(id)) this.gltfs.set(id, this.track(this.loader.loadAsync(asset.url).then(gltf => { prepareStandardMaterials(gltf.scene); sceneTextures(gltf.scene); return { scene: gltf.scene, bindposes: gltf.parser.json.meshes?.[0]?.extras?.bindposes as number[] | undefined }; })));
+    if (!this.gltfs.has(id)) this.gltfs.set(id, this.track(this.loader.loadAsync(asset.url).then(gltf => { prepareStandardMaterials(gltf.scene); sceneTextures(gltf.scene); return { scene: gltf.scene, bindposes: (gltf.parser.json as { meshes?: { extras?: { bindposes?: number[] } }[] }).meshes?.[0]?.extras?.bindposes }; })));
     return this.gltfs.get(id)!;
   }
   private async texture(id: string, color: boolean): Promise<THREE.Texture> {
@@ -100,7 +100,7 @@ export class AssetLibrary {
     await Promise.all(spec.nodes.map(async (node, index) => {
       if (!node.mesh) return;
       const gltf = await this.gltf(node.mesh.assetId); const primitives: THREE.Mesh[] = [];
-      gltf.scene.traverse((o) => { if (o instanceof THREE.Mesh) primitives.push(o); });
+      gltf.scene.traverse((o) => { if (isMesh(o)) primitives.push(o); });
       const materials = await Promise.all(node.materials.map((id) => id ? this.material(id) : Promise.resolve(null)));
       const bindposes = gltf.bindposes;
       for (let i = 0; i < primitives.length; i++) {
@@ -130,7 +130,7 @@ export class AssetLibrary {
     if (this.disposed) { disposeSceneInstances(object, { skeletons: true }); throw new Error('Asset library disposed during load'); }
     const variants = options.materialVariant ? await Promise.all(options.materialVariant.map((id) => this.material(id))) : undefined;
     if (this.disposed) { disposeSceneInstances(object, { skeletons: true }); throw new Error('Asset library disposed during load'); }
-    object.traverse((o) => { if (o instanceof THREE.Mesh) { o.castShadow = o.receiveShadow = options.shadows ?? true; if (variants) o.material = variants.length === 1 ? variants[0] : variants; } });
+    object.traverse((o) => { if (isMesh(o)) { o.castShadow = o.receiveShadow = options.shadows ?? true; if (variants) o.material = variants.length === 1 ? variants[0] : variants; } });
     prepareStandardMaterials(object);
     object.traverse(node => { if (node instanceof THREE.SkinnedMesh) object.userData.lodSkinned = true; });
     let released = false;
@@ -141,8 +141,8 @@ export class AssetLibrary {
     this.disposed = true; await Promise.allSettled([...this.pending]); this.instances.forEach((release) => release());
     const geometries = new Set<THREE.BufferGeometry>();
     for (const pending of this.gltfs.values()) { const result = await pending.catch(() => null); result?.scene.traverse((o) => {
-      if (o instanceof THREE.Mesh) { geometries.add(o.geometry); const materials = Array.isArray(o.material) ? o.material : [o.material];
-        materials.forEach((m) => { this.ownedMaterials.add(m); Object.values(m).forEach((v) => { if (v instanceof THREE.Texture) this.ownedTextures.add(v); }); }); }
+      if (isMesh(o)) { geometries.add(o.geometry); const materials = Array.isArray(o.material) ? o.material : [o.material];
+        materials.forEach((m) => { this.ownedMaterials.add(m); Object.values(m).forEach((v) => { if (isTexture(v)) this.ownedTextures.add(v); }); }); }
     }); }
     geometries.forEach((g) => g.dispose()); this.ownedMaterials.forEach((m) => m.dispose()); this.ownedTextures.forEach((t) => t.dispose());
     this.gltfs.clear(); this.json.clear(); this.textures.clear(); this.materials.clear();

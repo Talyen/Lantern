@@ -1,5 +1,5 @@
 import { UpscalerNode, type Upscaler } from '@pmndrs/upscaler';
-import type { NodeBuilder, OrthographicCamera, PerspectiveCamera, TextureNode } from 'three/webgpu';
+import type { Node, NodeBuilder, OrthographicCamera, PerspectiveCamera, TextureNode } from 'three/webgpu';
 import { OnAfterRenderPipeline, OnBeforeRenderPipeline, nodeObject } from 'three/tsl';
 import accumulationShader from './fsr-accumulate.wgsl?raw';
 
@@ -18,7 +18,7 @@ function prepareStableHistory(upscaler: Upscaler, device: FSRDevice): Promise<vo
   const existing = historyPreparations.get(upscaler);
   if (existing) return existing;
   const preparation = (async () => {
-    const pass = Reflect.get(upscaler, '_accumulatePass');
+    const pass = Reflect.get(upscaler, '_accumulatePass') as { metadata?: { shaderKey?: string }; pipeline?: unknown } | undefined;
     if (pass?.metadata?.shaderKey !== 'baseline:accumulate' || !pass.pipeline) {
       throw new Error('FSR history integration needs updating.');
     }
@@ -50,13 +50,13 @@ class FSRTemporalNode extends UpscalerNode {
     // Input registration and resource ownership remain with the package.
     const context = builder.context as { renderPipeline?: unknown; renderPipelineState?: { viewOffsetOwner: unknown } };
     const pipeline = context.renderPipeline;
-    let result: ReturnType<UpscalerNode['setup']>;
+    let result: Node | null;
     try {
       delete context.renderPipeline;
-      result = super.setup(builder);
+      result = super.setup(builder) as Node | null;
       if (this.upscaler) {
         const device = Reflect.get(builder.renderer.backend, 'device') as FSRDevice;
-        this.historyPreparation = prepareStableHistory(this.upscaler, device).catch(error => { this.startupError = error; });
+        this.historyPreparation = prepareStableHistory(this.upscaler, device).catch((error: unknown) => { this.startupError = error; });
       }
     } catch (error) {
       this.startupError = error;

@@ -1,3 +1,4 @@
+import { isMesh, isTexture } from '../assets/resource-ownership';
 import * as THREE from 'three';
 import type { ProbeLighting, ResolvedAreaDefinition } from '../levels/types';
 import type { LightProbeGrid } from 'three/addons/lighting/LightProbeGrid.js';
@@ -28,7 +29,7 @@ export async function lightingBakeSignature(area: ResolvedAreaDefinition, root: 
     return pending;
   };
   const objects: THREE.Mesh[] = [];
-  root.traverse(object => { if (object instanceof THREE.Mesh && !(object instanceof THREE.SkinnedMesh) && visible(object)) objects.push(object); });
+  root.traverse(object => { if (isMesh(object) && !(object instanceof THREE.SkinnedMesh) && visible(object)) objects.push(object); });
   for (const mesh of objects) {
     const attributes: Record<string, string> = {};
     for (const [name, attribute] of Object.entries(mesh.geometry.attributes)) {
@@ -39,9 +40,9 @@ export async function lightingBakeSignature(area: ResolvedAreaDefinition, root: 
     for (const material of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) {
       const properties: Record<string, unknown> = {};
       for (const key of ['color', 'emissive', 'emissiveIntensity', 'roughness', 'metalness', 'specularIntensity', 'specularColor', 'opacity', 'transparent', 'alphaTest', 'side', 'vertexColors', 'normalScale', 'aoMapIntensity']) {
-        const value = Reflect.get(material, key); properties[key] = value?.toArray ? value.toArray() : value;
+        const value = Reflect.get(material, key) as { toArray?: () => unknown } | undefined; properties[key] = value?.toArray ? value.toArray() : value;
       }
-      for (const [name, value] of Object.entries(material)) if (value instanceof THREE.Texture) properties[name] = await describeTexture(value);
+      for (const [name, value] of Object.entries(material)) if (isTexture(value)) properties[name] = await describeTexture(value);
       materials.push(properties);
     }
     const instances = mesh instanceof THREE.InstancedMesh ? Array.from({ length: mesh.count }, (_, i) => ({ transform: Array.from(mesh.instanceMatrix.array.slice(i * 16, i * 16 + 16)), color: mesh.instanceColor ? Array.from(mesh.instanceColor.array.slice(i * 3, i * 3 + 3)) : undefined })).map(item => JSON.stringify(item)).sort() : undefined;
@@ -61,7 +62,7 @@ export async function lightingBakeSignature(area: ResolvedAreaDefinition, root: 
   const look = area.lighting;
   const payload = { version: lightingBakeVersion, three: THREE.REVISION,
     sun: look.sun, environment: look.environment, probes: look.probes, meshes: meshes.sort(), sources: sources.sort(),
-    procedural: (root.userData.lightingProcedural ?? []).map((value: unknown) => JSON.stringify(value)).sort(), surfaces: root.userData.surfaceMode ?? 'authored' };
+    procedural: ((root.userData.lightingProcedural as unknown[] | undefined) ?? []).map((value: unknown) => JSON.stringify(value)).sort(), surfaces: (root.userData.surfaceMode as string | undefined) ?? 'authored' };
   return digest(new TextEncoder().encode(JSON.stringify(payload)));
 }
 

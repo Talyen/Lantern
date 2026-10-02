@@ -8,7 +8,8 @@ function privateLibrary(): Plugin {
   return { name: 'lantern-private-library', configureServer(server) {
     const root = resolve('public/vendor');
     server.middlewares.use('/__level-owner', (_request, response) => { response.setHeader('Content-Type', 'application/json'); response.end(JSON.stringify({ token: process.env.LANTERN_LEVEL_SESSION ?? null })); });
-    server.middlewares.use(async (request, response, next) => {
+    server.middlewares.use((request, response, next) => {
+      void (async () => {
       const prefix = '/vendor/';
       if (!request.url?.startsWith(prefix)) return next();
       try {
@@ -20,6 +21,7 @@ function privateLibrary(): Plugin {
         response.setHeader('Cache-Control', 'no-cache');
         createReadStream(path).on('error', () => response.destroy()).pipe(response);
       } catch { response.statusCode = 404; response.end('Private vendor asset unavailable'); }
+      })().catch(next);
     });
   } };
 }

@@ -58,7 +58,7 @@ function installActions(actor: Actor, clips: Partial<Record<AnimationRole, THREE
     const block = clips.block;
     playback.blockUpper = new THREE.AnimationClip('blockUpper', block.duration, block.tracks.filter(track=>/^(Spine|Neck|Head|Clavicle|Shoulder|Elbow|Hand|Thumb|Finger|Index|mixamorigLeftHand|mixamorigRightHand)/.test(track.name)), block.blendMode);
     for (const [i,role] of directions.entries()) if (clips[role]) {
-      const source = (clips[blockDirections[i]] ?? clips[role])!;
+      const source = (clips[blockDirections[i]] ?? clips[role]);
       playback[`lower_${role}`] = new THREE.AnimationClip(`lower_${role}`, source.duration, source.tracks.filter(track=>/^(Hips|UpperLeg|LowerLeg|Ankle|Ball)/.test(track.name)), source.blendMode);
     }
   }
@@ -69,7 +69,7 @@ function installActions(actor: Actor, clips: Partial<Record<AnimationRole, THREE
   }
 }
 export function installMotions(actor: Actor, motions: CombatMotions): void {
-  installActions(actor, motions.clips); actor.contacts = motions.contacts; actor.commitLead = motions.commitLead ?? 0; actor.runSpeed = motions.runSpeed * actor.rigScale; actor.speeds = Object.fromEntries(Object.entries(motions.speeds).map(([role,speed])=>[role,speed! * actor.rigScale])); actor.chopContact = motions.chopContact; actor.mineContact=motions.mineContact; actor.skillContacts=motions.skillContacts; actor.phases=motions.phases;
+  installActions(actor, motions.clips); actor.contacts = motions.contacts; actor.commitLead = motions.commitLead ?? 0; actor.runSpeed = motions.runSpeed * actor.rigScale; actor.speeds = Object.fromEntries(Object.entries(motions.speeds).map(([role,speed])=>[role,speed * actor.rigScale])); actor.chopContact = motions.chopContact; actor.mineContact=motions.mineContact; actor.skillContacts=motions.skillContacts; actor.phases=motions.phases;
 }
 /** Locomotion follows actual displacement, with a shared normalized foot cycle across directions. */
 export function updateActor(actor: Actor, state: ActorState, dt: number, paused: boolean, blocking = false): void {

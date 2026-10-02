@@ -9,7 +9,7 @@ import { itemIcon } from './item-icons';
 import { setText, setDisabled } from './dom';
 
 export type TravelChoice = { name: string; available: boolean; travel(): void };
-export type InventoryMenuContext = { change(items: InventoryItem[]): Promise<void>; drop(id: string, quantity: number): Promise<void>; recover(id: string): void; newId(): string; changeContainers(items:InventoryItem[],stash:InventoryItem[]):void; transfer(id:string,quantity:number,toStash:boolean,point?:{x:number;y:number}):void; repair():Promise<void> };
+export type InventoryMenuContext = { change(items: InventoryItem[]): Promise<void>; drop(id: string, quantity: number): Promise<void>; recover(id: string): void; newId(this: void): string; changeContainers(items:InventoryItem[],stash:InventoryItem[]):void; transfer(id:string,quantity:number,toStash:boolean,point?:{x:number;y:number}):void; repair():Promise<void> };
 type Container = 'bag' | 'stash';
 type Drag = { container:Container; id: string; quantity: number; startX: number; startY: number; offsetX: number; offsetY: number; active: boolean; carried: boolean };
 /** Menus submit complete inventory operations; simulation remains the owner of transfers. */

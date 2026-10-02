@@ -40,6 +40,6 @@ export const resolveAreaLighting = (area: AreaDefinition) => resolveLighting(are
 
 if (import.meta.hot) import.meta.hot.accept('./lighting-preset.ts', module => {
   if (!module) return;
-  preset = module.lightingPreset;
+  preset = module.lightingPreset as typeof lightingPreset;
   window.dispatchEvent(new Event('lightingpresetchanged'));
 });

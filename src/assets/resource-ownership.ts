@@ -1,5 +1,11 @@
 import * as THREE from 'three';
 
+// Upstream instanceof declarations widen generic resources to any. These guards
+// retain the same constructor checks with the runtime's concrete resource types.
+export function isMesh(value: unknown): value is THREE.Mesh { return value instanceof THREE.Mesh; }
+export function isTexture(value: unknown): value is THREE.Texture { return value instanceof THREE.Texture; }
+export function isLine(value: unknown): value is THREE.Line { return value instanceof THREE.Line; }
+
 const owned = new WeakSet<THREE.Texture>();
 const imageOwners = new WeakMap<object, number>();
 /** Texture clones can share a bitmap. Close it only after the last owned texture is disposed. */
@@ -22,9 +28,9 @@ export function ownTexture(texture: THREE.Texture): THREE.Texture {
 export function sceneTextures(root: THREE.Object3D): Set<THREE.Texture> {
   const textures = new Set<THREE.Texture>();
   root.traverse(object => {
-    if (!(object instanceof THREE.Mesh)) return;
+    if (!isMesh(object)) return;
     for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
-      for (const value of Object.values(material)) if (value instanceof THREE.Texture) textures.add(ownTexture(value));
+      for (const value of Object.values(material)) if (isTexture(value)) textures.add(ownTexture(value));
     }
   });
   return textures;
@@ -32,7 +38,7 @@ export function sceneTextures(root: THREE.Object3D): Set<THREE.Texture> {
 /** Release native bindings; plain scene clones borrow skeletons as well as art. */
 export function disposeSceneInstances(root: THREE.Object3D, { skeletons = false }: { skeletons?: boolean } = {}): void {
   root.traverse(object => {
-    if (!(object instanceof THREE.Mesh)) return;
+    if (!isMesh(object)) return;
     object.dispose();
     if (skeletons && object instanceof THREE.SkinnedMesh) object.skeleton.dispose();
   });
@@ -41,7 +47,7 @@ export function disposeSceneResources(root: THREE.Object3D): void {
   const geometries = new Set<THREE.BufferGeometry>(), materials = new Set<THREE.Material>();
   const textures = sceneTextures(root);
   root.traverse(object => {
-    if (!(object instanceof THREE.Mesh)) return;
+    if (!isMesh(object)) return;
     geometries.add(object.geometry);
     for (const material of Array.isArray(object.material) ? object.material : [object.material]) materials.add(material);
   });
@@ -50,10 +56,10 @@ export function disposeSceneResources(root: THREE.Object3D): void {
 }
 export function sceneResourceBytes(root: THREE.Object3D): number {
   let bytes = 0; const geometries = new Set<THREE.BufferGeometry>();
-  root.traverse(object => { if (object instanceof THREE.Mesh) geometries.add(object.geometry); });
+  root.traverse(object => { if (isMesh(object)) geometries.add(object.geometry); });
   for (const geometry of geometries) {
     if (geometry.index) bytes += geometry.index.array.byteLength;
-    for (const value of Object.values(geometry.attributes)) { const attribute = value as THREE.BufferAttribute | THREE.InterleavedBufferAttribute; bytes += attribute instanceof THREE.InterleavedBufferAttribute ? attribute.data.array.byteLength : attribute.array.byteLength; }
+    for (const value of Object.values(geometry.attributes)) { const attribute = value; bytes += attribute instanceof THREE.InterleavedBufferAttribute ? attribute.data.array.byteLength : attribute.array.byteLength; }
   }
   for (const texture of sceneTextures(root)) {
     if (texture instanceof THREE.CompressedTexture) bytes += texture.mipmaps.reduce((sum, mip) => sum + mip.data.byteLength, 0);

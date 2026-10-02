@@ -1,7 +1,7 @@
 import type { ActorId, ActorState, Encounter, EncounterEvent, Motion } from '../gameplay/encounter';
 import type { AdventureEvent } from '../gameplay/adventure';
 import type { AreaDefinition } from '../levels/types';
-import { GameAudio, type SoundCue, type SoundPosition } from './audio';
+import { type GameAudio, type SoundCue, type SoundPosition } from './audio';
 
 type AuthoredFire = Pick<AreaDefinition['effects']['fires'][number], 'id' | 'position' | 'role'>;
 type AmbientFlame = { key: string; position: SoundPosition; camp: boolean; distance: number };

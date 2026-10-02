@@ -1,4 +1,4 @@
-import { ownTexture, sceneTextures } from './resource-ownership';
+import { ownTexture, sceneTextures, isMesh } from './resource-ownership';
 import * as THREE from 'three';
 import { MeshStandardNodeMaterial } from 'three/webgpu';
 import manifest from '../../assets/textures/environment/manifest.json';
@@ -26,7 +26,7 @@ export async function prepareEnvironmentMaterials(root: THREE.Object3D): Promise
   const materials = new Map<THREE.Material, MeshStandardNodeMaterial>();
   const sources: string[] = [], missing: string[] = [];
   root.traverse(object => {
-    if (!(object instanceof THREE.Mesh)) return;
+    if (!isMesh(object)) return;
     const convert = (source: THREE.Material) => {
       if (!(source instanceof THREE.MeshStandardMaterial)) return source;
       let material = materials.get(source);

@@ -1,3 +1,4 @@
+import { isMesh } from '../assets/resource-ownership';
 import * as THREE from 'three';
 import { Fn, If, Loop, float, vec2, color, uniform, uv, texture, dFdx, dFdy, positionView, positionViewDirection, normalViewGeometry, cross, dot, normalMap } from 'three/tsl';
 import { MeshStandardNodeMaterial, type Node, type NodeBuilder } from 'three/webgpu';
@@ -69,7 +70,7 @@ export function reliefSample(map: THREE.Texture, base: Node<'vec2'>, displaced: 
   })();
 }
 export function prepareSurfaceMaterial(material: MeshStandardNodeMaterial, data?: THREE.Texture, depth = 0, format: 1 | 2 | 3 = 2): void {
-  for (const key of ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'emissiveMap', 'alphaMap'] as const) if (material[key]) filterMaterialTexture(material[key]!);
+  for (const key of ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'emissiveMap', 'alphaMap'] as const) if (material[key]) filterMaterialTexture(material[key]);
   const base = uv(material.map?.channel ?? 0), displaced = data ? reliefUV(data, base, depth, float(1), format === 2 ? 'b' : 'a').toVar() : base;
   const sample = (map: THREE.Texture) => data ? reliefSample(map, base, displaced) : surfaceSample(map, uv(map.channel));
   if (material.map) material.colorNode = sample(material.map).rgb.mul(color(material.color));
@@ -98,7 +99,7 @@ export function prepareSurfaceMaterial(material: MeshStandardNodeMaterial, data?
 export function prepareStandardMaterials(root: THREE.Object3D): void {
   const converted = new Map<THREE.Material, MeshStandardNodeMaterial>();
   root.traverse(object => {
-    if (!(object instanceof THREE.Mesh)) return;
+    if (!isMesh(object)) return;
     const convert = (source: THREE.Material) => {
       if (!(source instanceof THREE.MeshStandardMaterial)) return source;
       let material = converted.get(source);

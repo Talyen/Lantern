@@ -15,6 +15,7 @@ export default [
       'no-empty': ['error', { allowEmptyCatch: true }],
       'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }],
       eqeqeq: ['error', 'always', { null: 'ignore' }],
+      'prefer-const': 'error',
       'lantern/require-disable-reason': 'error',
     },
   },
@@ -27,18 +28,28 @@ export default [
     plugins: { '@typescript-eslint': tseslint.plugin },
     // TypeScript owns name resolution and unused variables for its source set.
     rules: {
+      ...tseslint.configs.eslintRecommended.rules,
       'no-undef': 'off', 'no-unused-vars': 'off',
       '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/consistent-type-imports': ['error', { fixStyle: 'inline-type-imports' }],
       '@typescript-eslint/ban-ts-comment': ['error', { 'ts-ignore': true, 'ts-nocheck': true, 'ts-expect-error': 'allow-with-description', minimumDescriptionLength: 10 }],
     },
   },
   {
-    files: ['src/**/*.ts', 'tests/**/*.ts'],
+    files: ['src/**/*.ts', 'tests/**/*.ts', 'vite.config.ts', 'vitest.config.ts'],
     languageOptions: { parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname } },
     rules: {
       '@typescript-eslint/no-floating-promises': ['error', { ignoreVoid: false }],
       '@typescript-eslint/no-misused-promises': 'error',
       '@typescript-eslint/await-thenable': 'error',
+      '@typescript-eslint/no-misused-spread': 'error',
+      '@typescript-eslint/use-unknown-in-catch-callback-variable': 'error',
+      '@typescript-eslint/no-unnecessary-type-assertion': 'error',
+      '@typescript-eslint/no-unsafe-assignment': 'error',
+      '@typescript-eslint/no-unsafe-member-access': 'error',
+      '@typescript-eslint/no-unsafe-call': 'error',
+      '@typescript-eslint/no-unsafe-argument': 'error',
+      '@typescript-eslint/no-unsafe-return': 'error',
     },
   },
   {
@@ -47,6 +58,7 @@ export default [
     rules: {
       '@typescript-eslint/switch-exhaustiveness-check': ['error', { considerDefaultExhaustiveForUnions: false }],
       'lantern/no-unowned-web-storage': 'error',
+      '@typescript-eslint/unbound-method': 'error',
     },
   },
   {

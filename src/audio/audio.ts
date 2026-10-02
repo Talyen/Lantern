@@ -26,7 +26,7 @@ export class GameAudio {
   private counts = new Map<SoundCue, number>();
   private loading = 0;
   private lifecycle: Promise<void> = Promise.resolve();
-  private gesture = () => { void this.unlock().catch(error => this.fail('unlock', error)); };
+  private gesture = () => { void this.unlock().catch((error: unknown) => this.fail('unlock', error)); };
   private visibility = () => this.setHidden(document.hidden || !document.hasFocus());
   private blur = () => this.setHidden(true);
   private focus = () => this.setHidden(document.hidden);
@@ -41,7 +41,7 @@ export class GameAudio {
       this.master = this.context.createGain(); this.master.gain.value = this.hidden ? 0 : this.settings.master; this.master.connect(this.context.destination);
       for (const bus of ['effects', 'ambience', 'ui'] as const) { const node = this.context.createGain(); node.gain.value = bus === 'ui' ? this.settings.effects : 0; node.connect(this.master); this.buses.set(bus, node); }
       this.applySettings(this.settings);
-      void this.prepare().catch(error => this.fail('preparation', error));
+      void this.prepare().catch((error: unknown) => this.fail('preparation', error));
     } catch (error) { this.fail('initialization', error); }
   }
   private fail(id: string, error: unknown): void {
@@ -77,7 +77,7 @@ export class GameAudio {
       if (!this.context || this.disposed) return;
       if (this.hidden) await this.context.suspend();
       else if (this.unlocked) await this.context.resume();
-    }).catch(error => this.fail('visibility', error));
+    }).catch((error: unknown) => this.fail('visibility', error));
     this.updateGains();
   }
   applySettings(settings: AudioSettings): void { this.settings = { ...settings }; this.updateGains(); }
@@ -149,6 +149,6 @@ export class GameAudio {
     window.removeEventListener('pointerdown', this.gesture, true); window.removeEventListener('keydown', this.gesture, true);
     document.removeEventListener('visibilitychange', this.visibility); window.removeEventListener('blur', this.blur); window.removeEventListener('focus', this.focus);
     for (const voice of this.voices) this.stopVoice(voice);
-    this.buffers.clear(); if (this.context) void this.context.close().catch(error => console.warn('Unable to release audio.', error));
+    this.buffers.clear(); if (this.context) void this.context.close().catch((error: unknown) => console.warn('Unable to release audio.', error));
   }
 }

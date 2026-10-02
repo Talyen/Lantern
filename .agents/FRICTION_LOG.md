@@ -14,6 +14,7 @@ Centralized intake for unresolved agent friction while working in Lantern. Keep 
 
 | Date | Area | Symptom (expected vs actual) |
 |------|------|------------------------------|
+| 2026-10-02 | Managed previews | `agent:dev --stop` succeeds without cancelling a preview queued for the GPU slot. [Preview startup](../scripts/agents/preview.mjs) writes its session record only after acquiring the slot, so the stop command cannot find the pending owner. Observed during lint expansion; the owned queued child was identity-checked and interrupted without touching the active task. Record pending startup identity before waiting and support verified cancellation. |
 
 ## Archive
 

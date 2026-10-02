@@ -50,7 +50,7 @@ export class Equipment {
     if (this.current===candidate) { this.setVisible(true); return; }
     if (!retain) this.candidates.delete(candidate);
     const previous=this.current;
-    previous?.attachments.forEach(({ instance, grip }) => { grip.removeFromParent(); if(!this.candidates.has(previous!)) instance.release(); });
+    previous?.attachments.forEach(({ instance, grip }) => { grip.removeFromParent(); if(!this.candidates.has(previous)) instance.release(); });
     for (const { socket, grip } of candidate.attachments) socket.add(grip);
     this.current = candidate;
   }

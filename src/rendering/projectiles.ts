@@ -20,7 +20,7 @@ export class ProjectileVisuals {
     return this.loading ??= assetLibrary.loadAsset(arrowAsset).then(instance => {
       if (this.disposed) { instance.release(); return; }
       this.arrows = instance; instance.object.scale.setScalar(.7); instance.object.updateMatrixWorld(true);
-    }).catch(error => { this.loading = undefined; throw error; });
+    }).catch((error: unknown) => { this.loading = undefined; throw error; });
   }
   sync(projectiles: Projectile[]): void {
     for (const [id, object] of this.objects) if (!projectiles.some(projectile=>projectile.id===id)) { disposeSceneInstances(object); object.removeFromParent(); this.objects.delete(id); }

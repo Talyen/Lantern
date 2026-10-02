@@ -1,3 +1,4 @@
+import { parseJson } from '../data/json';
 import { disposeSceneResources, sceneTextures } from '../assets/resource-ownership';
 import { resolveAreaLighting as lightingFor } from '../levels/lighting';
 import type { SurfaceMode } from '../assets/environment-surfaces';
@@ -132,7 +133,6 @@ const casterVisuals = new CasterVisuals(scene, caster.root);
 const harvesting = new Harvesting();
 const interactionHighlight=new InteractionHighlight(scene);
 const equipmentSets = new EquipmentSets(player, playerEquipment, loader, () => projectileVisuals.prepareArrow());
-let combatUI: CombatUI | undefined;
 const preferences=new InputPreferences(() => localStorage);
 let hoveredInteraction: WorldInteraction | null=null;
 const audio = new GameAudio();
@@ -301,7 +301,7 @@ function dispatchInput(action: InputAction): void {
 }
 function usePotion():void {if(!paused()){adventure.usePotion(encounter);syncAdventure();}}
 function castReturn():void {if(!paused()){interruptApproach();adventure.beginCast(encounter.player.hp>0);syncAdventure();}}
-combatUI = new CombatUI({
+const combatUI = new CombatUI({
   character: () => adventure.character, encounter: () => encounter, preferences,
   activate: id => combat.startAbility(id), potion: usePotion, portal: castReturn,
   swap: () => combat.swap(), canEdit: () => inventory.canEditEquipment(),
@@ -509,7 +509,7 @@ try {
   if (import.meta.env.DEV && renderQuery.get('author') === 'levels') {
     const { attachAuthoring } = await import('../levels/authoring');
     attachAuthoring({ invalidate: invalidateFrame, scene, camera, renderer, definitions: () => definitions, area: () => currentArea, encounter,
-      exportLighting: () => graphics!.exportLighting(), lighting: () => graphics!.lightingDiagnostics(),
+      exportLighting: () => graphics.exportLighting(), lighting: () => graphics.lightingDiagnostics(),
       changeArea: id => changeArea({ kind: 'travel', area: id }), restart: reset, inspect: () => { inspect(); return inspecting; }, waitFrames, setFrozen: freezePreview, setView: previewView,
       appearance: () => ({ lantern: lanternEnabled, surfaces: surfaceMode }),
       setAppearance: changeAppearance,
@@ -545,8 +545,8 @@ function dispose(): void {
     actor.mixer?.uncacheRoot(actor.mixer.getRoot());
     disposeSceneResources(actor.root);
   }
-  void renderer.dispose().catch(error => console.error('Unable to release graphics.', error));
-  void disposeAreaCache().catch(error => console.error('Unable to release area assets.', error));
+  void renderer.dispose().catch((error: unknown) => console.error('Unable to release graphics.', error));
+  void disposeAreaCache().catch((error: unknown) => console.error('Unable to release area assets.', error));
 }
 
 function diagnostics() {
@@ -576,7 +576,7 @@ function diagnostics() {
     camera: { position: camera.position.toArray(), target: controls.target.toArray(), zoom: camera.zoom, viewport: [mount.clientWidth, mount.clientHeight] },
     objects: active?.root.children.length ?? 0,
     resources: { memory: { ...renderer.info.memory }, drawCalls: renderer.info.render.drawCalls, triangles: renderer.info.render.triangles },
-    graphics: renderer.domElement.dataset.graphics ? JSON.parse(renderer.domElement.dataset.graphics) : null,
+    graphics: renderer.domElement.dataset.graphics ? parseJson(renderer.domElement.dataset.graphics) : null,
   };
 }
 
@@ -726,23 +726,24 @@ async function changeArea(change: AreaChange): Promise<boolean> {
 }
 if (import.meta.hot) import.meta.hot.accept('../levels/registry', module => {
   if (!module) return;
-  const errors = validateDefinitions(module.areas);
+  const updated = module.areas as typeof areas;
+  const errors = validateDefinitions(updated);
   if (errors.length) { generation++; transitioning = false; fade.style.opacity = '0'; areaErrors = errors; return; }
-  definitions = module.areas; void changeArea({ kind: 'refresh' }).catch(error => console.error('Unable to refresh area definitions.', error));
+  definitions = updated; void changeArea({ kind: 'refresh' }).catch((error: unknown) => console.error('Unable to refresh area definitions.', error));
 });
 
 if (import.meta.hot) import.meta.hot.on('vite:error', payload => { generation++; transitioning = false; fade.style.opacity = '0'; areaErrors = [payload.err.message]; });
 
 if (import.meta.hot) import.meta.hot.accept('../levels/lighting', module => {
   if (!module) return;
-  resolveLightingFor = module.resolveAreaLighting;
-  void changeArea({ kind: 'refresh' }).catch(error => console.error('Unable to refresh lighting.', error));
+  resolveLightingFor = module.resolveAreaLighting as typeof resolveLightingFor;
+  void changeArea({ kind: 'refresh' }).catch((error: unknown) => console.error('Unable to refresh lighting.', error));
 });
 
 if (import.meta.hot) import.meta.hot.accept('../levels/validation', module => {
   if (!module) return;
-  validateDefinitions = module.validateAreas;
-  void changeArea({ kind: 'refresh' }).catch(error => console.error('Unable to refresh area validation.', error));
+  validateDefinitions = module.validateAreas as typeof validateAreas;
+  void changeArea({ kind: 'refresh' }).catch((error: unknown) => console.error('Unable to refresh area validation.', error));
 });
 
 if (import.meta.hot) window.addEventListener('lightingpresetchanged', () => {

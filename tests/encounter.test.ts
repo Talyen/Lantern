@@ -1,3 +1,5 @@
+import type { EncounterLayout } from '../src/gameplay/area';
+import type { Movement } from '../src/gameplay/encounter';
 import { expect, test } from 'vitest';
 import { useAbility, swapWeaponSet, attack, dodge, dodgeDistance, stepExploration, createEncounter, resetEncounter, stepEncounter, type Timings } from '../src/gameplay/encounter';
 const timing: Timings = { player: { attack: 1, hit: 0.5, contacts: [0.42] }, enemy: { attack: 1, hit: 0.5, contacts: [0.42] }, caster: {attack:1.6,hit:.35,contacts:[.8]} };
@@ -51,7 +53,7 @@ test('standing in reach loses after five enemy hits; terminal states stop updati
 });
 
 test('authored spawns survive retry and movement respects a convex area boundary', () => {
-  const layout: import('../src/gameplay/area').EncounterLayout = { boundary: { kind: 'polygon', points: [[-4,-4],[4,-4],[4,4],[-4,4]] }, player: { position: [3,0], yaw: 1 }, enemy: { position: [-3,-3], yaw: 2 } };
+  const layout: EncounterLayout = { boundary: { kind: 'polygon', points: [[-4,-4],[4,-4],[4,4],[-4,4]] }, player: { position: [3,0], yaw: 1 }, enemy: { position: [-3,-3], yaw: 2 } };
   const state = createEncounter('playing', layout);
   for (let i=0;i<30;i++) stepEncounter(state,.05,{...idle,x:1},timing);
   expect(state.player.x).toBe(4);
@@ -227,7 +229,7 @@ test('a held shield halves frontal damage and walking speed, while rear hits int
 });
 
 test('ranged releases are timed, swept walls stop damage, and released arrows hit once without becoming Axe combat', () => {
-  const world: import('../src/gameplay/encounter').Movement = {
+  const world: Movement = {
     move: (_id,actor,x,z) => { actor.x+=x; actor.z+=z; },
     direction: (from,to) => ({x:to.x-from.x,z:to.z-from.z}), lineOfSight: () => true,
     segmentHit: (from,to) => from.z<=2 && to.z>=2 ? (2-from.z)/(to.z-from.z) : null,
@@ -322,7 +324,7 @@ test('enemy bolts sweep into the player once, stop at terrain, and respect dodge
   expect(events.filter(event=>event.type==='hit' && event.actor==='player')).toHaveLength(1);
   stepEncounter(clear,.3,idle,timing); expect(clear.player.hp).toBe(80);
   const wall=shot();
-  const movement: import('../src/gameplay/encounter').Movement={move:()=>{},direction:()=>({x:0,z:0}),lineOfSight:()=>true,segmentHit:()=>.2};
+  const movement: Movement={move:()=>{},direction:()=>({x:0,z:0}),lineOfSight:()=>true,segmentHit:()=>.2};
   stepEncounter(wall,.3,idle,timing,movement);
   expect(wall.player.hp).toBe(100); expect(wall.projectiles).toEqual([]);
   const evaded=shot(); evaded.projectiles[0].z=.6;

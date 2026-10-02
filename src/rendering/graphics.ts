@@ -1,3 +1,4 @@
+import { isMesh } from '../assets/resource-ownership';
 import { applyShadowQuality } from './quality-presets';
 import { AreaLightingResources, type PreparedLighting } from './area-lighting';
 import type { ResolvedAreaDefinition, AreaLighting } from '../levels/types';
@@ -94,7 +95,7 @@ export class Graphics {
       // Actors and wind fit inside the padded depth envelope below.
       this.fitView.valid = false; this.casterBounds.makeEmpty(); scene.updateMatrixWorld(true);
       scene.traverse(object => {
-        if (!(object instanceof THREE.Mesh) || !object.castShadow || object instanceof THREE.SkinnedMesh) return;
+        if (!isMesh(object) || !object.castShadow || object instanceof THREE.SkinnedMesh) return;
         if (object instanceof THREE.InstancedMesh) object.computeBoundingBox();
         else object.geometry.computeBoundingBox();
         const bounds = object instanceof THREE.InstancedMesh ? object.boundingBox : object.geometry.boundingBox;

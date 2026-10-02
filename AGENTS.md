@@ -29,7 +29,7 @@ Lantern is a desktop-browser fantasy action RPG prototype using Vite, TypeScript
 
 Read [architecture](Docs/ARCHITECTURE.md) and [development workflow](Docs/DEVELOPMENT.md) for affected owners, commands and asset preparation. [Level design](Docs/LEVEL_DESIGN.md) owns area conventions and the rapid visual authoring loop. [Performance](Docs/PERFORMANCE.md) owns measurement evidence; [roadmap](ROADMAP.md) owns milestones.
 
-Use `npm run check` for a fast sanity check; `agent:finish` runs it on the integration candidate. Full unit/workflow suites, production builds, inventory and HTTP smoke run in CI. A user-requested local full gate uses `npm run check:full -- --allow-local`; routine handoff never runs it. Inspect the task diff and update the canonical owner when changing an invariant. Prepared-art tasks validate affected references; full playable validation is targeted, not a routine extra step.
+Use `npm run check` for a fast sanity check; `agent:finish` runs it on the integration candidate. It runs relevant JavaScript/TypeScript, Python and CSS lint; existing lint-policy fixtures also run when lint configuration or rules change. Full unit/workflow suites, production builds, inventory and HTTP smoke run in CI. A user-requested local full gate uses `npm run check:full -- --allow-local`; routine handoff never runs it. Inspect the task diff and update the canonical owner when changing an invariant. Prepared-art tasks validate affected references; full playable validation is targeted, not a routine extra step.
 
 ## Asset boundaries
 

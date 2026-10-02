@@ -6,7 +6,7 @@ export class SceneCache {
   private entries = new Map<string, { scene: Promise<THREE.Group>; root?: THREE.Group; references: number; bytes: number }>();
   private closed = false;
   constructor(private unusedBytes = 256 * 1024 * 1024) {}
-  acquire(key: string, load: () => Promise<THREE.Group>): { scene: Promise<THREE.Group>; release(): void } {
+  acquire(key: string, load: () => Promise<THREE.Group>): { scene: Promise<THREE.Group>; release(this: void): void } {
     if (this.closed) throw new Error('Scene cache is closed.');
     let entry = this.entries.get(key);
     if (!entry) {

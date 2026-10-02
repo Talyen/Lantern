@@ -1,3 +1,4 @@
+import { isMesh } from '../assets/resource-ownership';
 import * as THREE from 'three';
 import type { GrassCarpets } from './grass';
 import { MeshStandardNodeMaterial } from 'three/webgpu';
@@ -134,7 +135,7 @@ export class CoreEffects {
   addGrass(carpet: GrassCarpets): void { this.grass.push(carpet); carpet.update(this.time, this.wind.value); }
   addFoliage(root: THREE.Object3D): void {
     root.traverse((o) => {
-      if (!(o instanceof THREE.Mesh) || o instanceof THREE.SkinnedMesh || this.foliage.some((f) => f.mesh === o)) return;
+      if (!isMesh(o) || o instanceof THREE.SkinnedMesh || this.foliage.some((f) => f.mesh === o)) return;
       o.geometry.computeBoundingBox(); const box = o.geometry.boundingBox!; const height = Math.max(0.01, box.max.y - box.min.y);
       const original = o.material; const sources = Array.isArray(original) ? original : [original]; const owned: THREE.Material[] = [];
       const materials = sources.map((source) => {
@@ -201,7 +202,7 @@ export class CoreEffects {
   clear(): void { for (const p of this.pools.values()) { p.active = 0; p.object.visible = false; p.life.fill(0); p.positions.fill(1e6); p.object.geometry.attributes.position.needsUpdate = true; } }
   clearArea(): void {
     for (const f of this.foliage) { f.mesh.material = f.original; f.mesh.customDepthMaterial = f.depth; f.mesh.customDistanceMaterial = f.distance; f.owned.forEach((m) => m.dispose()); }
-    for (const w of this.waters) { w.mesh.removeFromParent(); w.mesh.traverse((o) => { if (o instanceof THREE.Mesh) { o.geometry.dispose(); (o.material as THREE.Material).dispose(); } }); w.normal.dispose(); w.shoreline.dispose(); }
+    for (const w of this.waters) { w.mesh.removeFromParent(); w.mesh.traverse((o) => { if (isMesh(o)) { o.geometry.dispose(); (o.material as THREE.Material).dispose(); } }); w.normal.dispose(); w.shoreline.dispose(); }
     this.emitters.length = 0; this.foliage.length = 0; this.grass.length = 0; this.waters.length = 0; this.time = 0; this.clock.value = 0; this.clear();
   }
   dispose(): void {

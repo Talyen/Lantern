@@ -1,14 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ESLint } from 'eslint';
+import tseslint from 'typescript-eslint';
+import { directiveMessages } from '../scripts/lint.mjs';
+import { renderingViolations } from '../scripts/check-rendering.mjs';
+import { Workspace, PositionEncoding } from '@astral-sh/ruff-wasm-nodejs';
+import stylelint from 'stylelint';
+import ruffSettings from '../ruff.config.json' with { type: 'json' };
 
 // These policy fixtures need syntax and scope, not a TypeScript project per snippet.
-const eslint = new ESLint({ overrideConfig: [{ files: ['src/**/*.ts', 'tests/**/*.ts'], languageOptions: { parserOptions: { projectService: false } }, rules: {
-  '@typescript-eslint/no-floating-promises': 'off',
-  '@typescript-eslint/no-misused-promises': 'off',
-  '@typescript-eslint/await-thenable': 'off',
-  '@typescript-eslint/switch-exhaustiveness-check': 'off',
-} }] });
+const eslint = new ESLint({ overrideConfig: [{ files: ['src/**/*.ts', 'tests/**/*.ts', 'vite.config.ts', 'vitest.config.ts'], languageOptions: { parserOptions: { projectService: false } }, rules:
+  Object.fromEntries(Object.entries(tseslint.plugin.rules).filter(([, rule]) => rule.meta.docs.requiresTypeChecking).map(([name]) => [`@typescript-eslint/${name}`, 'off'])),
+}] });
 async function messages(filePath, code, ruleId) {
   const [result] = await eslint.lintText(code, { filePath });
   assert.equal(result.fatalErrorCount, 0, JSON.stringify(result.messages));
@@ -61,6 +64,77 @@ test('literal dynamic imports use the same gameplay and rendering boundaries', a
   }
   assert.equal((await messages('src/rendering/adventure.ts', 'import("../gameplay/adventure");', 'lantern/no-restricted-dynamic-imports')).length, 0);
   assert.equal((await messages('src/entry.ts', 'import("./ui/hud");', 'lantern/no-restricted-dynamic-imports')).length, 0);
+});
+
+test('constant dynamic imports and import types cannot cross ownership boundaries', async () => {
+  for (const code of [
+    'const path = "../ui/hud"; import(path);',
+    'const path = "../rendering/graphics" as const; const alias = path; import(alias);',
+    'const path = "../ui/" + "hud"; import(path);',
+    'type Scene = import("three").Scene;',
+    'import Scene = require("three");',
+  ]) assert.equal((await messages('src/gameplay/encounter.ts', code, 'lantern/no-restricted-dynamic-imports')).length, 1, code);
+  for (const code of [
+    'const path = "./equipment"; import(path);',
+    'type Area = import("../levels/types").AreaDefinition;',
+    'function load(path: string) { return import(path); }',
+    'const path = "../ui/hud"; function load(path: string) { return import(path); }',
+  ]) assert.equal((await messages('src/gameplay/encounter.ts', code, 'lantern/no-restricted-dynamic-imports')).length, 0, code);
+});
+
+test('directive audit cannot suppress itself or allow blanket disables', async () => {
+  for (const code of [
+    '/* eslint-disable */\nlet value: any;',
+    '/* eslint-disable -- explained but unlimited */\nlet value: any;',
+    '/* eslint-disable lantern/require-disable-reason */\nlet value: any;',
+    '/* eslint lantern/require-disable-reason: "off" */\nlet value: any;',
+  ]) assert.ok((await directiveMessages('src/ui/adventure.ts', code)).length > 0, code);
+  assert.equal((await directiveMessages('src/ui/adventure.ts', '// eslint-disable-next-line @typescript-eslint/no-explicit-any -- a deliberate fixture\nlet value: any;')).length, 0);
+  assert.equal((await directiveMessages('scripts/check.mjs', 'const label = "/* eslint-disable */";')).length, 0);
+});
+
+test('native rendering policy follows aliases and ignores comments and ordinary text', () => {
+  const path = 'src/labs/animations/probe.ts';
+  for (const code of [
+    'import { WebGPURenderer as Renderer } from "three/webgpu"; new Renderer();',
+    'import Renderer from "three/src/renderers/webgpu/WebGPURenderer.js"; new Renderer();',
+    'import { WebGPURenderer as Renderer } from "three/webgpu"; const Alias = Renderer; new Alias();',
+    'const view = renderer; view.render(scene, camera);',
+    'function draw(view: WebGPURenderer) { view.renderAsync(scene, camera); }',
+    'const view: WebGPURenderer = prepareView(); view.render(scene, camera);',
+    'const renderers = [renderer]; const view = renderers[0]; view.render(scene, camera);',
+    'const lane = { view: renderer }; lane.view.render(scene, camera);',
+    'const view = renderer; const render = view["render"]; render(scene, camera);',
+    'import { RenderPipeline as Pipeline } from "three/webgpu";',
+    'import Backend from "three/src/renderers/webgpu/WebGPUBackend.js";',
+    'const context = "webgl"; canvas.getContext(context);',
+    'const backend = "three/addons/renderers/webgl/WebGLBackend.js"; import(backend);',
+    'import { ShaderMaterial as Material } from "three"; new Material();',
+  ]) assert.ok(renderingViolations(path, code).length > 0, code);
+  for (const code of [
+    '// Never use WebGLRenderer or RenderPipeline here.',
+    'const error = "WebGLRenderer is forbidden; use RenderPipeline through its owner.";',
+    'const pipeline = createPipeline(); pipeline.render();',
+    'function draw(renderer: WebGPURenderer) { { const renderer = { render() {} }; renderer.render(); } }',
+    'canvas.getContext("2d");',
+  ]) assert.equal(renderingViolations(path, code).length, 0, code);
+  assert.equal(renderingViolations('src/rendering/renderer.ts', 'new WebGPURenderer();').length, 0);
+  assert.equal(renderingViolations('src/rendering/webgpu-pipeline.ts', 'new RenderPipeline(renderer);').length, 0);
+});
+
+test('Python and CSS lint catch correctness failures while allowing fallback values', async () => {
+  const workspace = new Workspace(ruffSettings, PositionEncoding.Utf16);
+  try {
+    assert.ok(workspace.check('print(undefined_name)\n').some(message => message.code === 'F821'));
+    assert.ok(workspace.check('def broken(:\n').length > 0);
+    assert.equal(workspace.check('import bpy\nbpy.ops.object.select_all(action="SELECT")\n').length, 0);
+  } finally { workspace.free(); }
+  const bad = await stylelint.lint({ code: '.bad { colro: red; color: blue; color: blue; }' });
+  assert.ok(bad.errored);
+  assert.ok(bad.results[0].warnings.some(message => message.rule === 'property-no-unknown'));
+  assert.ok(bad.results[0].warnings.some(message => message.rule === 'declaration-block-no-duplicate-properties'));
+  const good = await stylelint.lint({ code: '.good { display: block; display: grid; color: var(--brass); }' });
+  assert.equal(good.errored, false);
 });
 
 test('only existing named storage owners are exempt', async () => {
@@ -116,7 +190,7 @@ test('Node tooling globals do not permit DOM access in Electron main', async () 
 
 test('application source and tests reject unhandled promises, async void callbacks and invalid awaits', async () => {
   const typed = new ESLint();
-  for (const filePath of ['src/entry.ts', 'tests/adventure.test.ts']) {
+  for (const filePath of ['src/entry.ts', 'tests/adventure.test.ts', 'vite.config.ts', 'vitest.config.ts']) {
     for (const [rule, code] of [
       ['@typescript-eslint/no-floating-promises', 'Promise.resolve();'],
       ['@typescript-eslint/no-floating-promises', 'void Promise.reject(new Error("failure"));'],

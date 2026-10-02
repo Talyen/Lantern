@@ -10,7 +10,7 @@ const storageOwners = new Set([
 const storageNames = new Set(['localStorage', 'sessionStorage', 'indexedDB']);
 const globalObjects = new Set(['window', 'globalThis', 'self']);
 
-// Static and literal dynamic imports share the same direct ownership boundaries.
+// Static imports, import types and statically known dynamic imports share boundaries.
 export const importBoundaries = {
   gameplay: { patterns: [{ regex: '^(?:three(?:/|$)|(?:.*/)?(?:rendering|ui)(?:/|$))', message: 'Gameplay uses numeric interfaces and level data; keep three.js, rendering and UI in their owners.' }] },
   rendering: { patterns: [{ regex: '^(?:.*/)?ui(?:/|$)', message: 'Rendering must not import UI; coordinate them through clearing callbacks.' }] },
@@ -21,6 +21,10 @@ function constantString(node, sourceCode, seen = new Set()) {
   seen.add(node);
   if (node.type === 'Literal' && typeof node.value === 'string') return node.value;
   if (node.type === 'TemplateLiteral' && node.expressions.length === 0) return node.quasis[0].value.cooked;
+  if (node.type === 'BinaryExpression' && node.operator === '+') {
+    const left = constantString(node.left, sourceCode, new Set(seen)), right = constantString(node.right, sourceCode, new Set(seen));
+    return left === null || right === null ? null : left + right;
+  }
   if (['TSAsExpression', 'TSNonNullExpression', 'TSSatisfiesExpression'].includes(node.type)) return constantString(node.expression, sourceCode, seen);
   if (node.type === 'Identifier' && sourceCode) {
     for (let scope = sourceCode.getScope(node); scope; scope = scope.upper) {
@@ -47,14 +51,16 @@ export const noRestrictedDynamicImports = {
   },
   create(context) {
     const patterns = (context.options[0]?.patterns ?? []).map(pattern => ({ ...pattern, matcher: new RegExp(pattern.regex, 'i') }));
+    function check(node) {
+      const name = constantString(node, context.sourceCode);
+      if (name === null) return;
+      const pattern = patterns.find(pattern => pattern.matcher.test(name));
+      if (pattern) context.report({ node, messageId: 'boundary', data: { message: pattern.message } });
+    }
     return {
-      ImportExpression(node) {
-        // Variable imports are outside this direct-import policy.
-        const name = propertyName(node.source, true);
-        if (name === null) return;
-        const pattern = patterns.find(pattern => pattern.matcher.test(name));
-        if (pattern) context.report({ node: node.source, messageId: 'boundary', data: { message: pattern.message } });
-      },
+      ImportExpression(node) { check(node.source); },
+      TSImportType(node) { check(node.source); },
+      TSExternalModuleReference(node) { check(node.expression); },
     };
   },
 };
@@ -140,7 +146,10 @@ export const noUnownedWebStorage = {
 export const requireDisableReason = {
   meta: {
     type: 'problem', schema: [],
-    messages: { reason: 'Explain ESLint suppressions and inline rule configurations with a reason after -- .' },
+    messages: {
+      reason: 'Explain ESLint suppressions and inline rule configurations with a reason after -- .',
+      rules: 'Name the specific rules to disable; blanket ESLint suppressions are forbidden.',
+    },
   },
   create(context) {
     return {
@@ -151,6 +160,9 @@ export const requireDisableReason = {
           const inlineRules = /^eslint\s/.test(text);
           if ((disable || inlineRules) && !/--\s*\S/.test(text)) {
             context.report({ loc: comment.loc, messageId: 'reason' });
+          }
+          if (disable && !text.split('--')[0].replace(/^eslint-disable(?:-next-line|-line)?/, '').trim()) {
+            context.report({ loc: comment.loc, messageId: 'rules' });
           }
         }
       },

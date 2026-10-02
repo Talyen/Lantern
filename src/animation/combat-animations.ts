@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import motionProfiles from '../../assets/motion-profiles.json';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { type GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import characters from '../../assets/playable-characters.json';
 import type { Motion } from '../gameplay/encounter';
 import type { Loadout } from '../gameplay/equipment';
@@ -23,7 +23,7 @@ export function getMotionCatalog(who: RigId): Promise<MotionCatalog> {
     const catalog = await response.json() as MotionCatalog;
     if (catalog.version !== 1 || !catalog.profiles || !catalog.packs?.some(pack => pack.id === 'mixamo')) throw new Error('Prepare the curated Mixamo motion profiles with npm run assets:export-character.');
     return catalog;
-  }).catch(error => { catalogs.delete(url); throw error; }));
+  }).catch((error: unknown) => { catalogs.delete(url); throw error; }));
   return catalogs.get(url)!;
 }
 async function loadClip(loader: GLTFLoader, clip: MotionClip): Promise<THREE.AnimationClip> {
@@ -62,7 +62,7 @@ export async function loadEquipmentMotions(loader: GLTFLoader, who: RigId, loado
     const marker=all[role]?.contact, clip=clips[role];
     if (!clip || marker === undefined || !Number.isFinite(marker) || marker <= 0 || marker >= clip.duration) throw new Error('Gathering motions need reviewed contact markers. Prepare the curated motion profiles with npm run assets:export-character.');
   }
-  for(const role of ['sweep','pierceRelease'] as const)if(clips[role] && (typeof all[role]?.contact!=='number' || all[role]!.contact!<=0 || all[role]!.contact!>=clips[role]!.duration))throw new Error('Skill has no reviewed contact marker. Prepare compatible Mixamo motions.');
+  for(const role of ['sweep','pierceRelease'] as const)if(clips[role] && (typeof all[role]?.contact!=='number' || all[role].contact<=0 || all[role].contact>=clips[role].duration))throw new Error('Skill has no reviewed contact marker. Prepare compatible Mixamo motions.');
   if (clips.pierceDraw && clips.pierceRelease) {
     // Joining is deterministic for the cached source pair. Retain its keyframes
     // once, with a separate wrapper/action for each prepared equipment profile.

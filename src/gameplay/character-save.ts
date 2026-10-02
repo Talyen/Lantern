@@ -1,3 +1,4 @@
+import { isRecord, parseJson } from '../data/json';
 import { initialBar, validBar, type ActionBar, type WeaponSet } from './abilities';
 import { itemIds, normalizeLoadout, type ItemId, type Loadout } from './equipment';
 import {
@@ -78,120 +79,86 @@ export function decodeCharacter(raw: string): CharacterSave {
   let result: CharacterSave,
     sequence = 3;
   const newId = () => `item-${++sequence}`;
-  const value = JSON.parse(raw),
-    counter = (n: unknown) =>
-      typeof n === 'number' && Number.isFinite(n) && n >= 0 && n <= Number.MAX_SAFE_INTEGER;
-  if (
-    ![1, 2, 3, 4, 5].includes(value?.version) ||
-    !Array.isArray(value.campfires) ||
-    !value.campfires.every((id: unknown) => typeof id === 'string')
-  )
+  const value = parseJson(raw);
+  const counter = (n: unknown): n is number =>
+    typeof n === 'number' && Number.isFinite(n) && n >= 0 && n <= Number.MAX_SAFE_INTEGER;
+  const itemId = (id: unknown): id is ItemId => typeof id === 'string' && itemIds.includes(id as ItemId);
+  if (!isRecord(value) || typeof value.version !== 'number' || ![1, 2, 3, 4, 5].includes(value.version)
+    || !Array.isArray(value.campfires) || !value.campfires.every((id: unknown): id is string => typeof id === 'string'))
     throw new Error('Invalid character save');
   const hasHome = value.version >= 5 || (value.version === 4 && value.stash !== undefined);
   const hasCombat = value.version >= 5 || (value.version === 4 && value.activeSet !== undefined);
+  const xp = isRecord(value.xp) ? value.xp : {};
   if (value.version === 4 && !hasHome && !hasCombat) throw new Error('Invalid character save');
   if (value.version >= 3) {
-    if (
-      !validItems(value.items) ||
-      !counter(value.xp?.woodcutting) ||
-      !counter(value.xp?.axeCombat) ||
-      !Array.isArray(value.campClaims) ||
-      !value.campClaims.every((id: ItemId) => itemIds.includes(id))
-    )
+    if (!validItems(value.items) || !counter(xp.woodcutting) || !counter(xp.axeCombat)
+      || !Array.isArray(value.campClaims) || !value.campClaims.every(itemId))
       throw new Error('Invalid inventory save');
-    if (hasHome) {
-      if (!validItems(value.stash) || value.stash.some((i: InventoryItem) => i.slot !== 'bag')) {
-        throw new Error('Invalid Homestead save');
-      }
-      const storedItems: InventoryItem[] = [...value.items, ...value.stash];
-      if (new Set(storedItems.map((i) => i.id)).size !== storedItems.length) {
-        throw new Error('Invalid Homestead save');
-      }
-      if (
-        typeof value.shelterRestored !== 'boolean' ||
-        !counter(value.restedSeconds) ||
-        value.restedSeconds > progression.restedSeconds ||
-        !counter(value.xp.mining) ||
-        (!value.shelterRestored && (value.stash.length || value.restedSeconds))
-      ) {
-        throw new Error('Invalid Homestead save');
-      }
-    }
-    if (hasCombat && (![0, 1].includes(value.activeSet) || !validBar(value.actionBar)))
-      throw new Error('Invalid action bar save');
     result = character(value.items);
-    if (hasCombat) {
-      result.activeSet = value.activeSet;
-      result.actionBar = [...value.actionBar];
-    }
-    result.xp = {
-      woodcutting: value.xp.woodcutting,
-      axeCombat: value.xp.axeCombat,
-      mining: hasHome ? value.xp.mining : 0,
-    };
-    result.campClaims = [...new Set<ItemId>(value.campClaims)];
+    result.xp = { woodcutting: xp.woodcutting, axeCombat: xp.axeCombat, mining: 0 };
+    result.campClaims = [...new Set(value.campClaims)];
     if (hasHome) {
+      if (!validItems(value.stash) || value.stash.some(i => i.slot !== 'bag'))
+        throw new Error('Invalid Homestead save');
+      const storedItems = [...value.items, ...value.stash];
+      if (new Set(storedItems.map(i => i.id)).size !== storedItems.length)
+        throw new Error('Invalid Homestead save');
+      if (typeof value.shelterRestored !== 'boolean' || !counter(value.restedSeconds)
+        || value.restedSeconds > progression.restedSeconds || !counter(xp.mining)
+        || (!value.shelterRestored && (value.stash.length || value.restedSeconds)))
+        throw new Error('Invalid Homestead save');
       result.stash = value.stash;
       result.shelterRestored = value.shelterRestored;
       result.restedSeconds = value.restedSeconds;
+      result.xp.mining = xp.mining;
+    }
+    if (hasCombat) {
+      if ((value.activeSet !== 0 && value.activeSet !== 1) || !validBar(value.actionBar))
+        throw new Error('Invalid action bar save');
+      result.activeSet = value.activeSet;
+      result.actionBar = [...value.actionBar];
     }
     for (const entry of [...value.items, ...result.stash])
       sequence = Math.max(sequence, Number(entry.id.match(/^item-(\d+)$/)?.[1] ?? 0));
   } else {
-    if (
-      !Number.isSafeInteger(value.scrolls) ||
-      !counter(value.scrolls) ||
-      value.scrolls > stackLimit
-    )
+    if (!Number.isSafeInteger(value.scrolls) || !counter(value.scrolls) || value.scrolls > stackLimit)
       throw new Error('Invalid scroll save');
-    if (
-      value.version === 2 &&
-      (!Array.isArray(value.equipment) ||
-        !value.equipment.every((id: ItemId) => itemIds.includes(id)) ||
-        !Number.isSafeInteger(value.wood) ||
-        !counter(value.wood) ||
-        !counter(value.xp?.woodcutting) ||
-        !counter(value.xp?.axeCombat) ||
-        typeof value.campEquipmentClaimed !== 'boolean' ||
-        !value.loadout ||
-        !(
-          value.loadout.main === null ||
-          (itemIds.includes(value.loadout.main) && value.loadout.main !== 'shield')
-        ) ||
-        ![null, 'shield'].includes(value.loadout.off) ||
-        (value.loadout.main && !value.equipment.includes(value.loadout.main)) ||
-        (value.loadout.off && !value.equipment.includes(value.loadout.off)))
-    )
-      throw new Error('Invalid equipment save');
-    const items: InventoryItem[] = [],
-      loadout = value.version === 2 ? normalizeLoadout(value.loadout) : { main: 'axe', off: null };
-    for (const item of new Set<ItemId>(value.version === 2 ? value.equipment : ['axe']))
-      items.push({
-        id: newId(),
-        item,
-        quantity: 1,
-        slot: loadout.main === item ? 'main' : loadout.off === item ? 'off' : 'overflow',
-        x: 0,
-        y: 0,
-      });
+    let equipment: ItemId[] = ['axe'], loadout: Loadout = { main: 'axe', off: null }, wood = 0;
+    let legacyXp = { woodcutting: 0, axeCombat: 0, mining: 0 }, claimed = false;
+    if (value.version === 2) {
+      const savedLoadout = isRecord(value.loadout) ? value.loadout : {};
+      if (!Array.isArray(value.equipment) || !value.equipment.every(itemId)
+        || !Number.isSafeInteger(value.wood) || !counter(value.wood)
+        || !counter(xp.woodcutting) || !counter(xp.axeCombat) || typeof value.campEquipmentClaimed !== 'boolean'
+        || !(savedLoadout.main === null || (itemId(savedLoadout.main) && savedLoadout.main !== 'shield'))
+        || (savedLoadout.off !== null && savedLoadout.off !== 'shield')
+        || (savedLoadout.main && !value.equipment.includes(savedLoadout.main))
+        || (savedLoadout.off && !value.equipment.includes(savedLoadout.off)))
+        throw new Error('Invalid equipment save');
+      equipment = value.equipment;
+      loadout = normalizeLoadout({ main: savedLoadout.main, off: savedLoadout.off });
+      wood = value.wood;
+      legacyXp = { woodcutting: xp.woodcutting, axeCombat: xp.axeCombat, mining: 0 };
+      claimed = value.campEquipmentClaimed;
+    }
+    const items: InventoryItem[] = [];
+    for (const item of new Set(equipment))
+      items.push({ id: newId(), item, quantity: 1,
+        slot: loadout.main === item ? 'main' : loadout.off === item ? 'off' : 'overflow', x: 0, y: 0 });
     // Recover unequipped legacy gear before supplies, preserving anything beyond capacity.
     for (const entry of [...items])
       if (entry.slot === 'overflow') {
         items.splice(items.indexOf(entry), 1);
         if (!receive(items, entry.item, 1, newId, entry.id)) items.push(entry);
       }
-    for (const [item, quantity] of [
-      ['scroll', value.scrolls],
-      ['wood', value.version === 2 ? value.wood : 0],
-    ] as [LootItem, number][]) {
+    for (const [item, quantity] of [['scroll', value.scrolls], ['wood', wood]] as [LootItem, number][]) {
       const remainder = quantity - receive(items, item, quantity, newId);
-      if (remainder)
-        items.push({ id: newId(), item, quantity: remainder, slot: 'overflow', x: 0, y: 0 });
+      if (remainder) items.push({ id: newId(), item, quantity: remainder, slot: 'overflow', x: 0, y: 0 });
     }
     result = character(items);
     if (value.version === 2) {
-      result.xp = { woodcutting: value.xp.woodcutting, axeCombat: value.xp.axeCombat, mining: 0 };
-      if (value.campEquipmentClaimed) result.campClaims = ['sword', 'shield', 'bow', 'staff'];
+      result.xp = legacyXp;
+      if (claimed) result.campClaims = ['sword', 'shield', 'bow', 'staff'];
     }
   }
   result.campfires = [...new Set<string>(['homestead/camp', ...value.campfires])];

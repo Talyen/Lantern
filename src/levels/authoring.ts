@@ -1,3 +1,4 @@
+import { isLine } from '../assets/resource-ownership';
 import * as THREE from 'three';
 import type { Encounter } from '../gameplay/encounter';
 import type { PreparedProbeBake } from '../rendering/lighting-bake';
@@ -5,7 +6,7 @@ import type { SurfaceMode } from '../assets/environment-surfaces';
 import type { AreaDefinition } from './types';
 type Diagnostics = { area: string; revision: number; renderedRevision: number; ready: boolean; errors: string[]; missing: string[]; contentHash: string; camera: unknown; renderedFrames: number; phase: string; updateMs: number; objects: number; resources: unknown; graphics: unknown };
 type Appearance = { lantern: boolean; surfaces: SurfaceMode };
-type Context = { invalidate(): void; exportLighting(): Promise<PreparedProbeBake>; lighting(): unknown; appearance(): Appearance; setAppearance(appearance: { surfaces?: SurfaceMode; lantern?: boolean }): Promise<boolean>; scene: THREE.Scene; camera: THREE.OrthographicCamera; renderer: { domElement: HTMLCanvasElement }; definitions(): Record<string, AreaDefinition>; area(): AreaDefinition; encounter: Encounter; changeArea(id: string): Promise<boolean>; restart(): void; inspect(): boolean; waitFrames(count?: number): Promise<void>; setFrozen(value: boolean): void; setView(id: string): void; diagnostics(): Diagnostics };
+type Context = { invalidate(): void; exportLighting(this: void): Promise<PreparedProbeBake>; lighting(this: void): unknown; appearance(this: void): Appearance; setAppearance(appearance: { surfaces?: SurfaceMode; lantern?: boolean }): Promise<boolean>; scene: THREE.Scene; camera: THREE.OrthographicCamera; renderer: { domElement: HTMLCanvasElement }; definitions(): Record<string, AreaDefinition>; area(): AreaDefinition; encounter: Encounter; changeArea(id: string): Promise<boolean>; restart(this: void): void; inspect(): boolean; waitFrames(count?: number): Promise<void>; setFrozen(value: boolean): void; setView(id: string): void; diagnostics(): Diagnostics };
 export function attachAuthoring(ctx: Context): void {
   const runtimeId = crypto.randomUUID();
   const diagnostics = () => ({ ...ctx.diagnostics(), runtimeId });
@@ -14,7 +15,7 @@ export function attachAuthoring(ctx: Context): void {
   document.body.append(panel);
   const selects = panel.querySelectorAll('select'), play = panel.querySelector('button')!, guides = panel.querySelector('input')!, status = panel.querySelector('pre')!;
   const overlay = new THREE.Group(); ctx.scene.add(overlay); let overlayRevision = -1, frozen = true, selectedView = 'center';
-  function clearOverlay(): void { overlay.children.forEach(o => { if (o instanceof THREE.Line) { o.geometry.dispose(); (o.material as THREE.Material).dispose(); } }); overlay.clear(); }
+  function clearOverlay(): void { overlay.children.forEach(o => { if (isLine(o)) { o.geometry.dispose(); (o.material as THREE.Material).dispose(); } }); overlay.clear(); }
   function line(points: number[][], color: string): void { const object = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points.map(p => new THREE.Vector3(...p as [number, number, number]))), new THREE.LineBasicMaterial({ color, depthTest: false, transparent: true, opacity: .85 })); object.renderOrder = 100; overlay.add(object); }
   function rectangle(width: number, depth: number, yaw: number, position = [0, 0], color = '#eac770'): void {
     const points = [[-width/2,-depth/2],[width/2,-depth/2],[width/2,depth/2],[-width/2,depth/2],[-width/2,-depth/2]].map(([x,z]) => [position[0]+x*Math.cos(yaw)+z*Math.sin(yaw), .08, position[1]-x*Math.sin(yaw)+z*Math.cos(yaw)]); line(points, color);

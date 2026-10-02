@@ -1,3 +1,10 @@
+import type { WorldInteraction } from '../src/clearing/world-interactions';
+import type { Object3D } from 'three';
+import type { MovementWorld as MovementWorldType } from '../src/gameplay/movement';
+import type { NavigationGeometry } from '../src/gameplay/navigation';
+import type { NavMesh } from 'navcat';
+import type { buildArea as BuildArea } from '../src/levels/builder';
+import type { PreparedLighting } from '../src/rendering/area-lighting';
 import { expect, test, vi } from 'vitest';
 import homestead from '../src/levels/areas/homestead.json';
 import clearing from '../src/levels/areas/clearing.json';
@@ -60,13 +67,13 @@ test('click approach finishes the last step into interaction range before discar
   const { createEncounter } = await import('../src/gameplay/encounter');
   const encounter = createEncounter('playing', { ...grassArea.layout, player: { position: [0, -1.085], yaw: 0 } });
   const resource = { id: 'tree', kind: 'tree' as const, position: [0, 0, 0] as [number, number, number], radius: .225, level: 1, baseYield: 1, contacts: 3 };
-  const target: import('../src/clearing/world-interactions').WorldInteraction = {
+  const target: WorldInteraction = {
     key: 'resource/tree', name: 'Chop', type: 'resource', resource, position: [0, 0],
-    range: 1.075, height: 0, obstacleId: 'tree', object: {} as import('three').Object3D,
+    range: 1.075, height: 0, obstacleId: 'tree', object: {} as Object3D,
   };
   const navigation = {
     navigationReady: true, interactionPath: () => [[0, -.914]], interactionVisible: () => true,
-  } as unknown as import('../src/gameplay/movement').MovementWorld;
+  } as unknown as MovementWorldType;
   const approach = new ClickApproach(new Adventure(), encounter), interact = vi.fn();
   const frame = { movement: { x: 0, z: 0 }, block: false, navigation, targets: () => [target], error: () => '', interact };
   approach.selectWorld(target, navigation);
@@ -133,10 +140,10 @@ test('felling removes trunk collision and enemy detours, and regrowth restores b
     expect(Math.abs(world.direction(state.player,state.enemies.enemy,.05).z)).toBeGreaterThan(.3);
     // Browser updates commit collision before the worker's coalesced route
     // snapshot; old replies cannot make pickup/pursuit use stale navigation.
-    type Request = { revision: number; geometry: import('../src/gameplay/navigation').NavigationGeometry };
+    type Request = { revision: number; geometry: NavigationGeometry };
     class WorkerStub {
       static instance: WorkerStub;
-      onmessage?: (event: { data: { revision: number; nav: import('navcat').NavMesh } }) => void;
+      onmessage?: (event: { data: { revision: number; nav: NavMesh } }) => void;
       postMessage = vi.fn<(request: Request) => void>();
       terminate = vi.fn();
       constructor() { WorkerStub.instance = this; }
@@ -178,9 +185,9 @@ test('resource level and skill XP drive contact yields without changing depletio
 
 test('area candidates retain the active area and release failed, superseded and rejected preparations once', async () => {
   const { prepareAreaCandidate } = await import('../src/clearing/area-candidate');
-  type Area = Awaited<ReturnType<typeof import('../src/levels/builder').buildArea>>;
-  type World = import('../src/gameplay/movement').MovementWorld;
-  type Lighting = import('../src/rendering/area-lighting').PreparedLighting;
+  type Area = Awaited<ReturnType<typeof BuildArea>>;
+  type World = MovementWorldType;
+  type Lighting = PreparedLighting;
   const active = { dispose: vi.fn() };
   const resources = () => ({area:{dispose:vi.fn()} as unknown as Area,movement:{dispose:vi.fn()} as unknown as World,lighting:{release:vi.fn()} as unknown as Lighting});
   const failed = resources();
@@ -191,7 +198,7 @@ test('area candidates retain the active area and release failed, superseded and 
   expect(navigationFailure.area.dispose).toHaveBeenCalledTimes(1);
   for (const eligibility of [()=>false,()=>{throw Error('eligibility failed');}]) {
     const candidate = resources(), prepared = await prepareAreaCandidate(async()=>candidate.area,async()=>candidate.movement,async()=>candidate.lighting);
-    try { expect(prepared.accept(eligibility,()=>active.dispose())).toBe(false); } catch (error) { expect(String(error)).toContain('eligibility failed'); }
+    try { expect(prepared.accept(eligibility,()=>{ active.dispose(); })).toBe(false); } catch (error) { expect(String(error)).toContain('eligibility failed'); }
     prepared.dispose(); expect(candidate.area.dispose).toHaveBeenCalledTimes(1); expect(candidate.movement.dispose).toHaveBeenCalledTimes(1); expect(candidate.lighting.release).toHaveBeenCalledTimes(1);
   }
   const candidate = resources(), prepared = await prepareAreaCandidate(async()=>candidate.area,async()=>candidate.movement,async()=>candidate.lighting);

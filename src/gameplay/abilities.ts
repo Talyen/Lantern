@@ -17,7 +17,7 @@ export const abilityIds = Object.keys(abilities) as AbilityId[];
 export const basicAbility = (weapon: Weapon | null): AbilityId | null => weapon ? `${weapon}-basic` : null;
 export const initialBar = (weapon: Weapon | null): ActionBar => ['sweep','piercing-shot',null,null,basicAbility(weapon),null];
 export function validBar(value: unknown): value is ActionBar {
-  return Array.isArray(value) && value.length === 6 && value.every(id=>id===null || abilityIds.includes(id));
+  return Array.isArray(value) && value.length === 6 && value.every((id: unknown)=>id===null || typeof id==='string' && abilityIds.includes(id as AbilityId));
 }
 export const supportsAbility = (set: Loadout, id: AbilityId) => abilities[id].family === 'shield' ? set.off === 'shield' : set.main === abilities[id].family;
 export function abilitySet(sets: readonly [Loadout,Loadout], active: WeaponSet, id: AbilityId): WeaponSet | undefined {

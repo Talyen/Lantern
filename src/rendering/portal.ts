@@ -1,3 +1,4 @@
+import { isMesh } from '../assets/resource-ownership';
 import * as THREE from 'three';
 import { DecalGeometry } from 'three/addons/geometries/DecalGeometry.js';
 import { MeshBasicNodeMaterial } from 'three/webgpu';
@@ -43,6 +44,6 @@ export class Portal {
 
   dispose(): void {
     if (this.disposed) return; this.disposed = true; this.root.removeFromParent(); this.rune.dispose();
-    this.root.traverse(object => { if (object instanceof THREE.Mesh) { object.geometry.dispose(); (object.material as THREE.Material).dispose(); } });
+    this.root.traverse(object => { if (isMesh(object)) { object.geometry.dispose(); (object.material as THREE.Material).dispose(); } });
   }
 }

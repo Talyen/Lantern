@@ -1,3 +1,4 @@
+import { isRecord, parseJson } from '../src/data/json';
 import { expect, test, vi } from 'vitest';
 import { characterBackupKey, decodeCharacter } from '../src/gameplay/character-save';
 import { Adventure, characterSaveKey } from '../src/gameplay/adventure';
@@ -416,7 +417,9 @@ test('startup retries restore before play, but late reads never swap or overwrit
 test('a rejected save publishes no partially decoded character', () => {
   const storage = memory(); storage.setItem(characterSaveKey, JSON.stringify({version:2,scrolls:5,campfires:[],equipment:['bow'],loadout:{main:'bow',off:null},wood:0,xp:{woodcutting:30,axeCombat:0},campEquipmentClaimed:false}));
   const state = new Adventure(storage); expect(state.character.loadout.main).toBe('bow');
-  const invalid = {...JSON.parse(storage.getItem(characterSaveKey)!), restedSeconds:2000};
+  const saved = parseJson(storage.getItem(characterSaveKey)!);
+  if (!isRecord(saved)) throw new Error('Invalid saved fixture');
+  const invalid = {...saved, restedSeconds:2000};
   storage.setItem(characterSaveKey, JSON.stringify(invalid)); storage.data.delete(characterBackupKey);
   const fresh = new Adventure(storage); expect(fresh.character.loadout.main).toBe('axe'); expect(fresh.character.xp.woodcutting).toBe(0);
 });
