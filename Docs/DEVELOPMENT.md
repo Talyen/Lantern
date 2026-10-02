@@ -164,3 +164,19 @@ For aim/follow changes, check idle pointer turning, sideways/backward WASD movem
 
 Camera defaults are a 0.15 m ground dead zone, 0.20 seconds of movement look-ahead capped at 0.65 m, and exponential easing at 8 per second. Lead stays off inside the dead zone and decays when actual movement stops, including wall collision. Check starts, stops, reversals, dodges, both zoom extremes and a narrow viewport; pointer turning alone must leave framing stable. Restart, travel and inspection return reset follow; frozen authoring views must remain deterministic.
 
+## Publication
+
+Review status, complete candidate paths and relevant diffs before staging. Original material uses [the project license](../LICENSE.md); third-party exceptions are recorded in [notices](../THIRD_PARTY_NOTICES.md). Never stage private art, receipts, credentials, captures or build products. Commit reviewed source changes and watch the exact pushed revision's CI until green when publication is requested. No website deployment, Steam integration or build distribution is configured.
+
+## Known local contention
+
+A September 30 foundation check passed both prepared and asset-free builds. Concurrent GPU/browser inspection coincided with a later typecheck deadline and browser-control stalls; typechecking passed after the owned sessions closed. Managed resource leases now queue agent GPU reviews and heavy operations. Close owned rendering sessions after inspection; do not raise timeouts or change product behavior to hide contention.
+
+
+## Current graphics options
+
+See [graphics settings](GRAPHICS.md) for current controls, defaults, comparison URLs and settings persistence. [Gameplay sound](AUDIO.md) owns the Sound controls in the same Options menu.
+
+## Lighting preparation
+
+The sole shared Golden preset, local light recipes, automatic probe coverage, cache budgets, prepared bakes and fixed visual references are documented in [lighting authoring](LIGHTING.md). `npm run lighting:bake` is an explicit native WebGPU authoring operation; it never runs in routine checks or builds. Prepared atlases stay under ignored `public/vendor/lighting/`, with metadata-only references in `assets/lighting-bakes.json`.
