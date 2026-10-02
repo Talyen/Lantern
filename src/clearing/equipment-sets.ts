@@ -1,7 +1,7 @@
 import { loadEquipmentMotions, type CombatMotions } from '../animation/combat-animations';
 import { basicAbility, type WeaponSet } from '../gameplay/abilities';
 import type { ActorTiming } from '../gameplay/encounter';
-import type { Loadout } from '../gameplay/equipment';
+import { weaponFamily, type Loadout } from '../gameplay/equipment';
 import { itemLoadout, type InventoryItem } from '../gameplay/inventory';
 import type { Equipment, PreparedEquipment } from '../rendering/equipment';
 import type { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -22,7 +22,7 @@ export class EquipmentSets {
     try {
       const prepare = async (set: WeaponSet): Promise<PreparedSet> => {
         const loadout = itemLoadout(items, set);
-        if (loadout.main === 'bow') await this.prepareArrow();
+        if (weaponFamily(loadout.main) === 'bow') await this.prepareArrow();
         const equipment = await this.equipment.stage(loadout);
         candidates.push(equipment);
         const motions = await loadEquipmentMotions(this.loader, 'player', loadout);
@@ -55,7 +55,7 @@ export class EquipmentSets {
   private refreshTimings(): void {
     const timings: NonNullable<ActorTiming['abilities']> = {};
     for (const prepared of this.sets ?? []) {
-      const basic = basicAbility(prepared.loadout.main);
+      const basic = basicAbility(weaponFamily(prepared.loadout.main));
       if (basic) timings[basic] = { attack: prepared.motions.clips.attack.duration, contacts: prepared.motions.contacts };
       for (const [id, role] of [['sweep', 'sweep'], ['piercing-shot', 'pierce']] as const) {
         const clip = prepared.motions.clips[role], contacts = prepared.motions.skillContacts[role];

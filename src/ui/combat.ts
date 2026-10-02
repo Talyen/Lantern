@@ -117,7 +117,7 @@ export class CombatUI {
       const tooltip=id ? this.tooltip(id) : 'Empty';
       setAttribute(button,'title',tooltip);setAttribute(button,'aria-label',id ? tooltip : `Empty slot ${index+1}`);setDisabled(button,this.paused && !this.ctx.canEdit());
     });
-    this.utility(this.utilities[0],'potion',character.potions,state.potionCooldown,character.potions===0 || state.player.hp<=0 || state.player.hp>=100 || state.potionCooldown>0,'Health Potion');
+    this.utility(this.utilities[0],'potion',character.potions,state.potionCooldown,character.potions===0 || state.player.hp<=0 || state.player.hp>=state.stats.maxHealth || state.potionCooldown>0,'Health Potion');
     this.utility(this.utilities[1],'portal',character.scrolls,0,!this.ctx.portalReady(),'Scroll of Return');
     setText(this.swap,`${state.activeSet===0 ? 'I' : 'II'} · ${state.weapon ? state.weapon[0].toUpperCase()+state.weapon.slice(1) : 'Empty'} · ${bindingLabel(preferences.swap.find(Boolean) ?? null)}`);
     setAttribute(this.swap,'title','Swap weapons');setDisabled(this.swap,this.paused || !state.weaponSets[(1-state.activeSet) as 0|1].main);

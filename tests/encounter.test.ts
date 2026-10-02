@@ -1,8 +1,14 @@
 import type { EncounterLayout } from '../src/gameplay/area';
 import type { Movement } from '../src/gameplay/encounter';
 import { expect, test } from 'vitest';
-import { useAbility, swapWeaponSet, attack, dodge, dodgeDistance, stepExploration, createEncounter, resetEncounter, stepEncounter, type Timings } from '../src/gameplay/encounter';
+import { applyEquipment, useAbility, swapWeaponSet, attack, dodge, dodgeDistance, stepExploration, createEncounter, resetEncounter, stepEncounter, type Timings } from '../src/gameplay/encounter';
 const timing: Timings = { player: { attack: 1, hit: 0.5, contacts: [0.42] }, enemy: { attack: 1, hit: 0.5, contacts: [0.42] }, caster: {attack:1.6,hit:.35,contacts:[.8]} };
+import type { Loadout, WeaponItem } from '../src/gameplay/equipment';
+import type { Encounter } from '../src/gameplay/encounter';
+function equip(state: Encounter, main: WeaponItem) { sets(state,[{main,off:null},{main:null,off:null}]); }
+function sets(state: Encounter, loadouts: [Loadout,Loadout]) {
+  applyEquipment(state,loadouts.flatMap((loadout,set)=>[loadout.main,loadout.off].flatMap((item,index)=>item ? [{id:`set-${set}-${index}`,item,quantity:1,slot:index===0 ? 'main' as const : 'off' as const,weaponSet:set as 0|1,x:0,y:0}] : [])),0);
+}
 const idle = { x: 0, z: 0, paused: false };
 function closeEncounter() {
   const state = createEncounter('playing');
@@ -18,26 +24,26 @@ test('nearby guards engage, strikes land at contact, and an interrupted enemy st
   state.enemies.enemy.attackTime = 0;
   attack(state, timing.player, false);
   stepEncounter(state, 0.41, idle, timing);
-  expect(state.enemies.enemy.hp).toBe(100);
+  expect(state.enemies.enemy.hp).toBe(200);
   const health = state.player.hp;
   const events = stepEncounter(state, 0.01, idle, timing);
-  expect(state.enemies.enemy.hp).toBe(50);
+  expect(state.enemies.enemy.hp).toBe(150);
   expect(events).toContainEqual({ type: 'hit', actor: 'enemy' });
   expect(state.player.hp).toBe(health);
   stepEncounter(state, 0.05, { ...idle, paused: true }, timing);
-  expect(state.enemies.enemy.hp).toBe(50);
+  expect(state.enemies.enemy.hp).toBe(150);
 });
-test('two connected strikes win, then retry restores an unengaged encounter', () => {
+test('four connected Axe strikes win, then retry restores an unengaged encounter', () => {
   const state = closeEncounter();
   const winningTiming = { ...timing, enemy: { ...timing.enemy, hit: 0.8 } };
-  for (let strike = 0; strike < 2; strike++) {
+  for (let strike = 0; strike < 4; strike++) {
     attack(state, timing.player, false);
     for (let frame = 0; frame < 22; frame++) stepEncounter(state, 0.05, idle, winningTiming);
   }
   expect(state.phase).toBe('won');
   expect(state.enemies.enemy.hp).toBe(0);
   resetEncounter(state);
-  expect([state.phase, state.enemies.enemy.engaged, state.player.hp, state.enemies.enemy.hp]).toEqual(['playing', false, 100, 100]);
+  expect([state.phase, state.enemies.enemy.engaged, state.player.hp, state.enemies.enemy.hp]).toEqual(['playing', false, 100, 200]);
   expect(state.player.x).toBe(-2.3);
 });
 test('standing in reach loses after five enemy hits; terminal states stop updating', () => {
@@ -46,7 +52,7 @@ test('standing in reach loses after five enemy hits; terminal states stop updati
   // Face away so this opening strike engages without hurting the raider.
   state.player.yaw = Math.PI;
   for (let frame = 0; frame < 240 && state.phase === 'playing'; frame++) stepEncounter(state, 0.05, idle, timing);
-  expect([state.phase, state.player.hp, state.enemies.enemy.hp]).toEqual(['lost', 0, 100]);
+  expect([state.phase, state.player.hp, state.enemies.enemy.hp]).toEqual(['lost', 0, 200]);
   const position = state.player.x;
   expect(stepEncounter(state, 1, { ...idle, x: 1 }, timing)).toEqual([]);
   expect(state.player.x).toBe(position);
@@ -72,7 +78,7 @@ test('authored collision blocks strikes, routes the raider around a wall, and gr
     const state = createEncounter('playing', { boundary, player: { position: [-.7,0], yaw: Math.PI / 2 }, enemy: { position: [.7,0], yaw: -Math.PI / 2 } });
     attack(state, timing.player, false); state.enemies.enemy.attackTime = 0;
     stepEncounter(state,.43,idle,timing,world);
-    expect([state.player.hp,state.enemies.enemy.hp]).toEqual([100,100]);
+    expect([state.player.hp,state.enemies.enemy.hp]).toEqual([100,200]);
     resetEncounter(state); state.player.x=-2; state.enemies.enemy.x=2; state.enemies.enemy.engaged=true; state.enemies.enemy.cooldown=999;
     for(let i=0;i<220;i++) stepEncounter(state,.05,idle,timing,world);
     expect(state.enemies.enemy.x).toBeLessThan(-.7);
@@ -127,7 +133,7 @@ test('the guard notices only nearby visible players, pursues, then returns and r
   state.enemies.enemy.hp = 50; state.enemies.enemy.x = 4; state.player.x = 20;
   stepEncounter(state, .05, idle, timing); expect(state.enemies.enemy.returning).toBe(true); expect(state.enemies.enemy.engaged).toBe(false);
   for (let i = 0; i < 80; i++) stepEncounter(state, .05, idle, timing);
-  expect([state.enemies.enemy.returning, state.enemies.enemy.hp, state.enemies.enemy.x, state.enemies.enemy.z]).toEqual([false, 100, 0, 0]);
+  expect([state.enemies.enemy.returning, state.enemies.enemy.hp, state.enemies.enemy.x, state.enemies.enemy.z]).toEqual([false, 200, 0, 0]);
 });
 
 test('pointer facing is independent of travel, preserves a committed swing, and resumes after locks', () => {
@@ -150,7 +156,7 @@ test('pointer facing is independent of travel, preserves a committed swing, and 
   expect(attack(state, timing.player, false, away.aim)).toEqual([]);
   stepEncounter(state, .43, away, timing);
   expect(state.player.yaw).toBe(0);
-  expect(state.enemies.enemy.hp).toBe(50);
+  expect(state.enemies.enemy.hp).toBe(150);
   stepEncounter(state, .58, away, timing);
   expect(state.player.yaw).toBeCloseTo(Math.PI);
   state.player.lock = .2;
@@ -253,28 +259,28 @@ test('ranged releases are timed, swept walls stop damage, and released arrows hi
     segmentHit: (from,to) => from.z<=2 && to.z>=2 ? (2-from.z)/(to.z-from.z) : null,
   };
   const ranged: Timings = {...timing,player:{attack:.8,hit:.3,contacts:[.28]}};
-  const blocked = closeEncounter(); blocked.weapon='staff'; blocked.enemies.enemy.z=4; blocked.enemies.enemy.cooldown=999;
+  const blocked = closeEncounter(); equip(blocked,'staff'); blocked.enemies.enemy.z=4; blocked.enemies.enemy.cooldown=999;
   attack(blocked,ranged.player,false,{x:0,z:10});
   stepEncounter(blocked,.27,idle,ranged,world);
   expect(blocked.projectiles).toHaveLength(0);
   stepEncounter(blocked,.02,idle,ranged,world);
   expect(blocked.projectiles).toHaveLength(1);
   stepEncounter(blocked,.25,idle,ranged,world);
-  expect(blocked.projectiles).toHaveLength(0); expect(blocked.enemies.enemy.hp).toBe(100);
-  const clear = closeEncounter(); clear.weapon='bow'; clear.enemies.enemy.z=4; clear.enemies.enemy.cooldown=999;
+  expect(blocked.projectiles).toHaveLength(0); expect(blocked.enemies.enemy.hp).toBe(200);
+  const clear = closeEncounter(); equip(clear,'bow'); clear.enemies.enemy.z=4; clear.enemies.enemy.cooldown=999;
   attack(clear,ranged.player,false,{x:0,z:10});
   stepEncounter(clear,.27,idle,ranged); stepEncounter(clear,.02,idle,ranged);
   // Changing equipped weapons while an arrow travels cannot change its damage source.
-  clear.weapon='axe';
+  equip(clear,'axe');
   const hit = stepEncounter(clear,.15,idle,ranged);
-  expect(clear.enemies.enemy.hp).toBe(50); expect(clear.projectiles).toHaveLength(0);
+  expect(clear.enemies.enemy.hp).toBe(155); expect(clear.projectiles).toHaveLength(0);
   expect(hit.filter(event=>event.type==='hit' && event.actor==='enemy')).toHaveLength(1);
   expect(hit).not.toContainEqual({type:'axeXp'});
   stepEncounter(clear,.1,idle,ranged);
-  expect(clear.enemies.enemy.hp).toBe(50);
-  const behind=closeEncounter(); behind.weapon='bow'; behind.enemies.enemy.x=.4; behind.enemies.enemy.z=-.05; behind.enemies.enemy.lock=999;
+  expect(clear.enemies.enemy.hp).toBe(155);
+  const behind=closeEncounter(); equip(behind,'bow'); behind.enemies.enemy.x=.4; behind.enemies.enemy.z=-.05; behind.enemies.enemy.lock=999;
   attack(behind,ranged.player,false,{x:0,z:10}); stepEncounter(behind,.3,idle,ranged);
-  expect(behind.enemies.enemy.hp).toBe(100);
+  expect(behind.enemies.enemy.hp).toBe(200);
 });
 
 test('a contact pose fully replaces a manually phased locomotion pose', async () => {
@@ -286,7 +292,7 @@ test('a contact pose fully replaces a manually phased locomotion pose', async ()
   updateActor(actor,state,.01,false); play(actor,'run'); state.z+=.1; updateActor(actor,state,.05,false);
   state.z+=.3; updateActor(actor,state,.15,false);
   const presented=actor.root.getObjectByName('body')!; expect(presented.position.x).toBeCloseTo(1);
-  play(actor,'attack'); updateActor(actor,state,.15,false); expect(presented.position.x).toBeCloseTo(3);
+  play(actor,'attack',.8);expect(actor.actions.attack!.getEffectiveTimeScale()).toBe(.8); updateActor(actor,state,.15,false); expect(presented.position.x).toBeCloseTo(3);
   actor.mixer!.stopAllAction(); geometry.dispose(); material.dispose();
 });
 
@@ -319,15 +325,16 @@ test('damaging a caster during windup prevents the release, and a defeated caste
   const clocks={...timing,enemy:{attack:1.6,hit:.35,contacts:[.8]}};
   attack(state,timing.player,false);
   stepEncounter(state,.43,idle,clocks);
-  expect(state.enemies.enemy.hp).toBe(50);
+  expect(state.enemies.enemy.hp).toBe(150);
   expect(state.enemies.enemy.attackTime).toBe(-1);
   for(let i=0;i<12;i++) stepEncounter(state,.05,idle,clocks);
   expect(state.projectiles).toEqual([]);
   state.projectiles.push({id:1,owner:'enemy',kind:'bolt',x:8,y:1.08,z:8,dx:1,dz:0,remaining:12});
   attack(state,timing.player,false);
   stepEncounter(state,.43,idle,clocks);
-  expect(state.phase).toBe('won');
-  expect(state.projectiles).toEqual([]);
+  expect(state.phase).toBe('playing');
+  state.enemies.enemy.hp=50;state.player.lock=state.attackCooldown=0;attack(state,timing.player,false);stepEncounter(state,.43,idle,clocks);
+  expect(state.phase).toBe('won');expect(state.projectiles).toEqual([]);
 });
 
 test('enemy bolts sweep into the player once, stop at terrain, and respect dodge and incoming shield direction', () => {
@@ -379,10 +386,10 @@ test('two fights stay independent, with player clocks advancing once', () => {
   resetEncounter(state);
   state.player.x = -9; state.player.yaw = -Math.PI / 2;
   attack(state, timing.player, false); stepEncounter(state, .43, idle, timing);
-  expect([state.enemies.caster.hp, state.enemies.enemy.hp]).toEqual([50, 100]);
+  expect([state.enemies.caster.hp, state.enemies.enemy.hp]).toEqual([150, 200]);
   stepEncounter(state, .58, idle, timing);
   attack(state, timing.player, false); stepEncounter(state, .43, idle, timing);
-  expect([state.enemies.caster.hp, state.enemies.enemy.hp, state.phase]).toEqual([0, 100, 'playing']);
+  expect([state.enemies.caster.hp, state.enemies.enemy.hp, state.phase]).toEqual([100, 200, 'playing']);
 });
 
 test('raider commitment preserves a late nonlethal swing, allows early/recovery stagger, and never prevents death', () => {
@@ -393,7 +400,7 @@ test('raider commitment preserves a late nonlethal swing, allows early/recovery 
     state.enemies.enemy.attackTime=clock;
     state.player.attackTime=.25; state.player.lock=.4; state.player.yaw=0;
     const events=stepEncounter(state,.02,idle,clocks);
-    expect(state.enemies.enemy.hp).toBe(50);
+    expect(state.enemies.enemy.hp).toBe(150);
     expect(state.enemies.enemy.attackTime>=0).toBe(committed);
     expect(events.some(e=>e.type==='animation' && e.actor==='enemy' && e.motion==='hit')).toBe(!committed);
     expect(events.filter(e=>e.type==='impact' && e.actor==='enemy')).toHaveLength(1);
@@ -428,7 +435,7 @@ test('a raider swing uses its committed forward arc and stays planted through re
 });
 
 test('accepted actions emit sound facts once; rejected attacks and replayed animation states do not', () => {
-  const state=closeEncounter(); state.enemies.enemy.cooldown=999; state.weapon='bow';
+  const state=closeEncounter(); state.enemies.enemy.cooldown=999; equip(state,'bow');
   const accepted=attack(state,timing.player,false,{x:0,z:10});
   expect(accepted.filter(e=>e.type==='action' && e.action==='attack')).toHaveLength(1);
   expect(attack(state,timing.player,false)).toEqual([]);
@@ -440,28 +447,28 @@ test('accepted actions emit sound facts once; rejected attacks and replayed anim
 
 test('Sword Basic is focused while Sweep covers the forward half-circle with one contact per enemy', () => {
   const layout={boundary:{kind:'circle' as const,center:[0,0] as [number,number],radius:20},player:{position:[0,0] as [number,number],yaw:0},enemy:{position:[1.4,.3] as [number,number],yaw:0},caster:{position:[-1.4,.3] as [number,number],yaw:0}};
-  const make=()=>{const state=createEncounter('playing',layout);state.weaponSets=[{main:'sword',off:null},{main:'bow',off:null}];state.weapon='sword';return state;};
+  const make=()=>{const state=createEncounter('playing',layout);sets(state,[{main:'sword',off:null},{main:'bow',off:null}]);return state;};
   const clocks={...timing,player:{...timing.player,abilities:{sweep:{attack:.8,contacts:[.38]}}}};
-  const basic=make();attack(basic,timing.player,false);stepExploration(basic,.43,idle,undefined,timing);expect([basic.enemies.enemy.hp,basic.enemies.caster.hp]).toEqual([100,100]);
+  const basic=make();attack(basic,timing.player,false);stepExploration(basic,.43,idle,undefined,timing);expect([basic.enemies.enemy.hp,basic.enemies.caster.hp]).toEqual([200,200]);
   const sweep=make();useAbility(sweep,'sweep',clocks.player,false);stepExploration(sweep,.4,idle,undefined,clocks);stepExploration(sweep,.05,idle,undefined,clocks);
-  expect([sweep.enemies.enemy.hp,sweep.enemies.caster.hp]).toEqual([40,40]);expect(sweep.invulnerability).toBe(0);
+  expect([sweep.enemies.enemy.hp,sweep.enemies.caster.hp]).toEqual([140,140]);expect(sweep.invulnerability).toBe(0);
 });
 
 test('Piercing Shot automatically equips Bow, crosses each enemy once, and stops at terrain', () => {
   const layout={boundary:{kind:'circle' as const,center:[0,0] as [number,number],radius:20},player:{position:[0,0] as [number,number],yaw:0},enemy:{position:[0,2] as [number,number],yaw:0},caster:{position:[0,4] as [number,number],yaw:0}};
   const clocks={...timing,player:{...timing.player,abilities:{'piercing-shot':{attack:1,contacts:[.7]}}}};
-  const make=()=>{const state=createEncounter('playing',layout);state.weaponSets=[{main:'sword',off:null},{main:'bow',off:null}];state.weapon='sword';return state;};
+  const make=()=>{const state=createEncounter('playing',layout);sets(state,[{main:'sword',off:null},{main:'bow',off:null}]);return state;};
   const state=make();expect(useAbility(state,'piercing-shot',clocks.player,false)).toContainEqual({type:'weaponSet',set:1});
   stepExploration(state,.7,idle,undefined,clocks);for(let i=0;i<10;i++)stepExploration(state,.025,idle,undefined,clocks);
-  expect([state.enemies.enemy.hp,state.enemies.caster.hp]).toEqual([40,40]);expect(state.playerMana).toBeCloseTo(77.6);
+  expect([state.enemies.enemy.hp,state.enemies.caster.hp]).toEqual([146,146]);expect(state.playerMana).toBeCloseTo(77.6);
   const blocked=make();useAbility(blocked,'piercing-shot',clocks.player,false);
   const world={move:()=>{},direction:()=>({x:0,z:0}),lineOfSight:()=>true,segmentHit:(from:{z:number},to:{z:number})=>from.z<3 && to.z>=3 ? (3-from.z)/(to.z-from.z) : null};
   stepExploration(blocked,.7,idle,world,clocks);for(let i=0;i<10;i++)stepExploration(blocked,.025,idle,world,clocks);
-  expect([blocked.enemies.enemy.hp,blocked.enemies.caster.hp,blocked.projectiles.length]).toEqual([40,100,0]);
+  expect([blocked.enemies.enemy.hp,blocked.enemies.caster.hp,blocked.projectiles.length]).toEqual([146,200,0]);
 });
 
 test('automatic swaps and repeated slot assignments preserve skill cooldowns and action locks', () => {
-  const state=createEncounter('won');state.weaponSets=[{main:'sword',off:'shield'},{main:'bow',off:null}];state.weapon='sword';state.shield=true;
+  const state=createEncounter('won');sets(state,[{main:'sword',off:'shield'},{main:'bow',off:null}]);
   const clocks={...timing,player:{...timing.player,abilities:{sweep:{attack:.8,contacts:[.38]},'piercing-shot':{attack:1,contacts:[.7]}}}};
   useAbility(state,'sweep',clocks.player,false);const mana=state.playerMana;
   expect(useAbility(state,'piercing-shot',clocks.player,false)).toEqual([]);expect(state.activeSet).toBe(0);expect(state.playerMana).toBe(mana);
@@ -479,7 +486,7 @@ test('melee contact reaches an enemy overlapping the player', () => {
   state.enemies.enemy.cooldown = 999;
   attack(state,timing.player,false);
   stepEncounter(state,.43,idle,timing);
-  expect(state.enemies.enemy.hp).toBe(50);
+  expect(state.enemies.enemy.hp).toBe(150);
 });
 
 test('dodge immunity is evaluated at contact time within the frame', () => {
@@ -500,4 +507,45 @@ test('dodge immunity is evaluated at contact time within the frame', () => {
     stepEncounter(shot,.05,idle,timing);
     expect(shot.player.hp).toBe(health); expect(shot.projectiles).toEqual([]);
   }
+});
+
+test('authored weapon choices clear a 200-health enemy in three to five Basic hits', () => {
+  for(const [item,hits] of [['axe',4],['sword',4],['iron-broadsword',3],['bow',5],['yew-longbow',4]] as const) {
+    const state=closeEncounter();equip(state,item);state.enemies.enemy.cooldown=999;
+    for(let strike=0;strike<hits;strike++) {
+      attack(state,timing.player,false,{x:0,z:10});
+      for(let frame=0;frame<Math.ceil(1/state.stats.attackRate/.05)+3;frame++)stepExploration(state,.05,idle,undefined,timing);
+      if(strike<hits-1)expect(state.enemies.enemy.hp).toBeGreaterThan(0);
+    }
+    expect(state.enemies.enemy.hp).toBe(0);
+  }
+});
+
+test('armor reduces melee, arrows and magic without turning rear hits into shield blocks', () => {
+  for(const kind of ['melee','arrow','bolt'] as const) {
+    const state=closeEncounter();
+    applyEquipment(state,[{id:'sword',item:'sword',quantity:1,slot:'main',x:0,y:0},{id:'shield',item:'shield',quantity:1,slot:'off',x:0,y:0},{id:'helm',item:'guard-helm',quantity:1,slot:'helmet',x:0,y:0},{id:'mail',item:'weathered-mail',quantity:1,slot:'body',x:0,y:0}],0);
+    state.player.yaw=Math.PI;state.enemies.enemy.cooldown=999;
+    if(kind==='melee')state.enemies.enemy.attackTime=.4;
+    else {state.enemies.enemy.z=9;state.projectiles.push({id:1,owner:'enemy',kind,x:0,y:1.08,z:1,dx:0,dz:-1,remaining:12,damage:20});}
+    const events=stepEncounter(state,kind==='melee' ? .03 : .2,{...idle,block:true},timing);
+    expect(state.player.hp).toBeCloseTo(100-20*100/120);expect(state.blocking).toBe(false);
+    expect(events).toContainEqual({type:'impact',actor:'player',weapon:kind==='melee' ? 'axe' : kind==='arrow' ? 'bow' : 'staff',blocked:false,lethal:false});
+    expect(events).toContainEqual({type:'animation',actor:'player',motion:'hit'});
+  }
+  const front=closeEncounter();applyEquipment(front,[{id:'sword',item:'sword',quantity:1,slot:'main',x:0,y:0},{id:'shield',item:'shield',quantity:1,slot:'off',x:0,y:0},{id:'mail',item:'weathered-mail',quantity:1,slot:'body',x:0,y:0}],0);
+  front.enemies.enemy.attackTime=.4;front.enemies.enemy.cooldown=999;stepEncounter(front,.03,{...idle,block:true},timing);expect(front.player.hp).toBeCloseTo(100-20*100/112*.5);expect(front.blocking).toBe(true);
+});
+
+test('weapon rate scales contacts and recovery, and a launched arrow keeps its properties across a swap', () => {
+  const state=closeEncounter();equip(state,'iron-broadsword');attack(state,timing.player,false);
+  expect(state.playerAction!.duration).toBe(1/.8);expect(state.playerAction!.contacts).toEqual([.42/.8]);
+  stepExploration(state,.5,idle,undefined,timing);expect(state.enemies.enemy.hp).toBe(200);
+  stepExploration(state,.03,idle,undefined,timing);expect(state.enemies.enemy.hp).toBe(130);
+  const shot=closeEncounter();sets(shot,[{main:'yew-longbow',off:null},{main:'axe',off:null}]);shot.enemies.enemy.z=12;
+  const clocks={...timing,player:{attack:.3,hit:.3,contacts:[.1]}};
+  attack(shot,clocks.player,false,{x:0,z:20});stepExploration(shot,.12,idle,undefined,clocks);
+  expect(shot.projectiles[0].damage).toBe(60);expect(shot.projectiles[0].remaining).toBeCloseTo(16-(.12-.1/.85)*24);
+  stepExploration(shot,.24,idle,undefined,clocks);expect(swapWeaponSet(shot,false)).toContainEqual({type:'weaponSet',set:1});expect(shot.stats.damage).toBe(50);
+  stepExploration(shot,.3,idle,undefined,clocks);expect(shot.enemies.enemy.hp).toBe(140);
 });

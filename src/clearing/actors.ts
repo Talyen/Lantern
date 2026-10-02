@@ -14,13 +14,13 @@ export function makeActor(scene: THREE.Scene, state: ActorState): Actor {
   const root = new THREE.Group(); root.position.set(state.x, .04, state.z); scene.add(root);
   return { root, mixer: null, actions: {}, current: null, moveSpeed: state.speed, rigScale: 1, blockBlend: 0, runSpeed: 4, speeds: {}, contacts: [], commitLead: 0, chopContact: .32, mineContact: .36, skillContacts: {}, phases: {}, gait: 0, velocity: new THREE.Vector2(), previous: null, displacement: new THREE.Vector2(), weights: [0, 0, 0, 0] };
 }
-export function play(actor: Actor, name: Motion): void {
+export function play(actor: Actor, name: Motion, rate = 1): void {
   if (actor.current === name && ['idle', 'run', 'block', 'chop', 'mine'].includes(name)) return;
   const next = actor.actions[name]; if (!next) return;
   const starting = actor.current===null;
   const blend = name === 'dodge' ? .035 : name === 'hit' ? .045 : ['attack','chop','mine','sweep','pierce'].includes(name) ? .055 : .10;
   for (const action of Object.values(actor.actions)) if (action && action !== next && action.isScheduled()) action.fadeOut(blend);
-  next.reset().stopFading().setEffectiveWeight(1).setEffectiveTimeScale(name === 'dodge' ? next.getClip().duration / dodgeDuration : 1);
+  next.reset().stopFading().setEffectiveWeight(1).setEffectiveTimeScale(name === 'dodge' ? next.getClip().duration / dodgeDuration : ['attack','sweep','pierce'].includes(name) ? rate : 1);
   if (!starting) next.fadeIn(blend);
   next.play();
   actor.current = name;

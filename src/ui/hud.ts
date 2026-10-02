@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { playerMaxHealth, enemyMaxHealth, playerMaxMana, enemyIds, type EnemyId, type Encounter, type EncounterEvent } from '../gameplay/encounter';
+import { enemyMaxHealth, enemyIds, type EnemyId, type Encounter, type EncounterEvent } from '../gameplay/encounter';
 import './orbs.css';
 
 export function createHud(onRetry: () => void) {
@@ -17,14 +17,15 @@ export function createHud(onRetry: () => void) {
   const anchor = new THREE.Vector3();
   const damagedFor: Record<EnemyId,number> = {enemy:0,caster:0};
   let safe = false;
-  const resources = new WeakMap<HTMLElement, number>();
+  const resources = new WeakMap<HTMLElement, string>();
   const enemyValues: Partial<Record<EnemyId, number>> = {};
   function resource(orb: HTMLElement, name: string, value: number, max: number): void {
     const count = Math.max(0, Math.min(max, value));
-    if (resources.get(orb) === count) return;
-    resources.set(orb, count);
+    if (resources.get(orb) === `${count}/${max}`) return;
+    resources.set(orb, `${count}/${max}`);
     orb.style.setProperty('--fill', String(count / max));
     orb.dataset.empty = String(count === 0);
+    orb.setAttribute('aria-valuemax',String(max));
     orb.setAttribute('aria-valuenow', String(count));
     orb.setAttribute('aria-valuetext', `${Math.ceil(count)} / ${max}`);
     orb.title = `${name} · ${Math.ceil(count)} / ${max}`;
@@ -40,8 +41,8 @@ export function createHud(onRetry: () => void) {
         if (event.type === 'hit' && event.actor !== 'player') damagedFor[event.actor] = 3;
         else if (event.type === 'outcome') finish(event.won);
       }
-      resource(playerHealth, 'Health', encounter.player.hp, playerMaxHealth);
-      resource(playerMana, 'Mana', encounter.playerMana, playerMaxMana);
+      resource(playerHealth, 'Health', encounter.player.hp, encounter.stats.maxHealth);
+      resource(playerMana, 'Mana', encounter.playerMana, encounter.stats.maxMana);
       for (const id of enemyIds) {
         const enemy=encounter.enemies[id], bar=healthBars[id];
         if (enemyValues[id] !== enemy.hp) {

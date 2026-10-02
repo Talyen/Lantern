@@ -26,14 +26,16 @@
       <p id="interaction-prompt" role="status"></p>
       <dialog id="inventory-dialog" class="game-menu" aria-labelledby="inventory-title">
         <header><h2 id="inventory-title">Inventory</h2><button type="button" data-close>Close</button></header>
-        <div class="equipment-slots">
+        <div class="inventory-layout"><section class="equipment-column"><div class="equipment-slots">
           <div class="equipment-slot" data-equipment-slot="main"><span>Main hand</span><div id="equipment-main"></div></div>
           <div class="equipment-slot" data-equipment-slot="off"><span>Off hand</span><div id="equipment-off"></div></div>
         </div>
+        <div class="shared-equipment"></div></section><section class="inventory-main"><div id="loadout-stats"></div>
         <div class="inventory-containers"><section><div class="bag-toolbar"><span>Bag</span><button id="inventory-sort" type="button">Sort</button></div>
         <div id="inventory-grid" aria-label="Bag"><div id="inventory-placement" hidden></div></div></section><section id="stash-section" hidden><div class="bag-toolbar"><span>Stash</span><button id="stash-sort" type="button">Sort</button></div><div id="stash-grid" aria-label="Stash"></div></section></div>
         <div id="inventory-overflow" hidden></div>
-        <div class="item-selection"><span id="inventory-selection"></span><button id="inventory-equip" type="button" hidden>Equip</button><button id="inventory-remove" type="button" hidden>Unequip</button><button id="inventory-recover" type="button" hidden>Collect</button><button id="inventory-transfer" type="button" hidden>Store</button><button id="inventory-split" type="button" hidden>Split</button></div>
+        </section><aside class="item-details"><h3 id="inventory-selection"></h3><div id="inventory-item-stats"></div><div id="inventory-comparison"></div><div class="item-selection"><button id="inventory-equip" type="button" hidden>Equip</button><button id="inventory-remove" type="button" hidden>Unequip</button><button id="inventory-recover" type="button" hidden>Collect</button><button id="inventory-transfer" type="button" hidden>Store</button><button id="inventory-split" type="button" hidden>Split</button></div>
+        </aside></div>
         <p id="equipment-error" role="status"></p>
         <div class="inventory-resources"><div><span>Woodcutting</span><strong id="woodcutting-xp">0 XP</strong></div><div><span>Mining</span><strong id="mining-xp">Lv 1</strong></div><div><span>Axe Combat</span><strong id="axe-combat-xp">0 XP</strong></div></div>
         <p id="rested-status" hidden></p>

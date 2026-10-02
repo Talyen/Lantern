@@ -1969,6 +1969,46 @@
       },
       "castShadow": true,
       "receiveShadow": true
+    },
+    {
+      "id": "trail-cache",
+      "position": [
+        -3.2,
+        0,
+        5.2
+      ],
+      "yaw": -0.7853981633974483,
+      "scale": [
+        0.7,
+        0.7,
+        0.7
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "url": "/vendor/synty/chest.glb"
+      },
+      "height": 0.6
+    },
+    {
+      "id": "woodland-cache",
+      "position": [
+        5.5,
+        0,
+        4
+      ],
+      "yaw": -0.7853981633974483,
+      "scale": [
+        0.7,
+        0.7,
+        0.7
+      ],
+      "castShadow": true,
+      "receiveShadow": true,
+      "asset": {
+        "url": "/vendor/synty/chest.glb"
+      },
+      "height": 0.6
     }
   ],
   "scatter": [],
@@ -2150,7 +2190,46 @@
         -7.0711
       ],
       "scrolls": 2,
-      "guard": "enemy"
+      "guard": "enemy",
+      "potions": 2,
+      "equipment": [
+        "sword",
+        "shield",
+        "bow",
+        "staff",
+        "guard-helm",
+        "weathered-mail",
+        "duelist-gloves"
+      ]
+    },
+    {
+      "id": "trail-cache-reward",
+      "prop": "trail-cache",
+      "position": [
+        -3.2,
+        5.2
+      ],
+      "scrolls": 0,
+      "guard": null,
+      "equipment": [
+        "quilted-coat",
+        "trail-boots",
+        "leather-belt"
+      ]
+    },
+    {
+      "id": "woodland-cache-reward",
+      "prop": "woodland-cache",
+      "position": [
+        5.5,
+        4
+      ],
+      "scrolls": 0,
+      "guard": null,
+      "equipment": [
+        "iron-signet",
+        "hearth-ring"
+      ]
     }
   ],
   "views": [
@@ -2580,7 +2659,42 @@
           1.1
         ],
         "yaw": 0
+      },
+      {
+        "id": "trail-cache",
+        "position": [
+          -3.2,
+          0.3,
+          5.2
+        ],
+        "size": [
+          1.53,
+          0.6,
+          0.68
+        ],
+        "yaw": -0.7853981633974483
+      },
+      {
+        "id": "woodland-cache",
+        "position": [
+          5.5,
+          0.3,
+          4
+        ],
+        "size": [
+          1.53,
+          0.6,
+          0.68
+        ],
+        "yaw": -0.7853981633974483
       }
+    ]
+  },
+  "enemyEquipment": {
+    "caster": [
+      "iron-broadsword",
+      "yew-longbow",
+      "amber-amulet"
     ]
   }
 }

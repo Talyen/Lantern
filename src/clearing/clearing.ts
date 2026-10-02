@@ -220,7 +220,7 @@ function present(events: EncounterEvent[]): void {
     }
     if (event.type === 'animation' || event.type === 'hit') {
       const actor = actors[event.actor];
-      if (event.type === 'animation') play(actor, event.motion);
+      if (event.type === 'animation') play(actor, event.motion, event.actor === 'player' ? encounter.playerAction?.rate ?? 1 : 1);
       else { const impact = events.find(e => e.type==='impact' && e.actor===event.actor); graphics?.effects.burst('hit', actor.root.position, impact?.type==='impact' && impact.blocked ? 5 : 8); }
     }
   }
@@ -568,7 +568,7 @@ function diagnostics() {
     },
     encounter: {
       enemies: structuredClone(encounter.enemies), enemyEquipment: enemyEquipment.diagnostics(), casterEquipment: casterEquipment.diagnostics(),
-      player: { ...encounter.player }, playerMana: encounter.playerMana, dodgeRemaining: encounter.dodgeRemaining,
+      player: { ...encounter.player }, playerMana: encounter.playerMana, stats: {...encounter.stats}, dodgeRemaining: encounter.dodgeRemaining,
       dodgeCooldown: encounter.dodgeCooldown, blocking: encounter.blocking, projectiles: encounter.projectiles, pending: encounter.pending,
       animations: { player: player.current, enemy: enemy.current, caster: caster.current },
       navigationReady: movementWorld?.navigationReady ?? false, navigationMs: movementWorld?.generationMs ?? 0,

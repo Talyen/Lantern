@@ -3,7 +3,7 @@ import motionProfiles from '../../assets/motion-profiles.json';
 import { type GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import characters from '../../assets/playable-characters.json';
 import type { Motion } from '../gameplay/encounter';
-import type { Loadout } from '../gameplay/equipment';
+import { weaponFamily, type Loadout } from '../gameplay/equipment';
 
 export type RigId = 'player' | 'enemy';
 export const motionStates = ['idle', 'run', 'attack', 'hit', 'death'] as const;
@@ -41,7 +41,7 @@ function independentClip(source: THREE.AnimationClip): THREE.AnimationClip {
 }
 export async function loadEquipmentMotions(loader: GLTFLoader, who: RigId, loadout: Loadout): Promise<CombatMotions> {
   const catalog = await getMotionCatalog(who);
-  const profile = catalog.profiles[`${loadout.main ?? 'unarmed'}${loadout.off ? '-shield' : ''}`];
+  const profile = catalog.profiles[`${weaponFamily(loadout.main) ?? 'unarmed'}${loadout.off ? '-shield' : ''}`];
   const pack = catalog.packs.find(item => item.id === 'mixamo');
   if (!profile || !pack) throw new Error('Compatible weapon motions are unavailable.');
   const base = Object.fromEntries(motionStates.map(role => {

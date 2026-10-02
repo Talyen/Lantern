@@ -1,8 +1,8 @@
 import { validBar, type ActionBar, type WeaponSet } from './abilities';
-import { createEncounter, playerMaxHealth, enemyIds, type Encounter, type EnemyId } from './encounter';
+import { applyEquipment, createEncounter, enemyIds, type Encounter, type EnemyId } from './encounter';
 import type { Point, Spawn } from './area';
 import type { AreaDefinition, Campfire, Chest } from '../levels/types';
-import type { ItemId } from './equipment';
+import { isEquipmentSlot, type ItemId } from './equipment';
 import { character, type CharacterSave } from './character-save';
 import { CharacterPersistence, type StorageSource } from './character-persistence';
 export { characterSaveKey } from './character-save';
@@ -18,7 +18,7 @@ export type GroundDrop = { id: string; item: LootItem; quantity: number; positio
 export type ReturnSpawn = Spawn & { height?: number };
 export type PortalLink = { area: string; departure: ReturnSpawn };
 type AreaSession = { encounter?: Encounter; drops: GroundDrop[]; dropRolled: Partial<Record<EnemyId, boolean>>; chests: Record<string, { opened: boolean; remaining: number }> };
-export const chestUnlocked = (encounter: Encounter, chest: Chest) => encounter.enemies[chest.guard ?? 'enemy'].hp <= 0;
+export const chestUnlocked = (encounter: Encounter, chest: Chest) => chest.guard === null || encounter.enemies[chest.guard ?? 'enemy'].hp <= 0;
 export const fireKey = (area: string, fire: string) => `${area}/${fire}`;
 export const near = (point: Point, target: Point, radius: number) => Math.hypot(point[0] - target[0], point[1] - target[1]) <= radius;
 
@@ -64,8 +64,8 @@ export class Adventure {
   setWeaponSet(set: WeaponSet): void { this.character.activeSet=set; this.save(); }
   usePotion(encounter: Encounter): boolean {
     const entry=this.character.items.find(i=>i.item==='potion' && i.slot==='bag');
-    if (!entry || encounter.player.hp<=0 || encounter.player.hp>=playerMaxHealth || encounter.potionCooldown>0 || !['playing','won'].includes(encounter.phase)) return false;
-    encounter.player.hp=Math.min(playerMaxHealth,encounter.player.hp+40); encounter.potionCooldown=8;
+    if (!entry || encounter.player.hp<=0 || encounter.player.hp>=encounter.stats.maxHealth || encounter.potionCooldown>0 || !['playing','won'].includes(encounter.phase)) return false;
+    encounter.player.hp=Math.min(encounter.stats.maxHealth,encounter.player.hp+40); encounter.potionCooldown=8;
     entry.quantity--; this.character.items=this.character.items.filter(i=>i.quantity>0);
     this.events.push({type:'potionUse'}); this.save(); return true;
   }
@@ -87,7 +87,7 @@ export class Adventure {
     const entry = this.character.items.find(i => i.id === id);
     if (!entry || !Number.isSafeInteger(quantity) || quantity < 1 || quantity > entry.quantity) throw new Error('Item is no longer available.');
     if (entry.item === 'scroll' && this.castRemaining > 0 && this.character.scrolls - quantity < 1) throw new Error('Scroll is in use.');
-    if (entry.slot === 'main' || entry.slot === 'off') throw new Error('Move equipped gear into the bag before dropping it.');
+    if (isEquipmentSlot(entry.slot)) throw new Error('Move equipped gear into the bag before dropping it.');
     this.spawnDrop(entry.item, quantity, origin, { blocked: lootDefinitions[entry.item].stackable, instanceId: lootDefinitions[entry.item].stackable ? undefined : entry.id });
     entry.quantity -= quantity; this.replaceItems(this.character.items.filter(i => i.quantity > 0));
   }
@@ -145,7 +145,7 @@ export class Adventure {
   }
   /** Call only after destination resources are ready; failed loads cannot change these states. */
   enter(encounter: Encounter, area: AreaDefinition, arrival: ReturnSpawn = area.layout.player, recover = false): void {
-    const health = this.currentArea ? encounter.player.hp : playerMaxHealth;
+    const health = this.currentArea ? encounter.player.hp : null;
     const resources={weapon:encounter.weapon,shield:encounter.shield,playerMana:encounter.playerMana,abilityCooldowns:{...encounter.abilityCooldowns},potionCooldown:encounter.potionCooldown,weaponSets:encounter.weaponSets,activeSet:encounter.activeSet};
     if (this.currentArea) this.session().encounter = structuredClone(encounter);
     this.currentArea = area.id;
@@ -159,8 +159,10 @@ export class Adventure {
     }
     next.player.x = arrival.position[0]; next.player.z = arrival.position[1]; next.player.yaw = arrival.yaw;
     next.player.y = arrival.height ?? 0;
-    next.player.hp = recover ? playerMaxHealth : health;
     Object.assign(encounter, next, resources);
+    applyEquipment(encounter,this.character.items,this.character.activeSet);
+    encounter.player.hp = recover || health === null ? encounter.stats.maxHealth : Math.min(health,encounter.stats.maxHealth);
+    if (health === null) encounter.playerMana = encounter.stats.maxMana;
     this.castRemaining = 0; this.cancelPickup(); this.healing = false; this.atShelter = false; this.events = [];
     if (recover) this.portal = null;
   }
@@ -188,9 +190,13 @@ export class Adventure {
     const state = this.chest(area, chest); if (state.opened) return false;
     this.events.push({type:'chestOpen',position:{x:chest.position[0],z:chest.position[1]}});
     if (state.remaining) this.spawnDrop('scroll', state.remaining, chest.position);
-    if (area.id === 'clearing') this.spawnDrop('potion',2,chest.position);
-    if (area.id === 'clearing') for (const item of ['sword', 'shield', 'bow', 'staff'] as ItemId[]) if (!this.character.campClaims.includes(item)) this.spawnDrop(item, 1, chest.position, { claim: item });
+    if (chest.potions) this.spawnDrop('potion',chest.potions,chest.position);
+    this.guaranteedEquipment(chest.equipment ?? [],chest.position);
     state.opened = true; state.remaining = 0; return true;
+  }
+
+  private guaranteedEquipment(items: readonly ItemId[], position: Point): void {
+    for (const item of items) if (!this.character.campClaims.includes(item)) this.spawnDrop(item,1,position,{claim:item});
   }
 
   destinations(areas: Record<string, AreaDefinition>): { area: AreaDefinition; fire: Campfire; available: boolean }[] {
@@ -211,16 +217,17 @@ export class Adventure {
     this.checkpoint += dt;
     if (this.checkpoint >= progression.checkpointSeconds) { this.checkpoint = 0; if (this.character.shelterRestored) this.save(); }
     this.discover(area, point);
-    const healing = encounter.player.hp < playerMaxHealth && !!area.campfires?.some(fire => fire.heals && near(point, fire.position, 3) && this.fireSafe(area, fire, encounter));
+    const healing = encounter.player.hp < encounter.stats.maxHealth && !!area.campfires?.some(fire => fire.heals && near(point, fire.position, 3) && this.fireSafe(area, fire, encounter));
     if (healing && !this.healing) this.events.push({type:'healing'});
     this.healing = healing;
-    if (healing) encounter.player.hp = Math.min(playerMaxHealth, encounter.player.hp + playerMaxHealth * .03 * dt);
+    if (healing) encounter.player.hp = Math.min(encounter.stats.maxHealth, encounter.player.hp + encounter.stats.maxHealth * .03 * dt);
     const session = this.session();
     if (area.kind !== 'safe') for (const id of enemyIds) {
       const enemy = encounter.enemies[id];
       if (enemy.home && enemy.hp <= 0 && !session.dropRolled[id]) {
         session.dropRolled[id] = true;
         if (this.random() < .5) this.spawnDrop('scroll', 1, [enemy.x, enemy.z]);
+        this.guaranteedEquipment(area.enemyEquipment?.[id] ?? [],[enemy.x,enemy.z]);
       }
     }
     for (const drop of [...session.drops]) {

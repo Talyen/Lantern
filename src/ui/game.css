@@ -27,3 +27,28 @@
 #stash-grid{position:relative;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));grid-template-rows:repeat(8,minmax(0,1fr));aspect-ratio:12/8;border:1px solid #72664e;background-color:#171610;background-image:linear-gradient(to right,#77705a30 1px,transparent 1px),linear-gradient(to bottom,#77705a30 1px,transparent 1px);background-size:calc(100% / 12) calc(100% / 8);box-shadow:inset 0 0 28px #0007;touch-action:none}#stash-section .bag-toolbar>span{color:#c7b48e}.with-stash #stash-section{padding-left:20px;border-left:1px solid #8c755642}
 #rested-status{margin:0 0 12px;color:#c7b48e;font-size:12px}#repair-dialog{background:linear-gradient(125deg,#35332cf5,#1d1e1dfc 45%,#141717fc);border-color:#8f7955;box-shadow:inset 0 0 0 3px #101313,0 20px 70px #0009;border-radius:3px}#repair-dialog h2{font:30px "Pirata One",Georgia,serif}#repair-materials{display:grid;gap:12px;margin:20px 0 24px}#repair-materials>div{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #8c755642;font-size:14px}#repair-materials strong{color:#b69d7a;font-weight:400}#repair-materials [data-ready=true] strong{color:#c3cc9b}#repair-error{font-size:12px;color:#e8ac89}#repair-error:empty{display:none}#shelter-repair{width:100%;border-color:#a58a58;background:#373b2e}
 @media(max-width:850px){.with-stash .inventory-containers{grid-template-columns:1fr}.with-stash #stash-section{padding:0;border-left:0}.inventory-resources{gap:16px}}
+
+/* Equipment is the quiet left column; the selected item owns the detail hierarchy. */
+#inventory-dialog{width:min(940px,calc(100vw - 32px));background:linear-gradient(130deg,#302922f8,#1b1815fc 48%,#141311fc)}
+#inventory-dialog.with-stash{width:min(1180px,calc(100vw - 32px))}
+.inventory-layout{display:grid;grid-template-columns:160px minmax(0,1fr) 210px;gap:20px}
+.equipment-column{border-right:1px solid #8c755642;padding-right:12px}
+.equipment-column .equipment-slots,.shared-equipment{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;max-width:none}
+.shared-equipment{margin-top:14px;padding-top:14px;border-top:1px solid #8c755642}
+.equipment-column .equipment-slot{padding:5px 3px;min-height:56px;gap:3px;text-align:center;border-color:#64533f;background:linear-gradient(145deg,#30271d66,#100e0cc9)}
+.equipment-column .equipment-slot>span{font-size:9px;line-height:12px}.equipment-column .equipment-slot>div,.equipment-column .equipment-slot .bag-item{height:32px}
+.equipment-column .equipment-slot .equip-name{display:none}.equipment-column .equipment-slot .bag-item svg{height:30px;width:30px;max-width:42px}
+.equipment-column .equipment-set-tabs{gap:6px}.equipment-column .equipment-set-tabs button{font-size:10px;padding:6px 4px}
+.inventory-main .inventory-containers{max-width:440px}.with-stash .inventory-main .inventory-containers{max-width:none}
+#loadout-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding-bottom:14px;margin-bottom:14px;border-bottom:1px solid #8c755642}
+#loadout-stats div{display:grid;gap:5px}#loadout-stats span{font-size:10px;color:#b1a18b}#loadout-stats strong{font:20px Georgia,serif;color:#e9ddc5;font-weight:400}
+.item-details{margin:0;min-height:114px;padding:8px 12px;align-self:start;border-left:2px solid #b18a50;background:linear-gradient(90deg,#9f794319,#1a161000)}
+.item-details h3{font:25px/1.15 'Pirata One',Georgia,serif;color:#e9dfc9;margin:0 0 8px}.item-details h3:empty{display:none}
+#inventory-dialog:not(.has-selection) .item-details{display:none}
+#inventory-item-stats,#inventory-comparison{display:grid;grid-template-columns:1fr;column-gap:26px;row-gap:6px}
+#inventory-item-stats>div,#inventory-comparison>div{display:flex;justify-content:space-between;gap:12px;font-size:11px}#inventory-item-stats span,#inventory-comparison span{color:#b8aa96}
+#inventory-item-stats strong,#inventory-comparison strong{font-weight:400;color:#e5d5b9}#inventory-comparison p{margin:12px 0 2px;font-size:10px;color:#a4957d}
+#inventory-comparison [data-gain=true] strong{color:#b9c39c}#inventory-comparison [data-gain=false] strong{color:#d09b82}
+.item-details .item-selection{justify-content:flex-start;flex-wrap:wrap;gap:6px;min-height:0;margin-top:12px;padding:0}
+.ring-choices{display:flex;gap:6px;margin-bottom:10px}.ring-choices[hidden]{display:none}.ring-choices button{padding:4px 10px;font-size:10px}#inventory-dialog .ring-choices [aria-pressed=true]{border-color:#bd9659;background:#59452a55}
+@media(max-width:820px){.inventory-layout,#inventory-dialog.has-selection .inventory-layout{grid-template-columns:140px minmax(0,1fr);gap:12px}.item-details{grid-column:2;grid-row:2;margin-top:8px}.equipment-column{grid-row:1/3;padding-right:10px}.has-selection .inventory-main .inventory-containers{max-width:360px}#loadout-stats{gap:6px}#loadout-stats strong{font-size:17px}}

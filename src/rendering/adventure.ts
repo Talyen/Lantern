@@ -3,7 +3,7 @@ import { MeshBasicNodeMaterial, MeshStandardNodeMaterial } from 'three/webgpu';
 import { Portal } from './portal';
 import type { Point } from '../gameplay/area';
 import { dropLandingSeconds, type GroundDrop } from '../gameplay/adventure';
-import { itemDefinitions, type ItemId } from '../gameplay/equipment';
+import { equipmentCatalog, itemDefinitions, type HandItem, type ItemId } from '../gameplay/equipment';
 import { assetLibrary, type AssetInstance } from '../assets/asset-library';
 import { disposeSceneInstances } from '../assets/resource-ownership';
 
@@ -35,6 +35,9 @@ export class AdventureVisuals {
   private markerGeometry = new THREE.RingGeometry(.24, .29, 24);
   private markerMaterial = new MeshBasicNodeMaterial({ color: '#bda474', transparent: true, opacity: .5, side: THREE.DoubleSide });
   private highlight = new THREE.Mesh(this.markerGeometry, this.markerMaterial);
+  private ring = new THREE.TorusGeometry(.13,.026,6,16);
+  private cap = new THREE.SphereGeometry(.22,10,5,0,Math.PI*2,0,Math.PI/2);
+  private cloth = new MeshStandardNodeMaterial({color:'#786657',roughness:1});
   private disposed = false;
   constructor(private parent: THREE.Object3D) { this.highlight.rotation.x = -Math.PI / 2; this.highlight.visible = false; parent.add(this.highlight); }
   sync(drops: GroundDrop[], portal: Point | null, hovered: string | null, portalHeight = 0): void {
@@ -62,13 +65,16 @@ export class AdventureVisuals {
           const stopper=new THREE.Mesh(this.box,this.bark);stopper.scale.set(.08,.05,.08);stopper.position.y=.11;model.add(stopper);
           void this.loadPotion(drop,visual).catch((error: unknown) => console.warn('Unable to prepare dropped potion.', error));
         } else {
-          // A compact silhouette remains collectible if optional prepared scenery is absent.
-          const shaft = new THREE.Mesh(this.box, drop.item === 'sword' || drop.item === 'shield' ? this.metal : this.bark);
-          shaft.scale.set(drop.item === 'shield' ? .4 : .045, .04, drop.item === 'staff' ? 1 : .65); model.add(shaft);
-          if (drop.item === 'axe' || drop.item === 'sword') { const head = new THREE.Mesh(this.box, this.metal); head.scale.set(drop.item === 'axe' ? .25 : .2, .05, drop.item === 'axe' ? .2 : .025); head.position.z = drop.item === 'axe' ? -.2 : .18; model.add(head); }
-          if (drop.item === 'bow') { const arc = new THREE.Mesh(this.arc, this.bark); arc.rotation.x = -Math.PI / 2; arc.rotation.z = -Math.PI / 2; model.add(arc); shaft.scale.set(.01, .01, .6); }
-
-          void this.loadGear(drop, visual).catch((error: unknown) => console.warn('Unable to prepare dropped equipment.', error));
+          const definition = equipmentCatalog[drop.item as ItemId];
+          if (!definition.weapon && definition.slot !== 'off') this.wearable(definition.slot,visual.model,drop.item === 'weathered-mail');
+          else {
+            const family = definition.weapon?.family ?? 'shield';
+            const shaft = new THREE.Mesh(this.box, family === 'sword' || family === 'shield' ? this.metal : this.bark);
+            shaft.scale.set(family === 'shield' ? .4 : .045, .04, family === 'staff' ? 1 : .65); model.add(shaft);
+            if (family === 'axe' || family === 'sword') { const head = new THREE.Mesh(this.box,this.metal); head.scale.set(family === 'axe' ? .25 : .2,.05,family === 'axe' ? .2 : .025);head.position.z=family === 'axe' ? -.2 : .18;model.add(head); }
+            if (family === 'bow') { const arc = new THREE.Mesh(this.arc,this.bark);arc.rotation.x=-Math.PI/2;arc.rotation.z=-Math.PI/2;model.add(arc);shaft.scale.set(.01,.01,.6); }
+            void this.loadGear(drop,visual).catch((error: unknown) => console.warn('Unable to prepare dropped equipment.', error));
+          }
         }
       }
       const t = Math.min(1, drop.age / dropLandingSeconds), travel = 1 - (1 - t) ** 2;
@@ -79,6 +85,30 @@ export class AdventureVisuals {
     const selected = hovered ? this.currentDrops.get(hovered) : undefined; this.highlight.visible = !!selected;
     if (selected) this.highlight.position.set(selected.position[0], selected.height + .035, selected.position[1]);
   }
+  /** Compact category silhouettes stay legible without wearable character assets. */
+  private wearable(slot: string, model: THREE.Group, mail: boolean): void {
+    const box = (size: [number,number,number], point: [number,number,number], material = this.cloth) => {
+      const mesh = new THREE.Mesh(this.box,material);mesh.scale.fromArray(size);mesh.position.fromArray(point);model.add(mesh);return mesh;
+    };
+    if (slot === 'helmet') {
+      const dome = new THREE.Mesh(this.cap,this.metal);dome.position.y=.04;model.add(dome);
+      box([.36,.06,.04],[0,.06,-.18],this.metal);
+    } else if (slot === 'body') {
+      box([.36,.08,.4],[0,.08,0],mail ? this.metal : this.cloth);
+      for (const side of [-1,1]) {const sleeve=box([.15,.07,.23],[side*.23,.08,-.08],mail ? this.metal : this.cloth);sleeve.rotation.y=side*.35;}
+      box([.08,.015,.18],[0,.13,0],this.bark);
+    } else if (slot === 'boots' || slot === 'gloves') {
+      for (const side of [-1,1]) {
+        box([.12,.08,.23],[side*.09,.06,0],this.bark);
+        box([.12,slot === 'boots' ? .15 : .04,.1],[side*.09,slot === 'boots' ? .13 : .1,-.06],this.cloth);
+      }
+    } else {
+      const ring = new THREE.Mesh(this.ring,slot === 'belt' ? this.bark : this.metal);ring.rotation.x=-Math.PI/2;ring.position.y=.05;
+      if(slot === 'belt') ring.scale.set(1.8,1.2,1.4);
+      model.add(ring);
+      box(slot === 'belt' ? [.1,.03,.08] : [.065,.05,.065],[0,.06,slot === 'belt' ? -.23 : -.13],slot === 'amulet' ? this.ribbon : this.metal);
+    }
+  }
   private async loadPotion(drop: GroundDrop, visual: DropVisual): Promise<void> {
     let instance: AssetInstance | undefined;
     try { instance=await assetLibrary.loadAsset('generic:model:sm-gen-prop-potion-01'); if(this.disposed || this.drops.get(drop.id)!==visual){instance.release();return;}
@@ -88,10 +118,10 @@ export class AdventureVisuals {
   private async loadGear(drop: GroundDrop, visual: DropVisual): Promise<void> {
     let instance: AssetInstance | undefined;
     try {
-      instance = await assetLibrary.loadAsset(itemDefinitions[drop.item as ItemId].asset);
+      instance = await assetLibrary.loadAsset(itemDefinitions[drop.item as HandItem].asset);
       if (this.disposed || this.drops.get(drop.id) !== visual) { instance.release(); return; }
       const object = instance.object, bounds = new THREE.Box3().setFromObject(object), size = bounds.getSize(new THREE.Vector3());
-      object.scale.multiplyScalar(itemDefinitions[drop.item as ItemId].length / Math.max(size.x, size.y, size.z));
+      object.scale.multiplyScalar(itemDefinitions[drop.item as HandItem].length / Math.max(size.x, size.y, size.z));
       object.rotation.x = Math.PI / 2; object.updateMatrixWorld(true);
       bounds.setFromObject(object); const center = bounds.getCenter(new THREE.Vector3()); object.position.add(new THREE.Vector3(-center.x, .03 - bounds.min.y, -center.z));
       disposeSceneInstances(visual.model); visual.model.clear(); visual.model.add(object); visual.instance = instance; visual.boundsValid = false;
@@ -129,6 +159,6 @@ export class AdventureVisuals {
     this.disposed = true; this.portal?.dispose(); this.highlight.removeFromParent();
     this.drops.forEach(v => { v.instance?.release(); disposeSceneInstances(v.root); v.root.removeFromParent(); }); this.drops.clear();
     this.currentDrops.clear(); this.pickRoots.length = 0; this.pickHits.length = 0;
-    for (const resource of [this.oreGeometry, this.stone, this.iron, this.geometry, this.box, this.arc, this.paper, this.ribbon, this.bark, this.metal, this.potionGlass, this.markerGeometry, this.markerMaterial]) resource.dispose();
+    for (const resource of [this.oreGeometry, this.stone, this.iron, this.geometry, this.box, this.arc, this.paper, this.ribbon, this.bark, this.metal, this.potionGlass, this.markerGeometry, this.markerMaterial,this.ring,this.cap,this.cloth]) resource.dispose();
   }
 }

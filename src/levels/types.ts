@@ -1,3 +1,5 @@
+import type { ItemId } from '../gameplay/equipment';
+import type { EnemyId } from '../gameplay/encounter';
 import type { GrassPatch } from './grass';
 import type { LightingRecipe } from './lighting';
 import type { LocalLightRole } from './local-lighting';
@@ -19,10 +21,10 @@ export type Placement = {
 export type Region = { id: string; center: Point; radius: number; role: 'combat' | 'arrival' | 'route' };
 export type LightingGrade = { shadows: string; highlights: string; strength: number };
 export type AreaLighting = { background: string; fogNear: number; fogFar: number; ambient: { sky: string; ground: string; intensity: number }; sun: { color: string; intensity: number; position: [number, number, number]; shadowExtent: number }; environment?: EnvironmentLighting; probes?: ProbeLighting; saturation?: number; grade?: LightingGrade };
-export type Chest = { id: string; prop: string; position: Point; scrolls: number; guard?: 'enemy' | 'caster' };
+export type Chest = { id: string; prop: string; position: Point; scrolls: number; potions?: number; equipment?: ItemId[]; guard?: EnemyId | null };
 export type Campfire = { id: string; name: string; position: Point; arrival: Spawn; heals?: boolean };
 export type AreaDefinition = {
-  version: 1; id: string; name: string; legacy?: boolean; terminal?: boolean; chests?: Chest[]; kind?: 'safe' | 'encounter'; campfires?: Campfire[]; portalArrival?: Spawn;
+  version: 1; id: string; name: string; legacy?: boolean; terminal?: boolean; chests?: Chest[]; enemyEquipment?: Partial<Record<EnemyId,ItemId[]>>; kind?: 'safe' | 'encounter'; campfires?: Campfire[]; portalArrival?: Spawn;
   shelter?: { position: Point; yaw: number; stash: Point };
   envelope: { width: number; depth: number; apron: number; yaw: number; reference: { width: number; height: number; zoom: number }; screen: [number, number] };
   layout: EncounterLayout; traversal?: Traversal; seed: number; props: Placement[];

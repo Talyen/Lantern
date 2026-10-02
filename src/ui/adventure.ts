@@ -4,7 +4,8 @@ import { bagWidth, bagHeight, stackLimit, emptyPosition, equipInstance, lootDefi
 import { progression, shelterRecipe, skillProgress } from '../gameplay/skills';
 import { countItem } from '../gameplay/inventory';
 import type { WeaponSet } from '../gameplay/abilities';
-import { supportsShield } from '../gameplay/equipment';
+import { equipmentCatalog, isEquipmentSlot, itemIds, sharedSlots, supportsShield, type EquipmentSlot, type ItemId, type WeaponItem } from '../gameplay/equipment';
+import { resolveCombatStats, type CombatStats } from '../gameplay/combat-stats';
 import { itemIcon } from './item-icons';
 import { setText, setDisabled } from './dom';
 
@@ -34,12 +35,24 @@ export class AdventureMenus {
   private busy = false;
   private viewSet: WeaponSet = 0;
   private selected: string | null = null;
+  private comparisonId: string | null = null;
+  private ringSlot: 'ring-left' | 'ring-right' = 'ring-left';
+  private ringChoices = document.createElement('div');
   private drag: Drag | null = null;
   private splitId: string | null = null;
   constructor(private clearInput: () => void, private focus: () => void, private cast: () => void, private context: InventoryMenuContext, private sound?: (cue: 'menuOpen' | 'menuClose') => void) {
     const sets=document.createElement('div');sets.className='equipment-set-tabs';
     for(const set of [0,1] as const){const button=document.createElement('button');button.type='button';button.textContent=`Weapon Set ${set===0 ? 'I' : 'II'}`;button.dataset.set=String(set);button.onclick=()=>{this.viewSet=set;this.selected=null;this.cancelDrag();this.refresh();};sets.append(button);}
     this.inventory.querySelector('.equipment-slots')!.before(sets);
+    const shared = this.inventory.querySelector('.shared-equipment')!;
+    const labels = {'helmet':'Helmet','body':'Body','gloves':'Gloves','boots':'Boots','ring-left':'Left Ring','ring-right':'Right Ring','amulet':'Amulet','belt':'Belt'};
+    for (const slot of sharedSlots) {
+      const host=document.createElement('div');host.className='equipment-slot';host.dataset.equipmentSlot=slot;
+      const label=document.createElement('span');label.textContent=labels[slot];const contents=document.createElement('div');contents.id=`equipment-${slot}`;host.append(label,contents);shared.append(host);
+    }
+    this.ringChoices.className='ring-choices';
+    for(const slot of ['ring-left','ring-right'] as const) {const button=document.createElement('button');button.type='button';button.textContent=slot==='ring-left' ? 'Left Ring' : 'Right Ring';button.dataset.ring=slot;button.onclick=()=>{this.ringSlot=slot;this.refreshSelection();};this.ringChoices.append(button);}
+    this.detail.after(this.ringChoices);
     for (const dialog of [this.inventory, this.travel, this.repair]) {
       dialog.querySelector('button[data-close]')!.addEventListener('click', () => this.close());
       bindMenuDismissal(dialog, () => this.close());
@@ -49,7 +62,7 @@ export class AdventureMenus {
     document.getElementById('inventory-transfer')!.onclick = () => { const entry=this.selectedItem();if(entry)void this.perform(()=>this.context.transfer(entry.id,entry.quantity,this.container(entry.id)==='bag')).catch(this.failed); };
     this.use.addEventListener('click', () => { if (this.busy || this.drag || !this.character?.scrolls) return; this.close(); this.cast(); });
     document.getElementById('inventory-sort')!.onclick = () => { this.cancelDrag(); void this.perform(() => this.context.change(sortedItems(this.character!.items))).catch(this.failed); };
-    document.getElementById('inventory-equip')!.onclick = () => { const item = this.selectedItem(); if (item) void this.perform(() => this.context.change(equipInstance(this.character!.items, item.id, item.item === 'shield' ? 'off' : 'main',this.viewSet))).catch(this.failed); };
+    document.getElementById('inventory-equip')!.onclick = () => { const item = this.selectedItem(); if (item) void this.perform(() => this.context.change(equipInstance(this.character!.items, item.id, this.destinationSlot(item),this.viewSet))).catch(this.failed); };
     document.getElementById('inventory-remove')!.onclick = () => { const item = this.selectedItem(); if (!item) return; void this.perform(() => { const point = emptyPosition(this.character!.items, item.item); if (!point) throw new Error('Inventory full.'); return this.context.change(moveItem(this.character!.items, item.id, point.x, point.y, item.quantity, this.context.newId)); }).catch(this.failed); };
     document.getElementById('inventory-recover')!.onclick = () => { const item = this.selectedItem(); if (item) void this.perform(() => this.context.recover(item.id)).catch(this.failed); };
     document.getElementById('inventory-split')!.onclick = () => { const item = this.selectedItem(); if (item) this.openSplit(item); };
@@ -120,9 +133,9 @@ export class AdventureMenus {
   private button(entry: InventoryItem): HTMLButtonElement {
     const button = document.createElement('button'); button.type = 'button'; button.className = 'bag-item'; button.dataset.instance = entry.id;
     const definition = lootDefinitions[entry.item]; button.setAttribute('aria-label', `${definition.name}${definition.stackable ? `, ${entry.quantity}` : ''}`);
-    button.title = definition.name; button.innerHTML = `${itemIcon(entry.item)}${entry.slot === 'main' || entry.slot === 'off' ? `<span class="equip-name">${definition.name}</span>` : ''}${definition.stackable ? `<span class="stack-count">${entry.quantity}</span>` : ''}`;
+    button.title = definition.name; button.innerHTML = `${itemIcon(entry.item)}${isEquipmentSlot(entry.slot) ? `<span class="equip-name">${definition.name}</span>` : ''}${definition.stackable ? `<span class="stack-count">${entry.quantity}</span>` : ''}`;
     button.onclick = () => { this.selected = entry.id; this.refreshSelection(); };
-    button.ondblclick = () => { if(this.stashMode && ['bag','overflow'].includes(entry.slot)){void this.perform(()=>this.context.transfer(entry.id,entry.quantity,this.container(entry.id)==='bag')).catch(this.failed);return;} if (!definition.stackable && entry.slot === 'bag') void this.perform(() => this.context.change(equipInstance(this.character!.items, entry.id, entry.item === 'shield' ? 'off' : 'main',this.viewSet))).catch(this.failed); };
+    button.ondblclick = () => { if(this.stashMode && ['bag','overflow'].includes(entry.slot)){void this.perform(()=>this.context.transfer(entry.id,entry.quantity,this.container(entry.id)==='bag')).catch(this.failed);return;} if (!definition.stackable && entry.slot === 'bag') void this.perform(() => this.context.change(equipInstance(this.character!.items, entry.id, this.destinationSlot(entry),this.viewSet))).catch(this.failed); };
     button.disabled = this.busy; return button;
   }
   private refresh(): void {
@@ -136,9 +149,9 @@ export class AdventureMenus {
       const button = this.button(entry), definition = lootDefinitions[entry.item];
       Object.assign(button.style, { gridColumn: `${entry.x + 1} / span ${definition.width}`, gridRow: `${entry.y + 1} / span ${definition.height}` }); this.grid.append(button);
     }
-    for (const slot of ['main', 'off'] as const) {
+    for (const slot of ['main', 'off',...sharedSlots] as const) {
       const host = document.getElementById(`equipment-${slot}`)!; host.replaceChildren();
-      const entry = character.items.find(i => i.slot === slot && (i.weaponSet ?? 0)===this.viewSet);
+      const entry = character.items.find(i => i.slot === slot && (slot !== 'main' && slot !== 'off' || (i.weaponSet ?? 0)===this.viewSet));
       if (entry) host.append(this.button(entry));
       else host.textContent = slot === 'off' && itemLoadout(character.items,this.viewSet).main !== null && !supportsShield(itemLoadout(character.items,this.viewSet).main) ? 'Two-handed' : 'Empty';
     }
@@ -153,16 +166,63 @@ export class AdventureMenus {
     (document.getElementById('shelter-repair') as HTMLButtonElement).disabled=this.busy || character.shelterRestored || !Object.entries(shelterRecipe).every(([item,cost])=>countItem(character.items.filter(i=>i.slot==='bag'),item as 'wood'|'stone'|'iron')>=cost);
     (document.getElementById('stash-sort') as HTMLButtonElement).disabled=this.busy;
     (document.getElementById('inventory-sort') as HTMLButtonElement).disabled = this.busy;
+    const stats=resolveCombatStats(character.items,this.viewSet);
+    document.getElementById('loadout-stats')!.replaceChildren(...(['maxHealth','maxMana','armor','damage'] as const).map(key=>{const row=document.createElement('div'),label=document.createElement('span'),value=document.createElement('strong');label.textContent=this.statLabel(key);value.textContent=this.statValue(key,stats[key]);row.append(label,value);return row;}));
     this.inventory.setAttribute('aria-busy', String(this.busy)); this.refreshSelection();
   }
   private selectedItem(): InventoryItem | undefined { return this.entries().find(i => i.id === this.selected); }
   private refreshSelection(): void {
     const entry = this.selectedItem(); this.inventory.classList.toggle('has-selection',!!entry); this.detail.textContent = entry ? `${lootDefinitions[entry.item].name}${lootDefinitions[entry.item].stackable ? ` · ${entry.quantity}` : ''}` : '';
-    for (const [id, visible] of [['inventory-equip', entry && this.container(entry.id)==='bag' && entry.slot === 'bag' && !lootDefinitions[entry.item].stackable], ['inventory-remove', entry?.slot === 'main' || entry?.slot === 'off'], ['inventory-recover', entry?.slot === 'overflow'], ['inventory-transfer', this.stashMode && entry && ['bag','overflow'].includes(entry.slot)], ['inventory-split', entry && entry.quantity > 1]] as const) {
+    this.renderComparison(entry);
+    const ringMove=entry && itemIds.includes(entry.item as ItemId) && equipmentCatalog[entry.item as ItemId].slot==='ring' && isEquipmentSlot(entry.slot) && entry.slot!==this.ringSlot;
+    for (const [id, visible] of [['inventory-equip', entry && this.container(entry.id)==='bag' && (entry.slot === 'bag' || ringMove) && !lootDefinitions[entry.item].stackable], ['inventory-remove', entry && isEquipmentSlot(entry.slot)], ['inventory-recover', entry?.slot === 'overflow'], ['inventory-transfer', this.stashMode && entry && ['bag','overflow'].includes(entry.slot)], ['inventory-split', entry && entry.quantity > 1]] as const) {
       const button = document.getElementById(id) as HTMLButtonElement; button.hidden = !visible; button.disabled = this.busy;
     }
     document.getElementById('inventory-transfer')!.textContent=entry && this.container(entry.id)==='stash' ? 'Take' : 'Store';
     this.inventory.querySelectorAll<HTMLElement>('[data-instance]').forEach(el => el.classList.toggle('selected', el.dataset.instance === this.selected));
+  }
+  private destinationSlot(entry: InventoryItem): EquipmentSlot {
+    const slot = equipmentCatalog[entry.item as ItemId].slot;
+    return slot === 'ring' ? this.ringSlot : slot;
+  }
+  private statLabel(key: keyof CombatStats): string {
+    return {damage:'Damage',attackRate:'Attack speed',reach:'Reach / Range',armor:'Armor',maxHealth:'Health',maxMana:'Mana',manaRegen:'Mana recovery',moveSpeed:'Movement',family:'Weapon'}[key];
+  }
+  private statValue(key: keyof CombatStats, value: number): string {
+    if(key==='attackRate')return `${Math.round(value*100)}%`;
+    if(key==='reach')return `${Number(value.toFixed(2))} m`;
+    if(key==='moveSpeed')return `${Number(value.toFixed(2))} m/s`;
+    if(key==='manaRegen')return `${Number(value.toFixed(2))}/s`;
+    return String(Number(value.toFixed(2)));
+  }
+  private renderComparison(entry: InventoryItem | undefined): void {
+    const details=document.getElementById('inventory-item-stats')!,comparison=document.getElementById('inventory-comparison')!;
+    details.replaceChildren();comparison.replaceChildren();this.ringChoices.hidden=true;
+    if(!entry || !itemIds.some(id=>id===entry.item)) {this.comparisonId=null;return;}
+    const definition=equipmentCatalog[entry.item as ItemId];
+    if(this.comparisonId!==entry.id) {
+      this.comparisonId=entry.id;
+      this.ringSlot=entry.slot==='ring-left' || entry.slot==='ring-right' ? entry.slot : this.character!.items.some(item=>item.slot==='ring-left') && !this.character!.items.some(item=>item.slot==='ring-right') ? 'ring-right' : 'ring-left';
+    }
+    this.ringChoices.hidden=definition.slot!=='ring';
+    this.ringChoices.querySelectorAll<HTMLElement>('[data-ring]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.ring===this.ringSlot)));
+    const line=(label:string,value:string)=>{const row=document.createElement('div'),name=document.createElement('span'),amount=document.createElement('strong');name.textContent=label;amount.textContent=value;row.append(name,amount);return row;};
+    if(definition.weapon)for(const [key,value] of [['damage',definition.weapon.damage],['attackRate',definition.weapon.rate],['reach',definition.weapon.reach]] as const)details.append(line(this.statLabel(key),this.statValue(key,value)));
+    const labels={armor:'Armor',health:'Health',mana:'Mana',manaRegen:'Mana recovery',damage:'Damage',attackRate:'Attack speed',moveSpeed:'Movement'};
+    for(const [key,value] of Object.entries(definition.bonuses))details.append(line(labels[key as keyof typeof labels],`+${['damage','attackRate','moveSpeed'].includes(key) ? `${Math.round(value*100)}%` : `${value}${key==='manaRegen' ? '/s' : ''}`}`));
+    if(entry.item==='shield')details.append(line('Frontal block','50% damage reduction'));
+    const slot=this.destinationSlot(entry), hand=slot==='main' || slot==='off';
+    const equipped=this.character!.items.find(item=>item.slot===slot && (!hand || (item.weaponSet ?? 0)===this.viewSet));
+    if(equipped?.id===entry.id)return;
+    const label=document.createElement('p');label.textContent=equipped ? `Compared with ${lootDefinitions[equipped.item].name}` : 'Compared with empty slot';comparison.append(label);
+    const candidate=this.character!.items.filter(item=>item.id!==entry.id && !(item.slot===slot && (!hand || (item.weaponSet ?? 0)===this.viewSet)) && !(slot==='main' && !supportsShield(entry.item as WeaponItem) && item.slot==='off' && (item.weaponSet ?? 0)===this.viewSet));
+    candidate.push({...entry,slot,weaponSet:hand ? this.viewSet : undefined});
+    const before=resolveCombatStats(this.character!.items,this.viewSet),after=resolveCombatStats(candidate,this.viewSet);
+    for(const key of ['damage','attackRate','reach','armor','maxHealth','maxMana','manaRegen','moveSpeed'] as const) {
+      const delta=after[key]-before[key];if(Math.abs(delta)<.00001)continue;
+      const amount=key==='attackRate' ? `${Math.round(delta*100)}%` : this.statValue(key,delta);
+      const row=line(this.statLabel(key),`${delta>0 ? '+' : ''}${amount}`);row.dataset.gain=String(delta>0);comparison.append(row);
+    }
   }
   private openSplit(entry: InventoryItem): void {
     this.cancelDrag(); this.splitId = entry.id; this.split.hidden = false;
@@ -194,7 +254,7 @@ export class AdventureMenus {
     await this.perform(()=>{
       if(x<panel.left || x>panel.right || y<panel.top || y>panel.bottom){if(drag.container==='stash')throw new Error('Take the item into your bag first.');return this.context.drop(entry.id,drag.quantity);}
       const slot=document.elementFromPoint(x,y)?.closest<HTMLElement>('[data-equipment-slot]')?.dataset.equipmentSlot;
-      if(slot==='main' || slot==='off'){if(drag.container==='stash')throw new Error('Take the item into your bag first.');return this.context.change(equipInstance(this.character!.items,entry.id,slot,this.viewSet));}
+      if(slot && isEquipmentSlot(slot)){if(drag.container==='stash')throw new Error('Take the item into your bag first.');return this.context.change(equipInstance(this.character!.items,entry.id,slot,this.viewSet));}
       if(!target || !point)throw new Error('Item does not fit.');
       if(target.container!==drag.container)return this.context.transfer(entry.id,drag.quantity,target.container==='stash',point);
       const next=moveItem(this.contents(drag.container),entry.id,point.x,point.y,drag.quantity,this.context.newId);

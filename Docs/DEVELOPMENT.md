@@ -218,3 +218,7 @@ Left-click loot or a usable chest, fire, portal, tree, mineral deposit, shelter 
 For action-bar or keybinding changes, choose the relevant portion of this flow in one owned normal-settings session: acquire camp rewards, configure Sword + Shield in set I and Bow in set II, assign their Basics and Skills, activate the fixed bar to switch automatically, and verify cooldowns persist. Use/release Shield Basic, heal with F, cast with T, click a tree/chest, and apply/cancel a remapping including a mouse input and secondary movement. Restart when verifying saved equipment/assignments/preferences. Toggle cosmetic Outlines off when checking that interaction highlighting remains independent. Source motion audition and focused migration/simulation checks are targeted supplements; no full gameplay matrix is required.
 
 Performance testing requires a specific user request or an evidenced performance defect, recorded with `levels:measure --reason "request or defect evidence"`. It borrows the owned authoring preview's single GPU lease. Routine handoff does not measure.
+
+## Equipment acceptance
+
+[Combat and equipment](EQUIPMENT.md) owns the full shared layout, fixed catalog values, guaranteed reward sources and revision 6 save compatibility. Use one short owned preview to collect, compare and equip gear, confirm armor and attack-rate behavior, swap prepared sets, choose ring destinations and reload. No resource refill occurs on equipment changes. Preserve the native WebGPU pipeline and original Paladin appearance.

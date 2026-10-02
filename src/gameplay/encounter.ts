@@ -1,5 +1,7 @@
 import { abilities, abilitySet, basicAbility, type AbilityId, type WeaponSet } from './abilities';
 import type { Loadout, Weapon } from './equipment';
+import { itemLoadout, type InventoryItem } from './inventory';
+import { baseStats, armoredDamage, resolveCombatStats, type CombatStats } from './combat-stats';
 import { constrain, legacyLayout, type EncounterLayout, type Spawn } from './area';
 /** Encounter simulation. Positions, clocks and animation timings use world units and seconds. */
 export const enemyIds = ['enemy', 'caster'] as const;
@@ -13,8 +15,8 @@ export type ActorState = {
   lock: number; attackTime: number; contactIndex: number;
 };
 export type EnemyState = ActorState & { kind: EnemyKind; home?: Spawn; engaged: boolean; returning: boolean; cooldown: number };
-export const playerMaxHealth = 100, enemyMaxHealth = 100, playerMaxMana = 100;
-export const playerAttackDamage = 50, enemyAttackDamage = 20;
+export const playerMaxHealth = baseStats.maxHealth, enemyMaxHealth = 200, playerMaxMana = baseStats.maxMana;
+export const enemyAttackDamage = 20;
 export const enemyNoticeRadius = 6, enemyLeashRadius = 10;
 export const dodgeDuration = 0.45, dodgeDistance = 2.4, dodgeInvulnerability = 0.25, dodgeCooldown = 1;
 export type Projectile = { id: number; owner: ActorId; kind: 'arrow' | 'bolt'; x: number; y: number; z: number; dx: number; dz: number; remaining: number; firstStep?: number; damage?: number; pierced?: ActorId[] };
@@ -23,9 +25,10 @@ export type PendingInput = { kind: 'attack' | 'dodge' | 'ability' | 'swap'; abil
 export type Encounter = {
   phase: Phase; layout: EncounterLayout; player: ActorState; enemies: Record<EnemyId, EnemyState>;
   weapon: Weapon | null; shield: boolean; blocking: boolean; pending: PendingInput | null; projectiles: Projectile[]; nextProjectile: number;
+  stats: CombatStats; setStats: [CombatStats,CombatStats];
   attackCooldown: number; invulnerability: number; playerMana: number;
   weaponSets: [Loadout,Loadout]; activeSet: WeaponSet; abilityCooldowns: Partial<Record<AbilityId,number>>; potionCooldown: number;
-  playerAction: {duration:number;contacts:readonly number[];damage:number;arc:number;weapon:Weapon;ability:AbilityId | null} | null;
+  playerAction: {duration:number;contacts:readonly number[];damage:number;rate:number;reach:number;arc:number;weapon:Weapon;ability:AbilityId | null} | null;
   dodgeRemaining: number; dodgeCooldown: number; dodgeDirection: { x: number; z: number };
 };
 export type ActorTiming = { attack: number; hit: number; contacts: readonly number[]; commitLead?: number; abilities?: Partial<Record<AbilityId,{attack:number;contacts:readonly number[]}>> };
@@ -53,22 +56,39 @@ export type EncounterEvent =
 export function createEncounter(phase: Phase = 'loading', layout: EncounterLayout = legacyLayout, enemyKind: EnemyKind = 'raider'): Encounter {
   const actor = (x: number, z: number, hp: number, speed: number): ActorState =>
     ({ x, y: 0, z, yaw: 0, hp, speed, lock: 0, attackTime: -1, contactIndex: 0 });
-  const player = actor(...layout.player.position, phase === 'loading' ? 0 : playerMaxHealth, 3.2);
+  const player = actor(...layout.player.position, phase === 'loading' ? 0 : playerMaxHealth, baseStats.moveSpeed);
   player.yaw = layout.player.yaw;
   const enemies = Object.fromEntries(enemyIds.map(id => {
     const home = layout[id], spawn = home ?? layout.player;
     return [id, { ...actor(...spawn.position, home && phase !== 'loading' ? enemyMaxHealth : 0, 1.45), yaw: spawn.yaw, kind: id === 'caster' ? 'caster' : enemyKind, home, engaged: false, returning: false, cooldown: .8 }];
   })) as Record<EnemyId, EnemyState>;
-  return { weapon: 'axe', shield: false, blocking: false, pending: null, projectiles: [], nextProjectile: 0, phase, layout, player, enemies,
+  const stats = resolveCombatStats([{id:'starter',item:'axe',quantity:1,slot:'main',x:0,y:0}]);
+  return { stats,setStats:[stats,resolveCombatStats([])],weapon: 'axe', shield: false, blocking: false, pending: null, projectiles: [], nextProjectile: 0, phase, layout, player, enemies,
     attackCooldown: 0, invulnerability: 0, playerMana: playerMaxMana,
     weaponSets:[{main:'axe',off:null},{main:null,off:null}],activeSet:0,abilityCooldowns:{},potionCooldown:0,playerAction:null,
     dodgeRemaining: 0, dodgeCooldown: 0, dodgeDirection: { x: 0, z: 0 } };
 }
 export function resetEncounter(state: Encounter): EncounterEvent[] {
-  const { weapon, shield, weaponSets, activeSet } = state;
-  Object.assign(state, createEncounter('playing', state.layout, state.enemies.enemy.kind), { weapon, shield, weaponSets, activeSet });
+  const { weapon, shield, weaponSets, activeSet, stats, setStats } = state;
+  Object.assign(state, createEncounter('playing', state.layout, state.enemies.enemy.kind), { weapon, shield, weaponSets, activeSet, stats, setStats });
+  state.player.hp = stats.maxHealth; state.playerMana = stats.maxMana; state.player.speed = stats.moveSpeed;
   return [{ type: 'label', value: 'MOVE TO BEGIN' }, { type: 'animation', actor: 'player', motion: 'idle' },
     ...enemyIds.map(actor => ({ type: 'animation' as const, actor, motion: 'idle' as const }))];
+}
+
+/** Commit derived equipment state only after presentation preparation succeeds. */
+export function applyEquipment(state: Encounter, items: readonly InventoryItem[], active: WeaponSet): void {
+  state.weaponSets = [itemLoadout(items,0),itemLoadout(items,1)];
+  state.setStats = [resolveCombatStats(items,0),resolveCombatStats(items,1)];
+  state.activeSet = active;
+  applyActiveStats(state);
+}
+function applyActiveStats(state: Encounter): void {
+  state.stats = state.setStats[state.activeSet];
+  state.weapon = state.stats.family; state.shield = !!state.weaponSets[state.activeSet].off;
+  state.player.speed = state.stats.moveSpeed;
+  state.player.hp = Math.min(state.player.hp,state.stats.maxHealth);
+  state.playerMana = Math.min(state.playerMana,state.stats.maxMana);
 }
 
 export function attack(state: Encounter, timing: ActorTiming, paused: boolean, aim?: AimPoint): EncounterEvent[] {
@@ -79,16 +99,17 @@ export function attack(state: Encounter, timing: ActorTiming, paused: boolean, a
   state.pending = null;
   // An accepted swing commits its direction; pointer updates cannot steer its contacts.
   if (aim) faceAim(state.player, aim);
-  state.player.lock = timing.attack;
-  state.attackCooldown = timing.attack;
+  const rate = state.stats.attackRate, duration = timing.attack / rate;
+  state.player.lock = duration;
+  state.attackCooldown = duration;
   state.player.attackTime = 0;
   state.player.contactIndex = 0;
-  state.playerAction={duration:timing.attack,contacts:[...timing.contacts],damage:playerAttackDamage,arc:state.weapon==='sword' ? Math.PI/4 : Math.acos(.1),weapon:state.weapon,ability:basicAbility(state.weapon)};
+  state.playerAction={duration,contacts:timing.contacts.map(contact=>contact/rate),damage:state.stats.damage,rate,reach:state.stats.reach,arc:state.weapon==='sword' ? Math.PI/4 : Math.acos(.1),weapon:state.weapon,ability:basicAbility(state.weapon)};
   return [{ type: 'label', value: 'DEFEAT THE RAIDER' }, { type: 'animation', actor: 'player', motion: 'attack' }, { type: 'action', actor: 'player', action: 'attack', weapon: state.weapon }];
 }
 function activateSet(state: Encounter, set: WeaponSet): EncounterEvent[] {
   if (state.activeSet===set) return [];
-  state.activeSet=set; state.weapon=state.weaponSets[set].main; state.shield=!!state.weaponSets[set].off;
+  state.activeSet=set; applyActiveStats(state);
   state.blocking=false; state.player.attackTime=-1;
   return [{type:'weaponSet',set}];
 }
@@ -113,7 +134,7 @@ export function useAbility(state: Encounter, id: AbilityId, timing: ActorTiming,
   const attackEvents=attack(state,{...timing,...action!},false,aim);
   if (!attackEvents.length || !state.playerAction) return events;
   state.playerMana-=definition.mana; state.abilityCooldowns[id]=definition.cooldown;
-  Object.assign(state.playerAction,{ability:id,damage:definition.damage,arc:id==='sweep' ? Math.PI/2 : state.playerAction.arc});
+  Object.assign(state.playerAction,{ability:id,damage:state.stats.damage*definition.damageScale,arc:id==='sweep' ? Math.PI/2 : state.playerAction.arc});
   for (const event of attackEvents) if (event.type==='animation' && event.actor==='player') event.motion=definition.motion;
   return [...events,...attackEvents];
 }
@@ -137,7 +158,7 @@ function advancePlayerClocks(state: Encounter, dt: number): void {
   state.attackCooldown = Math.max(0, state.attackCooldown - dt);
   state.player.lock = Math.max(0, state.player.lock - dt);
   state.dodgeCooldown = Math.max(0, state.dodgeCooldown - dt);
-  state.playerMana=Math.min(playerMaxMana,state.playerMana+dt*8);
+  state.playerMana=Math.min(state.stats.maxMana,state.playerMana+dt*state.stats.manaRegen);
   state.potionCooldown=Math.max(0,state.potionCooldown-dt);
   for (const id of Object.keys(state.abilityCooldowns) as AbilityId[]) state.abilityCooldowns[id]=Math.max(0,state.abilityCooldowns[id]!-dt);
 }
@@ -206,20 +227,20 @@ function preparePlayer(state: Encounter, dt: number, input: Input, timing: Actor
   return prepared;
 }
 
-function hit(state: Encounter, actor: ActorId, timing: Timings, events: EncounterEvent[], source?: Weapon, incoming?: { x: number; z: number }, impactOffset = 0, playerDamage = playerAttackDamage): void {
+function hit(state: Encounter, actor: ActorId, timing: Timings, events: EncounterEvent[], source?: Weapon, incoming?: { x: number; z: number }, impactOffset = 0, rawDamage = enemyAttackDamage): void {
   if ((actor === 'player' ? state.player : state.enemies[actor]).hp <= 0 || actor === 'player' && state.invulnerability > impactOffset) return;
   const target = actor === 'player' ? state.player : state.enemies[actor];
-  let damage = actor !== 'player' ? playerDamage : enemyAttackDamage;
+  let damage = actor !== 'player' ? rawDamage : armoredDamage(rawDamage,state.stats.armor);
+  let blocked = false;
   if (actor === 'player' && state.blocking) {
     // Projectiles are blocked by their incoming direction, even if the caster has moved.
     const dx = incoming?.x ?? 0, dz = incoming?.z ?? 0, distance = Math.hypot(dx,dz);
-    if (distance && (Math.sin(target.yaw)*dx + Math.cos(target.yaw)*dz) / distance >= .5) damage *= .5;
+    if (distance && (Math.sin(target.yaw)*dx + Math.cos(target.yaw)*dz) / distance >= .5) { damage *= .5; blocked = true; }
   }
   target.hp = Math.max(0, target.hp - damage);
   if (actor !== 'player' && source === 'axe') events.push({type:'axeXp'});
   if (actor !== 'player' && !state.enemies[actor].returning) state.enemies[actor].engaged = true;
   // A successful shield block retains the stance; rear hits interrupt normally.
-  const blocked = actor === 'player' && damage < enemyAttackDamage;
   const enemy = actor !== 'player' ? state.enemies[actor] : null;
   const contact = timing[actor].contacts[0];
   const committed = enemy?.kind === 'raider' && (timing[actor].commitLead ?? 0) > 0 && target.attackTime >= 0 && target.attackTime + impactOffset >= Math.max(0, contact - (timing[actor].commitLead ?? 0)) && target.attackTime < contact && target.hp > 0;
@@ -241,7 +262,7 @@ function hit(state: Encounter, actor: ActorId, timing: Timings, events: Encounte
 function stepPlayerAttack(state: Encounter, dt: number, timing: Timings, events: EncounterEvent[], movementWorld?: Movement, frameOffset = 0): void {
   const {player} = state;
   if (player.attackTime < 0) return;
-  const action=state.playerAction ?? {duration:timing.player.attack,contacts:timing.player.contacts,damage:playerAttackDamage,arc:Math.acos(.1),weapon:state.weapon,ability:null};
+  const action=state.playerAction ?? {duration:timing.player.attack/state.stats.attackRate,contacts:timing.player.contacts.map(contact=>contact/state.stats.attackRate),damage:state.stats.damage,rate:state.stats.attackRate,reach:state.stats.reach,arc:Math.acos(.1),weapon:state.weapon,ability:null};
   const contacts=action.contacts;
   player.attackTime += dt;
   while (player.contactIndex < contacts.length && player.attackTime >= contacts[player.contactIndex]) {
@@ -249,13 +270,13 @@ function stepPlayerAttack(state: Encounter, dt: number, timing: Timings, events:
     events.push({type:'action',actor:'player',action:'contact',weapon:action.weapon});
     if (action.weapon === 'bow' || action.weapon === 'staff') {
       const dx = Math.sin(player.yaw), dz = Math.cos(player.yaw);
-      state.projectiles.push({id: ++state.nextProjectile, owner: 'player', kind: action.weapon === 'bow' ? 'arrow' : 'bolt', x:player.x + dx * .35, y:player.y + 1.22, z:player.z + dz * .35, dx, dz, remaining:12, damage:action.damage, pierced:action.ability==='piercing-shot' ? [] : undefined, firstStep: Math.min(dt,player.attackTime-contacts[player.contactIndex-1])});
+      state.projectiles.push({id: ++state.nextProjectile, owner: 'player', kind: action.weapon === 'bow' ? 'arrow' : 'bolt', x:player.x + dx * .35, y:player.y + 1.22, z:player.z + dz * .35, dx, dz, remaining:action.reach, damage:action.damage, pierced:action.ability==='piercing-shot' ? [] : undefined, firstStep: Math.min(dt,player.attackTime-contacts[player.contactIndex-1])});
     } else for (const id of enemyIds) {
       const enemy = state.enemies[id];
       if (!enemy.home || enemy.hp <= 0) continue;
       const dx = enemy.x-player.x, dz = enemy.z-player.z, distance = Math.hypot(dx,dz);
       const facing = distance > 0 ? (Math.sin(player.yaw)*dx + Math.cos(player.yaw)*dz)/distance : 1;
-      if (distance < 1.95 && facing >= Math.cos(action.arc)-1e-6 && (!movementWorld || movementWorld.lineOfSight(player,enemy)) && Math.abs(player.y-enemy.y)<.8) hit(state,id,timing,events,action.weapon ?? undefined,undefined,frameOffset+Math.max(0,contacts[player.contactIndex-1]-(player.attackTime-dt)),action.damage);
+      if (distance < action.reach && facing >= Math.cos(action.arc)-1e-6 && (!movementWorld || movementWorld.lineOfSight(player,enemy)) && Math.abs(player.y-enemy.y)<.8) hit(state,id,timing,events,action.weapon ?? undefined,undefined,frameOffset+Math.max(0,contacts[player.contactIndex-1]-(player.attackTime-dt)),action.damage);
     }
   }
   if (player.attackTime >= action.duration) player.attackTime = -1;
@@ -282,7 +303,7 @@ function advanceProjectile(state: Encounter, projectile: Projectile, dt: number,
   }
   hits.sort((a,b)=>a.fraction-b.fraction);
   for (const contact of hits) {
-    hit(state,contact.id,timing,events,projectile.kind==='arrow' ? 'bow' : 'staff',{x:-projectile.dx,z:-projectile.dz},dt-elapsed+contact.fraction*distance/speed,projectile.damage ?? playerAttackDamage);
+    hit(state,contact.id,timing,events,projectile.kind==='arrow' ? 'bow' : 'staff',{x:-projectile.dx,z:-projectile.dz},dt-elapsed+contact.fraction*distance/speed,projectile.damage ?? (projectile.owner === 'player' ? state.stats.damage : enemyAttackDamage));
     if (!projectile.pierced) return false;
     projectile.pierced.push(contact.id);
   }

@@ -1,8 +1,8 @@
 import type { GameAudio } from '../audio/audio';
 import type { Adventure, CharacterSave } from '../gameplay/adventure';
-import { inCombat, type Encounter } from '../gameplay/encounter';
+import { applyEquipment, inCombat, type Encounter } from '../gameplay/encounter';
 import {
-  itemLoadout, lootDefinitions, removeQuantity, sameEquipment, validItems,
+  lootDefinitions, removeQuantity, sameEquipment, validItems,
   type InventoryItem,
 } from '../gameplay/inventory';
 import { play, type Actor } from './actors';
@@ -42,11 +42,7 @@ export class InventoryController {
 
   syncLoadout(): void {
     const { character } = this.adventure;
-    this.encounter.weaponSets = [itemLoadout(character.items, 0), itemLoadout(character.items, 1)];
-    this.encounter.activeSet = character.activeSet;
-    const loadout = this.encounter.weaponSets[character.activeSet];
-    this.encounter.weapon = loadout.main;
-    this.encounter.shield = !!loadout.off;
+    applyEquipment(this.encounter,character.items,character.activeSet);
   }
 
   private async prepareEquipment(items: InventoryItem[], save: boolean): Promise<void> {

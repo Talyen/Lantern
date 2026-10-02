@@ -1,6 +1,6 @@
 import { isRecord, parseJson } from '../data/json';
 import { initialBar, validBar, type ActionBar, type WeaponSet } from './abilities';
-import { itemIds, normalizeLoadout, type ItemId, type Loadout } from './equipment';
+import { equipmentCatalog, itemIds, normalizeLoadout, weaponFamily, type ItemId, type Loadout, type WeaponItem } from './equipment';
 import {
   countItem,
   itemLoadout,
@@ -15,7 +15,7 @@ import { progression } from './skills';
 export const characterSaveKey = 'lantern.character.v1';
 export const characterBackupKey = `${characterSaveKey}.backup`;
 export type CharacterSave = {
-  version: 5;
+  version: 6;
   activeSet: WeaponSet;
   actionBar: ActionBar;
   items: InventoryItem[];
@@ -39,9 +39,9 @@ export function character(
   ],
 ): CharacterSave {
   const value = {
-    version: 5 as const,
+    version: 6 as const,
     activeSet: 0 as WeaponSet,
-    actionBar: initialBar(itemLoadout(items).main),
+    actionBar: initialBar(weaponFamily(itemLoadout(items).main)),
     items,
     stash: [] as InventoryItem[],
     shelterRestored: false,
@@ -83,7 +83,8 @@ export function decodeCharacter(raw: string): CharacterSave {
   const counter = (n: unknown): n is number =>
     typeof n === 'number' && Number.isFinite(n) && n >= 0 && n <= Number.MAX_SAFE_INTEGER;
   const itemId = (id: unknown): id is ItemId => typeof id === 'string' && itemIds.includes(id as ItemId);
-  if (!isRecord(value) || typeof value.version !== 'number' || ![1, 2, 3, 4, 5].includes(value.version)
+  const weaponId = (id: unknown): id is WeaponItem => itemId(id) && equipmentCatalog[id].slot === 'main';
+  if (!isRecord(value) || typeof value.version !== 'number' || ![1, 2, 3, 4, 5, 6].includes(value.version)
     || !Array.isArray(value.campfires) || !value.campfires.every((id: unknown): id is string => typeof id === 'string'))
     throw new Error('Invalid character save');
   const hasHome = value.version >= 5 || (value.version === 4 && value.stash !== undefined);
@@ -130,7 +131,7 @@ export function decodeCharacter(raw: string): CharacterSave {
       if (!Array.isArray(value.equipment) || !value.equipment.every(itemId)
         || !Number.isSafeInteger(value.wood) || !counter(value.wood)
         || !counter(xp.woodcutting) || !counter(xp.axeCombat) || typeof value.campEquipmentClaimed !== 'boolean'
-        || !(savedLoadout.main === null || (itemId(savedLoadout.main) && savedLoadout.main !== 'shield'))
+        || !(savedLoadout.main === null || weaponId(savedLoadout.main))
         || (savedLoadout.off !== null && savedLoadout.off !== 'shield')
         || (savedLoadout.main && !value.equipment.includes(savedLoadout.main))
         || (savedLoadout.off && !value.equipment.includes(savedLoadout.off)))

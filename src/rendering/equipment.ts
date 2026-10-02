@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import { assetLibrary, type AssetInstance, type AssetLibrary } from '../assets/asset-library';
-import { itemDefinitions, normalizeLoadout, type ItemId, type Loadout } from '../gameplay/equipment';
+import { itemDefinitions, normalizeLoadout, type HandItem, type Loadout } from '../gameplay/equipment';
 import { markOutline } from './outlines';
 
-export type PreparedEquipment = { loadout: Loadout; attachments: { item: ItemId; socket: THREE.Object3D; instance: AssetInstance; grip: THREE.Group }[] };
+export type PreparedEquipment = { loadout: Loadout; attachments: { item: HandItem; socket: THREE.Object3D; instance: AssetInstance; grip: THREE.Group }[] };
 
 /** Models prepare off-scene; a failed or superseded load cannot replace a working loadout. */
 export class Equipment {
@@ -14,7 +14,7 @@ export class Equipment {
   async stage(requested: Loadout): Promise<PreparedEquipment> {
     if (this.disposed) throw new Error('Equipment has been closed.');
     const loadout = normalizeLoadout(requested);
-    const items = [loadout.main, loadout.off].filter((item): item is ItemId => item !== null);
+    const items = [loadout.main, loadout.off].filter((item): item is HandItem => item !== null);
     const sockets = items.map(item => {
       const name = this.definitions[item].hand, socket = this.actor.getObjectByName(name);
       if (!socket) throw new Error(`Cannot equip ${this.definitions[item].name}: character hand is unavailable.`);

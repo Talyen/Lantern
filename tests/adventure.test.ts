@@ -2,7 +2,7 @@ import { isRecord, parseJson } from '../src/data/json';
 import { expect, test, vi } from 'vitest';
 import { characterBackupKey, decodeCharacter } from '../src/gameplay/character-save';
 import { Adventure, characterSaveKey } from '../src/gameplay/adventure';
-import { createEncounter } from '../src/gameplay/encounter';
+import { applyEquipment, createEncounter } from '../src/gameplay/encounter';
 import homestead from '../src/levels/areas/homestead.json';
 import clearing from '../src/levels/areas/clearing.json';
 import type { AreaDefinition } from '../src/levels/types';
@@ -85,7 +85,7 @@ test('character saves retain scrolls/discoveries while session encounters and po
   const restored = new Adventure(storage);
   expect(restored.character).toEqual(state.character); expect(restored.portal).toBeNull();
   expect(restored.destinations({ 'new-area': discovered }).map(d => d.area.id)).toEqual(['new-area']);
-  restored.enter(encounter, field); expect(encounter.enemies.enemy.hp).toBe(100);
+  restored.enter(encounter, field); expect(encounter.enemies.enemy.hp).toBe(200);
   storage.setItem(characterSaveKey, JSON.stringify({ version: 1, scrolls: 7, campfires: ['removed/fire'] }));
   expect(new Adventure(storage).destinations({ homestead: home, clearing: field })).toHaveLength(1);
   storage.setItem(characterSaveKey, '{broken');
@@ -124,26 +124,26 @@ test('the chest scatters rewards once per session and only collected gear is per
   encounter.enemies.enemy.hp = 0; encounter.phase = 'won';
   expect(state.openChest(encounter, field, chest)).toBe(true);
   expect(state.character.equipment).toEqual(['axe']); expect(state.character.scrolls).toBe(3);
-  expect(state.session().drops).toHaveLength(6); expect(state.openChest(encounter, field, chest)).toBe(false);
+  expect(state.session().drops).toHaveLength(9); expect(state.openChest(encounter, field, chest)).toBe(false);
   const sword = state.session().drops.find(d => d.item === 'sword')!; sword.age = .6;
   expect(state.pickup(sword.id, chest.position, true)).toBe(true);
   state.enter(encounter, home); state.enter(encounter, field);
-  expect(state.session().drops).toHaveLength(5);
+  expect(state.session().drops).toHaveLength(8);
   const restored = new Adventure(storage); restored.enter(encounter, field, { position: chest.position, yaw: 0 }); encounter.enemies.enemy.hp = 0;
   restored.openChest(encounter, field, chest);
-  expect(restored.session().drops.map(d => d.item)).toEqual(['scroll', 'potion', 'shield', 'bow', 'staff']);
+  expect(restored.session().drops.map(d => d.item)).toEqual(['scroll', 'potion', 'shield', 'bow', 'staff','guard-helm','weathered-mail','duelist-gloves']);
 });
 
 test('legacy characters migrate equipped copies, resources and claimed rewards without loss', () => {
   const storage = memory(); storage.setItem(characterSaveKey, JSON.stringify({ version: 2, scrolls: 7, campfires: ['clearing/camp'], equipment: ['axe', 'sword', 'shield', 'bow', 'staff'], loadout: { main: 'bow', off: null }, wood: 12000, xp: { woodcutting: 20, axeCombat: 30 }, campEquipmentClaimed: true }));
   const state = new Adventure(storage, () => 1), encounter = createEncounter('playing');
-  expect([state.character.version, state.character.scrolls, state.character.loadout.main]).toEqual([5, 7, 'bow']);
+  expect([state.character.version, state.character.scrolls, state.character.loadout.main]).toEqual([6, 7, 'bow']);
   expect(state.character.equipment).toEqual(['bow', 'axe', 'sword', 'shield', 'staff']);
   expect(state.character.wood).toBe(12000); expect(state.character.items.some(i => i.slot === 'overflow')).toBe(true);
   expect(validItems(state.character.items)).toBe(true);
   const restored = new Adventure(storage); expect(restored.character).toEqual(state.character);
   restored.enter(encounter, field, { position: field.chests![0].position, yaw: 0 }); encounter.enemies.enemy.hp = 0; restored.openChest(encounter, field, field.chests![0]);
-  expect(restored.session().drops.map(d => d.item)).toEqual(['scroll','potion']);
+  expect(restored.session().drops.map(d => d.item)).toEqual(['scroll','potion','guard-helm','weathered-mail','duelist-gloves']);
   const overflow = restored.character.items.find(i => i.slot === 'overflow')!;
   const woodStack = restored.character.items.find(i => i.slot === 'bag' && i.item === 'wood')!;
   restored.replaceItems(removeQuantity(restored.character.items, woodStack.id, woodStack.quantity));
@@ -198,7 +198,7 @@ test('the separate caster and camp guard retain independent defeat and reward st
   expect(encounter.enemies.caster.kind).toBe('caster');
   encounter.enemies.caster.hp=50; encounter.enemies.caster.engaged=true;
   state.enter(encounter,home,undefined,true); state.enter(encounter,field);
-  expect([encounter.enemies.caster.hp,encounter.enemies.enemy.hp]).toEqual([50,100]);
+  expect([encounter.enemies.caster.hp,encounter.enemies.enemy.hp]).toEqual([50,200]);
   const chest=field.chests![0]; encounter.player.x=chest.position[0]; encounter.player.z=chest.position[1];
   expect(state.openChest(encounter,field,chest)).toBe(false);
   encounter.enemies.caster.hp=0; state.step(encounter,field,.01);
@@ -207,7 +207,7 @@ test('the separate caster and camp guard retain independent defeat and reward st
   expect(state.openChest(encounter,field,chest)).toBe(true);
   state.enter(encounter,home,undefined,true); state.enter(encounter,field);
   expect([encounter.enemies.caster.hp,encounter.enemies.enemy.hp,encounter.phase]).toEqual([0,0,'won']);
-  expect(state.session(field.id).drops).toHaveLength(8);
+  expect(state.session(field.id).drops).toHaveLength(14);
 });
 
 test('landing and physical access gate pickups, and a casting scroll cannot be dropped', () => {
@@ -229,7 +229,7 @@ test('adventure sound facts describe successful changes once and do not replay a
   expect(adventure.openChest(encounter,field,chest)).toBe(true);
   const rewards=adventure.takeEvents();
   expect(rewards.filter(e=>e.type==='chestOpen')).toHaveLength(1);
-  expect(rewards.filter(e=>e.type==='lootDrop')).toHaveLength(6);
+  expect(rewards.filter(e=>e.type==='lootDrop')).toHaveLength(9);
   const sword=adventure.session().drops.find(drop=>drop.item==='sword')!;
   sword.age=.6; expect(adventure.pickup(sword.id,sword.position,true)).toBe(true);
   expect(adventure.takeEvents().filter(e=>e.type==='lootPickup')).toHaveLength(1);
@@ -312,7 +312,7 @@ test('revision 3 migration preserves a full bag and grants starter potions only 
   const storage=memory(),items:InventoryItem[]=Array.from({length:96},(_,i)=>({id:`full-${i}`,item:'wood',quantity:99,slot:'bag',x:i%12,y:Math.floor(i/12)}));
   items.push({id:'item-20',item:'axe',quantity:1,slot:'main',x:0,y:0});
   storage.setItem(characterSaveKey,JSON.stringify({version:3,items,campfires:['homestead/camp'],xp:{woodcutting:30,axeCombat:40},campClaims:['sword']}));
-  const migrated=new Adventure(storage);expect(migrated.character.version).toBe(5);expect(migrated.character.items.filter(i=>i.item!=='potion')).toEqual(items);
+  const migrated=new Adventure(storage);expect(migrated.character.version).toBe(6);expect(migrated.character.items.filter(i=>i.item!=='potion')).toEqual(items);
   expect(migrated.character.items.find(i=>i.item==='potion')).toMatchObject({slot:'overflow',quantity:3});
   migrated.setActionBar(['sweep','piercing-shot',null,null,'axe-basic','shield-basic']);migrated.setWeaponSet(1);
   const restored=new Adventure(storage);expect(restored.character).toEqual(migrated.character);expect(restored.character.items.filter(i=>i.item==='potion')).toHaveLength(1);
@@ -323,7 +323,7 @@ test('potions heal during an action, never consume at full health, and keep thei
   expect(adventure.usePotion(encounter)).toBe(false);expect(adventure.character.potions).toBe(3);
   encounter.player.hp=20;encounter.player.lock=.5;encounter.player.attackTime=.1;
   expect(adventure.usePotion(encounter)).toBe(true);expect([encounter.player.hp,encounter.player.lock,encounter.player.attackTime,adventure.character.potions]).toEqual([60,.5,.1,2]);
-  expect(adventure.usePotion(encounter)).toBe(false);encounter.playerMana=37;encounter.abilityCooldowns.sweep=3;encounter.weapon='sword';encounter.shield=true;
+  expect(adventure.usePotion(encounter)).toBe(false);encounter.playerMana=37;encounter.abilityCooldowns.sweep=3;adventure.character.items=[...adventure.character.items.filter(item=>item.slot!=='main'),{id:'sword-equipped',item:'sword',quantity:1,slot:'main',x:0,y:0},{id:'shield-equipped',item:'shield',quantity:1,slot:'off',x:0,y:0}];applyEquipment(encounter,adventure.character.items,0);
   adventure.enter(encounter,home);expect([encounter.potionCooldown,encounter.playerMana,encounter.abilityCooldowns.sweep,encounter.weapon,encounter.shield]).toEqual([8,37,3,'sword',true]);
   encounter.player.hp=0;expect(adventure.usePotion(encounter)).toBe(false);expect(adventure.character.potions).toBe(2);
 });
@@ -333,7 +333,7 @@ test('revision 4 Homestead progress migrates with combat controls and starter po
   const items:InventoryItem[]=[{id:'item-42',item:'sword',quantity:1,slot:'main',x:0,y:0},{id:'item-43',item:'scroll',quantity:5,slot:'bag',x:0,y:0}];
   const stash:InventoryItem[]=[{id:'item-900',item:'iron',quantity:99,slot:'bag',x:0,y:0}];
   storage.setItem(characterSaveKey,JSON.stringify({version:4,items,stash,shelterRestored:true,restedSeconds:123,campfires:['homestead/camp'],xp:{woodcutting:327.5,mining:47.5,axeCombat:60},campClaims:['sword']}));
-  const migrated=new Adventure(storage);expect(migrated.character.version).toBe(5);expect(migrated.character.stash).toEqual(stash);expect(migrated.character.shelterRestored).toBe(true);expect(migrated.character.restedSeconds).toBe(123);expect(migrated.character.xp.mining).toBe(47.5);expect(migrated.character.actionBar[4]).toBe('sword-basic');expect(migrated.character.potions).toBe(3);
+  const migrated=new Adventure(storage);expect(migrated.character.version).toBe(6);expect(migrated.character.stash).toEqual(stash);expect(migrated.character.shelterRestored).toBe(true);expect(migrated.character.restedSeconds).toBe(123);expect(migrated.character.xp.mining).toBe(47.5);expect(migrated.character.actionBar[4]).toBe('sword-basic');expect(migrated.character.potions).toBe(3);
   const restored=new Adventure(storage);expect(restored.character).toEqual(migrated.character);expect(restored.character.potions).toBe(3);expect(new Set([...restored.character.items,...restored.character.stash].map(i=>i.id)).size).toBe(restored.character.items.length+restored.character.stash.length);
 });
 
@@ -464,5 +464,51 @@ test('Restart refreshes chest rewards, drops and portals while retaining collect
   expect(state.session().drops).toEqual([]);
   expect(state.portal).toBeNull(); expect(state.castRemaining).toBe(0);
   expect(state.openChest(encounter,field,chest)).toBe(true);
-  expect(state.session().drops.map(d=>d.item)).toEqual(['scroll','potion','shield','bow','staff']);
+  expect(state.session().drops.map(d=>d.item)).toEqual(['scroll','potion','shield','bow','staff','guard-helm','weathered-mail','duelist-gloves']);
+});
+
+
+test('shared equipment stays across swaps, accepts only its slots, and full-bag removal is atomic', () => {
+  const items:InventoryItem[]=[{id:'sword',item:'sword',quantity:1,slot:'main',weaponSet:0,x:0,y:0},{id:'bow',item:'bow',quantity:1,slot:'main',weaponSet:1,x:0,y:0},{id:'helm',item:'guard-helm',quantity:1,slot:'bag',x:0,y:0},{id:'ring',item:'hearth-ring',quantity:1,slot:'bag',x:2,y:0}];
+  const worn=equipInstance(equipInstance(items,'helm','helmet',1),'ring','ring-right',1);
+  expect(validItems(worn)).toBe(true);expect(worn.find(item=>item.id==='helm')!.weaponSet).toBeUndefined();
+  expect(()=>equipInstance(worn,'ring','helmet')).toThrow('different slot');
+  expect(validItems([...worn,{...worn.find(item=>item.id==='helm')!,id:'duplicate'}])).toBe(false);
+  const encounter=createEncounter('playing');applyEquipment(encounter,worn,0);expect([encounter.stats.armor,encounter.stats.maxHealth,encounter.stats.damage]).toEqual([8,115,50]);
+  applyEquipment(encounter,worn,1);expect([encounter.stats.armor,encounter.stats.maxHealth,encounter.stats.damage]).toEqual([8,115,45]);
+  const full:InventoryItem[]=[...worn.filter(item=>item.slot!=='bag'),...Array.from({length:96},(_,i)=>({id:`supply-${i}`,item:'wood' as const,quantity:1,slot:'bag' as const,x:i%12,y:Math.floor(i/12)}))];
+  const before=structuredClone(full);expect(()=>removeQuantity(full,'sword',1)).not.toThrow();
+  expect(()=>equipInstance(full,'ring','ring-left')).not.toThrow();
+  expect(()=>moveItem(full,'helm',0,0,1,()=> 'new')).toThrow();expect(full).toEqual(before);
+});
+
+test('revision 5 migrates losslessly and revision 6 retains shared slots, stash and all discovery claims', () => {
+  const storage=memory(),adventure=new Adventure(storage);
+  const old={...adventure.character,version:5,campClaims:['sword','shield'],shelterRestored:true,restedSeconds:123,stash:[{id:'stored',item:'iron',quantity:7,slot:'bag',x:0,y:0}],xp:{woodcutting:31,mining:22,axeCombat:17}};
+  const migrated=decodeCharacter(JSON.stringify(old));expect(migrated.version).toBe(6);expect(migrated.items).toEqual(old.items);expect(migrated.stash).toEqual(old.stash);expect(migrated.campClaims).toEqual(old.campClaims);
+  expect(migrated.items.some(item=>item.slot==='helmet')).toBe(false);
+  migrated.items.push({id:'helm',item:'guard-helm',quantity:1,slot:'helmet',x:0,y:0});migrated.campClaims.push('guard-helm','yew-longbow');
+  expect(decodeCharacter(JSON.stringify(migrated))).toEqual(migrated);
+});
+
+test('equipment never refills resources; potion, fire, travel and restart use effective maxima', () => {
+  const storage=memory(),adventure=new Adventure(storage),encounter=createEncounter('playing');adventure.enter(encounter,home);
+  encounter.player.hp=50;encounter.playerMana=30;
+  adventure.character.items.push({id:'ring',item:'hearth-ring',quantity:1,slot:'ring-left',x:0,y:0},{id:'belt',item:'leather-belt',quantity:1,slot:'belt',x:0,y:0},{id:'coat',item:'quilted-coat',quantity:1,slot:'body',x:0,y:0},{id:'amulet',item:'amber-amulet',quantity:1,slot:'amulet',x:0,y:0});
+  applyEquipment(encounter,adventure.character.items,0);expect([encounter.player.hp,encounter.playerMana,encounter.stats.maxHealth,encounter.stats.maxMana]).toEqual([50,30,125,140]);
+  expect(adventure.usePotion(encounter)).toBe(true);expect(encounter.player.hp).toBe(90);
+  adventure.enter(encounter,home,home.campfires![0].arrival);adventure.step(encounter,home,1);expect(encounter.player.hp).toBe(93.75);
+  adventure.enter(encounter,field);expect([encounter.player.hp,encounter.playerMana]).toEqual([93.75,30]);
+  adventure.save();const restored=new Adventure(storage);restored.enter(encounter,field);expect([encounter.player.hp,encounter.playerMana]).toEqual([125,140]);
+  restored.character.items=restored.character.items.filter(item=>item.slot==='main' || item.slot==='bag');applyEquipment(encounter,restored.character.items,0);expect([encounter.player.hp,encounter.playerMana]).toEqual([100,100]);
+});
+
+test('unguarded caches and caster gear are claimed only on collection and reoffer unclaimed rewards after restart', () => {
+  const storage=memory(),adventure=new Adventure(storage,()=>1),encounter=createEncounter('playing'),cache=field.chests![1];
+  adventure.enter(encounter,field,{position:cache.position,yaw:0});expect(adventure.openChest(encounter,field,cache)).toBe(true);
+  const coat=adventure.session().drops.find(drop=>drop.item==='quilted-coat')!;coat.age=.6;expect(adventure.pickup(coat.id,coat.position,true)).toBe(true);
+  encounter.enemies.caster.hp=0;adventure.step(encounter,field,.01);expect(adventure.session().drops.filter(drop=>drop.claim).map(drop=>drop.item)).toEqual(['trail-boots','leather-belt','iron-broadsword','yew-longbow','amber-amulet']);
+  adventure.enter(encounter,home,undefined,true);adventure.enter(encounter,field);expect(adventure.session().drops.filter(drop=>drop.claim)).toHaveLength(5);
+  const restored=new Adventure(storage,()=>1);restored.enter(encounter,field,{position:cache.position,yaw:0});restored.openChest(encounter,field,cache);encounter.enemies.caster.hp=0;restored.step(encounter,field,.01);
+  expect(restored.session().drops.filter(drop=>drop.claim).map(drop=>drop.item)).toEqual(['trail-boots','leather-belt','iron-broadsword','yew-longbow','amber-amulet']);
 });
