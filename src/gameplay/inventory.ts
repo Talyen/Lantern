@@ -1,87 +1,17 @@
 import type { WeaponSet } from './abilities';
-import { itemDefinitions, equipmentCatalog, itemIds, isItemId, isWeaponItem, isEquipmentSlot, slotAccepts, supportsShield, type EquipmentSlot, type ItemId, type Loadout } from './equipment';
+import { itemDefinitions, isItemId, isWeaponItem, slotAccepts, supportsShield, type EquipmentSlot } from './equipment';
+import { lootDefinitions, lootIds, stackLimit, type InventoryItem, type LootItem } from './inventory-catalog';
+import { itemLoadout } from './inventory-equipment';
+import { fits, emptyPosition } from './inventory-placement';
 
-export const bagWidth = 12,
-  bagHeight = 8,
-  stackLimit = 99;
-export type LootItem = ItemId | 'scroll' | 'wood' | 'potion' | 'stone' | 'iron';
-export type InventoryItem = {
-  id: string;
-  item: LootItem;
-  quantity: number;
-  slot: 'bag' | EquipmentSlot | 'overflow';
-  weaponSet?: WeaponSet;
-  x: number;
-  y: number;
-};
-type LootDefinition = { name: string; width: number; height: number; stackable: boolean };
-export const lootDefinitions: Record<
-  LootItem,
-  LootDefinition
-> = {
-  ...itemIds.reduce((result, id) => {
-    const { name, width, height } = equipmentCatalog[id];
-    result[id] = { name, width, height, stackable: false };
-    return result;
-  }, {} as Record<ItemId, LootDefinition>),
-  scroll: { name: 'Scroll of Return', width: 1, height: 1, stackable: true },
-  potion: { name: 'Health Potion', width: 1, height: 1, stackable: true },
-  wood: { name: 'Wood', width: 1, height: 1, stackable: true },
-  stone: { name: 'Stone', width: 1, height: 1, stackable: true },
-  iron: { name: 'Iron', width: 1, height: 1, stackable: true },
-};
-export const lootIds = Object.keys(lootDefinitions) as LootItem[];
-export const countItem = (items: InventoryItem[], item: LootItem) =>
+// Keep the public inventory API stable; leaf owners never import this transaction module.
+export { bagWidth, bagHeight, stackLimit, lootDefinitions, lootIds, type InventoryItem, type LootItem } from './inventory-catalog';
+export { sameEquipment, itemLoadout } from './inventory-equipment';
+export { fits, emptyPosition } from './inventory-placement';
+export { validItems } from './inventory-validation';
+
+export const countItem = (items: readonly InventoryItem[], item: LootItem) =>
   items.reduce((sum, entry) => sum + (entry.item === item ? entry.quantity : 0), 0);
-/** Bag arrangement does not require preparing equipment again. */
-export function sameEquipment(a: readonly InventoryItem[], b: readonly InventoryItem[]): boolean {
-  const equipped = (items: readonly InventoryItem[]) =>
-    items.filter(item => isEquipmentSlot(item.slot));
-  const first = equipped(a), second = equipped(b);
-  return first.length === second.length && first.every(item => second.some(other =>
-    item.id === other.id && item.item === other.item && item.slot === other.slot &&
-    (item.weaponSet ?? 0) === (other.weaponSet ?? 0)));
-}
-export function itemLoadout(items: readonly InventoryItem[], set: WeaponSet = 0): Loadout {
-  const main = items.find(entry => entry.slot === 'main' && (entry.weaponSet ?? 0) === set);
-  return {
-    main: main && isWeaponItem(main.item) ? main.item : null,
-    off: items.some(entry => entry.slot === 'off' && (entry.weaponSet ?? 0) === set && entry.item === 'shield') ? 'shield' : null,
-  };
-}
-export function fits(
-  items: InventoryItem[],
-  item: LootItem,
-  x: number,
-  y: number,
-  exclude?: string,
-): boolean {
-  const { width, height } = lootDefinitions[item];
-  return (
-    Number.isInteger(x) &&
-    Number.isInteger(y) &&
-    x >= 0 &&
-    y >= 0 &&
-    x + width <= bagWidth &&
-    y + height <= bagHeight &&
-    !items.some(
-      (i) =>
-        i.slot === 'bag' &&
-        i.id !== exclude &&
-        x < i.x + lootDefinitions[i.item].width &&
-        x + width > i.x &&
-        y < i.y + lootDefinitions[i.item].height &&
-        y + height > i.y,
-    )
-  );
-}
-export function emptyPosition(
-  items: InventoryItem[],
-  item: LootItem,
-): { x: number; y: number } | undefined {
-  for (let y = 0; y < bagHeight; y++)
-    for (let x = 0; x < bagWidth; x++) if (fits(items, item, x, y)) return { x, y };
-}
 /** Transfer only what fits; callers commit the resulting inventory and ground remainder together. */
 export function receive(
   items: InventoryItem[],
@@ -238,66 +168,6 @@ export function sortedItems(items: InventoryItem[]): InventoryItem[] {
   }
   return fixed;
 }
-/** Validate each untrusted entry before checking relationships between entries. */
-function validItem(value: unknown): value is InventoryItem {
-  if (typeof value !== 'object' || value === null) return false;
-  const entry = value as Record<string, unknown>;
-  if (typeof entry.id !== 'string' || !entry.id) return false;
-  const item = lootIds.find((id) => id === entry.item);
-  if (!item) return false;
-  const slot = entry.slot;
-  if (slot !== 'bag' && !isEquipmentSlot(slot) && slot !== 'overflow') return false;
-  const quantityLimit = lootDefinitions[item].stackable
-    ? slot === 'overflow'
-      ? Number.MAX_SAFE_INTEGER
-      : stackLimit
-    : 1;
-  if (
-    typeof entry.quantity !== 'number' ||
-    !Number.isSafeInteger(entry.quantity) ||
-    entry.quantity < 1 ||
-    entry.quantity > quantityLimit
-  )
-    return false;
-  if (!Number.isInteger(entry.x) || !Number.isInteger(entry.y)) return false;
-  if (isEquipmentSlot(slot)) {
-    if (!isItemId(item) || !slotAccepts(item, slot)) return false;
-    if (slot === 'main' || slot === 'off') {
-      if (entry.weaponSet !== undefined && entry.weaponSet !== 0 && entry.weaponSet !== 1)
-        return false;
-    } else if (entry.weaponSet !== undefined) return false;
-  }
-  return true;
-}
-
-export function validItems(value: unknown): value is InventoryItem[] {
-  if (!Array.isArray(value)) return false;
-  const items: InventoryItem[] = [];
-  const ids = new Set<string>();
-  const slots = new Set<string>();
-  for (const entry of value) {
-    if (!validItem(entry)) return false;
-    items.push(entry);
-    if (ids.has(entry.id)) return false;
-    ids.add(entry.id);
-    if (isEquipmentSlot(entry.slot)) {
-      const slot = entry.slot === 'main' || entry.slot === 'off' ? `${entry.weaponSet ?? 0}/${entry.slot}` : entry.slot;
-      if (slots.has(slot)) return false;
-      slots.add(slot);
-    }
-  }
-  if (
-    items.some(
-      (entry) => entry.slot === 'bag' && !fits(items, entry.item, entry.x, entry.y, entry.id),
-    )
-  )
-    return false;
-  return ([0, 1] as const).every((set) => {
-    const loadout = itemLoadout(items, set);
-    return !loadout.off || supportsShield(loadout.main);
-  });
-}
-
 /** Both containers commit together. Partial transfers preserve the source remainder. */
 export function transferItem(
   source: InventoryItem[],

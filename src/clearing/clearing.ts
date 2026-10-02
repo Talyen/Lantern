@@ -19,8 +19,6 @@ import { prepareAreaCandidate } from './area-candidate';
 import type { AreaChange } from './area-change';
 import { MenuController } from './menu-controller';
 import { InteractionActions, areaChangeFailed } from './interaction-actions';
-import { cameraOffset } from './projection';
-import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { createEncounter, resetEncounter, stepExploration, stepEncounter, type EncounterEvent, type ActorId, type AimPoint, enemyIds } from '../gameplay/encounter';
 import { readSettings } from '../rendering/graphics-settings';
@@ -547,12 +545,9 @@ function freezePreview(value: boolean): void {
   if (value) { reset(); for (const actor of Object.values(actors)) { play(actor, 'idle'); actor.actions.idle?.stopFading().setEffectiveWeight(1); actor.mixer?.setTime(0); } graphics?.effects.clearArea(); active?.activate(graphics!.effects); graphics?.resetSceneTime(); }
 }
 function previewView(id: string): void {
-  cameraOwner.suspendFollow();
-  fixedCamera = true; controls.minZoom = .1;
-  const target = currentArea.views.find(v => v.id === id)?.target ?? [0, .9, 0];
-  controls.target.fromArray(target); camera.position.copy(controls.target).add(new THREE.Vector3(...cameraOffset));
-  camera.zoom = id === 'overview' ? Math.min(defaultPreviewZoom(), defaultPreviewZoom() * Math.min(currentArea.envelope.screen[0] / (currentArea.envelope.width + 8), currentArea.envelope.screen[1] / (currentArea.envelope.depth + 8)) * .9) : defaultPreviewZoom();
-  camera.updateProjectionMatrix(); controls.update(); graphics?.resetHistory();
+  fixedCamera = true;
+  cameraOwner.previewView(currentArea, id);
+  graphics?.resetHistory();
 }
 async function changeAppearance(appearance: { surfaces?: SurfaceMode; lantern?: boolean }): Promise<boolean> {
   if (appearance.lantern !== undefined && appearance.surfaces === undefined) { lanternEnabled = appearance.lantern; personalLantern?.setEnabled(lanternEnabled); return true; }
@@ -576,7 +571,7 @@ async function changeArea(change: AreaChange): Promise<boolean> {
   const nextSurfaces = appearance?.surfaces ?? surfaceMode;
   const resolved = { ...next, lighting: resolveLightingFor(next) };
   const savedView = frozen && active?.area.id === id
-    ? { target: controls.target.clone(), zoom: camera.zoom }
+    ? cameraOwner.captureView()
     : null;
   transitioning = true;
   clearInput();
@@ -651,11 +646,7 @@ async function changeArea(change: AreaChange): Promise<boolean> {
     else hud.setAssetStatus(candidate.missing.length ? `Missing art: ${candidate.missing.join(', ')}.` : '');
     if (frozen) freezePreview(true);
     if (savedView) {
-      controls.target.copy(savedView.target);
-      camera.position.copy(controls.target).add(new THREE.Vector3(...cameraOffset));
-      camera.zoom = savedView.zoom;
-      camera.updateProjectionMatrix();
-      controls.update();
+      cameraOwner.restoreView(savedView);
     }
     transitioning = false;
     audio.update(encounter.player, paused());

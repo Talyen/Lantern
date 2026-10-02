@@ -1,6 +1,7 @@
 import { cameraOffset as offset, desktopViewHeight } from './projection';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import type { AreaDefinition } from '../levels/types';
 import { defaultCameraZoom } from '../rendering/graphics-settings';
 
 export function createCamera(canvas: HTMLCanvasElement) {
@@ -31,7 +32,27 @@ export function createCamera(canvas: HTMLCanvasElement) {
     controls.target.copy(anchor); camera.position.copy(anchor).add(cameraOffset);
     controls.update(); camera.updateMatrixWorld();
   }
+  function setView(target: THREE.Vector3Tuple, zoom: number): void {
+    controls.target.fromArray(target);
+    camera.position.copy(controls.target).add(cameraOffset);
+    camera.zoom = zoom;
+    camera.updateProjectionMatrix();
+    controls.update();
+  }
   return { camera, controls, resetFollow,
+    captureView() { return { target: controls.target.toArray(), zoom: camera.zoom }; },
+    restoreView(view: { target: THREE.Vector3Tuple; zoom: number }) { setView(view.target, view.zoom); },
+    previewView(area: Pick<AreaDefinition, 'views' | 'envelope'>, id: string) {
+      sampled = false;
+      controls.minZoom = .1;
+      const { envelope } = area;
+      const zoom = envelope.reference.zoom;
+      const overviewZoom = Math.min(zoom, zoom * Math.min(
+        envelope.screen[0] / (envelope.width + 8),
+        envelope.screen[1] / (envelope.depth + 8),
+      ) * .9);
+      setView(area.views.find(view => view.id === id)?.target ?? [0, .9, 0], id === 'overview' ? overviewZoom : zoom);
+    },
     zoom(direction: number) { camera.zoom=THREE.MathUtils.clamp(camera.zoom*Math.exp(direction*.09),controls.minZoom,controls.maxZoom); camera.updateProjectionMatrix(); },
     suspendFollow() { sampled = false; },
     follow(position: THREE.Vector3, dt: number) {
