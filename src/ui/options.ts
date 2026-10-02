@@ -1,6 +1,7 @@
 import { qualityLevels } from '../rendering/quality-presets';
 import { defaults, depthOfFieldModes, frameRateLimits, ranges, readSettings, saveSettings, upscaleQualities, type GraphicsSettings, type NumericSetting, type FrameRateLimit } from '../rendering/graphics-settings';
 import './options.css';
+import { audioDefaults, readAudioSettings, saveAudioSettings, type AudioSettings } from '../audio/settings';
 import { bindMenuDismissal } from './menu';
 
 const labels: Record<NumericSetting, string> = { sharpness: 'Sharpening',
@@ -11,14 +12,16 @@ type OptionsContext = {
   resetMeasurements: () => void;
   clearInput: () => void;
   focus: () => void;
+  audio: {apply(settings: AudioSettings): void; play(cue: 'menuOpen' | 'menuClose' | 'uiClick'): void};
 };
 
 export class Options {
   paused = false;
   settings = readSettings();
+  audioSettings = readAudioSettings();
   private dialog = document.getElementById('options-dialog') as HTMLDialogElement;
   constructor(private ctx: OptionsContext) {
-    this.buildControls(); this.apply();
+    this.buildControls(); this.buildAudio(); this.apply();
     const error = document.createElement('p'); error.hidden = true; error.setAttribute('role', 'alert');
     document.getElementById('graphics-settings')!.append(error);
     document.getElementById('scene')!.addEventListener('graphicssettingschange', event => {
@@ -55,12 +58,32 @@ export class Options {
       const value = Number(this.input<HTMLInputElement>(key).value);
       this.settings[key] = value; this.apply(); this.save(key);
     });
-    document.getElementById('options-reset')!.addEventListener('click', () => { this.settings = defaults(); this.apply(); this.save(); });
+    document.getElementById('options-reset')!.addEventListener('click', () => { this.settings = defaults(); this.audioSettings = audioDefaults(); this.applyAudio(); this.apply(); this.save(); });
+  }
+  private buildAudio(): void {
+    const section = document.createElement('section'); section.className = 'audio-settings'; section.innerHTML = '<h2>Sound</h2><div></div>';
+    this.dialog.querySelector('.options-content')!.prepend(section);
+    const graphicsTitle = document.createElement('h2'); graphicsTitle.className = 'graphics-title'; graphicsTitle.textContent = 'Graphics';
+    document.getElementById('graphics-settings')!.before(graphicsTitle);
+    for (const key of ['master','effects','ambience'] as const) {
+      const label = document.createElement('label'); label.className = 'slider-label';
+      label.innerHTML = `${key[0].toUpperCase()+key.slice(1)}<output id="audio-value-${key}"></output><input id="audio-${key}" type="range" min="0" max="100" step="1" aria-label="${key[0].toUpperCase()+key.slice(1)} volume">`;
+      section.querySelector('div')!.append(label);
+      label.querySelector('input')!.addEventListener('input', event => { this.audioSettings[key] = Number((event.target as HTMLInputElement).value)/100; this.applyAudio(); });
+    }
+    this.applyAudio();
+  }
+  private applyAudio(): void {
+    for (const key of ['master','effects','ambience'] as const) {
+      this.dialog.querySelector<HTMLInputElement>(`#audio-${key}`)!.value = String(Math.round(this.audioSettings[key]*100));
+      this.dialog.querySelector<HTMLOutputElement>(`#audio-value-${key}`)!.value = `${Math.round(this.audioSettings[key]*100)}%`;
+    }
+    this.ctx.audio.apply({...this.audioSettings}); saveAudioSettings(this.audioSettings);
   }
   private input<T extends HTMLElement>(name: string): T { return document.getElementById(`option-${name}`) as T; }
   private save(changedKey?: keyof GraphicsSettings): void { saveSettings(this.settings, changedKey); }
-  open(): void { if (document.querySelector('dialog[open]')) return; this.ctx.clearInput(); this.paused = true; this.dialog.showModal(); }
-  close(): void { this.dialog.close(); this.ctx.flushSettings(); this.paused = false; this.ctx.clearInput(); this.ctx.focus(); }
+  open(): void { if (document.querySelector('dialog[open]')) return; this.ctx.clearInput(); this.paused = true; this.dialog.showModal(); this.ctx.audio.play('menuOpen'); }
+  close(): void { if (!this.dialog.open) return; this.ctx.audio.play('menuClose'); this.dialog.close(); this.ctx.flushSettings(); this.paused = false; this.ctx.clearInput(); this.ctx.focus(); }
 
   private apply(): void {
     const s = this.settings;

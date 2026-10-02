@@ -5,7 +5,7 @@ const idle = { x: 0, z: 0, paused: false };
 function closeEncounter() {
   const state = createEncounter('playing');
   state.player.x = state.enemies.enemy.x = 0;
-  state.player.z = 0; state.enemies.enemy.z = 1.4;
+  state.player.z = 0; state.enemies.enemy.z = 1.4; state.enemies.enemy.yaw = Math.PI;
   return state;
 }
 test('nearby guards engage, strikes land at contact, and an interrupted enemy strike causes no damage', () => {
@@ -107,7 +107,7 @@ test('dodge evades a contact, completes its distance, cools down and resets', ()
   expect(dodge(state, { x: 1, z: 0 }, false)).toEqual([]);
   state.phase = 'won';
   for (let i = 0; i < 12; i++) stepExploration(state, .05, idle);
-  expect(dodge(state, { x: 1, z: 0 }, false)).toHaveLength(1);
+  expect(dodge(state, { x: 1, z: 0 }, false)).toContainEqual({type:'action',actor:'player',action:'dodge',weapon:'axe'});
   resetEncounter(state);
   expect([state.dodgeRemaining, state.dodgeCooldown, state.invulnerability, state.playerMana]).toEqual([0, 0, 0, 100]);
   expect(dodge(state, { x: 1, z: 0 }, true)).toEqual([]);
@@ -363,4 +363,57 @@ test('the clearing start and both authored fights stay independent, with player 
     stepEncounter(state,.58,idle,timing,world);attack(state,timing.player,false);stepEncounter(state,.43,idle,timing,world);
     expect([state.enemies.caster.hp,state.enemies.enemy.hp,state.phase]).toEqual([0,100,'playing']);
   } finally {world.dispose();}
+});
+
+test('raider commitment preserves a late nonlethal swing, allows early/recovery stagger, and never prevents death', () => {
+  const clocks: Timings = {...timing,player:{attack:.62,hit:.3,contacts:[.26]},enemy:{attack:1.05,hit:.35,contacts:[.46],commitLead:.16}};
+  for (const [clock, committed] of [[.2,false],[.295,true],[.32,true],[.6,false]] as const) {
+    const state = closeEncounter(); state.enemies.enemy.yaw=Math.PI;
+    state.enemies.enemy.engaged=true; state.enemies.enemy.cooldown=999;
+    state.enemies.enemy.attackTime=clock;
+    state.player.attackTime=.25; state.player.lock=.4; state.player.yaw=0;
+    const events=stepEncounter(state,.02,idle,clocks);
+    expect(state.enemies.enemy.hp).toBe(50);
+    expect(state.enemies.enemy.attackTime>=0).toBe(committed);
+    expect(events.some(e=>e.type==='animation' && e.actor==='enemy' && e.motion==='hit')).toBe(!committed);
+    expect(events.filter(e=>e.type==='impact' && e.actor==='enemy')).toHaveLength(1);
+    if (committed) {
+      stepEncounter(state,.15,idle,clocks);
+      expect(state.player.hp).toBe(80);
+    }
+  }
+  const lethal=closeEncounter(); lethal.enemies.enemy.hp=50; lethal.enemies.enemy.attackTime=.32; lethal.enemies.enemy.cooldown=999;
+  lethal.player.attackTime=.25; lethal.player.yaw=0;
+  const events=stepEncounter(lethal,.02,idle,clocks);
+  expect(lethal.enemies.enemy.attackTime).toBe(-1);
+  expect(events).toContainEqual({type:'impact',actor:'enemy',weapon:'axe',blocked:false,lethal:true});
+  expect(lethal.player.hp).toBe(100);
+});
+
+test('a raider swing uses its committed forward arc and stays planted through recovery', () => {
+  const clocks: Timings = {...timing,enemy:{attack:1.05,hit:.35,contacts:[.46],commitLead:.16}};
+  for (const [angle, expected] of [[0,80],[Math.PI/3-.01,80],[Math.PI/3+.01,100],[Math.PI,100]] as const) {
+    const state=closeEncounter(), enemy=state.enemies.enemy;
+    enemy.engaged=true; enemy.yaw=0; enemy.attackTime=.44; enemy.cooldown=999;
+    state.player.x=enemy.x+Math.sin(angle)*1.5; state.player.z=enemy.z+Math.cos(angle)*1.5;
+    const events=stepEncounter(state,.03,idle,clocks);
+    expect(state.player.hp).toBe(expected);
+    expect(events.filter(e=>e.type==='action' && e.actor==='enemy' && e.action==='contact')).toHaveLength(1);
+    expect(stepEncounter(state,.05,idle,clocks).filter(e=>e.type==='action' && e.action==='contact')).toHaveLength(0);
+    state.player.x=enemy.x+3;
+    const position=[enemy.x,enemy.z,enemy.yaw];
+    stepEncounter(state,.3,idle,clocks);
+    expect([enemy.x,enemy.z,enemy.yaw]).toEqual(position);
+  }
+});
+
+test('accepted actions emit sound facts once; rejected attacks and replayed animation states do not', () => {
+  const state=closeEncounter(); state.enemies.enemy.cooldown=999; state.weapon='bow';
+  const accepted=attack(state,timing.player,false,{x:0,z:10});
+  expect(accepted.filter(e=>e.type==='action' && e.action==='attack')).toHaveLength(1);
+  expect(attack(state,timing.player,false)).toEqual([]);
+  const contact=stepEncounter(state,.43,idle,timing);
+  expect(contact.filter(e=>e.type==='action' && e.actor==='player' && e.action==='contact')).toHaveLength(1);
+  expect(stepEncounter(state,.1,idle,timing).filter(e=>e.type==='action' && e.action==='contact')).toHaveLength(0);
+  expect(resetEncounter(state).filter(e=>e.type==='action' || e.type==='impact')).toHaveLength(0);
 });

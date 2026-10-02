@@ -170,3 +170,29 @@ test('landing and physical access gate pickups, and a casting scroll cannot be d
   expect(() => state.dropItem(scroll.id, scroll.quantity, point)).toThrow('Scroll is in use');
   state.step(encounter, field, 2); expect(state.portal).not.toBeNull(); expect(state.character.scrolls).toBe(2);
 });
+
+test('adventure sound facts describe successful changes once and do not replay across area restoration', () => {
+  const adventure=new Adventure(memory(),()=>0), encounter=createEncounter('playing',field.layout);
+  adventure.enter(encounter,field);
+  const chest=field.chests![0]; encounter.enemies.enemy.hp=0;
+  encounter.player.x=chest.position[0];encounter.player.z=chest.position[1];
+  expect(adventure.openChest(encounter,field,chest)).toBe(true);
+  const rewards=adventure.takeEvents();
+  expect(rewards.filter(e=>e.type==='chestOpen')).toHaveLength(1);
+  expect(rewards.filter(e=>e.type==='lootDrop')).toHaveLength(5);
+  const sword=adventure.session().drops.find(drop=>drop.item==='sword')!;
+  sword.age=.6; expect(adventure.pickup(sword.id,sword.position,true)).toBe(true);
+  expect(adventure.takeEvents().filter(e=>e.type==='lootPickup')).toHaveLength(1);
+  expect(adventure.pickup(sword.id,sword.position,true)).toBe(false);
+  expect(adventure.takeEvents()).toEqual([]);
+  expect(adventure.openChest(encounter,field,chest)).toBe(false);
+  expect(adventure.takeEvents()).toEqual([]);
+  expect(adventure.beginCast(true)).toBe(true); expect(adventure.beginCast(true)).toBe(false);
+  expect(adventure.takeEvents()).toEqual([{type:'returnCast'}]);
+  adventure.step(encounter,field,2);
+  expect(adventure.takeEvents().filter(e=>e.type==='portalOpen')).toHaveLength(1);
+  adventure.step(encounter,field,.05);
+  expect(adventure.takeEvents().filter(e=>e.type==='portalOpen')).toHaveLength(0);
+  adventure.enter(encounter,home);
+  expect(adventure.takeEvents()).toEqual([]);
+});

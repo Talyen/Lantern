@@ -5,13 +5,13 @@ import { dodgeDuration, type ActorState, type Motion } from '../gameplay/encount
 import { markOutline } from '../rendering/outlines';
 
 type PlaybackRole = AnimationRole | 'blockUpper' | 'lower_run' | 'lower_left' | 'lower_right' | 'lower_backward';
-export type Actor = { root: THREE.Group; mixer: THREE.AnimationMixer | null; actions: Partial<Record<PlaybackRole, THREE.AnimationAction>>; current: Motion | null; moveSpeed: number; rigScale: number; blockBlend: number; runSpeed: number; speeds: Partial<Record<AnimationRole, number>>; contacts: number[]; chopContact: number; phases: Partial<Record<AnimationRole, number>>; gait: number; velocity: THREE.Vector2; previous: THREE.Vector2 | null };
+export type Actor = { root: THREE.Group; mixer: THREE.AnimationMixer | null; actions: Partial<Record<PlaybackRole, THREE.AnimationAction>>; current: Motion | null; moveSpeed: number; rigScale: number; blockBlend: number; runSpeed: number; speeds: Partial<Record<AnimationRole, number>>; contacts: number[]; commitLead: number; chopContact: number; phases: Partial<Record<AnimationRole, number>>; gait: number; velocity: THREE.Vector2; previous: THREE.Vector2 | null };
 // Mixamo faces +Z here: its anatomical left travels +X, and right travels -X.
 const directions = ['run', 'left', 'backward', 'right'] as const;
 const blockDirections = ['blockForward', 'blockLeft', 'blockBackward', 'blockRight'] as const;
 export function makeActor(scene: THREE.Scene, state: ActorState): Actor {
   const root = new THREE.Group(); root.position.set(state.x, .04, state.z); scene.add(root);
-  return { root, mixer: null, actions: {}, current: null, moveSpeed: state.speed, rigScale: 1, blockBlend: 0, runSpeed: 4, speeds: {}, contacts: [], chopContact: .32, phases: {}, gait: 0, velocity: new THREE.Vector2(), previous: null };
+  return { root, mixer: null, actions: {}, current: null, moveSpeed: state.speed, rigScale: 1, blockBlend: 0, runSpeed: 4, speeds: {}, contacts: [], commitLead: 0, chopContact: .32, phases: {}, gait: 0, velocity: new THREE.Vector2(), previous: null };
 }
 export function play(actor: Actor, name: Motion): void {
   if (actor.current === name && ['idle', 'run', 'block', 'chop'].includes(name)) return;
@@ -63,7 +63,7 @@ function installActions(actor: Actor, clips: Partial<Record<AnimationRole, THREE
   }
 }
 export function installMotions(actor: Actor, motions: CombatMotions): void {
-  installActions(actor, motions.clips); actor.contacts = motions.contacts; actor.runSpeed = motions.runSpeed * actor.rigScale; actor.speeds = Object.fromEntries(Object.entries(motions.speeds).map(([role,speed])=>[role,speed! * actor.rigScale])); actor.chopContact = motions.chopContact; actor.phases=motions.phases;
+  installActions(actor, motions.clips); actor.contacts = motions.contacts; actor.commitLead = motions.commitLead ?? 0; actor.runSpeed = motions.runSpeed * actor.rigScale; actor.speeds = Object.fromEntries(Object.entries(motions.speeds).map(([role,speed])=>[role,speed! * actor.rigScale])); actor.chopContact = motions.chopContact; actor.phases=motions.phases;
 }
 /** Locomotion follows actual displacement, with a shared normalized foot cycle across directions. */
 export function updateActor(actor: Actor, state: ActorState, dt: number, paused: boolean, blocking = false): void {

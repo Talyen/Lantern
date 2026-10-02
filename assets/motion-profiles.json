@@ -204,7 +204,8 @@
         0.05,
         2.1
       ],
-      "contact": 0.46
+      "contact": 0.46,
+      "commitLead": 0.16
     },
     "goblin-hit": {
       "sourceId": "ebf5bc188c09",

@@ -91,8 +91,8 @@ export class CoreEffects {
     const p = this.pools.get(kind)!; const limit = Math.max(1, Math.floor(p.capacity * particlePresets[this.quality].capacity));
     const i = p.cursor++ % limit, k = i * 3; const spread = kind === 'rain' || kind === 'snow' ? 0 : kind === 'dust' ? 1.8 : 0.1;
     p.positions[k] = x + (Math.random() - 0.5) * spread; p.positions[k + 1] = y + (kind === 'dust' ? (Math.random() - 0.5) * 1.2 : 0); p.positions[k + 2] = z + (Math.random() - 0.5) * spread;
-    p.age[i] = 0; p.life[i] = kind === 'rain' ? 1.4 : kind === 'snow' ? 5 : kind === 'dust' ? 4 + Math.random() * 3 : kind === 'smoke' ? 2.2 : kind === 'fire' ? 0.65 : 0.5;
-    const speed = kind === 'hit' ? 3 : kind === 'sparks' ? 1.2 : kind === 'dust' ? 0.06 : 0.2;
+    p.age[i] = 0; p.life[i] = kind === 'rain' ? 1.4 : kind === 'snow' ? 5 : kind === 'dust' ? 4 + Math.random() * 3 : kind === 'smoke' ? 2.2 : kind === 'fire' ? 0.65 : kind === 'hit' ? .22 : 0.5;
+    const speed = kind === 'hit' ? 2 : kind === 'sparks' ? 1.2 : kind === 'dust' ? 0.06 : 0.2;
     p.velocities[k] = (Math.random() - 0.5) * speed; p.velocities[k + 2] = (Math.random() - 0.5) * speed;
     p.velocities[k + 1] = kind === 'rain' ? -7 : kind === 'snow' ? -0.8 : kind === 'fire' ? 0.7 : kind === 'smoke' ? 0.4 : kind === 'dust' ? (Math.random() - 0.5) * 0.06 : Math.random() * 2;
   }

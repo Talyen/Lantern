@@ -24,7 +24,7 @@ export class AdventureMenus {
   private selected: string | null = null;
   private drag: Drag | null = null;
   private splitId: string | null = null;
-  constructor(private clearInput: () => void, private focus: () => void, private cast: () => void, private context: InventoryMenuContext) {
+  constructor(private clearInput: () => void, private focus: () => void, private cast: () => void, private context: InventoryMenuContext, private sound?: (cue: 'menuOpen' | 'menuClose') => void) {
     for (const dialog of [this.inventory, this.travel]) {
       dialog.querySelector('button[data-close]')!.addEventListener('click', () => this.close());
       bindMenuDismissal(dialog, () => this.close());
@@ -70,12 +70,12 @@ export class AdventureMenus {
     this.inventory.addEventListener('keydown', event => { if (event.key === 'Escape' && (this.drag || !this.split.hidden)) { event.preventDefault(); event.stopPropagation(); this.cancelDrag(); } });
   }
   get paused(): boolean { return this.inventory.open || this.travel.open; }
-  close(): void { if (this.busy) return; this.cancelDrag(); this.inventory.close(); this.travel.close(); this.clearInput(); this.focus(); }
-  openInventory(): void { this.clearInput(); this.error.textContent = ''; this.inventory.showModal(); }
+  close(): void { if (this.busy) return; if (this.paused) this.sound?.('menuClose'); this.cancelDrag(); this.inventory.close(); this.travel.close(); this.clearInput(); this.focus(); }
+  openInventory(): void { this.clearInput(); this.error.textContent = ''; this.inventory.showModal(); this.sound?.('menuOpen'); }
   openTravel(choices: TravelChoice[]): void {
     this.clearInput(); const list = document.getElementById('travel-destinations')!;
     list.replaceChildren(...choices.map(choice => { const button = document.createElement('button'); button.textContent = choice.available ? choice.name : `${choice.name} · Enemies nearby`; button.disabled = !choice.available; button.onclick = () => { this.close(); choice.travel(); }; return button; }));
-    if (!choices.length) list.textContent = 'No destinations available.'; this.travel.showModal();
+    if (!choices.length) list.textContent = 'No destinations available.'; this.travel.showModal(); this.sound?.('menuOpen');
   }
   update(scrolls: number, canUse: boolean, prompt: string, casting: number): void {
     document.getElementById('scroll-count')!.textContent = String(scrolls); this.use.disabled = !canUse || this.busy;

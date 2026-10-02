@@ -98,4 +98,6 @@ Native WebGPU browser observations on macOS:
 
 This historical pass used playable asset validation and the former full gate. New animation edits use one affected action/transition in a normal preview and the fast `npm run check`; full playable/catalog validation is targeted to changed preparation or a requested audit. A passing check describes its stable source snapshot; it does not establish other-platform performance or eliminate every art cleanup opportunity.
 
+The raider now checks its committed forward swing arc and retains the attack pose through nonlethal hits during the final 0.16 s before contact. Earlier/recovery hits stagger; lethal hits always stop it. Local hit particles and recorded action/impact audio support the exchange; see [gameplay sound](AUDIO.md).
+
 Remaining art limits: Bow mesh/string deformation and nocking are not authored yet; retargeting has no runtime hand/foot IK; Staff locomotion shares the Axe directional family with a steady carrying arm. Future weapon-specific hit/death/roll refinements should use the retained source catalog and actual gameplay-scale comparisons rather than generic clip titles. Skills, ultimates, levels and progression bonuses remain outside this basic pass.

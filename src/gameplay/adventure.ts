@@ -26,7 +26,11 @@ export const fireKey = (area: string, fire: string) => `${area}/${fire}`;
 export const near = (point: Point, target: Point, radius: number) => Math.hypot(point[0] - target[0], point[1] - target[1]) <= radius;
 
 /** Continuing character state and inactive area snapshots; no rendering/browser dependencies. */
+export type AdventureEvent = { type: 'chestOpen' | 'returnCast' | 'portalOpen' | 'portalClose' | 'fireDiscovered' | 'healing'; position?: {x:number;z:number} } | {type:'lootDrop' | 'lootLand' | 'lootPickup'; item:LootItem; position:{x:number;z:number}};
 export class Adventure {
+  private events: AdventureEvent[] = [];
+  private healing = false;
+  takeEvents(): AdventureEvent[] { const events = this.events; this.events = []; return events; }
   character = character();
   portal: PortalLink | null = null;
   castRemaining = 0;
@@ -85,7 +89,7 @@ export class Adventure {
   spawnDrop(item: LootItem, quantity: number, origin: Point, options: Partial<Pick<GroundDrop, 'claim' | 'instanceId' | 'blocked'>> = {}): GroundDrop {
     const point = this.placeGround(origin, this.session().drops.length);
     const drop: GroundDrop = { id: this.newId(), item, quantity, origin: [...origin], ...point, age: 0, ...options };
-    this.session().drops.push(drop); return drop;
+    this.session().drops.push(drop); this.events.push({type:'lootDrop',item,position:{x:drop.position[0],z:drop.position[1]}}); return drop;
   }
   dropItem(id: string, quantity: number, origin: Point): void {
     const entry = this.character.items.find(i => i.id === id);
@@ -110,6 +114,7 @@ export class Adventure {
     if (drop.blocked && !manual) return false;
     const amount = receive(this.character.items, drop.item, drop.quantity, this.newId, drop.instanceId);
     if (!amount) { if (manual) this.message('Inventory full'); return false; }
+    this.events.push({type:'lootPickup',item:drop.item,position:{x:drop.position[0],z:drop.position[1]}});
     drop.quantity -= amount;
     if (drop.claim) this.character.campClaims = [...new Set([...this.character.campClaims, drop.claim])];
     if (!drop.quantity) this.session().drops.splice(this.session().drops.indexOf(drop), 1);
@@ -140,13 +145,13 @@ export class Adventure {
     next.player.x = arrival.position[0]; next.player.z = arrival.position[1]; next.player.yaw = arrival.yaw;
     next.player.hp = recover ? playerMaxHealth : health;
     Object.assign(encounter, next);
-    this.castRemaining = 0; this.cancelPickup();
+    this.castRemaining = 0; this.cancelPickup(); this.healing = false; this.events = [];
     if (recover) this.portal = null;
   }
   discover(area: AreaDefinition, point: Point): void {
     for (const fire of area.campfires ?? []) {
       const key = fireKey(area.id, fire.id);
-      if (near(point, fire.position, 3) && !this.character.campfires.includes(key)) { this.character.campfires.push(key); this.save(); }
+      if (near(point, fire.position, 3) && !this.character.campfires.includes(key)) { this.character.campfires.push(key); this.save(); this.events.push({type:'fireDiscovered',position:{x:fire.position[0],z:fire.position[1]}}); }
     }
   }
   fireSafe(area: AreaDefinition, fire: Campfire, active?: Encounter): boolean {
@@ -165,6 +170,7 @@ export class Adventure {
   openChest(encounter: Encounter, area: AreaDefinition, chest: Chest): boolean {
     if (this.currentArea !== area.id || encounter.player.hp <= 0 || !chestUnlocked(encounter,chest) || this.castRemaining > 0 || !near([encounter.player.x, encounter.player.z], chest.position, 1.8)) return false;
     const state = this.chest(area, chest); if (state.opened) return false;
+    this.events.push({type:'chestOpen',position:{x:chest.position[0],z:chest.position[1]}});
     if (state.remaining) this.spawnDrop('scroll', state.remaining, chest.position);
     if (area.id === 'clearing') for (const item of ['sword', 'shield', 'bow', 'staff'] as ItemId[]) if (!this.character.campClaims.includes(item)) this.spawnDrop(item, 1, chest.position, { claim: item });
     state.opened = true; state.remaining = 0; return true;
@@ -175,14 +181,17 @@ export class Adventure {
   }
   beginCast(alive: boolean): boolean {
     if (!alive || this.currentArea === homeArea || this.character.scrolls === 0 || this.castRemaining > 0) return false;
-    this.castRemaining = 2; return true;
+    this.castRemaining = 2; this.events.push({type:'returnCast'}); return true;
   }
   step(encounter: Encounter, area: AreaDefinition, dt: number): void {
-    if (encounter.player.hp <= 0) { this.castRemaining = 0; this.portal = null; this.cancelPickup(); return; }
+    if (encounter.player.hp <= 0) { if (this.portal) this.events.push({type:'portalClose'}); this.castRemaining = 0; this.portal = null; this.cancelPickup(); this.healing = false; return; }
     this.noticeTime = Math.max(0, this.noticeTime - dt); if (!this.noticeTime) this.notice = '';
     const point: Point = [encounter.player.x, encounter.player.z];
     this.discover(area, point);
-    if (area.campfires?.some(fire => fire.heals && near(point, fire.position, 3) && this.fireSafe(area, fire, encounter))) encounter.player.hp = Math.min(playerMaxHealth, encounter.player.hp + playerMaxHealth * .03 * dt);
+    const healing = encounter.player.hp < playerMaxHealth && !!area.campfires?.some(fire => fire.heals && near(point, fire.position, 3) && this.fireSafe(area, fire, encounter));
+    if (healing && !this.healing) this.events.push({type:'healing'});
+    this.healing = healing;
+    if (healing) encounter.player.hp = Math.min(playerMaxHealth, encounter.player.hp + playerMaxHealth * .03 * dt);
     const session = this.session();
     if (area.kind !== 'safe') for (const id of enemyIds) {
       const enemy = encounter.enemies[id];
@@ -192,6 +201,7 @@ export class Adventure {
       }
     }
     for (const drop of [...session.drops]) {
+      if (drop.age < .55 && drop.age + dt >= .55) this.events.push({type:'lootLand',item:drop.item,position:{x:drop.position[0],z:drop.position[1]}});
       drop.age += dt;
       if (drop.blocked && !near(point, drop.position, 1.5)) drop.blocked = false;
       if (lootDefinitions[drop.item].stackable) this.pickup(drop.id, point);
@@ -202,6 +212,7 @@ export class Adventure {
         const scroll = this.character.items.find(i => i.item === 'scroll' && i.slot === 'bag');
         if (!scroll) return;
         scroll.quantity--; this.character.items = this.character.items.filter(i => i.quantity > 0);
+        this.events.push({type:'portalOpen',position:{x:point[0],z:point[1]}});
         this.portal = { area: area.id, departure: { position: [...point], yaw: encounter.player.yaw } };
         this.save();
       }

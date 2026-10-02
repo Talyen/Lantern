@@ -101,6 +101,8 @@ Default acceptance is one preview session and one relevant interaction at normal
 
 ## Private asset workflow
 
+Gameplay audio preparation, private source provenance, optimized output and event coverage are owned by [gameplay sound](AUDIO.md). `npm run audio:prepare` is explicit; routine checks and builds only validate/stage selected prepared files.
+
 See [character preview](CHARACTERS.md) for the complete model gallery, `npm run assets:export-characters`, and `npm run characters:capture`.
 
 Synty/Mixamo sources, receipts, catalog metadata and hashes stay under `.local/`. Exported vendor art stays under `public/vendor/`, entirely ignored. Never send Synty files, textures or renders to ImageGen. Original text-prompted surfaces in `assets/textures/` are projected/baked locally.

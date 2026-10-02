@@ -110,6 +110,18 @@ export async function gameplayAssets(source = resolve(root, 'public')) {
       for (const pack of data.packs) for (const clip of pack.clips) await references(clip.url);
     }
   }
+  const audio = JSON.parse(await readFile(resolve(root, 'assets/audio/manifest.json'), 'utf8'));
+  if (audio.version !== 1 || audio.sampleRate !== 48000 || !audio.clips || !audio.cues) throw new Error('Invalid audio manifest');
+  for (const [id, clip] of Object.entries(audio.clips)) {
+    if (!/^[a-z0-9-]+$/.test(id) || clip.url !== `/vendor/audio/${id}.ogg` || !/^[a-f0-9]{64}$/.test(clip.sourceSha256)) throw new Error(`Invalid sound reference: ${id}`);
+    if (clip.loop && (clip.loopStart !== 0 || !Number.isFinite(clip.loopEnd) || clip.loopEnd<=0)) throw new Error(`Invalid sound loop points: ${id}`);
+    const path = assetPath(source,clip.url,'/');
+    if (existsSync(resolve(source,'vendor/audio'))) {
+      if (!existsSync(path) || (await readFile(path)).subarray(0,4).toString() !== 'OggS') throw new Error(`Missing or invalid prepared sound: ${id}; run npm run audio:prepare`);
+    }
+  }
+  for (const [id,cue] of Object.entries(audio.cues)) if (!Array.isArray(cue.clips) || !cue.clips.length || cue.clips.some(clip=>!audio.clips[clip]) || !['effects','ambience','ui'].includes(cue.bus) || !Number.isFinite(cue.gain) || cue.gain<0 || cue.gain>1) throw new Error(`Invalid sound cue: ${id}`);
+  await references(audio.clips);
   const lighting = JSON.parse(await readFile(resolve(root, 'assets/lighting-bakes.json'), 'utf8'));
   for (const [signature, entry] of Object.entries(lighting.bakes)) {
     if (!/^[a-f0-9]{64}$/.test(signature) || entry.url !== `/vendor/lighting/${signature}.json`) throw new Error('Invalid prepared lighting reference');

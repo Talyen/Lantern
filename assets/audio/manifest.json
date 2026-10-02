@@ -1,0 +1,1116 @@
+{
+  "version": 1,
+  "sourceRootHint": "~/Documents/Asset Library/Sounds",
+  "licenseReference": "https://sonniss.com/gdc-bundle-license/",
+  "sampleRate": 48000,
+  "clips": {
+    "step-earth-1": {
+      "url": "/vendor/audio/step-earth-1.ogg",
+      "sourceId": "cb85f4dd3bc5491b",
+      "sourcePath": "movement/fs_ground_civilian_walk_n03__levan_nadashvili_civilian_footsteps__cb85f4dd3bc5491b.flac",
+      "sourceSha256": "ee514ea330b42f4e7cbae48ec3d22e5842032cb3c579381ee7c644eaa4991686",
+      "sourceLibrary": "Levan Nadashvili - Civilian Footsteps",
+      "edit": {
+        "start": 0,
+        "duration": 0.7,
+        "trimSilence": true,
+        "channels": 1,
+        "peakDb": -4,
+        "fadeOut": 0.04,
+        "loopCrossfade": 0
+      },
+      "loop": false
+    },
+    "step-earth-2": {
+      "url": "/vendor/audio/step-earth-2.ogg",
+      "sourceId": "363aea1849741d7e",
+      "sourcePath": "movement/fs_ground_civilian_walk_n05__levan_nadashvili_civilian_footsteps__363aea1849741d7e.flac",
+      "sourceSha256": "02f4ac413ba9fdc7b5f7d9471c67b491a10310c21291d52c7ae6087aaa73304f",
+      "sourceLibrary": "Levan Nadashvili - Civilian Footsteps",
+      "edit": {
+        "start": 0,
+        "duration": 0.7,
+        "trimSilence": true,
+        "channels": 1,
+        "peakDb": -4,
+        "fadeOut": 0.04,
+        "loopCrossfade": 0
+      },
+      "loop": false
+    },
+    "step-gravel-1": {
+      "url": "/vendor/audio/step-gravel-1.ogg",
+      "sourceId": "451966d993b32323",
+      "sourcePath": "movement/pm_sdng_single_step_footstep_19__pmsfx_steps_dirt_gravel__451966d993b32323.wav",
+      "sourceSha256": "451966d993b323235118cc65e93cacd443ee8f3e05c47e743a0e8017ebf13e95",
+      "sourceLibrary": "PMSFX - STEPS Dirt & Gravel",
+      "edit": {
+        "start": 0,
+        "duration": 0.87,
+        "trimSilence": true,
+        "channels": 1,
+        "peakDb": -4,
+        "fadeOut": 0.04,
+        "loopCrossfade": 0
+      },
+      "loop": false
+    },
+    "step-gravel-2": {
+      "url": "/vendor/audio/step-gravel-2.ogg",
+      "sourceId": "49d344b77f015ef1",
+      "sourcePath": "movement/pm_sdng_single_step_footstep_46__pmsfx_steps_dirt_gravel__49d344b77f015ef1.wav",
+      "sourceSha256": "49d344b77f015ef1f37bbdafae6cabd9087b55f8fb6cb9cfca6861a1e1b43f70",
+      "sourceLibrary": "PMSFX - STEPS Dirt & Gravel",
+      "edit": {
+        "start": 0,
+        "duration": 1.05,
+        "trimSilence": true,
+        "channels": 1,
+        "peakDb": -4,
+        "fadeOut": 0.04,
+        "loopCrossfade": 0
+      },
+      "loop": false
+    },
+    "gear-1": {
+      "url": "/vendor/audio/gear-1.ogg",
+      "sourceId": "ba8ddcf091d7fdc3",
+      "sourcePath": "movement/leatherarmor_rustle_03__double_trouble_audio_medieval_armor_and_im__ba8ddcf091d7fdc3.flac",
+      "sourceSha256": "6d3bc57cf5bf883ddbefa4d22f98a5156e77ca772b7da1668bc618d6f0d3d1b4",
+      "sourceLibrary": "Double Trouble Audio - Medieval Armor and Impacts",
+      "edit": {
+        "start": 0,
+        "duration": 0.93,
+        "trimSilence": true,
+        "channels": 1,
+        "peakDb": -4,
+        "fadeOut": 0.04,
+        "loopCrossfade": 0
+      },
+      "loop": false
+    },
+    "gear-2": {
+      "url": "/vendor/audio/gear-2.ogg",
+      "sourceId": "fcea0d3bb242ab3e",
+      "sourcePath": "movement/foley_soldier_gear_equipment_metal_cloth_heavy_movement_light_08__gamemaster_audio_footstep_and_foley_sounds__fcea0d3bb242ab3e.flac",
+      "sourceSha256": "32bff38e17ccb0fe92d4176bcad740c8926515ee293cdc6eec73daed8026cd95",
+      "sourceLibrary": "Gamemaster Audio - Footstep and Foley Sounds",
+      "edit": {
+        "start": 0,
+        "duration": 1.07,
+        "trimSilence": true,
+        "channels": 1,
+        "peakDb": -4,
+        "fadeOut": 0.04,
+        "loopCrossfade": 0
+      },
+      "loop": false
+    },
+    "swish-1": {
+      "url": "/vendor/audio/swish-1.ogg",
+      "sourceId": "61aa3116d5fe8ced",
+      "sourcePath": "combat/whoosh_organic_fabric_glove_airy_breathy_punchy__airborne_sound_organic_whooshes__61aa3116d5fe8ced.wav",
+      "sourceSha256": "61aa3116d5fe8cedf9103fe7ca7921141032ea868145f0bc67c5618b8077be49",
+      "sourceLibrary": "Airborne Sound - Organic Whooshes",
+      "edit": {
+        "start": 0,
+        "duration": 0.46,
+        "trimSilence": true,
+        "channels": 1,
+        "peakDb": -4,
+        "fadeOut": 0.04,
+        "loopCrossfade": 0
+      },
+      "loop": false
+    },
+    "swish-2": {
+      "url": "/vendor/audio/swish-2.ogg",
+      "sourceId": "bdc4b8ae176eef55",
+      "sourcePath": "combat/sword_slide_swish__l_a_sounds_transitions_001__bdc4b8ae176eef55.wav",
+      "sourceSha256": "bdc4b8ae176eef559cc5bbc778bfb3e0f5122b01640e635126b25e29322d6672",
+      "sourceLibrary": "L.A. Sounds \u2013 Transitions 001",
+      "edit": {
+        "start": 0,
+        "duration": 0.65,
+        "trimSilence": true,
+        "channels": 1,
+        "peakDb": -4,
+        "fadeOut": 0.04,
+        "loopCrossfade": 0
+      },
+      "loop": false
+    },
+    "swish-3": {
+      "url": "/vendor/audio/swish-3.ogg",
+      "sourceId": "4f164b427b5a5b69",
+      "sourcePath": "combat/action_swirl_whoosh_hw_04__mechanical_wave_hits_whoosh__4f164b427b5a5b69.flac",
+      "sourceSha256": "2e65301ad450d82559f0a70650715f7b44fb280b951dd5719b0a4fd913a8527a",
+      "sourceLibrary": "Mechanical Wave - Hits Whoosh",
+      "edit": {
+        "start": 0,
+        "duration": 0.55,
+        "trimSilence": true,
+        "channels": 1,
+        "peakDb": -4,
+        "fadeOut": 0.04,
+        "loopCrossfade": 0
+      },
+      "loop": false
+    },
+    "impact-1": {
+      "url": "/vendor/audio/impact-1.ogg",
+      "sourceId": "cf6585bd00ef3da4",
+      "sourcePath": "combat/efx_sd_gore_punch_02_b_m__coll_anderson_gore__cf6585bd00ef3da4.flac",
+      "sourceSha256": "bb9a3e628f1d3e05e064fa39235281ff11f2a7d76962055934d8503e6995f1a7",
+      "sourceLibrary": "Coll Anderson - Gore",
+      "edit": {
+        "start": 0,
+        "duration": 0.6,
+        "trimSilence": true,
+        "channels": 1,
+        "peakDb": -4,
+        "fadeOut": 0.04,
+        "loopCrossfade": 0
+      },
+      "loop": false
+    },
+    "impact-2": {
+      "url": "/vendor/audio/impact-2.ogg",
+      "sourceId": "40617fb11ca6de7d",
+      "sourcePath": "combat/chainmail_impact_hard_03__double_trouble_audio_medieval_armor_and_im__40617fb11ca6de7d.flac",
+      "sourceSha256": "ce1b3761c1982f42ae28d1a06a1ac195764b306f90512870bc319327842521c7",
+      "sourceLibrary": "Double Trouble Audio - Medieval Armor and Impacts",
+      "edit": {
+        "start": 0,
+        "duration": 0.64,
+        "trimSilence": true,
+        "channels": 1,
+        "peakDb": -4,
+        "fadeOut": 0.04,
+        "loopCrossfade": 0
+      },
+      "loop": false
+    },
+    "impact-3": {
+      "url": "/vendor/audio/impact-3.ogg",
+      "sourceId": "a6a1ca66d08efd92",
+      "sourcePath": "combat/plate_impact_hard_02__double_trouble_audio_medieval_armor_and_im__a6a1ca66d08efd92.flac",
+      "sourceSha256": "ac5578d37cc3181f0e81590a9a8ec9f4a26428ae4c37712c2e9dc7285153cf0d",
+      "sourceLibrary": "Double Trouble Audio - Medieval Armor and Impacts",
+      "edit": {
+        "start": 0,
+        "duration": 0.76,
+        "trimSilence": true,
+        "channels": 1,
+        "peakDb": -4,
+        "fadeOut": 0.04,
+        "loopCrossfade": 0
+      },
+      "loop": false
+    },
+    "block": {
+      "url": "/vendor/audio/block.ogg",
+      "sourceId": "1b12234aca325a25",
+      "sourcePath": "combat/weapon_impact_parry_01__double_trouble_audio_medieval_armor_and_im__1b12234aca325a25.flac",
+      "sourceSha256": "0781f679def50c3505cdd7aa6b7011f8d66d6f7a2a39bea67e75d79c331dad7b",
+      "sourceLibrary": "Double Trouble Audio - Medieval Armor and Impacts",
+      "edit": {
+        "start": 0,
+        "duration": 0.92,
+        "trimSilence": true,
+        "channels": 1,
+        "peakDb": -4,
+        "fadeOut": 0.04,
+        "loopCrossfade": 0
+      },
+      "loop": false
+    },
+    "bow": {
+      "url": "/vendor/audio/bow.ogg",
+      "sourceId": "3d272854f1cdbfd7",
+      "sourcePath": "world/hawk_s_arrow_flies_bow_and_arrow_shoot_2__2496soundeffects_super_heroes_sound_design__3d272854f1cdbfd7.wav",
+      "sourceSha256": "3d272854f1cdbfd79763b02563669d212b9c2b33ce0882a3a4e9c001062cbba6",
+      "sourceLibrary": "2496SoundEffects - Super Heroes Sound Design",
+      "edit": {
+        "start": 0,
+        "duration": 0.85,
+        "trimSilence": true,
+        "channels": 1,
+        "peakDb": -4,
+        "fadeOut": 0.04,
+        "loopCrossfade": 0
+      },
+      "loop": false
+    },
+    "arrow-impact": {
+      "url": "/vendor/audio/arrow-impact.ogg",
+      "sourceId": "5d67b59c924fb233",
+      "sourcePath": "combat/future_weapons_3_crossbow_arrow_hit_2__soundmorph_future_weapons_3__5d67b59c924fb233.flac",
+      "sourceSha256": "ecbca77114c61c06247b5eb9bde44ff96593962c3855dac48e5038715cf006cb",
+      "sourceLibrary": "SoundMorph - FUTURE WEAPONS 3",
+      "edit": {
+        "start": 0,
+        "duration": 0.8,
+        "trimSilence": true,
+        "channels": 1,
+        "peakDb": -4,
+        "fadeOut": 0.04,
+        "loopCrossfade": 0
+      },
+      "loop": false
+    },
+    "human-hurt": {
+      "url": "/vendor/audio/human-hurt.ogg",
+      "sourceId": "aa23d2dcbbe06834",
+      "sourcePath": "creatures/grunt_pain_male_bb_10_scream_library_brfx_004__bottle_rocket_fx_scream__aa23d2dcbbe06834.wav",
+      "sourceSha256": "aa23d2dcbbe068349a54f47594304d3b1f970c5fe2ea79c83f2513125e95a2f4",
+      "sourceLibrary": "Bottle Rocket Fx - Scream",
+      "edit": {
+        "start": 0,
+        "duration": 0.46,
+        "trimSilence": true,
+        "channels": 1,
+        "peakDb": -4,
+        "fadeOut": 0.04,
+        "loopCrossfade": 0
+      },
+      "loop": false
+    },
+    "goblin-hurt-1": {
+      "url": "/vendor/audio/goblin-hurt-1.ogg",
+      "sourceId": "5170a1e686ab87e9",
+      "sourcePath": "creatures/monster_struggle_grunt_240__soundbits_screams_shouts_2_monsters__5170a1e686ab87e9.flac",
+      "sourceSha256": "fa042cd5e4572326e491537ab2fed90cc00e275c104efca3d36043b48a8374ea",
+      "sourceLibrary": "SoundBits -  Screams & Shouts 2 - Monsters",
+      "edit": {
+        "start": 0,
+        "duration": 1.1,
+        "trimSilence": true,
+        "channels": 1,
+        "peakDb": -4,
+        "fadeOut": 0.04,
+        "loopCrossfade": 0
+      },
+      "loop": false
+    },
+    "goblin-hurt-2": {
+      "url": "/vendor/audio/goblin-hurt-2.ogg",
+      "sourceId": "9cbcc67e943b55c9",
+      "sourcePath": "creatures/creature_monster_pain_01__matiasmacsd_creatures_zone__9cbcc67e943b55c9.flac",
+      "sourceSha256": "28b616b3993cab88352ccf214a0ed15e73c13799064e8861ec961cce72145d1a",
+      "sourceLibrary": "MatiasMacSD - CREATURES ZONE",
+      "edit": {
+        "start": 0,
+        "duration": 1.27,
+        "trimSilence": true,
+        "channels": 1,
+        "peakDb": -4,
+        "fadeOut": 0.04,
+        "loopCrossfade": 0
+      },
+      "loop": false
+    },
+    "goblin-death": {
+      "url": "/vendor/audio/goblin-death.ogg",
+      "sourceId": "d752dcc0c183d2ce",
+      "sourcePath": "creatures/monster_pain_death_121__soundbits_screams_shouts_2_monsters__d752dcc0c183d2ce.flac",
+      "sourceSha256": "f1423cdb3c6b7fdb027cbaa00371d848e553ca565e59a548262f595c3c799fec",
+      "sourceLibrary": "SoundBits -  Screams & Shouts 2 - Monsters",
+      "edit": {
+        "start": 0,
+        "duration": 1.83,
+        "trimSilence": true,
+        "channels": 1,
+        "peakDb": -4,
+        "fadeOut": 0.04,
+        "loopCrossfade": 0
+      },
+      "loop": false
+    },
+    "goblin-effort": {
+      "url": "/vendor/audio/goblin-effort.ogg",
+      "sourceId": "108cd42b5b26ea82",
+      "sourcePath": "creatures/creature_monster_attack_09__matiasmacsd_creatures_zone__108cd42b5b26ea82.flac",
+      "sourceSha256": "0b3c0e81147f0f2c126c752688f300a0d68c93f7f521d80cb7897f3f01e9f092",
+      "sourceLibrary": "MatiasMacSD - CREATURES ZONE",
+      "edit": {
+        "start": 0,
+        "duration": 0.75,
+        "trimSilence": true,
+        "channels": 1,
+        "peakDb": -4,
+        "fadeOut": 0.04,
+        "loopCrossfade": 0
+      },
+      "loop": false
+    },
+    "wood-hit-1": {
+      "url": "/vendor/audio/wood-hit-1.ogg",
+      "sourceId": "bd5e0ecd0a0795bc",
+      "sourcePath": "crafting/drop_soft_single_plank_drop_02__double_trouble_audio_wood_impacts_and_debr__bd5e0ecd0a0795bc.flac",
+      "sourceSha256": "53b8986166856ffd07ba0da758524406ea09067d4120f55b1e51d621454e996a",
+      "sourceLibrary": "Double Trouble Audio - Wood Impacts and Debris",
+      "edit": {
+        "start": 0,
+        "duration": 0.54,
+        "trimSilence": true,
+        "channels": 1,
+        "peakDb": -4,
+        "fadeOut": 0.04,
+        "loopCrossfade": 0
+      },
+      "loop": false
+    },
+    "wood-hit-2": {
+      "url": "/vendor/audio/wood-hit-2.ogg",
+      "sourceId": "312d5dc970855296",
+      "sourcePath": "crafting/bluezone_bc0254_wood_falling_log_002_006__bluezone_wood_sound_effects__312d5dc970855296.flac",
+      "sourceSha256": "1d383136b272af73d19fad90f3b450025670f0072526a5c6c6c38c5f5ee520f2",
+      "sourceLibrary": "BlueZone - Wood Sound Effects",
+      "edit": {
+        "start": 0,
+        "duration": 0.34,
+        "trimSilence": true,
+        "channels": 1,
+        "peakDb": -4,
+        "fadeOut": 0.04,
+        "loopCrossfade": 0
+      },
+      "loop": false
+    },
+    "wood-crack": {
+      "url": "/vendor/audio/wood-crack.ogg",
+      "sourceId": "d8b1cf2e907a0653",
+      "sourcePath": "crafting/wood_breaking_cracking_snapping_breaking_peeling_bones_break_snap_crack_13__matt_script_you_me_debris__d8b1cf2e907a0653.flac",
+      "sourceSha256": "ae14c1b3328c64bfb7936ff6923882698ee325f013ef74fbeb0fc2f8b016ae99",
+      "sourceLibrary": "Matt Script - You Me & Debris",
+      "edit": {
+        "start": 0,
+        "duration": 1.33,
+        "trimSilence": true,
+        "channels": 1,
+        "peakDb": -4,
+        "fadeOut": 0.04,
+        "loopCrossfade": 0
+      },
+      "loop": false
+    },
+    "tree-fall": {
+      "url": "/vendor/audio/tree-fall.ogg",
+      "sourceId": "4f8a65cdd874b6bc",
+      "sourcePath": "world/tree_falling_04__soundrangers_foley_elements_foliage__4f8a65cdd874b6bc.flac",
+      "sourceSha256": "4b35a962c42bec341878bb0fae96ba83b4e8aa61ac0e42d59738b0ebf90838cb",
+      "sourceLibrary": "Soundrangers - Foley Elements Foliage",
+      "edit": {
+        "start": 0,
+        "duration": 3.5,
+        "trimSilence": true,
+        "channels": 1,
+        "peakDb": -4,
+        "fadeOut": 0.04,
+        "loopCrossfade": 0
+      },
+      "loop": false
+    },
+    "chest": {
+      "url": "/vendor/audio/chest.ogg",
+      "sourceId": "de92f21df0850d2d",
+      "sourcePath": "crafting/doors_wood_gate_open_2__resonance_sound_design_assorted_foley_elem__de92f21df0850d2d.flac",
+      "sourceSha256": "d30a0fe15512e2ba83c7c047384d3b10e61d15b7e4de415cb7874b92ffa15573",
+      "sourceLibrary": "Resonance Sound Design - ASSORTED FOLEY ELEMENTS",
+      "edit": {
+        "start": 0,
+        "duration": 1.93,
+        "trimSilence": true,
+        "channels": 1,
+        "peakDb": -4,
+        "fadeOut": 0.04,
+        "loopCrossfade": 0
+      },
+      "loop": false
+    },
+    "paper-1": {
+      "url": "/vendor/audio/paper-1.ogg",
+      "sourceId": "6cccb03c7f661209",
+      "sourcePath": "items/paper_pergament_pages_turn_flip_20__the_soundcatcher_paperlife__6cccb03c7f661209.wav",
+      "sourceSha256": "6cccb03c7f66120966c3bd3b1f67c03cfe75566ce0bc398034d5713582ea5125",
+      "sourceLibrary": "The Soundcatcher - Paperlife",
+      "edit": {
+        "start": 0,
+        "duration": 1.07,
+        "trimSilence": true,
+        "channels": 1,
+        "peakDb": -4,
+        "fadeOut": 0.04,
+        "loopCrossfade": 0
+      },
+      "loop": false
+    },
+    "paper-2": {
+      "url": "/vendor/audio/paper-2.ogg",
+      "sourceId": "e47afc3f015f3351",
+      "sourcePath": "items/paper_newspaper_light_movement_01__the_soundcatcher_paperlife__e47afc3f015f3351.wav",
+      "sourceSha256": "e47afc3f015f3351616d9121322870a9755a4b953905cad8cd0b3610d294fbee",
+      "sourceLibrary": "The Soundcatcher - Paperlife",
+      "edit": {
+        "start": 0,
+        "duration": 1.08,
+        "trimSilence": true,
+        "channels": 1,
+        "peakDb": -4,
+        "fadeOut": 0.04,
+        "loopCrossfade": 0
+      },
+      "loop": false
+    },
+    "click": {
+      "url": "/vendor/audio/click.ogg",
+      "sourceId": "5e7a844fcee693e6",
+      "sourcePath": "interface/coffee_grinder_knob_turn_click_x3__uberduo_the_home_barista__5e7a844fcee693e6.wav",
+      "sourceSha256": "5e7a844fcee693e6efc8ae1e0469973637fc501b12bcd76af3ad61067aeadb1a",
+      "sourceLibrary": "UberDuo - The Home Barista",
+      "edit": {
+        "start": 0,
+        "duration": 0.24,
+        "trimSilence": true,
+        "channels": 1,
+        "peakDb": -4,
+        "fadeOut": 0.04,
+        "loopCrossfade": 0
+      },
+      "loop": false
+    },
+    "clasp": {
+      "url": "/vendor/audio/clasp.ogg",
+      "sourceId": "94c3d80c9d6817c0",
+      "sourcePath": "items/bag_handbag_clasp_01_01__soundbits_open_close_2__94c3d80c9d6817c0.flac",
+      "sourceSha256": "7e950519e3707d116d673d558457cd6f20bb0dbcd2e73b76a638cb1730fbe064",
+      "sourceLibrary": "SoundBits - Open & Close 2",
+      "edit": {
+        "start": 0,
+        "duration": 0.5,
+        "trimSilence": true,
+        "channels": 1,
+        "peakDb": -4,
+        "fadeOut": 0.04,
+        "loopCrossfade": 0
+      },
+      "loop": false
+    },
+    "charge": {
+      "url": "/vendor/audio/charge.ogg",
+      "sourceId": "27c0faf91f7c4909",
+      "sourcePath": "magic/casting_charge_matter_grow_04__gamemaster_audio_magic_and_spell_sounds__27c0faf91f7c4909.flac",
+      "sourceSha256": "b61384702d96ef186d89b51b55f38b715cbafa76146f744d8d929805f74dec30",
+      "sourceLibrary": "Gamemaster Audio - Magic and Spell Sounds",
+      "edit": {
+        "start": 0,
+        "duration": 1.16,
+        "trimSilence": true,
+        "channels": 1,
+        "peakDb": -4,
+        "fadeOut": 0.04,
+        "loopCrossfade": 0
+      },
+      "loop": false
+    },
+    "magic-release": {
+      "url": "/vendor/audio/magic-release.ogg",
+      "sourceId": "2dda489c3fd77bdc",
+      "sourcePath": "magic/water_blast_projectile_spell_03__gamemaster_audio_magic_and_spell_sounds__2dda489c3fd77bdc.flac",
+      "sourceSha256": "7b8ccfa9ff66aee25305059eeb7be7f6a7a369d503b732efe9f026a54d86d623",
+      "sourceLibrary": "Gamemaster Audio - Magic and Spell Sounds",
+      "edit": {
+        "start": 0,
+        "duration": 1.22,
+        "trimSilence": true,
+        "channels": 1,
+        "peakDb": -4,
+        "fadeOut": 0.04,
+        "loopCrossfade": 0
+      },
+      "loop": false
+    },
+    "magic-impact": {
+      "url": "/vendor/audio/magic-impact.ogg",
+      "sourceId": "c8cb6d5c07cad872",
+      "sourcePath": "magic/electric_surge_blast_04__gamemaster_audio_magic_and_spell_sounds__c8cb6d5c07cad872.flac",
+      "sourceSha256": "06e6ddd6409e6ef5f9e7493e3deb1360abcae462d6e32f1ba30ab0d70ba17b92",
+      "sourceLibrary": "Gamemaster Audio - Magic and Spell Sounds",
+      "edit": {
+        "start": 0,
+        "duration": 0.75,
+        "trimSilence": true,
+        "channels": 1,
+        "peakDb": -4,
+        "fadeOut": 0.04,
+        "loopCrossfade": 0
+      },
+      "loop": false
+    },
+    "magic-warm": {
+      "url": "/vendor/audio/magic-warm.ogg",
+      "sourceId": "67cfc88cca9fc827",
+      "sourcePath": "magic/ice_spell_ice_spell_buff_positive_02__sound_spark_llc_magic_spells_buffs_and_att__67cfc88cca9fc827.flac",
+      "sourceSha256": "63e06d768659acd9ade239d4a5e7480dbb457da0fb8454f5fc071f5e96ddac05",
+      "sourceLibrary": "Sound Spark LLC \u2013 Magic Spells, Buffs and Attacks",
+      "edit": {
+        "start": 0,
+        "duration": 1.88,
+        "trimSilence": true,
+        "channels": 1,
+        "peakDb": -4,
+        "fadeOut": 0.04,
+        "loopCrossfade": 0
+      },
+      "loop": false
+    },
+    "portal-open": {
+      "url": "/vendor/audio/portal-open.ogg",
+      "sourceId": "0789cec073b6aeec",
+      "sourcePath": "magic/arcane_spell_doppler_shift_03__sound_spark_llc_magic_spells_buffs_and_att__0789cec073b6aeec.flac",
+      "sourceSha256": "16ffcc7affe516e40da9d7f8c7161184a6c67165cc50506c773f4da2e77cb4c7",
+      "sourceLibrary": "Sound Spark LLC \u2013 Magic Spells, Buffs and Attacks",
+      "edit": {
+        "start": 0,
+        "duration": 2.99,
+        "trimSilence": true,
+        "channels": 1,
+        "peakDb": -4,
+        "fadeOut": 0.04,
+        "loopCrossfade": 0
+      },
+      "loop": false
+    },
+    "portal-close": {
+      "url": "/vendor/audio/portal-close.ogg",
+      "sourceId": "b043bd250f274868",
+      "sourcePath": "magic/magic_air_large_whoosh_swirl_wind_gust_foliage_01__articulated_sounds_magic_elements_vol_1__b043bd250f274868.flac",
+      "sourceSha256": "afce5b33bcf30cb1afe861fc3cf4c7e5b76c8bc17312df73c013edabad1e77ca",
+      "sourceLibrary": "Articulated Sounds - Magic Elements vol.1",
+      "edit": {
+        "start": 0,
+        "duration": 1.6,
+        "trimSilence": true,
+        "channels": 1,
+        "peakDb": -4,
+        "fadeOut": 0.04,
+        "loopCrossfade": 0
+      },
+      "loop": false
+    },
+    "bell": {
+      "url": "/vendor/audio/bell.ogg",
+      "sourceId": "7f017065474648df",
+      "sourcePath": "music_and_outcomes/bell_waiter_fienup_001__soundopolis_percussion_01__7f017065474648df.flac",
+      "sourceSha256": "672ec0b8dee698d8d9630b08cc2439200751a59e2e2544aa9acf06a5aed743d5",
+      "sourceLibrary": "Soundopolis - Percussion 01",
+      "edit": {
+        "start": 0,
+        "duration": 2.0,
+        "trimSilence": true,
+        "channels": 1,
+        "peakDb": -4,
+        "fadeOut": 0.04,
+        "loopCrossfade": 0
+      },
+      "loop": false
+    },
+    "bowl": {
+      "url": "/vendor/audio/bowl.ogg",
+      "sourceId": "9c263c55e9a235f1",
+      "sourcePath": "music_and_outcomes/singing_bowl_strike_sustain_d_02__prismo_sound_singing_bowls__9c263c55e9a235f1.wav",
+      "sourceSha256": "9c263c55e9a235f1eba4df082c698387194554ef5d41df7ffe471d8ba5de5860",
+      "sourceLibrary": "Prismo Sound - Singing Bowls",
+      "edit": {
+        "start": 0,
+        "duration": 3.0,
+        "trimSilence": true,
+        "channels": 1,
+        "peakDb": -4,
+        "fadeOut": 0.04,
+        "loopCrossfade": 0
+      },
+      "loop": false
+    },
+    "woodland": {
+      "url": "/vendor/audio/woodland.ogg",
+      "sourceId": "e9e1eec383cb39c3",
+      "sourcePath": "world/58_wind_in_pines_mid_field_ms_stereo__ivo_vicic_winter_textures_vol_1__e9e1eec383cb39c3.flac",
+      "sourceSha256": "39731cfe00019162e168f881cdcf5b8abef7c60c04b8c7062e0c70f361e2e32c",
+      "sourceLibrary": "Ivo Vicic - Winter textures vol.1",
+      "edit": {
+        "start": 15,
+        "duration": 30,
+        "trimSilence": false,
+        "channels": 2,
+        "peakDb": -6,
+        "fadeOut": 0,
+        "loopCrossfade": 0.5
+      },
+      "loop": true,
+      "loopStart": 0,
+      "loopEnd": 29.5
+    },
+    "fire": {
+      "url": "/vendor/audio/fire.ogg",
+      "sourceId": "94e204a918003f16",
+      "sourcePath": "crafting/firecracklinginawoodstove__uberduo_the_cabin_audio_playset__94e204a918003f16.flac",
+      "sourceSha256": "a4bf169301e53710fb09c73b2fd54fb2a9d73309cbf71f9bb9f3e50e9a883402",
+      "sourceLibrary": "UberDuo - The Cabin Audio Playset",
+      "edit": {
+        "start": 1,
+        "duration": 12,
+        "trimSilence": false,
+        "channels": 1,
+        "peakDb": -6,
+        "fadeOut": 0,
+        "loopCrossfade": 0.5
+      },
+      "loop": true,
+      "loopStart": 0,
+      "loopEnd": 11.5
+    },
+    "portal-hum": {
+      "url": "/vendor/audio/portal-hum.ogg",
+      "sourceId": "ad7dd2181d0d292d",
+      "sourcePath": "world/dark_portal_wind_effect_04__gamemaster_audio_magic_and_spell_sounds__ad7dd2181d0d292d.flac",
+      "sourceSha256": "be449592d42648a5b84851a832cfac7a6bb31a3de532a07f9102ca6170573f9d",
+      "sourceLibrary": "Gamemaster Audio - Magic and Spell Sounds",
+      "edit": {
+        "start": 0.4,
+        "duration": 6,
+        "trimSilence": false,
+        "channels": 1,
+        "peakDb": -6,
+        "fadeOut": 0,
+        "loopCrossfade": 0.5
+      },
+      "loop": true,
+      "loopStart": 0,
+      "loopEnd": 5.5
+    }
+  },
+  "cues": {
+    "footstep": {
+      "clips": [
+        "step-earth-1",
+        "step-earth-2",
+        "step-gravel-1",
+        "step-gravel-2"
+      ],
+      "gain": 0.2,
+      "bus": "effects",
+      "rate": 1
+    },
+    "gear": {
+      "clips": [
+        "gear-1",
+        "gear-2"
+      ],
+      "gain": 0.09,
+      "bus": "effects",
+      "rate": 1
+    },
+    "dodge": {
+      "clips": [
+        "gear-1",
+        "swish-1"
+      ],
+      "gain": 0.3,
+      "bus": "effects",
+      "rate": 1
+    },
+    "land": {
+      "clips": [
+        "step-gravel-1",
+        "step-gravel-2"
+      ],
+      "gain": 0.28,
+      "bus": "effects",
+      "rate": 1
+    },
+    "axeSwing": {
+      "clips": [
+        "swish-1",
+        "swish-3"
+      ],
+      "gain": 0.4,
+      "bus": "effects",
+      "rate": 0.9
+    },
+    "swordSwing": {
+      "clips": [
+        "swish-1",
+        "swish-2"
+      ],
+      "gain": 0.36,
+      "bus": "effects",
+      "rate": 1
+    },
+    "bodyImpact": {
+      "clips": [
+        "impact-1",
+        "impact-2",
+        "impact-3"
+      ],
+      "gain": 0.58,
+      "bus": "effects",
+      "rate": 1
+    },
+    "block": {
+      "clips": [
+        "block"
+      ],
+      "gain": 0.55,
+      "bus": "effects",
+      "rate": 1
+    },
+    "bowRelease": {
+      "clips": [
+        "bow"
+      ],
+      "gain": 0.4,
+      "bus": "effects",
+      "rate": 1
+    },
+    "arrowImpact": {
+      "clips": [
+        "arrow-impact"
+      ],
+      "gain": 0.45,
+      "bus": "effects",
+      "rate": 1
+    },
+    "magicCharge": {
+      "clips": [
+        "charge"
+      ],
+      "gain": 0.27,
+      "bus": "effects",
+      "rate": 1
+    },
+    "magicRelease": {
+      "clips": [
+        "magic-release"
+      ],
+      "gain": 0.36,
+      "bus": "effects",
+      "rate": 1
+    },
+    "magicImpact": {
+      "clips": [
+        "magic-impact"
+      ],
+      "gain": 0.42,
+      "bus": "effects",
+      "rate": 1
+    },
+    "playerHurt": {
+      "clips": [
+        "human-hurt"
+      ],
+      "gain": 0.32,
+      "bus": "effects",
+      "rate": 1
+    },
+    "playerDeath": {
+      "clips": [
+        "human-hurt"
+      ],
+      "gain": 0.36,
+      "bus": "effects",
+      "rate": 0.8
+    },
+    "enemyHurt": {
+      "clips": [
+        "goblin-hurt-1",
+        "goblin-hurt-2"
+      ],
+      "gain": 0.22,
+      "bus": "effects",
+      "rate": 1.18
+    },
+    "enemyDeath": {
+      "clips": [
+        "goblin-death"
+      ],
+      "gain": 0.3,
+      "bus": "effects",
+      "rate": 1.12
+    },
+    "raiderWindup": {
+      "clips": [
+        "goblin-effort"
+      ],
+      "gain": 0.18,
+      "bus": "effects",
+      "rate": 1.16
+    },
+    "chopSwing": {
+      "clips": [
+        "swish-1",
+        "swish-3"
+      ],
+      "gain": 0.26,
+      "bus": "effects",
+      "rate": 1
+    },
+    "chopHit": {
+      "clips": [
+        "wood-hit-1",
+        "wood-hit-2"
+      ],
+      "gain": 0.55,
+      "bus": "effects",
+      "rate": 1
+    },
+    "woodCrack": {
+      "clips": [
+        "wood-crack"
+      ],
+      "gain": 0.36,
+      "bus": "effects",
+      "rate": 1
+    },
+    "treeFall": {
+      "clips": [
+        "tree-fall"
+      ],
+      "gain": 0.3,
+      "bus": "effects",
+      "rate": 1
+    },
+    "reward": {
+      "clips": [
+        "clasp"
+      ],
+      "gain": 0.16,
+      "bus": "effects",
+      "rate": 1
+    },
+    "chestOpen": {
+      "clips": [
+        "chest"
+      ],
+      "gain": 0.38,
+      "bus": "effects",
+      "rate": 1
+    },
+    "equipmentReward": {
+      "clips": [
+        "block"
+      ],
+      "gain": 0.16,
+      "bus": "effects",
+      "rate": 1
+    },
+    "scrollDrop": {
+      "clips": [
+        "paper-1",
+        "paper-2"
+      ],
+      "gain": 0.15,
+      "bus": "effects",
+      "rate": 1
+    },
+    "scrollPickup": {
+      "clips": [
+        "paper-1",
+        "paper-2"
+      ],
+      "gain": 0.23,
+      "bus": "effects",
+      "rate": 1
+    },
+    "returnCast": {
+      "clips": [
+        "charge"
+      ],
+      "gain": 0.3,
+      "bus": "effects",
+      "rate": 0.6
+    },
+    "portalOpen": {
+      "clips": [
+        "portal-open"
+      ],
+      "gain": 0.25,
+      "bus": "effects",
+      "rate": 1
+    },
+    "portalClose": {
+      "clips": [
+        "portal-close"
+      ],
+      "gain": 0.23,
+      "bus": "effects",
+      "rate": 1
+    },
+    "portalPass": {
+      "clips": [
+        "portal-open"
+      ],
+      "gain": 0.28,
+      "bus": "effects",
+      "rate": 1.35
+    },
+    "fireTravel": {
+      "clips": [
+        "magic-warm"
+      ],
+      "gain": 0.23,
+      "bus": "effects",
+      "rate": 1
+    },
+    "fireDiscovered": {
+      "clips": [
+        "bell"
+      ],
+      "gain": 0.17,
+      "bus": "effects",
+      "rate": 1
+    },
+    "healing": {
+      "clips": [
+        "magic-warm"
+      ],
+      "gain": 0.12,
+      "bus": "effects",
+      "rate": 1
+    },
+    "menuOpen": {
+      "clips": [
+        "paper-1"
+      ],
+      "gain": 0.18,
+      "bus": "ui",
+      "rate": 1
+    },
+    "menuClose": {
+      "clips": [
+        "paper-2"
+      ],
+      "gain": 0.15,
+      "bus": "ui",
+      "rate": 1
+    },
+    "uiClick": {
+      "clips": [
+        "click"
+      ],
+      "gain": 0.2,
+      "bus": "ui",
+      "rate": 1
+    },
+    "equip": {
+      "clips": [
+        "gear-1",
+        "gear-2"
+      ],
+      "gain": 0.32,
+      "bus": "ui",
+      "rate": 1
+    },
+    "victory": {
+      "clips": [
+        "bell"
+      ],
+      "gain": 0.23,
+      "bus": "effects",
+      "rate": 1
+    },
+    "defeat": {
+      "clips": [
+        "bowl"
+      ],
+      "gain": 0.2,
+      "bus": "effects",
+      "rate": 0.7
+    },
+    "woodland": {
+      "clips": [
+        "woodland"
+      ],
+      "gain": 0.19,
+      "bus": "ambience",
+      "rate": 1
+    },
+    "fire": {
+      "clips": [
+        "fire"
+      ],
+      "gain": 0.26,
+      "bus": "ambience",
+      "rate": 1
+    },
+    "flame": {
+      "clips": [
+        "fire"
+      ],
+      "gain": 0.09,
+      "bus": "ambience",
+      "rate": 1
+    },
+    "portalHum": {
+      "clips": [
+        "portal-hum"
+      ],
+      "gain": 0.15,
+      "bus": "ambience",
+      "rate": 1
+    },
+    "equipmentDrop": {
+      "clips": [
+        "gear-1",
+        "gear-2"
+      ],
+      "gain": 0.16,
+      "bus": "effects",
+      "rate": 1
+    },
+    "equipmentLand": {
+      "clips": [
+        "block"
+      ],
+      "gain": 0.16,
+      "bus": "effects",
+      "rate": 1
+    },
+    "woodDrop": {
+      "clips": [
+        "wood-hit-1",
+        "wood-hit-2"
+      ],
+      "gain": 0.12,
+      "bus": "effects",
+      "rate": 1
+    },
+    "woodLand": {
+      "clips": [
+        "wood-hit-1",
+        "wood-hit-2"
+      ],
+      "gain": 0.22,
+      "bus": "effects",
+      "rate": 1
+    },
+    "inventoryMove": {
+      "clips": [
+        "paper-1",
+        "gear-1"
+      ],
+      "gain": 0.15,
+      "bus": "ui",
+      "rate": 1
+    },
+    "inventoryDrop": {
+      "clips": [
+        "gear-2"
+      ],
+      "gain": 0.24,
+      "bus": "ui",
+      "rate": 1
+    }
+  }
+}

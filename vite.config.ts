@@ -15,7 +15,7 @@ function privateLibrary(): Plugin {
         const path = resolve(root, decodeURIComponent(request.url.split('?')[0].slice(prefix.length)));
         if (!path.startsWith(root + sep)) { response.statusCode = 403; response.end(); return; }
         const file = await stat(path); if (!file.isFile()) { response.statusCode = 404; response.end(); return; }
-        const mime: Record<string, string> = { '.glb': 'model/gltf-binary', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg' };
+        const mime: Record<string, string> = { '.ogg': 'audio/ogg', '.glb': 'model/gltf-binary', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg' };
         response.setHeader('Content-Type', mime[extname(path)] ?? 'application/octet-stream');
         response.setHeader('Cache-Control', 'no-cache');
         createReadStream(path).on('error', () => response.destroy()).pipe(response);

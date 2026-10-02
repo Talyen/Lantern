@@ -39,7 +39,8 @@
     "agent:status": "node scripts/agents/cli.mjs status",
     "agent:cleanup": "node scripts/agents/cli.mjs cleanup",
     "agent:sources": "node scripts/agents/cli.mjs sources",
-    "main:dev": "node scripts/agents/cli.mjs main"
+    "main:dev": "node scripts/agents/cli.mjs main",
+    "audio:prepare": "node scripts/assets/audio/prepare.mjs"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "0.21.0",

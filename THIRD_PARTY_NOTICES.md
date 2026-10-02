@@ -22,6 +22,7 @@ Pirata One by Rodrigo Fuenzalida is bundled locally for loot labels and Inventor
 | --- | --- | --- |
 | Original Lantern surface studies | Text-prompted ImageGen rock, forest floor, stone, soil, wood and Paladin armor studies | Tracked under `assets/textures/`; project license applies to original project material. No Synty input was supplied to generation. |
 | Synty scenery and warrior | Owner-supplied Synty packs, including Polygon Viking Realm | Licensed third-party sources and exports remain private; project license does not grant redistribution rights. |
+| Gameplay audio | Owner-supplied Sonniss GameAudioGDC recordings from the shared sound library | Selection metadata and preparation code are tracked; masters/intermediates and optimized OGGs remain private. Source terms apply to modified recordings; see [gameplay sound](Docs/AUDIO.md). |
 | Mixamo motions and acquisition characters | Signed-in Mixamo catalog export | Sources/catalog/receipts remain private; gameplay animations retargeted locally to separate Paladin and Goblin rigs; gallery samples target each displayed character. No standalone redistribution through this repository. |
 
 Purchase evidence, account tokens and private receipts must not be committed. Local provenance lives with the private acquisition records, not in public notices. The source repository includes conversion tools, not the licensed models, textures or exports.

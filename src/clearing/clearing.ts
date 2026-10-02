@@ -31,6 +31,8 @@ import { loadEquipmentMotions } from '../animation/combat-animations';
 import { normalizeLoadout, type Loadout } from '../gameplay/equipment';
 import { Equipment, type PreparedEquipment } from '../rendering/equipment';
 import { ProjectileVisuals, CasterVisuals } from '../rendering/projectiles';
+import { GameAudio } from '../audio/audio';
+import { GameplayAudio } from '../audio/gameplay';
 import { Harvesting } from '../gameplay/harvesting';
 import { traversalWithTrees, type TreeDefinition } from '../levels/trees';
 import '../ui/game.css';
@@ -91,6 +93,12 @@ const playerEquipment = new Equipment(player.root), enemyEquipment = new Equipme
 const projectileVisuals = new ProjectileVisuals(scene);
 const casterVisuals = new CasterVisuals(scene, caster.root);
 const harvesting = new Harvesting();
+const audio = new GameAudio();
+const gameplayAudio = new GameplayAudio(audio);
+document.addEventListener('click', event => {
+  const button = event.target instanceof Element ? event.target.closest<HTMLButtonElement>('button') : null;
+  if (button && !button.disabled && button.closest('dialog, #result-panel')) audio.play('uiClick');
+});
 let equipmentLoading = false;
 let chopping: { tree: TreeDefinition; time: number; contacted: boolean } | null = null;
 function cancelChop(releaseLock = true): void {
@@ -114,6 +122,7 @@ async function changeEquipment(requested: Loadout, save = false, items?: Invento
     if (save && items) adventure.replaceItems(items);
     applyLoadoutState(); encounter.player.lock=0; encounter.player.attackTime=-1; encounter.attackCooldown=0;
     play(player,'idle'); menus.updateCharacter(adventure.character);
+    if (save) audio.play('equip');
   } catch(error) { if (candidate) playerEquipment.discard(candidate); throw error; }
   finally { equipmentLoading=false; }
 }
@@ -123,23 +132,23 @@ async function changeInventory(items: InventoryItem[]): Promise<void> {
   if (!validItems(items)) throw new Error('Item does not fit.');
   const loadout = itemLoadout(items);
   if (JSON.stringify(loadout) !== JSON.stringify(adventure.character.loadout)) await changeEquipment(loadout, true, items);
-  else { adventure.replaceItems(items); menus.updateCharacter(adventure.character); }
+  else { adventure.replaceItems(items); menus.updateCharacter(adventure.character); audio.play('inventoryMove'); }
 }
 const menus = new AdventureMenus(clearInput, () => renderer.domElement.focus(), () => { if (!paused()) adventure.beginCast(encounter.player.hp > 0); }, {
   change: changeInventory, newId: adventure.newId,
-  recover: id => { adventure.recoverItem(id); menus.updateCharacter(adventure.character); },
+  recover: id => { adventure.recoverItem(id); menus.updateCharacter(adventure.character); audio.play('inventoryMove'); },
   drop: async (id, quantity) => {
     const entry = adventure.character.items.find(i => i.id === id); if (!entry) throw new Error('Item is no longer available.');
     if (entry.slot === 'bag' || entry.slot === 'overflow') {
-      adventure.dropItem(id, quantity, [encounter.player.x, encounter.player.z]);
+      adventure.dropItem(id, quantity, [encounter.player.x, encounter.player.z]); audio.play('inventoryDrop');
       menus.updateCharacter(adventure.character); syncAdventure(); return;
     }
     const next = removeQuantity(adventure.character.items, id, quantity);
     await changeInventory(next);
     adventure.spawnDrop(entry.item, quantity, [encounter.player.x, encounter.player.z], { blocked: lootDefinitions[entry.item].stackable, instanceId: lootDefinitions[entry.item].stackable ? undefined : entry.id });
-    syncAdventure();
+    audio.play('inventoryDrop'); syncAdventure();
   },
-});
+}, cue => audio.play(cue));
 let pickupRoute: { id: string; points: Point[]; elapsed: number; stalled: number; last: Point } | null = null;
 const lootLabels = new LootLabels(mount, selectLoot);
 function selectLoot(id: string): void {
@@ -179,12 +188,14 @@ function present(events: EncounterEvent[]): void {
     if (event.type === 'animation' || event.type === 'hit') {
       const actor = actors[event.actor];
       if (event.type === 'animation') play(actor, event.motion);
-      else graphics?.effects.burst('hit', actor.root.position);
+      else { const impact = events.find(e => e.type==='impact' && e.actor===event.actor); graphics?.effects.burst('hit', actor.root.position, impact?.type==='impact' && impact.blocked ? 5 : 8); }
     }
   }
+  gameplayAudio.encounter(events,encounter);
   hud.update(encounter, events);
 }
 function resetPresentation(): void {
+  gameplayAudio.reset();
   clearInput();
   graphics?.effects.clear();
   encounter.projectiles=[]; projectileVisuals.clear(); casterVisuals.clear();
@@ -233,15 +244,15 @@ function interact(): void {
     menus.openTravel(adventure.destinations(definitions).map(({ area, fire, available }) => ({ name: fire.name, available,
       travel: () => {
         const allowed = () => adventure.canTravel(encounter, sourceArea, sourceFire, area, fire);
-        if (allowed()) void changeArea({ kind: 'travel', area: area.id, transition: true, spawn: fire.arrival, canCommit: allowed });
+        if (allowed()) void changeArea({ kind: 'travel', area: area.id, transition: true, spawn: fire.arrival, canCommit: allowed }).then(ok => { if (ok) audio.play('fireTravel'); });
       },
     })));
   } else if (target?.type === 'tree') beginChop(target.tree);
   else if (target?.type === 'chest') adventure.openChest(encounter, currentArea, target.chest);
   else if (target?.type === 'portal' && adventure.portal) {
     const link = adventure.portal;
-    if (currentArea.id === homeArea) void changeArea({ kind: 'travel', area: link.area, transition: true, spawn: link.departure }).then(ok => { if (ok && adventure.portal === link) { adventure.portal = null; syncAdventure(); } });
-    else void changeArea({ kind: 'travel', area: homeArea, transition: true, spawn: definitions.homestead.portalArrival });
+    if (currentArea.id === homeArea) void changeArea({ kind: 'travel', area: link.area, transition: true, spawn: link.departure }).then(ok => { if (ok) audio.play('portalPass'); if (ok && adventure.portal === link) { adventure.portal = null; syncAdventure(); audio.play('portalClose'); } });
+    else void changeArea({ kind: 'travel', area: homeArea, transition: true, spawn: definitions.homestead.portalArrival }).then(ok => { if (ok) audio.play('portalPass'); });
   }
 }
 function syncAdventure(): void {
@@ -249,13 +260,15 @@ function syncAdventure(): void {
   for (const chest of currentArea.chests ?? []) active?.setChestOpened(chest.id, adventure.chest(currentArea, chest).opened);
   const target = interaction();
   const prompt = paused() || encounter.player.hp <= 0 ? '' : adventure.notice || (target?.type === 'portal' ? (currentArea.id === homeArea ? 'E · Return to adventure' : 'E · Homestead') : target?.type === 'chest' ? 'E · Open chest' : target?.type === 'tree' ? (encounter.weapon === 'axe' ? 'Hold E · Chop' : 'Equip an Axe') : target ? 'E · Travel' : '');
+  gameplayAudio.adventure(adventure.takeEvents());
+  if (adventure.castRemaining<=0) audio.stop('return-cast');
   menus.updateCharacter(adventure.character);
   menus.update(adventure.character.scrolls, currentArea.id !== homeArea && encounter.player.hp > 0 && adventure.character.scrolls > 0 && adventure.castRemaining === 0, prompt, adventure.castRemaining);
   document.getElementById('save-status')!.textContent = adventure.saveError;
 }
 function paused(): boolean { return Boolean(characterMissing || options?.paused || menus.paused || equipmentLoading || inspecting || graphics?.preparingSettings || frozen || transitioning); }
 function timings(): Timings {
-  const timing = (actor: Actor) => ({ attack: duration(actor, 'attack'), hit: duration(actor, 'hit'), contacts: actor.contacts });
+  const timing = (actor: Actor) => ({ attack: duration(actor, 'attack'), hit: duration(actor, 'hit'), contacts: actor.contacts, commitLead: actor.commitLead });
   return { player: timing(player), enemy: timing(enemy), caster: timing(caster) };
 }
 const aimRay = new THREE.Raycaster();
@@ -305,7 +318,7 @@ function beginChop(tree: TreeDefinition): void {
   encounter.player.yaw=Math.atan2(tree.position[0]-encounter.player.x,tree.position[2]-encounter.player.z);
   encounter.player.lock=duration(player,'chop'); chopping={tree,time:0,contacted:false};
   // Restart each distinct chop, while locomotion and menu input remain interruptible.
-  player.current=null; play(player,'chop');
+  player.current=null; play(player,'chop'); audio.play('chopSwing',encounter.player);
 }
 function updateGame(dt: number): void {
   const isPaused = paused();
@@ -359,7 +372,7 @@ function updateGame(dt: number): void {
       if (!chopping.contacted && chopping.time>=player.chopContact) {
         chopping.contacted=true;
         const reward=harvesting.contact(currentArea.id,chopping.tree.id,[encounter.player.x,encounter.player.z]);
-        if (reward) { adventure.grantHarvest(reward.wood,reward.xp,[chopping.tree.position[0],chopping.tree.position[2]]); active?.treeHit(chopping.tree.id); if (reward.felled) { active?.setTreeState(chopping.tree.id,true); movementWorld?.setTreeFelled(chopping.tree.id,true); } }
+        if (reward) { audio.play('chopHit',{x:chopping.tree.position[0],z:chopping.tree.position[2]}); if (reward.felled) { audio.play('woodCrack',{x:chopping.tree.position[0],z:chopping.tree.position[2]}); audio.play('treeFall',{x:chopping.tree.position[0],z:chopping.tree.position[2]}); } adventure.grantHarvest(reward.wood,reward.xp,[chopping.tree.position[0],chopping.tree.position[2]]); active?.treeHit(chopping.tree.id); if (reward.felled) { active?.setTreeState(chopping.tree.id,true); movementWorld?.setTreeFelled(chopping.tree.id,true); } }
         else cancelChop();
       }
       if (chopping && chopping.time>=duration(player,'chop')) cancelChop();
@@ -388,6 +401,7 @@ function tick(now: number): void {
   if (!framePacer.shouldRender(now, options?.settings.fpsLimit ?? initialFpsLimit)) return;
   clock.update(now);
   const dt = Math.min(clock.getDelta(), 0.05);
+  audio.update(encounter.player,paused() || encounter.phase==='loading');
   updateGame(dt);
   if (!inspecting && !paused() && !fixedCamera && encounter.player.hp > 0) {
     cameraOwner.follow(player.root.position, dt);
@@ -396,8 +410,12 @@ function tick(now: number): void {
     const actor = actors[id];
     const state = id === 'player' ? encounter.player : encounter.enemies[id];
     updateActor(actor, state, dt, paused(), id==='player' && encounter.blocking);
+    gameplayAudio.locomotion(id,state,actor.gait,actor.current,paused());
   }
   if (!paused()) { active?.portals.forEach(p => p.update(dt)); adventureVisuals?.update(dt); }
+  const portalPoint = adventure.portalPosition(currentArea);
+  const flames = currentArea.effects.fires.map(fire=>({id:fire.id,position:{x:fire.position[0],z:fire.position[1]},camp:fire.role==='campfire'})).sort((a,b)=>Math.hypot(a.position.x-encounter.player.x,a.position.z-encounter.player.z)-Math.hypot(b.position.x-encounter.player.x,b.position.z-encounter.player.z)).slice(0,6);
+  gameplayAudio.ambience(flames,portalPoint ? {x:portalPoint[0],z:portalPoint[1]} : null,lanternEnabled && encounter.player.hp>0 ? encounter.player : null);
   controls.update();
   camera.updateMatrixWorld();
   aimCamera.copy(camera);
@@ -440,10 +458,10 @@ try {
   options = new Options({
     apply: settings => graphics?.apply(settings), flushSettings: () => graphics?.flushSettings(),
     resetMeasurements: () => graphics?.resetMeasurements(), clearInput,
-    focus: () => renderer.domElement.focus(),
+    focus: () => renderer.domElement.focus(), audio: {apply:settings=>audio.applySettings(settings),play:cue=>audio.play(cue)},
   });
   graphics = new Graphics({ scene, camera, renderer, controls, sun, ambient, mount, lighting }, options.settings, effects);
-  window.addEventListener('pagehide', () => { graphics?.dispose(); personalLantern?.dispose(); playerEquipment.dispose(); enemyEquipment.dispose(); casterEquipment.dispose(); projectileVisuals.dispose(); casterVisuals.dispose(); adventureVisuals?.dispose(); lootLabels.dispose(); active?.dispose(); movementWorld?.dispose(); renderer.dispose(); void disposeAreaCache(); }, { once: true });
+  window.addEventListener('pagehide', () => { audio.dispose(); graphics?.dispose(); personalLantern?.dispose(); playerEquipment.dispose(); enemyEquipment.dispose(); casterEquipment.dispose(); projectileVisuals.dispose(); casterVisuals.dispose(); adventureVisuals?.dispose(); lootLabels.dispose(); active?.dispose(); movementWorld?.dispose(); renderer.dispose(); void disposeAreaCache(); }, { once: true });
   resize();
   await graphics.initialize();
   requestAnimationFrame(tick);
@@ -455,7 +473,7 @@ try {
       changeArea: id => changeArea({ kind: 'travel', area: id }), restart: reset, inspect: () => { inspect(); return inspecting; }, waitFrames, setFrozen: freezePreview, setView: previewView,
       appearance: () => ({ lantern: lanternEnabled, surfaces: surfaceMode }),
       setAppearance: changeAppearance,
-      diagnostics: () => ({ lantern: personalLantern?.diagnostics(), surfaces: surfaceMode, area: currentArea.id, revision, renderedRevision, ready: !!active && renderedRevision === revision && !transitioning && !areaErrors.length && !mount.dataset.renderError, errors: [...areaErrors, ...(mount.dataset.renderError ? [mount.dataset.renderError] : [])], missing: [...(active?.missing ?? []), ...(characterMissing ? ['character'] : [])], contentHash, settings: options!.settings, backend: 'webgpu', updateMs, renderedFrames, phase: encounter.phase, equipment: playerEquipment.diagnostics(), harvest: {chopping: chopping?.tree.id ?? null, trees: active?.trees.map(tree=>({...tree,...harvesting.state(currentArea.id,tree.id)}))}, adventure: { character: adventure.character, portal: adventure.portal, castRemaining: adventure.castRemaining, drops: adventure.session(currentArea.id).drops, chests: adventure.session(currentArea.id).chests, fires: (currentArea.campfires ?? []).map(fire => ({ id: fire.id, safe: adventure.fireSafe(currentArea, fire, encounter) })) }, encounter: { enemies: structuredClone(encounter.enemies), enemyEquipment: enemyEquipment.diagnostics(), casterEquipment: casterEquipment.diagnostics(), player: { ...encounter.player }, playerMana: encounter.playerMana, dodgeRemaining: encounter.dodgeRemaining, dodgeCooldown: encounter.dodgeCooldown, blocking: encounter.blocking, projectiles: encounter.projectiles, pending: encounter.pending, animations: { player: player.current, enemy: enemy.current, caster: caster.current }, navigationReady: movementWorld?.navigationReady ?? false, navigationMs: movementWorld?.generationMs ?? 0 }, camera: { position: camera.position.toArray(), target: controls.target.toArray(), zoom: camera.zoom, viewport: [mount.clientWidth, mount.clientHeight] }, objects: active?.root.children.length ?? 0, resources: { memory: { ...renderer.info.memory }, drawCalls: renderer.info.render.drawCalls, triangles: renderer.info.render.triangles }, graphics: renderer.domElement.dataset.graphics ? JSON.parse(renderer.domElement.dataset.graphics) : null }),
+      diagnostics: () => ({ audio:audio.diagnostics(), lantern: personalLantern?.diagnostics(), surfaces: surfaceMode, area: currentArea.id, revision, renderedRevision, ready: !!active && renderedRevision === revision && !transitioning && !areaErrors.length && !mount.dataset.renderError, errors: [...areaErrors, ...(mount.dataset.renderError ? [mount.dataset.renderError] : [])], missing: [...(active?.missing ?? []), ...(characterMissing ? ['character'] : [])], contentHash, settings: options!.settings, backend: 'webgpu', updateMs, renderedFrames, phase: encounter.phase, equipment: playerEquipment.diagnostics(), harvest: {chopping: chopping?.tree.id ?? null, trees: active?.trees.map(tree=>({...tree,...harvesting.state(currentArea.id,tree.id)}))}, adventure: { character: adventure.character, portal: adventure.portal, castRemaining: adventure.castRemaining, drops: adventure.session(currentArea.id).drops, chests: adventure.session(currentArea.id).chests, fires: (currentArea.campfires ?? []).map(fire => ({ id: fire.id, safe: adventure.fireSafe(currentArea, fire, encounter) })) }, encounter: { enemies: structuredClone(encounter.enemies), enemyEquipment: enemyEquipment.diagnostics(), casterEquipment: casterEquipment.diagnostics(), player: { ...encounter.player }, playerMana: encounter.playerMana, dodgeRemaining: encounter.dodgeRemaining, dodgeCooldown: encounter.dodgeCooldown, blocking: encounter.blocking, projectiles: encounter.projectiles, pending: encounter.pending, animations: { player: player.current, enemy: enemy.current, caster: caster.current }, navigationReady: movementWorld?.navigationReady ?? false, navigationMs: movementWorld?.generationMs ?? 0 }, camera: { position: camera.position.toArray(), target: controls.target.toArray(), zoom: camera.zoom, viewport: [mount.clientWidth, mount.clientHeight] }, objects: active?.root.children.length ?? 0, resources: { memory: { ...renderer.info.memory }, drawCalls: renderer.info.render.drawCalls, triangles: renderer.info.render.triangles }, graphics: renderer.domElement.dataset.graphics ? JSON.parse(renderer.domElement.dataset.graphics) : null }),
     });
   }
 
@@ -532,7 +550,7 @@ async function changeArea(change: AreaChange): Promise<boolean> {
     if (characterMissing) hud.characterUnavailable(); else hud.setAssetStatus(candidate.missing.length ? `Missing art: ${candidate.missing.join(', ')}.` : '');
     if (frozen) freezePreview(true);
     if (savedView) { controls.target.copy(savedView.target); camera.position.copy(controls.target).add(new THREE.Vector3(...cameraOffset)); camera.zoom = savedView.zoom; camera.updateProjectionMatrix(); controls.update(); }
-    transitioning = false; await waitFrames(2); updateMs = performance.now() - started;
+    transitioning = false; audio.update(encounter.player,paused()); await waitFrames(2); updateMs = performance.now() - started;
     renderer.domElement.focus(); return true;
   } catch (error) { if (request === generation) { areaErrors = [error instanceof Error ? error.message : String(error)]; hud.setAssetStatus(`Unable to travel. ${areaErrors[0]}`); } return false; }
   finally { if (request === generation) { transitioning = false; fade.style.opacity = '0'; clearInput(); } }
