@@ -18,7 +18,7 @@ export class AdventureVisuals {
   private portalKey = '';
   private drops = new Map<string, DropVisual>();
   private currentDrops = new Map<string, GroundDrop>();
-  private pickRoots: THREE.Object3D[] = [];
+  private pickCandidates: THREE.Object3D[] = [];
   private pickHits: THREE.Intersection[] = [];
   private pickPoint = new THREE.Vector3();
   private geometry = new THREE.CylinderGeometry(.07, .07, .36, 8);
@@ -44,14 +44,13 @@ export class AdventureVisuals {
     const key = portal ? `${portal.join(',')}/${portalHeight}` : '';
     if (key !== this.portalKey) { this.portal?.dispose(); this.portal = portal ? new Portal({ id: 'return-portal', position: [portal[0], portalHeight + .02, portal[1]], yaw: Math.PI / 4, width: 1.4, height: 2.3 }, this.parent) : null; this.portalKey = key; }
     this.currentDrops.clear(); for (const drop of drops) this.currentDrops.set(drop.id, drop);
-    let changed = false;
-    for (const [id, visual] of this.drops) if (!this.currentDrops.has(id)) { visual.instance?.release(); disposeSceneInstances(visual.root); visual.root.removeFromParent(); this.drops.delete(id); changed = true; }
+    for (const [id, visual] of this.drops) if (!this.currentDrops.has(id)) { visual.instance?.release(); disposeSceneInstances(visual.root); visual.root.removeFromParent(); this.drops.delete(id); }
     for (const drop of drops) {
       let visual = this.drops.get(drop.id);
       if (!visual) {
         const root = new THREE.Group(), model = new THREE.Group(); root.add(model); root.userData.dropId = drop.id; this.parent.add(root);
         visual = { root, model, seed: Number(drop.id.match(/\d+/)?.[0] ?? 0), bounds: new THREE.Box3(), boundsMatrix: new THREE.Matrix4(), boundsValid: false };
-        this.drops.set(drop.id, visual); changed = true;
+        this.drops.set(drop.id, visual);
         if (drop.item === 'scroll') {
           const scroll = new THREE.Mesh(this.geometry, this.paper), band = new THREE.Mesh(this.geometry, this.ribbon);
           scroll.rotation.z = band.rotation.z = Math.PI / 2; band.scale.set(1.03, .15, 1.03); model.add(scroll, band); model.position.y = .08;
@@ -81,7 +80,6 @@ export class AdventureVisuals {
       visual.root.position.set(THREE.MathUtils.lerp(drop.origin[0], drop.position[0], travel), drop.height + Math.sin(t * Math.PI) * .65 + .02, THREE.MathUtils.lerp(drop.origin[1], drop.position[1], travel));
       visual.root.rotation.set((1 - t) * Math.PI * 1.3, visual.seed * 2.4 + (1 - t) * 1.5, (1 - t) * .7);
     }
-    if (changed) { this.pickRoots.length = 0; for (const visual of this.drops.values()) this.pickRoots.push(visual.root); }
     const selected = hovered ? this.currentDrops.get(hovered) : undefined; this.highlight.visible = !!selected;
     if (selected) this.highlight.position.set(selected.position[0], selected.height + .035, selected.position[1]);
   }
@@ -129,15 +127,8 @@ export class AdventureVisuals {
   }
   pick(ray: THREE.Raycaster): string | null {
     if (!this.drops.size) return null;
-    ray.intersectObjects(this.pickRoots, true, this.pickHits);
-    let selected: string | null = null;
-    hits: for (const hit of this.pickHits) {
-      let object: THREE.Object3D | null = hit.object;
-      while (object) { if (object.userData.dropId) { selected = object.userData.dropId as string; break hits; } object = object.parent; }
-    }
-    this.pickHits.length = 0;
-    if (selected) return selected;
-    // Thin blades and rolled papers need a little click tolerance at gameplay scale.
+    this.pickCandidates.length = 0;
+    let tolerant: string | null = null;
     let distance = Infinity;
     for (const visual of this.drops.values()) {
       const root = visual.root;
@@ -149,16 +140,26 @@ export class AdventureVisuals {
         visual.boundsMatrix.copy(root.matrixWorld); visual.boundsValid = true;
       }
       if (!ray.ray.intersectBox(visual.bounds, this.pickPoint)) continue;
+      this.pickCandidates.push(root);
       const next = ray.ray.origin.distanceToSquared(this.pickPoint);
-      if (next < distance) { distance = next; selected = root.userData.dropId as string; }
+      if (next < distance) { distance = next; tolerant = root.userData.dropId as string; }
     }
-    return selected;
+    // Bounds reject misses before triangle work. Exact surface hits still take
+    // priority over the existing tolerance for thin blades and rolled papers.
+    ray.intersectObjects(this.pickCandidates, true, this.pickHits);
+    let selected: string | null = null;
+    hits: for (const hit of this.pickHits) {
+      let object: THREE.Object3D | null = hit.object;
+      while (object) { if (object.userData.dropId) { selected = object.userData.dropId as string; break hits; } object = object.parent; }
+    }
+    this.pickHits.length = 0; this.pickCandidates.length = 0;
+    return selected ?? tolerant;
   }
   update(dt: number): void { this.portal?.update(dt); }
   dispose(): void {
     this.disposed = true; this.portal?.dispose(); this.highlight.removeFromParent();
     this.drops.forEach(v => { v.instance?.release(); disposeSceneInstances(v.root); v.root.removeFromParent(); }); this.drops.clear();
-    this.currentDrops.clear(); this.pickRoots.length = 0; this.pickHits.length = 0;
+    this.currentDrops.clear(); this.pickCandidates.length = 0; this.pickHits.length = 0;
     for (const resource of [this.oreGeometry, this.stone, this.iron, this.geometry, this.box, this.arc, this.paper, this.ribbon, this.bark, this.metal, this.potionGlass, this.markerGeometry, this.markerMaterial,this.ring,this.cap,this.cloth]) resource.dispose();
   }
 }

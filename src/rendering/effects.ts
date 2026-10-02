@@ -4,6 +4,7 @@ import type { GrassCarpets } from './grass';
 import { MeshStandardNodeMaterial } from 'three/webgpu';
 import { positionLocal, uniform, vec3, sin, float, max, pow } from 'three/tsl';
 import { copyStandardNodeMaterial } from '../assets/environment-surfaces';
+import { createWaterWaves } from './water-waves';
 
 import { particlePresets, type QualityLevel } from './quality-presets';
 export type ParticleKind = 'fire' | 'smoke' | 'sparks' | 'hit' | 'rain' | 'snow' | 'dust';
@@ -13,7 +14,7 @@ interface Pool {
   life: Float32Array; colors: Float32Array; cursor: number; capacity: number; active: number; limit: number;
 }
 interface WaterOptions { width?: number; length?: number; flow?: number; shorelineMask?: THREE.Texture; }
-interface Water { mesh: THREE.Mesh; original: Float32Array; options: WaterOptions; normal: THREE.Texture; shoreline: THREE.Texture; }
+interface Water { mesh: THREE.Mesh<THREE.PlaneGeometry>; waves: ReturnType<typeof createWaterWaves>; options: WaterOptions; normal: THREE.Texture; shoreline: THREE.Texture; }
 interface Foliage { mesh: THREE.Mesh; original: THREE.Material | THREE.Material[]; depth?: THREE.Material; distance?: THREE.Material; owned: THREE.Material[]; }
 const colors: Record<ParticleKind, THREE.Color> = { fire: new THREE.Color(2.8, 0.65, 0.08), smoke: new THREE.Color('#626d75'), sparks: new THREE.Color(3, 1.1, 0.2), hit: new THREE.Color(2.3, 1.2, 0.3), rain: new THREE.Color('#aec5d4'), snow: new THREE.Color('#dbe6ee'), dust: new THREE.Color('#a79879') };
 const sizes: Record<ParticleKind, number> = { fire: 0.22, smoke: 0.45, sparks: 0.035, hit: 0.075, rain: 0.04, snow: 0.065, dust: 0.025 };
@@ -102,7 +103,9 @@ export class CoreEffects {
   }
   addWater(parent: THREE.Object3D, x: number, z: number, options: WaterOptions = {}): THREE.Mesh {
     const width = options.width ?? 4, length = options.length ?? 2;
-    const geometry = new THREE.PlaneGeometry(width, length, 32, 24); geometry.rotateX(-Math.PI / 2);
+    const columns = 33, rows = 25;
+    const geometry = new THREE.PlaneGeometry(width, length, columns - 1, rows - 1); geometry.rotateX(-Math.PI / 2);
+    const waves = createWaterWaves(geometry.getAttribute('position'), columns, rows);
     const canvas = document.createElement('canvas'); canvas.width = canvas.height = 64; const ctx = canvas.getContext('2d')!;
     const image = ctx.createImageData(64, 64);
     for (let y = 0; y < 64; y++) for (let x = 0; x < 64; x++) { const i = (y * 64 + x) * 4;
@@ -130,7 +133,7 @@ export class CoreEffects {
     foamGeometry.setAttribute('color', new THREE.BufferAttribute(foamColors, 3));
     const foam = new THREE.Mesh(foamGeometry, new THREE.MeshBasicMaterial({ vertexColors: true, alphaTest: 0.1, map: options.shorelineMask ?? shoreTexture, transparent: true, opacity: 0.28, blending: THREE.AdditiveBlending, depthWrite: false }));
     foam.position.y = 0.015; mesh.add(foam);
-    this.waters.push({ mesh, original: new Float32Array(geometry.getAttribute('position').array), options, normal, shoreline: shoreTexture }); return mesh;
+    this.waters.push({ mesh, waves, options, normal, shoreline: shoreTexture }); return mesh;
   }
   addGrass(carpet: GrassCarpets): void { this.grass.push(carpet); carpet.update(this.time, this.wind.value); }
   addFoliage(root: THREE.Object3D): void {
@@ -191,13 +194,7 @@ export class CoreEffects {
     for (const water of this.waters) {
       if (!this.visible(water.mesh)) continue;
       water.normal.offset.set(this.time * (water.options.flow ?? 0.035), this.time * 0.018);
-      const position = water.mesh.geometry.getAttribute('position'); const normal = water.mesh.geometry.getAttribute('normal');
-      for (let i = 0; i < position.count; i++) {
-        const x = water.original[i * 3], z = water.original[i * 3 + 2]; const a = x * 2 + this.time, b = z * 3 - this.time * 0.8;
-        const y = Math.sin(a) * 0.018 + Math.cos(b) * 0.012; position.setY(i, y);
-        this.scratch.set(-Math.cos(a) * 0.036, 1, Math.sin(b) * 0.036).normalize(); normal.setXYZ(i, this.scratch.x, this.scratch.y, this.scratch.z);
-      }
-      position.needsUpdate = normal.needsUpdate = true;
+      water.waves.update(this.time, water.mesh.geometry.getAttribute('position'), water.mesh.geometry.getAttribute('normal'));
     }
   }
   clear(): void { for (const p of this.pools.values()) { p.active = 0; p.object.visible = false; p.life.fill(0); p.positions.fill(1e6); p.object.geometry.attributes.position.needsUpdate = true; } }

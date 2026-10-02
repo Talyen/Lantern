@@ -1,7 +1,7 @@
 import { abilities, abilitySet, type AbilityId } from '../gameplay/abilities';
 import type { Adventure } from '../gameplay/adventure';
 import {
-  dodge, swapWeaponSet, useAbility,
+  enemyIds, dodge, swapWeaponSet, useAbility,
   type ActorId, type Encounter, type EncounterEvent, type Timings,
 } from '../gameplay/encounter';
 import { actionSlotInputs } from '../input/bindings';
@@ -18,9 +18,15 @@ type CombatContext = {
   blocking(): boolean;
   present(events: EncounterEvent[]): void;
 };
+const timingActors = ['player', ...enemyIds] as const;
 
 /** Translates accepted player commands into simulation events and presentation. */
 export class CombatController {
+  private readonly frameTimings: Timings = {
+    player: { attack: 0, hit: 0, contacts: [] },
+    enemy: { attack: 0, hit: 0, contacts: [] },
+    caster: { attack: 0, hit: 0, contacts: [] },
+  };
   constructor(
     private readonly encounter: Encounter,
     private readonly adventure: Adventure,
@@ -32,14 +38,15 @@ export class CombatController {
   ) {}
 
   timings(): Timings {
-    const timing = (actor: Actor) => ({
-      attack: duration(actor, 'attack'), hit: duration(actor, 'hit'),
-      contacts: actor.contacts, commitLead: actor.commitLead,
-    });
-    return {
-      player: { ...timing(this.actors.player), abilities: this.equipment.abilityTimings() },
-      enemy: timing(this.actors.enemy), caster: timing(this.actors.caster),
-    };
+    // Simulation consumes these synchronously and snapshots accepted attacks.
+    // Refresh live actor values without allocating a timing tree every frame.
+    for (const id of timingActors) {
+      const actor = this.actors[id], timing = this.frameTimings[id];
+      timing.attack = duration(actor, 'attack'); timing.hit = duration(actor, 'hit');
+      timing.contacts = actor.contacts; timing.commitLead = actor.commitLead;
+    }
+    this.frameTimings.player.abilities = this.equipment.abilityTimings();
+    return this.frameTimings;
   }
 
   releaseShield(): void {

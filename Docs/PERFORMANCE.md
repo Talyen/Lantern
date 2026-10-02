@@ -19,6 +19,14 @@ Lantern requires native WebGPU across gameplay, authoring and labs through the s
 
 Archived studies and initial authoring measurements include evidence from before the native WebGPU-only migration. WebGL comparisons, retired lab controls and former TAA defaults are historical evidence. When measurements are requested or an evidenced performance defect warrants them, re-measure current authored areas and comparison labs on target hardware before drawing performance conclusions.
 
+## Combat, water and loot CPU work — October 2, 2026
+
+The combat coordinator reuses its timing records instead of rebuilding five objects and a closure on every frame. Each query refreshes all three actors' durations, contacts and commitment lead plus prepared ability timings; simulation consumes the records synchronously and snapshots accepted attacks. Weapon swaps and replacement motions therefore remain visible on the next query.
+
+Water reuses the existing wave terms along each axis of its unchanged 33 × 25 vertex grid. `src/rendering/water-waves.ts` keeps intermediate results in double precision and writes the same position/normal attributes as before; foam still shares the position buffer. This reduces trigonometric evaluations from 3,300 to 116 per surface update and replaces a 9,900-byte original-position copy with 1,160 bytes of coordinate and wave arrays. A focused local comparison found byte-identical position and normal buffers across 55 dimension/time cases, including repeated times. Materials, topology, timing and GPU buffers are unchanged. Current authored areas contain no water, so this improvement applies when the supported water effect is used.
+
+Loot picking now checks cached expanded world bounds before querying model triangles. Exact triangle hits retain priority over thin-item click tolerance; landing transforms, parent transforms and prepared-model replacement still invalidate bounds. A focused comparison of 2,625 queries matched the preceding selection behavior across landing poses, overlapping items, transformed parents, membership removal and model replacement. The grid queries submitted 629 candidate roots instead of 78,120. These are correctness and operation-count observations, not frame-time or hardware benchmarks. Private comparison scripts/results remain under the task's `.local/` evidence.
+
 ## Current measurement protocol
 
 Run a fresh production build before measuring. Use hidden `npm run desktop:check -- --debug-port=9231` and attach CDP, or use a real browser. Keep GPU acceleration enabled. Record hardware, OS, browser/Electron and three.js versions, native WebGPU adapter, content viewport, scene/output dimensions, fixed output pixel ratio, FSR Resolution Quality and sharpening, graphics settings, camera, and asset set. Use [current graphics settings](GRAPHICS.md) for controls and temporary overrides.
