@@ -22,7 +22,7 @@ export function cleanMessage(value: unknown): string {
   const message = value instanceof Error ? value.message : String(value);
   return message
     .replace(/(?:https?|file):\/\/[^\s)"'<>]+/gi, '[url]')
-    .replace(/(?:[A-Z]:[\\/]Users[\\/]|\/(?:Users|home)\/)[^\r\n\/\\]+[\\/][^\s)"'<>]+/gi, '[path]')
+    .replace(/(?:[A-Z]:[\\/]Users[\\/]|\/(?:Users|home)\/)[^\r\n/\\]+[\\/][^\s)"'<>]+/gi, '[path]')
     .replace(/(?:[A-Z]:[\\/]|\/(?:Users|home|Volumes|private|tmp|var|Applications)\/)[^\s)"'<>]+/gi, '[path]')
     .replace(/\bauthorization\s*[:=]\s*(?:Bearer|Basic)\s+[^\s,;]+/gi, '[redacted]')
     .replace(/\b(?:token|password|secret|authorization|api[_-]?key)\s*[:=]\s*[^\s,;]+/gi, '[redacted]')
