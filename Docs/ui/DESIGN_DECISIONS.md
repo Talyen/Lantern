@@ -64,6 +64,12 @@ Material identity is sufficiently established for layout studies. Ask guiding qu
 
 Touch/mobile, console certification, a new UI framework, general character levels, rarity tiers, quest trackers and minimaps are not implied by the design request. Shops, Smithing, proficiency unlocks and future front-end screens receive design coverage when the [roadmap](../../ROADMAP.md) and their gameplay owners establish requirements. Concurrent work can advance those owners; refresh the catalog before implementing them.
 
+## Skills design checkpoint — October 2, 2026
+
+Owner selected [28 named tracks](concepts/skills/BRIEF.md#roster), with progress and the next useful unlock as the main purpose. Adopted organization: grouped list beside selected-skill detail; inspectable planned tracks with truthful unavailable-progression state; independent future weapon/magic practice; named ability icons with hover/focus properties; select ability then destination among six shared slots, with drag and keyboard equivalents.
+
+The owner requested original ImageGen mockups and variants. [Layout and interaction studies](concepts/skills/README.md) record the results, exact prompts and critiques. A/B/C composition remains open; generated numbers/artifacts are not balance or behavior decisions. This concept task changes no runtime, saves, XP sources or abilities.
+
 ## Decision entry format
 
 For a consequential change, append a short dated entry with: question; adopted choice; owner/evidence; affected tokens/components/screens; remaining uncertainty. Link the exact prompt/concept or prototype evidence. Rewrite the active recommendation when it changes, rather than leaving conflicting prescriptions. Keep routine visual tuning beside the owning component instead of producing a decision entry for every pixel.
