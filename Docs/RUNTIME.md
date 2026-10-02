@@ -152,6 +152,8 @@ Shadow and particle presets are owned by `src/rendering/quality-presets.ts`. Sha
 
 The action bar keeps references to its fixed elements and mutates text, attributes and disabled states only when their displayed values change. Inventory and repair menus retain the latest character reference while closed and refresh on opening; bag/stash comparison and Rested presentation run only while their menu is open. Audio reads only position coordinates and iterates its owned voice set directly; its scheduling, voice limits and oldest-voice eviction remain unchanged.
 
+Loot roots own their local matrices: presentation composes them only when the unchanged landing formulas produce different position or rotation values. Parent world transforms and prepared-model replacement still refresh picking bounds. Motion installation validates distinct track names and rig nodes once per installation, retaining fresh validation on every weapon swap without a persistent rig cache.
+
 ## Graphics preparation
 
 Graphics settings arrive as immutable snapshots. Ordinary values update once per presentation frame without resizing or clearing temporal history. Structural changes settle for 150 ms; closing Options flushes the latest request. The shared pipeline serializes candidate preparation, holds the last image while compiling, commits only the newest successful request and retains the working graph on failure. Resolution Quality resizes existing scene buffers; two recently used effect graphs are retained at most. Retired graphs release r186 render bindings for their own pass targets as well as node resources. Options remains HTML on the browser main thread; worker isolation is not implemented.

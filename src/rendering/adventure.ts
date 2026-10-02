@@ -50,7 +50,7 @@ export class AdventureVisuals {
     for (const drop of drops) {
       let visual = this.drops.get(drop.id);
       if (!visual) {
-        const root = new THREE.Group(), model = new THREE.Group(); root.add(model); root.userData.dropId = drop.id; this.parent.add(root);
+        const root = new THREE.Group(), model = new THREE.Group(); root.matrixAutoUpdate = false; root.add(model); root.userData.dropId = drop.id; this.parent.add(root);
         visual = { root, model, seed: Number(drop.id.match(/\d+/)?.[0] ?? 0), bounds: new THREE.Box3(), boundsMatrix: new THREE.Matrix4(), boundsValid: false };
         this.drops.set(drop.id, visual);
         if (drop.item === 'gold') {
@@ -85,8 +85,14 @@ export class AdventureVisuals {
         }
       }
       const t = Math.min(1, drop.age / dropLandingSeconds), travel = 1 - (1 - t) ** 2;
-      visual.root.position.set(THREE.MathUtils.lerp(drop.origin[0], drop.position[0], travel), drop.height + Math.sin(t * Math.PI) * .65 + .02, THREE.MathUtils.lerp(drop.origin[1], drop.position[1], travel));
-      visual.root.rotation.set((1 - t) * Math.PI * 1.3, visual.seed * 2.4 + (1 - t) * 1.5, (1 - t) * .7);
+      const x = THREE.MathUtils.lerp(drop.origin[0], drop.position[0], travel), y = drop.height + Math.sin(t * Math.PI) * .65 + .02, z = THREE.MathUtils.lerp(drop.origin[1], drop.position[1], travel);
+      const rx = (1 - t) * Math.PI * 1.3, ry = visual.seed * 2.4 + (1 - t) * 1.5, rz = (1 - t) * .7;
+      const { root } = visual;
+      // Settled loot keeps its authored transform. Compare actual values so
+      // changed drop positions/heights still apply, even after the landing clock.
+      if (root.position.x !== x || root.position.y !== y || root.position.z !== z || root.rotation.x !== rx || root.rotation.y !== ry || root.rotation.z !== rz) {
+        root.position.set(x, y, z); root.rotation.set(rx, ry, rz); root.updateMatrix();
+      }
     }
     const selected = hovered ? this.currentDrops.get(hovered) : undefined; this.highlight.visible = !!selected;
     if (selected) this.highlight.position.set(selected.position[0], selected.height + .035, selected.position[1]);

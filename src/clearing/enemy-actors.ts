@@ -68,7 +68,11 @@ export class EnemyActors {
   }
   clear(): void { for (const entry of Object.values(this.active?.entries ?? {})) entry.caster?.clear(); }
   sync(state: Encounter, dt: number, visible: boolean): void {
-    for (const [id, entry] of Object.entries(this.active?.entries ?? {})) entry.caster?.sync(state, entry.actor.contacts[0] ?? .8, dt, visible && !!state.enemies[id]);
+    if (!this.active) return;
+    for (const id in this.active.entries) {
+      const entry = this.active.entries[id];
+      entry.caster?.sync(state, entry.actor.contacts[0] ?? .8, dt, visible && !!state.enemies[id]);
+    }
   }
   diagnostics() { return Object.fromEntries(Object.entries(this.active?.entries ?? {}).map(([id, entry]) => [id, entry.equipment.diagnostics()])); }
   dispose(): void {
