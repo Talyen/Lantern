@@ -3,7 +3,6 @@ import * as THREE from 'three';
 import { LightingCache } from '../src/rendering/lighting-cache';
 import { lightingBakeSignature } from '../src/rendering/lighting-bake';
 import { resolveAreaLighting, resolveLighting } from '../src/levels/lighting';
-import { validateAreas } from '../src/levels/validation';
 import { resolveLocalLight } from '../src/levels/local-lighting';
 import type { AreaDefinition, ResolvedAreaDefinition } from '../src/levels/types';
 import homestead from '../src/levels/areas/homestead.json';
@@ -23,9 +22,6 @@ test('shared lighting covers the area and applies overrides without mutating its
   expect(overridden.fogFar).toBe(80); expect(overridden.probes).toBeUndefined();
   expect(resolveLighting().sun.color).toBe(golden.sun.color);
   expect(resolveAreaLighting(clearing as unknown as AreaDefinition).sun.color).toBe(golden.sun.color);
-  const invalid = structuredClone(area); invalid.lighting = { overrides: { fogNear: -1 } };
-  expect(validateAreas({ homestead: invalid }).some(error => error.includes('invalid lighting'))).toBe(true);
-  expect(validateAreas({ homestead: { ...area, lighting: golden } as unknown as AreaDefinition }).some(error => error.includes('shared Golden preset'))).toBe(true);
   expect(golden).toEqual(baseline);
   expect(resolveAreaLighting(area)).toEqual(baseline);
   expect(resolveLighting()).toEqual(shared);

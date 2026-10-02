@@ -337,32 +337,32 @@ test('enemy bolts sweep into the player once, stop at terrain, and respect dodge
   expect(rear.player.hp).toBe(80); expect(rear.blocking).toBe(false);
 });
 
-test('the clearing start and both authored fights stay independent, with player clocks advancing once', async () => {
-  const {default:clearing}=await import('../src/levels/areas/clearing.json');
-  const {MovementWorld}=await import('../src/gameplay/movement');
-  const {traversalWithTrees}=await import('../src/levels/trees');
-  const area=clearing as unknown as import('../src/levels/types').AreaDefinition;
-  const state=createEncounter('playing',area.layout);
-  const world=await MovementWorld.create(area.layout.boundary,traversalWithTrees(area));
-  try {
-    stepEncounter(state,.05,idle,timing,world);
-    expect([state.enemies.enemy.engaged,state.enemies.caster.engaged]).toEqual([false,false]);
-    state.player.x=-8;state.player.z=-2;
-    stepEncounter(state,.05,idle,timing,world);
-    expect([state.enemies.enemy.engaged,state.enemies.caster.engaged]).toEqual([false,true]);
-    state.player.lock=state.attackCooldown=1;
-    stepEncounter(state,.05,idle,timing,world);
-    expect(state.player.lock).toBeCloseTo(.95);
-    resetEncounter(state);
-    state.player.x=state.enemies.enemy.x-1;state.player.z=state.enemies.enemy.z;
-    stepEncounter(state,.05,idle,timing,world);
-    expect([state.enemies.enemy.engaged,state.enemies.caster.engaged]).toEqual([true,false]);
-    resetEncounter(state); state.player.x=state.enemies.caster.x+1;state.player.z=state.enemies.caster.z;state.player.yaw=-Math.PI/2;
-    attack(state,timing.player,false);stepEncounter(state,.43,idle,timing,world);
-    expect([state.enemies.caster.hp,state.enemies.enemy.hp]).toEqual([50,100]);
-    stepEncounter(state,.58,idle,timing,world);attack(state,timing.player,false);stepEncounter(state,.43,idle,timing,world);
-    expect([state.enemies.caster.hp,state.enemies.enemy.hp,state.phase]).toEqual([0,100,'playing']);
-  } finally {world.dispose();}
+test('two fights stay independent, with player clocks advancing once', () => {
+  const state = createEncounter('playing', {
+    boundary: { kind: 'circle', center: [0, 0], radius: 20 },
+    player: { position: [0, 0], yaw: 0 },
+    enemy: { position: [10, 0], yaw: 0 },
+    caster: { position: [-10, 0], yaw: 0 },
+  });
+  stepEncounter(state, .05, idle, timing);
+  expect([state.enemies.enemy.engaged, state.enemies.caster.engaged]).toEqual([false, false]);
+  state.player.x = -9;
+  stepEncounter(state, .05, idle, timing);
+  expect([state.enemies.enemy.engaged, state.enemies.caster.engaged]).toEqual([false, true]);
+  state.player.lock = state.attackCooldown = 1;
+  stepEncounter(state, .05, idle, timing);
+  expect([state.player.lock, state.attackCooldown]).toEqual([.95, .95]);
+  resetEncounter(state);
+  state.player.x = 9;
+  stepEncounter(state, .05, idle, timing);
+  expect([state.enemies.enemy.engaged, state.enemies.caster.engaged]).toEqual([true, false]);
+  resetEncounter(state);
+  state.player.x = -9; state.player.yaw = -Math.PI / 2;
+  attack(state, timing.player, false); stepEncounter(state, .43, idle, timing);
+  expect([state.enemies.caster.hp, state.enemies.enemy.hp]).toEqual([50, 100]);
+  stepEncounter(state, .58, idle, timing);
+  attack(state, timing.player, false); stepEncounter(state, .43, idle, timing);
+  expect([state.enemies.caster.hp, state.enemies.enemy.hp, state.phase]).toEqual([0, 100, 'playing']);
 });
 
 test('raider commitment preserves a late nonlethal swing, allows early/recovery stagger, and never prevents death', () => {

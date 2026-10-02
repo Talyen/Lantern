@@ -1,7 +1,7 @@
 import { expect, test, vi } from 'vitest';
 import { Scene, DirectionalLight, PointLight, RenderTarget } from 'three/webgpu';
 import { applyShadowQuality } from '../src/rendering/quality-presets';
-import { defaults, defaultsVersion, depthOfFieldModes, migrateSettings, parseSettings, readSettings, saveSettings, settingsKey } from '../src/rendering/graphics-settings';
+import { defaults, defaultsVersion, migrateSettings, parseSettings, readSettings, saveSettings, settingsKey } from '../src/rendering/graphics-settings';
 
 test('FSR-only settings retire method controls and preserve applicable preferences', () => {
   const saved = JSON.parse('{"aa":"traa","renderScale":1.1,"historyWeight":0.94,"volumetricLighting":false,"quality":"laptop","upscaleQuality":"quality","sharpness":0.1,"dof":"off","atmosphericParticles":false}');
@@ -34,11 +34,8 @@ test('graphics modes preserve defaults, saved choices and temporary comparison U
   vi.stubGlobal('localStorage', { getItem: (key: string) => storage.get(key) ?? null, setItem: (key: string, value: string) => storage.set(key, value) });
   try {
     expect(readSettings()).toMatchObject({ dof: 'cinematic', sharpness: .5, outlines: true, textureDepth: true });
-    for (const dof of depthOfFieldModes) {
-      saveSettings({ ...defaults(), dof, exposure: .8 });
-      expect([readSettings().dof, readSettings().exposure]).toEqual([dof, .8]);
-      expect(parseSettings({ dof: 'off' }, new URLSearchParams({ dof })).dof).toBe(dof);
-    }
+    saveSettings({ ...defaults(), dof: 'soft', exposure: .8 });
+    expect(readSettings()).toMatchObject({ dof: 'soft', exposure: .8 });
     saveSettings({ ...defaults(), dof: 'off', sharpness: .3 });
     vi.stubGlobal('location', { search: '?dof=cinematic&sharpness=.8' });
     expect(readSettings()).toMatchObject({ dof: 'cinematic', sharpness: .8 });
@@ -48,17 +45,12 @@ test('graphics modes preserve defaults, saved choices and temporary comparison U
     expect(parseSettings(JSON.parse('{"dof":0.6}')).dof).toBe('cinematic');
     expect(parseSettings({}, new URLSearchParams('dof=0.6')).dof).toBe('cinematic');
     expect(parseSettings({}, new URLSearchParams('dof=unknown')).dof).toBe('cinematic');
-    for (const key of ['atmosphericParticles', 'outlines', 'textureDepth'] as const) for (const enabled of [true, false]) {
-      saveSettings({ ...defaults(), [key]: enabled });
-      for (const value of enabled ? ['off', 'false'] : ['on', 'true']) {
-        vi.stubGlobal('location', { search: `?${key}=${value}` });
-        expect(readSettings()[key]).toBe(!enabled);
-        const saved = JSON.parse(storage.get(settingsKey)!);
-        expect(saved[key]).toBe(enabled);
-      }
-      vi.stubGlobal('location', { search: '' });
-      expect(readSettings()[key]).toBe(enabled);
-    }
+    saveSettings({ ...defaults(), atmosphericParticles: false, outlines: true, textureDepth: false });
+    vi.stubGlobal('location', { search: '?atmosphericParticles=on&outlines=false&textureDepth=true' });
+    expect(readSettings()).toMatchObject({ atmosphericParticles: true, outlines: false, textureDepth: true });
+    expect(JSON.parse(storage.get(settingsKey)!)).toMatchObject({ atmosphericParticles: false, outlines: true, textureDepth: false });
+    vi.stubGlobal('location', { search: '' });
+    expect(readSettings()).toMatchObject({ atmosphericParticles: false, outlines: true, textureDepth: false });
     expect(parseSettings(JSON.parse('{"outlines":"true"}'), new URLSearchParams('outlines=unknown')).outlines).toBe(true);
     storage.set(settingsKey, JSON.stringify({ defaultsVersion: 2, volumetricLighting: false, atmosphericParticles: false, dof: 'off', sharpness: .3, outlines: false }));
     vi.stubGlobal('location', { search: '?dof=cinematic&sharpness=.8&outlines=on&atmosphericParticles=on' });

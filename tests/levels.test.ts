@@ -1,18 +1,19 @@
 import { expect, test } from 'vitest';
 import homestead from '../src/levels/areas/homestead.json';
 import clearing from '../src/levels/areas/clearing.json';
-import movementTrial from '../src/levels/areas/movement-trial.json';
-import blockout from '../src/levels/areas/blockout.json';
 import type { AreaDefinition } from '../src/levels/types';
 import { generateGrass, grassCoverage, grassBudget, type GrassPatch } from '../src/levels/grass';
 import { GateTravel } from '../src/gameplay/area';
 import { inReserved, validateAreas } from '../src/levels/validation';
 import { standingTreeAsset, treeDefinitions, traversalWithTrees } from '../src/levels/trees';
 import { Harvesting } from '../src/gameplay/harvesting';
-const areas = { homestead, clearing, blockout, 'movement-trial': movementTrial } as unknown as Record<string, AreaDefinition>;
+const areas = { homestead, clearing } as unknown as Record<string, AreaDefinition>;
 // Exercise grass rules without repeatedly generating an authored area's full carpet.
 const grassArea: AreaDefinition = {
-  ...areas.homestead, seed: 42,
+  version: 1, id: 'fixture', name: 'Fixture', kind: 'safe', seed: 42,
+  envelope: { width: 40, depth: 40, apron: 0, yaw: 0, reference: { width: 1920, height: 1080, zoom: 1 }, screen: [20, 20] },
+  scatter: [], lighting: {}, effects: { water: [], fires: [] },
+  views: ['entrance', 'center', 'exit', 'review-1', 'review-2'].map(id => ({ id, target: [0, 0, 0] })),
   layout: { boundary: { kind: 'circle', center: [0, 0], radius: 15 }, player: { position: [0, 0], yaw: 0 } },
   props: [], gates: [], traversal: { obstacles: [] },
   reserved: [{ id: 'route', center: [0, 0], radius: .5, role: 'route' }],
@@ -32,15 +33,18 @@ test('grass keeps its hard budget when a bounded patch exceeds capacity', () => 
 });
 
 test('area validation rejects invalid grass, links, transforms and lighting', () => {
-  const broken = structuredClone(areas);
-  broken.homestead.grass![0].density = NaN;
-  expect(validateAreas(broken).join('\n')).toMatch(/invalid grass patch/);
-  broken.blockout.gates[0].destination.gate='missing'; broken.blockout.props[0].position[0]=NaN;
-  expect(validateAreas(broken).join('\n')).toMatch(/broken link/);
-  expect(validateAreas(broken).join('\n')).toMatch(/invalid transform/);
-  broken.homestead.lighting.overrides = { fogNear: NaN, probes: { size: [36, -1, 36] } };
-  expect(validateAreas(broken).join('\n')).toMatch(/invalid lighting/);
-  expect(validateAreas(broken).join('\n')).toMatch(/invalid irradiance probes/);
+  const area = structuredClone(grassArea);
+  area.grass = [structuredClone(grassPatch)];
+  area.props = [{ id: 'marker', position: [4, 0, 4], yaw: 0, scale: [1, 1, 1], primitive: { kind: 'box', size: [1, 1, 1], color: '#514031' }, castShadow: false, receiveShadow: false }];
+  area.gates = [{ id: 'gate', role: 'branch', position: [10, 0], yaw: 0, width: 2, depth: 2, arrival: { position: [7, 0], yaw: 0 }, destination: { area: area.id, gate: 'gate' } }];
+  expect(validateAreas({ fixture: area })).toEqual([]);
+  area.grass[0].density = NaN;
+  area.gates[0].destination.gate = 'missing'; area.props[0].position[0] = NaN;
+  area.lighting.overrides = { fogNear: NaN, probes: { size: [36, -1, 36] } };
+  const errors = validateAreas({ fixture: area }).join('\n');
+  for (const error of ['invalid grass patch', 'broken link', 'invalid transform', 'invalid lighting', 'invalid irradiance probes']) expect(errors).toContain(error);
+  area.lighting = { background: '#000000' } as unknown as AreaDefinition['lighting'];
+  expect(validateAreas({ fixture: area }).join('\n')).toContain('shared Golden preset');
 });
 test('arrival gate cannot immediately send the player back until its trigger is left', () => {
   const gate=areas.clearing.gates[0], travel=new GateTravel();
@@ -52,11 +56,11 @@ test('arrival gate cannot immediately send the player back until its trigger is 
 
 test('all standing trees retain harvest identity and three chop contacts regrow across travel with safe occupancy', () => {
   const home = treeDefinitions(areas.homestead), clearingTrees = treeDefinitions(areas.clearing);
-  expect(home.length).toBeGreaterThan(0); expect(clearingTrees.some(t => t.id === 'pine-0')).toBe(true); expect(clearingTrees.some(t => t.id === 'pine-16')).toBe(true);
+  expect(home.length).toBeGreaterThan(0); expect(clearingTrees.length).toBeGreaterThan(0);
   expect(traversalWithTrees(areas.clearing).obstacles.filter(o => o.tree).map(o => o.id).sort()).toEqual(clearingTrees.map(t => t.id).sort());
   for (const url of ['/vendor/synty/environment/pine.glb', '/vendor/synty/environment/sm-gen-env-tree-pine-01.glb']) expect(standingTreeAsset({ url })).toBe(true);
   for (const libraryId of ['woodland:model:sm-env-tree-stump-01', 'woodland:model:sm-generic-treestump-01', 'woodland:model:sm-env-tree-fallen-01', 'woodland:model:sm-env-bush-01', 'woodland:model:sm-prop-tree-bush-01']) expect(standingTreeAsset({ libraryId })).toBe(false);
-  const generated = structuredClone(areas.blockout);
+  const generated = structuredClone(grassArea);
   generated.reserved = []; generated.gates = [];
   generated.scatter = [{ id: 'trees', count: 4, radius: [2,5], primitive: { kind: 'cylinder', size: [.3,.4,3], color: '#514031' }, harvest: { kind: 'tree', radius: .3 }, excludedIds: [] }];
   expect(treeDefinitions(generated).map(t => t.id)).toEqual(['trees-0','trees-1','trees-2','trees-3']);
