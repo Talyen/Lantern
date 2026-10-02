@@ -285,9 +285,7 @@ function resetPresentation(): void {
 }
 function reset(): void {
   clearInput(); resetEncounter(encounter); adventure.restart(); harvesting.reset();
-  for (const node of active?.resources ?? []) {
-    active?.setResourceState(node.id,false); movementWorld?.setTreeFelled(node.id,false);
-  }
+  if (active && movementWorld) gathering.register(active,movementWorld);
   applyLoadoutState(); resetPresentation();
 }
 const bindingsMenu=new KeybindingsMenu(preferences,()=>adventure.character.actionBar,clearInput,()=>renderer.domElement.focus());

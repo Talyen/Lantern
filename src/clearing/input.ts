@@ -56,6 +56,8 @@ export function createInput(
 
   window.addEventListener('pointerdown', event => {
     if (event.defaultPrevented || !menuOpen()) return;
+    if (event.button === 0 && event.target instanceof Element &&
+      event.target.closest('button,input,textarea,select,summary,a,[contenteditable=true]')) return;
     const binding = `mouse:${event.button}`, action = inputFor(preferences.value, binding);
     if (!action || !menus.has(action)) return;
     event.preventDefault();
