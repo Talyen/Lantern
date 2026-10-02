@@ -65,13 +65,13 @@ test('home recovery, campfire travel and defeat preserve the outing and collecte
 test('a moving, damaged caster creates one round-trip portal; death wins over completion', () => {
   const state = new Adventure(memory()), encounter = createEncounter('playing'); state.enter(encounter, field);
   expect(state.beginCast(true)).toBe(true); expect(state.beginCast(true)).toBe(false);
-  state.step(encounter, field, 1); encounter.player.x = 2; encounter.player.z = 3; encounter.player.hp = 1;
+  state.step(encounter, field, 1); encounter.player.x = 2; encounter.player.z = 3; encounter.player.y = 1.2; encounter.player.hp = 1;
   state.step(encounter, field, 1);
   expect(state.character.scrolls).toBe(2); expect(state.portal?.departure.position).toEqual([2, 3]);
   const link = state.portal!; state.enter(encounter, home, home.portalArrival); state.step(encounter, home, .05);
   expect(state.portal).toBe(link); expect(state.beginCast(true)).toBe(false);
   state.enter(encounter, field, link.departure); state.portal = null;
-  expect([encounter.player.x, encounter.player.z, state.character.scrolls]).toEqual([2, 3, 2]);
+  expect([encounter.player.x, encounter.player.y, encounter.player.z, state.character.scrolls]).toEqual([2, 1.2, 3, 2]);
   state.beginCast(true); state.step(encounter, field, 2); expect(state.character.scrolls).toBe(1);
   state.beginCast(true); encounter.player.hp = 0; state.step(encounter, field, 2);
   expect([state.castRemaining, state.character.scrolls, state.portal]).toEqual([0, 1, null]);
@@ -342,6 +342,11 @@ test('unreadable saves restore the validated backup and preserve original bytes 
   state.save(); const original = storage.getItem(characterSaveKey)!;
   state.character.items.find(i => i.item === 'scroll')!.quantity = 7; state.save();
   expect(storage.getItem(characterBackupKey)).toBe(original);
+  storage.setItem(characterBackupKey, '{damaged-backup');
+  state.character.xp.mining = 1; state.save();
+  expect(JSON.parse(storage.getItem(`${characterBackupKey}.unreadable`)!)).toEqual(['{damaged-backup']);
+  // Restore the expected recovery snapshot for the primary-corruption case below.
+  storage.setItem(characterBackupKey, original);
   storage.setItem(characterSaveKey, '{broken');
   const recovered = new Adventure(storage);
   expect(recovered.character.scrolls).toBe(3);

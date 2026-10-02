@@ -198,6 +198,8 @@ test('safe and cleared attacks accept buffered input within recovery, keep commi
   for (let i=0;i<3;i++) stepExploration(state,.04,{...idle,aim:{x:0,z:10}},undefined,timing);
   const accepted = stepExploration(state,.04,{...idle,aim:{x:0,z:10}},undefined,timing);
   expect(accepted).toContainEqual({type:'animation',actor:'player',motion:'attack'});
+  expect(state.player.attackTime).toBeCloseTo(.02);
+  expect(state.player.lock).toBeCloseTo(.98);
   expect(state.player.yaw).toBe(Math.PI/2);
   for (let i=0;i<17;i++) stepExploration(state,.05,idle,undefined,timing);
   expect(dodge(state,{x:0,z:1},false)).toEqual([]);
@@ -211,6 +213,22 @@ test('safe and cleared attacks accept buffered input within recovery, keep commi
   state.weapon=null;
   expect(attack(state,timing.player,false)).toEqual([]);
   expect(state.projectiles).toEqual([]);
+});
+
+test('a buffered ranged skill releases only after its own windup and retains the matching cooldown', () => {
+  const state = createEncounter('won');
+  state.weapon = 'bow'; state.weaponSets[0] = {main:'bow',off:null};
+  state.player.lock = state.attackCooldown = .04;
+  const clocks = {...timing,player:{...timing.player,abilities:{'piercing-shot':{attack:.2,contacts:[.03]}}}};
+  useAbility(state,'piercing-shot',clocks.player,false);
+  stepExploration(state,.05,idle,undefined,clocks);
+  expect(state.projectiles).toHaveLength(0);
+  expect(state.player.attackTime).toBeCloseTo(.01);
+  expect(state.abilityCooldowns['piercing-shot']).toBeCloseTo(5.99);
+  expect(state.playerMana).toBeCloseTo(70.08);
+  stepExploration(state,.025,idle,undefined,clocks);
+  expect(state.projectiles).toHaveLength(1);
+  expect(state.projectiles[0].z).toBeCloseTo(state.player.z + .35 + .005 * 24);
 });
 
 test('a held shield halves frontal damage and walking speed, while rear hits interrupt and dodge releases it', () => {

@@ -169,26 +169,41 @@ function movePlayer(state: Encounter, dt: number, input: Input, movementWorld?: 
   if (player.lock <= 0 && input.aim) faceAim(player, input.aim);
   return events;
 }
-function preparePlayer(state: Encounter, dt: number, input: Input, timing: ActorTiming): EncounterEvent[] {
+function preparePlayer(state: Encounter, dt: number, input: Input, timing: ActorTiming): { events: EncounterEvent[]; attackElapsed: number; attackOffset: number } {
   const pending = state.pending;
   const cooldown = () => pending?.kind==='dodge' ? state.dodgeCooldown : Math.max(state.attackCooldown,pending?.kind==='ability' ? state.abilityCooldowns[pending.ability!] ?? 0 : 0);
   const availableAfter=pending ? Math.max(state.player.lock,state.dodgeRemaining,cooldown()) : 0;
+  const manaAtUnlock = Math.min(playerMaxMana, state.playerMana + Math.min(dt, availableAfter) * 8);
+  const prepared = { events: [] as EncounterEvent[], attackElapsed: dt, attackOffset: 0 };
   advancePlayerClocks(state,dt);
   state.blocking=!!(input.block && state.shield && state.player.lock<=0 && state.dodgeRemaining===0);
-  if (!pending) return [];
+  if (!pending) return prepared;
   const validAtUnlock=availableAfter<=pending.remaining+1e-6;
   if (validAtUnlock && state.player.lock===0 && state.dodgeRemaining===0 && cooldown()===0) {
     state.pending=null;
-    if (pending.kind==='swap') return swapWeaponSet(state,false);
-    if (pending.kind==='ability') return useAbility(state,pending.ability!,timing,false,pending.aim);
-    return pending.kind==='attack' ? attack(state,timing,false,pending.aim) : dodge(state,pending.direction ?? {x:0,z:0},false,pending.aim);
+    if (pending.kind==='swap') prepared.events = swapWeaponSet(state,false);
+    else if (pending.kind==='ability') prepared.events = useAbility(state,pending.ability!,timing,false,pending.aim);
+    else prepared.events = pending.kind==='attack' ? attack(state,timing,false,pending.aim) : dodge(state,pending.direction ?? {x:0,z:0},false,pending.aim);
+    if (prepared.events.length && state.player.attackTime === 0 && (pending.kind === 'attack' || pending.kind === 'ability')) {
+      // A buffered swing begins at unlock, so only the rest of this frame belongs to it.
+      prepared.attackOffset = Math.min(dt, availableAfter);
+      prepared.attackElapsed = dt - prepared.attackOffset;
+      state.player.lock = Math.max(0, state.player.lock - prepared.attackElapsed);
+      state.attackCooldown = Math.max(0, state.attackCooldown - prepared.attackElapsed);
+      if (pending.kind === 'ability') {
+        const id = pending.ability!;
+        state.abilityCooldowns[id] = Math.max(0, (state.abilityCooldowns[id] ?? 0) - prepared.attackElapsed);
+        state.playerMana = Math.min(playerMaxMana, manaAtUnlock - abilities[id].mana + prepared.attackElapsed * 8);
+      }
+    }
+    return prepared;
   }
   pending.remaining-=dt;
   if (pending.remaining<0) {
     if (validAtUnlock && state.dodgeRemaining<=dt+1e-6) pending.remaining=0;
     else state.pending=null;
   }
-  return [];
+  return prepared;
 }
 
 function hit(state: Encounter, actor: ActorId, timing: Timings, events: EncounterEvent[], source?: Weapon, incoming?: { x: number; z: number }, impactOffset = 0, playerDamage = playerAttackDamage): void {
@@ -223,7 +238,7 @@ function hit(state: Encounter, actor: ActorId, timing: Timings, events: Encounte
     if (!won || enemyIds.every(id => state.enemies[id].hp <= 0 || !state.enemies[id].engaged)) events.push({type:'outcome',won});
   }
 }
-function stepPlayerAttack(state: Encounter, dt: number, timing: Timings, events: EncounterEvent[], movementWorld?: Movement): void {
+function stepPlayerAttack(state: Encounter, dt: number, timing: Timings, events: EncounterEvent[], movementWorld?: Movement, frameOffset = 0): void {
   const {player} = state;
   if (player.attackTime < 0) return;
   const action=state.playerAction ?? {duration:timing.player.attack,contacts:timing.player.contacts,damage:playerAttackDamage,arc:Math.acos(.1),weapon:state.weapon,ability:null};
@@ -240,7 +255,7 @@ function stepPlayerAttack(state: Encounter, dt: number, timing: Timings, events:
       if (!enemy.home || enemy.hp <= 0) continue;
       const dx = enemy.x-player.x, dz = enemy.z-player.z, distance = Math.hypot(dx,dz);
       const facing = distance > 0 ? (Math.sin(player.yaw)*dx + Math.cos(player.yaw)*dz)/distance : 1;
-      if (distance < 1.95 && facing >= Math.cos(action.arc)-1e-6 && (!movementWorld || movementWorld.lineOfSight(player,enemy)) && Math.abs(player.y-enemy.y)<.8) hit(state,id,timing,events,action.weapon ?? undefined,undefined,Math.max(0,contacts[player.contactIndex-1]-(player.attackTime-dt)),action.damage);
+      if (distance < 1.95 && facing >= Math.cos(action.arc)-1e-6 && (!movementWorld || movementWorld.lineOfSight(player,enemy)) && Math.abs(player.y-enemy.y)<.8) hit(state,id,timing,events,action.weapon ?? undefined,undefined,frameOffset+Math.max(0,contacts[player.contactIndex-1]-(player.attackTime-dt)),action.damage);
     }
   }
   if (player.attackTime >= action.duration) player.attackTime = -1;
@@ -290,18 +305,18 @@ export function stepExploration(state: Encounter, dt: number, input: Input, move
   if (input.paused || state.player.hp <= 0 || !['playing','won'].includes(state.phase)) return [];
   const fallback: ActorTiming = {attack:.7,hit:.3,contacts:[.28]};
   const clocks = timing ?? {player:fallback,enemy:fallback,caster:fallback};
-  const events = preparePlayer(state,dt,input,clocks.player);
-  stepPlayerAttack(state,dt,clocks,events,movementWorld); stepProjectiles(state,dt,clocks,events,movementWorld);
+  const { events, attackElapsed, attackOffset } = preparePlayer(state,dt,input,clocks.player);
+  stepPlayerAttack(state,attackElapsed,clocks,events,movementWorld,attackOffset); stepProjectiles(state,dt,clocks,events,movementWorld);
   events.push(...movePlayer(state,dt,input,movementWorld)); return finishPlayerFrame(state,dt,events);
 }
 export function stepEncounter(state: Encounter, dt: number, input: Input, timing: Timings, movementWorld?: Movement): EncounterEvent[] {
   if (input.paused || state.phase !== 'playing') return [];
-  const events = preparePlayer(state,dt,input,timing.player);
+  const { events, attackElapsed, attackOffset } = preparePlayer(state,dt,input,timing.player);
   for (const id of enemyIds) {
     const enemy = state.enemies[id];
     enemy.lock = Math.max(0, enemy.lock - dt); enemy.cooldown = Math.max(0, enemy.cooldown - dt);
   }
-  stepPlayerAttack(state,dt,timing,events,movementWorld); stepProjectiles(state,dt,timing,events,movementWorld);
+  stepPlayerAttack(state,attackElapsed,timing,events,movementWorld,attackOffset); stepProjectiles(state,dt,timing,events,movementWorld);
   if (state.phase !== 'playing') return finishPlayerFrame(state,dt,events);
   events.push(...movePlayer(state, dt, input, movementWorld));
   for (const id of enemyIds) {

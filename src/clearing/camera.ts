@@ -24,6 +24,7 @@ export function createCamera(canvas: HTMLCanvasElement) {
   const anchor = controls.target.clone(), lead = new THREE.Vector3();
   const previous = new THREE.Vector3(), desiredLead = new THREE.Vector3();
   let sampled = false;
+  let inspectionZoom: number | undefined;
   function resetFollow(position: THREE.Vector3): void {
     anchor.copy(position); anchor.y += .9; lead.set(0, 0, 0);
     previous.copy(position); sampled = false;
@@ -55,8 +56,8 @@ export function createCamera(canvas: HTMLCanvasElement) {
       camera.position.copy(controls.target).add(cameraOffset);
     },
     inspect(active: boolean, rock: { x: number; z: number }) {
-      if (active) { controls.target.set(rock.x, 0.7, rock.z); camera.position.copy(controls.target).add(cameraOffset); camera.zoom = 2; }
-      else camera.zoom = defaultCameraZoom;
+      if (active) { inspectionZoom ??= camera.zoom; controls.target.set(rock.x, 0.7, rock.z); camera.position.copy(controls.target).add(cameraOffset); camera.zoom = 2; }
+      else if (inspectionZoom !== undefined) { camera.zoom = inspectionZoom; inspectionZoom = undefined; }
       camera.updateProjectionMatrix(); controls.update();
     },
     resize(width: number, height: number) {

@@ -383,7 +383,7 @@ function interact(target: WorldInteraction): void {
 }
 
 function syncAdventure(): void {
-  adventureVisuals?.sync(adventure.session(currentArea.id).drops, adventure.portalPosition(currentArea), lootLabels.hovered);
+  adventureVisuals?.sync(adventure.session(currentArea.id).drops, adventure.portalPosition(currentArea), lootLabels.hovered, adventure.portalHeight(currentArea));
   for (const chest of currentArea.chests ?? []) active?.setChestOpened(chest.id, adventure.chest(currentArea, chest).opened);
   const prompt=paused() || encounter.player.hp<=0 ? '' : adventure.notice || (hoveredInteraction ? interactionError(hoveredInteraction) || hoveredInteraction.name : '');
   gameplayAudio.adventure(adventure.takeEvents());
@@ -602,7 +602,7 @@ async function changeAppearance(appearance: { surfaces?: SurfaceMode; lantern?: 
 function defaultPreviewZoom(): number { return currentArea.envelope.reference.zoom; }
 type AreaAppearance = { lantern?: boolean; surfaces?: SurfaceMode; shelterRestored?: boolean };
 type AreaChange =
-  | { kind: 'travel'; area: string; arrivalId?: string; transition?: boolean; spawn?: Spawn; recover?: boolean; canCommit?: () => boolean }
+  | { kind: 'travel'; area: string; arrivalId?: string; transition?: boolean; spawn?: Spawn & { height?: number }; recover?: boolean; canCommit?: () => boolean }
   | { kind: 'refresh'; spawn?: Spawn; appearance?: AreaAppearance; canCommit?:()=>boolean; onCommit?:()=>void };
 function areaChangeFailed(error: unknown): void { console.error('Unable to change area.', error); }
 async function changeArea(change: AreaChange): Promise<boolean> {

@@ -5,11 +5,10 @@ import type { Point } from '../gameplay/area';
 import { dropLandingSeconds, type GroundDrop } from '../gameplay/adventure';
 import { itemDefinitions, type ItemId } from '../gameplay/equipment';
 import { assetLibrary, type AssetInstance } from '../assets/asset-library';
-import { LootSound } from './loot-sound';
 import { disposeSceneInstances } from '../assets/resource-ownership';
 
 type DropVisual = {
-  root: THREE.Group; model: THREE.Group; instance?: AssetInstance; quantity: number; landed: boolean;
+  root: THREE.Group; model: THREE.Group; instance?: AssetInstance;
   seed: number; bounds: THREE.Box3; boundsMatrix: THREE.Matrix4; boundsValid: boolean;
 };
 /** Area-owned presentation; object motion follows simulation-owned landing clocks. */
@@ -37,19 +36,18 @@ export class AdventureVisuals {
   private markerMaterial = new MeshBasicNodeMaterial({ color: '#bda474', transparent: true, opacity: .5, side: THREE.DoubleSide });
   private highlight = new THREE.Mesh(this.markerGeometry, this.markerMaterial);
   private disposed = false;
-  private sound = new LootSound();
   constructor(private parent: THREE.Object3D) { this.highlight.rotation.x = -Math.PI / 2; this.highlight.visible = false; parent.add(this.highlight); }
-  sync(drops: GroundDrop[], portal: Point | null, hovered: string | null): void {
-    const key = portal?.join(',') ?? '';
-    if (key !== this.portalKey) { this.portal?.dispose(); this.portal = portal ? new Portal({ id: 'return-portal', position: [portal[0], .02, portal[1]], yaw: Math.PI / 4, width: 1.4, height: 2.3 }, this.parent) : null; this.portalKey = key; }
+  sync(drops: GroundDrop[], portal: Point | null, hovered: string | null, portalHeight = 0): void {
+    const key = portal ? `${portal.join(',')}/${portalHeight}` : '';
+    if (key !== this.portalKey) { this.portal?.dispose(); this.portal = portal ? new Portal({ id: 'return-portal', position: [portal[0], portalHeight + .02, portal[1]], yaw: Math.PI / 4, width: 1.4, height: 2.3 }, this.parent) : null; this.portalKey = key; }
     this.currentDrops.clear(); for (const drop of drops) this.currentDrops.set(drop.id, drop);
     let changed = false;
-    for (const [id, visual] of this.drops) if (!this.currentDrops.has(id)) { if (visual.landed) this.sound.play(true); visual.instance?.release(); disposeSceneInstances(visual.root); visual.root.removeFromParent(); this.drops.delete(id); changed = true; }
+    for (const [id, visual] of this.drops) if (!this.currentDrops.has(id)) { visual.instance?.release(); disposeSceneInstances(visual.root); visual.root.removeFromParent(); this.drops.delete(id); changed = true; }
     for (const drop of drops) {
       let visual = this.drops.get(drop.id);
       if (!visual) {
         const root = new THREE.Group(), model = new THREE.Group(); root.add(model); root.userData.dropId = drop.id; this.parent.add(root);
-        visual = { root, model, quantity: drop.quantity, landed: drop.age >= dropLandingSeconds, seed: Number(drop.id.match(/\d+/)?.[0] ?? 0), bounds: new THREE.Box3(), boundsMatrix: new THREE.Matrix4(), boundsValid: false };
+        visual = { root, model, seed: Number(drop.id.match(/\d+/)?.[0] ?? 0), bounds: new THREE.Box3(), boundsMatrix: new THREE.Matrix4(), boundsValid: false };
         this.drops.set(drop.id, visual); changed = true;
         if (drop.item === 'scroll') {
           const scroll = new THREE.Mesh(this.geometry, this.paper), band = new THREE.Mesh(this.geometry, this.ribbon);
@@ -76,8 +74,6 @@ export class AdventureVisuals {
       const t = Math.min(1, drop.age / dropLandingSeconds), travel = 1 - (1 - t) ** 2;
       visual.root.position.set(THREE.MathUtils.lerp(drop.origin[0], drop.position[0], travel), drop.height + Math.sin(t * Math.PI) * .65 + .02, THREE.MathUtils.lerp(drop.origin[1], drop.position[1], travel));
       visual.root.rotation.set((1 - t) * Math.PI * 1.3, visual.seed * 2.4 + (1 - t) * 1.5, (1 - t) * .7);
-      if (!visual.landed && t === 1) { visual.landed = true; this.sound.play(false); }
-      if (drop.quantity < visual.quantity) this.sound.play(true); visual.quantity = drop.quantity;
     }
     if (changed) { this.pickRoots.length = 0; for (const visual of this.drops.values()) this.pickRoots.push(visual.root); }
     const selected = hovered ? this.currentDrops.get(hovered) : undefined; this.highlight.visible = !!selected;
@@ -130,7 +126,7 @@ export class AdventureVisuals {
   }
   update(dt: number): void { this.portal?.update(dt); }
   dispose(): void {
-    this.disposed = true; this.portal?.dispose(); this.sound.dispose(); this.highlight.removeFromParent();
+    this.disposed = true; this.portal?.dispose(); this.highlight.removeFromParent();
     this.drops.forEach(v => { v.instance?.release(); disposeSceneInstances(v.root); v.root.removeFromParent(); }); this.drops.clear();
     this.currentDrops.clear(); this.pickRoots.length = 0; this.pickHits.length = 0;
     for (const resource of [this.oreGeometry, this.stone, this.iron, this.geometry, this.box, this.arc, this.paper, this.ribbon, this.bark, this.metal, this.potionGlass, this.markerGeometry, this.markerMaterial]) resource.dispose();

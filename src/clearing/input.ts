@@ -79,6 +79,8 @@ export function createInput(
     if (menuOpen()) return;
     if (event.target instanceof HTMLElement && event.target.closest('select,button,summary,a')) return;
     event.preventDefault();
+    // Clearing or suppressing a held key requires a fresh press, not its next repeat.
+    if (event.repeat && !down.has(binding)) return;
     down.add(binding);
     dispatch(binding, event.repeat);
   }, { signal });

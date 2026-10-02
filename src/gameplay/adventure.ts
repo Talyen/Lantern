@@ -15,7 +15,8 @@ export const scrollLimit = stackLimit;
 export const homeArea = 'homestead';
 export const dropLandingSeconds = .55, pickupRadius = 1.5;
 export type GroundDrop = { id: string; item: LootItem; quantity: number; position: Point; origin: Point; height: number; age: number; claim?: ItemId; instanceId?: string; blocked?: boolean; harvestXp?: { skill: GatheringSkill; perUnit: number } };
-export type PortalLink = { area: string; departure: Spawn };
+export type ReturnSpawn = Spawn & { height?: number };
+export type PortalLink = { area: string; departure: ReturnSpawn };
 type AreaSession = { encounter?: Encounter; drops: GroundDrop[]; dropRolled: Partial<Record<EnemyId, boolean>>; chests: Record<string, { opened: boolean; remaining: number }> };
 export const chestUnlocked = (encounter: Encounter, chest: Chest) => encounter.enemies[chest.guard ?? 'enemy'].hp <= 0;
 export const fireKey = (area: string, fire: string) => `${area}/${fire}`;
@@ -143,7 +144,7 @@ export class Adventure {
     return session;
   }
   /** Call only after destination resources are ready; failed loads cannot change these states. */
-  enter(encounter: Encounter, area: AreaDefinition, arrival = area.layout.player, recover = false): void {
+  enter(encounter: Encounter, area: AreaDefinition, arrival: ReturnSpawn = area.layout.player, recover = false): void {
     const health = this.currentArea ? encounter.player.hp : playerMaxHealth;
     const resources={weapon:encounter.weapon,shield:encounter.shield,playerMana:encounter.playerMana,abilityCooldowns:{...encounter.abilityCooldowns},potionCooldown:encounter.potionCooldown,weaponSets:encounter.weaponSets,activeSet:encounter.activeSet};
     if (this.currentArea) this.session().encounter = structuredClone(encounter);
@@ -157,6 +158,7 @@ export class Adventure {
       next.phase = enemyIds.every(id => next.enemies[id].hp <= 0) ? 'won' : 'playing';
     }
     next.player.x = arrival.position[0]; next.player.z = arrival.position[1]; next.player.yaw = arrival.yaw;
+    next.player.y = arrival.height ?? 0;
     next.player.hp = recover ? playerMaxHealth : health;
     Object.assign(encounter, next, resources);
     this.castRemaining = 0; this.cancelPickup(); this.healing = false; this.atShelter = false; this.events = [];
@@ -234,7 +236,7 @@ export class Adventure {
         if (!scroll) return;
         scroll.quantity--; this.character.items = this.character.items.filter(i => i.quantity > 0);
         this.events.push({type:'portalOpen',position:{x:point[0],z:point[1]}});
-        this.portal = { area: area.id, departure: { position: [...point], yaw: encounter.player.yaw } };
+        this.portal = { area: area.id, departure: { position: [...point], yaw: encounter.player.yaw, height: encounter.player.y } };
         this.save();
       }
     }
@@ -243,5 +245,8 @@ export class Adventure {
     if (!this.portal) return null;
     if (area.id === homeArea) return area.portalArrival?.position ?? null;
     return area.id === this.portal.area ? this.portal.departure.position : null;
+  }
+  portalHeight(area: AreaDefinition): number {
+    return area.id === this.portal?.area ? this.portal.departure.height ?? 0 : 0;
   }
 }

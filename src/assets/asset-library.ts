@@ -42,12 +42,23 @@ export class AssetLibrary {
   private track<T>(promise: Promise<T>): Promise<T> {
     this.pending.add(promise); promise.then(() => this.pending.delete(promise), () => this.pending.delete(promise)); return promise;
   }
+  private cached<T>(cache: Map<string, Promise<T>>, key: string, load: () => Promise<T>): Promise<T> {
+    let promise = cache.get(key);
+    if (!promise) {
+      promise = this.track(Promise.resolve().then(load)).catch(error => {
+        cache.delete(key);
+        throw error;
+      });
+      cache.set(key, promise);
+    }
+    return promise;
+  }
   private async fetchJson<T>(url: string): Promise<T> {
     const response = await fetch(url); if (!response.ok) throw new Error(`Asset unavailable (${response.status}): ${url}`); return response.json() as Promise<T>;
   }
   getCatalog(): Promise<AssetCatalog> {
     if (this.disposed) throw new Error('Asset library disposed');
-    return this.catalog ??= this.fetchJson<AssetCatalog>(this.catalogUrl).then((catalog) => { if (catalog.version !== 1) throw new Error('Unsupported asset catalog version'); return catalog; });
+    return this.catalog ??= this.fetchJson<AssetCatalog>(this.catalogUrl).then((catalog) => { if (catalog.version !== 1) throw new Error('Unsupported asset catalog version'); return catalog; }).catch(error => { this.catalog = undefined; throw error; });
   }
   private async entry(id: string): Promise<LibraryAsset> {
     const asset = (await this.getCatalog()).assets[id];
@@ -56,24 +67,21 @@ export class AssetLibrary {
   }
   private async data<T>(id: string): Promise<T> {
     const asset = await this.entry(id);
-    if (!this.json.has(id)) this.json.set(id, this.track(this.fetchJson(asset.url)));
-    return this.json.get(id)! as Promise<T>;
+    return this.cached(this.json, id, () => this.fetchJson(asset.url)) as Promise<T>;
   }
   private async gltf(id: string): Promise<{ scene: THREE.Group; bindposes?: number[] }> {
     const asset = await this.entry(id);
-    if (!this.gltfs.has(id)) this.gltfs.set(id, this.track(this.loader.loadAsync(asset.url).then(gltf => { prepareStandardMaterials(gltf.scene); sceneTextures(gltf.scene); return { scene: gltf.scene, bindposes: (gltf.parser.json as { meshes?: { extras?: { bindposes?: number[] } }[] }).meshes?.[0]?.extras?.bindposes }; })));
-    return this.gltfs.get(id)!;
+    return this.cached(this.gltfs, id, () => this.loader.loadAsync(asset.url).then(gltf => { prepareStandardMaterials(gltf.scene); sceneTextures(gltf.scene); return { scene: gltf.scene, bindposes: (gltf.parser.json as { meshes?: { extras?: { bindposes?: number[] } }[] }).meshes?.[0]?.extras?.bindposes }; }));
   }
   private async texture(id: string, color: boolean): Promise<THREE.Texture> {
     const key = `${id}:${color}`;
-    if (!this.textures.has(key)) this.textures.set(key, this.track(this.entry(id).then((asset) => new THREE.TextureLoader().loadAsync(asset.url)).then((texture) => {
+    return this.cached(this.textures, key, () => this.entry(id).then((asset) => new THREE.TextureLoader().loadAsync(asset.url)).then((texture) => {
       texture.colorSpace = color ? THREE.SRGBColorSpace : THREE.NoColorSpace; texture.flipY = false;
       filterMaterialTexture(texture); texture.wrapS = texture.wrapT = THREE.RepeatWrapping; ownTexture(texture); this.ownedTextures.add(texture); return texture;
-    })));
-    return this.textures.get(key)!;
+    }));
   }
   private async material(id: string): Promise<THREE.MeshStandardMaterial> {
-    if (!this.materials.has(id)) this.materials.set(id, this.track(this.data<MaterialSpec>(id).then(async (spec) => {
+    return this.cached(this.materials, id, () => this.data<MaterialSpec>(id).then(async (spec) => {
       const material = new THREE.MeshStandardMaterial({ name: spec.name, roughness: spec.roughness ?? 0.9, metalness: spec.metalness ?? 0,
         side: spec.doubleSided || spec.effectRole === 'foliage' ? THREE.DoubleSide : THREE.FrontSide, transparent: spec.alphaMode === 'BLEND',
         depthWrite: spec.alphaMode !== 'BLEND', alphaTest: spec.alphaMode === 'MASK' || spec.effectRole === 'foliage' && !!spec.textures.baseColor ? spec.alphaCutoff ?? 0.5 : 0 });
@@ -87,8 +95,7 @@ export class AssetLibrary {
         if (channel === 'baseColor') material.map = texture; else if (channel === 'normal') material.normalMap = texture; else material.emissiveMap = texture;
       }
       material.userData.effectRole = spec.effectRole; this.ownedMaterials.add(material); return material;
-    })));
-    return this.materials.get(id)!;
+    }));
   }
   private async assembly(id: string): Promise<THREE.Group> {
     const spec = await this.data<AssemblySpec>(id); const root = new THREE.Group();

@@ -1,4 +1,4 @@
-import { keyboardInput, actionSlotInputs, actionNames, bindingConflict, bindingLabel, defaultBindings, inputActions, inputGroups, validBinding, type Bindings, type InputAction, type InputPreferences } from '../input/bindings';
+import { keyboardInput, actionSlotInputs, actionNames, bindingConflict, bindingLabel, defaultBindings, inputActions, inputGroups, validBinding, validBindings, type Bindings, type InputAction, type InputPreferences } from '../input/bindings';
 import { abilities, type ActionBar } from '../gameplay/abilities';
 import { abilityIcon } from './ability-icons';
 import { bindMenuDismissal } from './menu';
@@ -82,13 +82,17 @@ export class KeybindingsMenu {
       this.content.append(section);
     }
     const missing=inputActions.filter(action=>action.startsWith('move') && !this.draft[action].some(Boolean));
-    this.apply.disabled=!!missing.length || !!this.capture || !!this.conflict;
+    this.apply.disabled=!validBindings(this.draft) || !!this.capture || !!this.conflict;
     if(this.capture){
       this.status.textContent='Press a key or mouse button. Escape cancels.';
       for(const [name,callback] of [['Use Escape',()=>this.choose('key:Escape')],['Cancel',()=>{this.capture=null;this.render();}]] as const){const button=document.createElement('button');button.textContent=name;button.dataset.captureControl='true';button.onclick=callback;this.status.append(button);}
     } else if(this.conflict){
       this.status.textContent=`${bindingLabel(this.conflict.binding)} is assigned to ${actionNames[this.conflict.other.action]}.`;
-      for(const [name,callback] of [['Swap',()=>this.resolveConflict(true)],['Replace',()=>this.resolveConflict(false)],['Cancel',()=>{this.conflict=null;this.render();}]] as const){const button=document.createElement('button');button.textContent=name;button.onclick=callback;this.status.append(button);}
+      for(const [name,callback] of [['Swap',()=>this.resolveConflict(true)],['Replace',()=>this.resolveConflict(false)],['Cancel',()=>{this.conflict=null;this.render();}]] as const){const button=document.createElement('button');button.textContent=name;button.onclick=callback;
+        const previous=this.draft[this.conflict.cell.action][this.conflict.cell.index];
+        button.disabled=name==='Swap' && !!previous?.startsWith('wheel:') && !['zoomIn','zoomOut'].includes(this.conflict.other.action);
+        if(button.disabled)button.title='Wheel inputs are for camera zoom.';
+        this.status.append(button);}
     }else if(missing.length)this.status.textContent=`Bind ${missing.map(action=>actionNames[action].toLowerCase()).join(', ')} before applying.`;
     else this.status.textContent='';
   }

@@ -182,6 +182,32 @@ test('resource level and skill XP drive contact yields without changing depletio
   expect(harvest.contact('clearing',node.id,point,levelXp(9))?.quantity).toBe(3);harvest.contact('clearing',node.id,point);expect(harvest.contact('clearing',node.id,point)).toBeUndefined();
 });
 
+test('gathering retries a selected resource after the previous attack finishes cooling down', async () => {
+  const THREE = await import('three');
+  const { GatheringController } = await import('../src/clearing/gathering');
+  const { makeActor } = await import('../src/clearing/actors');
+  const { createEncounter } = await import('../src/gameplay/encounter');
+  const { Adventure } = await import('../src/gameplay/adventure');
+  const state = createEncounter('playing', grassArea.layout), adventure = new Adventure();
+  adventure.enter(state,grassArea);
+  const node = {id:'tree',kind:'tree' as const,position:[0,0,1] as [number,number,number],radius:.2,level:1,baseYield:1,contacts:3};
+  const harvesting = new Harvesting(); harvesting.register(grassArea.id,[node]);
+  const actor = makeActor(new THREE.Scene(),state.player);
+  actor.mixer = new THREE.AnimationMixer(actor.root);
+  actor.actions.chop = actor.mixer.clipAction(new THREE.AnimationClip('chop',1,[]));
+  const tools = {show:vi.fn()} as unknown as import('../src/rendering/gathering-tools').GatheringTools;
+  const audio = {play:vi.fn()} as unknown as import('../src/audio/audio').GameAudio;
+  const navigation = {resourceVisible:()=>true} as unknown as import('../src/gameplay/movement').MovementWorld;
+  const gathering = new GatheringController(state,adventure,harvesting,actor,tools,audio,{area:()=>grassArea,instance:()=>undefined,navigation:()=>navigation,paused:()=>false});
+  state.attackCooldown = .1;
+  gathering.select(node); expect(gathering.choppingId).toBeNull();
+  state.attackCooldown = 0;
+  gathering.advance(.05); gathering.advance(.35);
+  expect(gathering.choppingId).toBe('tree');
+  expect(adventure.session().drops.map(drop=>[drop.item,drop.quantity])).toEqual([['wood',1]]);
+  gathering.cancel(); actor.mixer.stopAllAction();
+});
+
 
 test('area candidates retain the active area and release failed, superseded and rejected preparations once', async () => {
   const { prepareAreaCandidate } = await import('../src/clearing/area-candidate');
@@ -241,4 +267,22 @@ test('released mesh instances free native bindings while retaining shared art', 
   expect(survivor.geometry).toBe(geometry); expect(survivor.material.map).toBe(texture);
   disposeSceneInstances(skin, { skeletons: true }); expect(skeleton).toHaveBeenCalledTimes(1);
   geometry.dispose(); material.dispose(); texture.dispose();
+});
+
+test('temporary catalog and model failures can be retried without reopening the game', async () => {
+  const { AssetLibrary } = await import('../src/assets/asset-library');
+  const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
+  const library = new AssetLibrary('/catalog.json');
+  const gltf = await new GLTFLoader().parseAsync(JSON.stringify({asset:{version:'2.0'},scenes:[{}],scene:0}), '');
+  const fetcher = vi.fn().mockResolvedValueOnce(new Response('',{status:503})).mockResolvedValue(new Response(JSON.stringify({version:1,complete:true,assets:{axe:{id:'axe',kind:'model',status:'converted',url:'/axe.glb'}}})));
+  const load = vi.spyOn(GLTFLoader.prototype,'loadAsync').mockRejectedValueOnce(new Error('temporary model failure')).mockResolvedValue(gltf);
+  vi.stubGlobal('fetch',fetcher);
+  try {
+    await expect(library.loadAsset('axe')).rejects.toThrow('503');
+    await expect(library.loadAsset('axe')).rejects.toThrow('temporary model failure');
+    const instance = await library.loadAsset('axe');
+    expect(instance.asset.id).toBe('axe');
+    expect(fetcher).toHaveBeenCalledTimes(2); expect(load).toHaveBeenCalledTimes(2);
+    instance.release();
+  } finally { await library.dispose(); load.mockRestore(); vi.unstubAllGlobals(); }
 });

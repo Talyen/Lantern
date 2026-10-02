@@ -121,7 +121,10 @@ export class GatheringController {
     }
 
     const swing = this.swing;
-    if (!swing) return;
+    if (!swing) {
+      if (this.selected) this.begin(this.selected);
+      return;
+    }
     swing.time += dt;
     const resource = swing.resource;
     const motion = resource.kind === 'tree' ? 'chop' : 'mine';

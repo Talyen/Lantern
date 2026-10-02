@@ -88,9 +88,10 @@ export class WorldInteractions {
     this.roots.push(this.active.root);
     const position = adventure.portalPosition(this.area);
     if (position && portalObject) {
-      if (this.portal?.object !== portalObject || this.portal.position !== position) this.portal = {
+      const height = adventure.portalHeight(this.area);
+      if (this.portal?.object !== portalObject || this.portal.position !== position || this.portal.height !== height) this.portal = {
         key: 'portal', name: this.area.id === homeArea ? 'Return to adventure' : 'Homestead', type: 'portal',
-        position, range: 1.8, height: 0, obstacleId: 'portal', object: portalObject,
+        position, range: 1.8, height, obstacleId: 'portal', object: portalObject,
       };
       targets.push(this.portal);
       this.roots.push(portalObject);

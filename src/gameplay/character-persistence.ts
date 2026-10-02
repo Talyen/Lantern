@@ -100,7 +100,11 @@ export class CharacterPersistence {
       if (raw !== this.pending) {
         decodeCharacter(this.pending);
         if (raw !== null) {
-          if (this.decode(raw)) storage.setItem(characterBackupKey, raw);
+          if (this.decode(raw)) {
+            const backup = storage.getItem(characterBackupKey);
+            if (backup !== null && !this.decode(backup)) this.preserve(storage, characterBackupKey, backup);
+            storage.setItem(characterBackupKey, raw);
+          }
           else this.preserve(storage, characterSaveKey, raw);
         }
         storage.setItem(characterSaveKey, this.pending);

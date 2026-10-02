@@ -6,6 +6,8 @@ Lantern uses recorded weapon and movement foley, compact creature reactions, sub
 
 `src/audio/audio.ts` owns one Web Audio context, cached decoded buffers, gain buses, variant selection, positional attenuation and bounded playback. `src/audio/gameplay.ts` maps numeric gameplay results to the authored cues in [the audio manifest](../assets/audio/manifest.json). Simulation and rendering never depend on playback succeeding.
 
+Loot presentation emits no independent audio. Drop, landing and pickup sounds use the shared gameplay events and Sound gains, so Master and Effects mute every reward cue.
+
 Encounter events distinguish accepted attacks, contact/release, dodge/landing, successful damage/block and projectile collision. Existing hit/animation events retain their presentation consumers. Adventure queues successful discovery, chest, physical drop/landing/collection, healing-start, potion-use and Return cast/portal events; the coordinator drains them once. UI sounds follow menu transitions and successful equipment commits. Animation resets and restoring area snapshots emit no attack, reward or death sounds.
 
 Footsteps follow collision-resolved displacement and gait half-cycles. Standing, walking into a wall, teleporting, attack locks and pauses emit none. Player steps occasionally add quiet armor/cloth movement. Combat one-shots have 20 voices, UI has four, and ambient loops have twelve at most. Repeated cues avoid the immediately previous variant. World sounds attenuate to silence at 18 m with restrained stereo placement relative to the isometric view; UI and outcome cues remain centered.
