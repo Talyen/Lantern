@@ -1,5 +1,5 @@
 import type { WeaponSet } from './abilities';
-import { itemDefinitions, equipmentCatalog, itemIds, isEquipmentSlot, slotAccepts, supportsShield, type EquipmentSlot, type ItemId, type Loadout } from './equipment';
+import { itemDefinitions, equipmentCatalog, itemIds, isItemId, isWeaponItem, isEquipmentSlot, slotAccepts, supportsShield, type EquipmentSlot, type ItemId, type Loadout } from './equipment';
 
 export const bagWidth = 12,
   bagHeight = 8,
@@ -14,11 +14,16 @@ export type InventoryItem = {
   x: number;
   y: number;
 };
+type LootDefinition = { name: string; width: number; height: number; stackable: boolean };
 export const lootDefinitions: Record<
   LootItem,
-  { name: string; width: number; height: number; stackable: boolean }
+  LootDefinition
 > = {
-  ...itemIds.reduce((result,id)=> { const {name,width,height}=equipmentCatalog[id]; result[id]={name,width,height,stackable:false};return result; },{} as Record<ItemId,{name:string;width:number;height:number;stackable:boolean}>),
+  ...itemIds.reduce((result, id) => {
+    const { name, width, height } = equipmentCatalog[id];
+    result[id] = { name, width, height, stackable: false };
+    return result;
+  }, {} as Record<ItemId, LootDefinition>),
   scroll: { name: 'Scroll of Return', width: 1, height: 1, stackable: true },
   potion: { name: 'Health Potion', width: 1, height: 1, stackable: true },
   wood: { name: 'Wood', width: 1, height: 1, stackable: true },
@@ -38,11 +43,10 @@ export function sameEquipment(a: readonly InventoryItem[], b: readonly Inventory
     (item.weaponSet ?? 0) === (other.weaponSet ?? 0)));
 }
 export function itemLoadout(items: readonly InventoryItem[], set: WeaponSet = 0): Loadout {
+  const main = items.find(entry => entry.slot === 'main' && (entry.weaponSet ?? 0) === set);
   return {
-    main:
-      (items.find((i) => i.slot === 'main' && (i.weaponSet ?? 0) === set)
-        ?.item as Loadout['main']) ?? null,
-    off: items.some((i) => i.slot === 'off' && (i.weaponSet ?? 0) === set) ? 'shield' : null,
+    main: main && isWeaponItem(main.item) ? main.item : null,
+    off: items.some(entry => entry.slot === 'off' && (entry.weaponSet ?? 0) === set && entry.item === 'shield') ? 'shield' : null,
   };
 }
 export function fits(
@@ -114,6 +118,12 @@ function returnToBag(items: InventoryItem[], entry: InventoryItem): void {
   delete entry.weaponSet;
 }
 
+/** A displaced main hand must leave its shield in the same unpublished candidate. */
+function returnShieldToBag(items: InventoryItem[], set: WeaponSet): void {
+  for (const entry of items.filter(item => item.slot === 'off' && (item.weaponSet ?? 0) === set))
+    returnToBag(items, entry);
+}
+
 export function moveItem(
   items: InventoryItem[],
   id: string,
@@ -147,9 +157,7 @@ export function moveItem(
     delete entry.weaponSet;
   }
   if (entry.slot === 'bag' && !itemLoadout(next, set).main)
-    for (const off of next.filter((i) => i.slot === 'off' && (i.weaponSet ?? 0) === set)) {
-      returnToBag(next, off);
-    }
+    returnShieldToBag(next, set);
   return next;
 }
 export function equipInstance(
@@ -160,25 +168,24 @@ export function equipInstance(
 ): InventoryItem[] {
   const next = structuredClone(items),
     entry = next.find((i) => i.id === id);
-  if (!entry || !itemIds.includes(entry.item as ItemId))
+  if (!entry || !isItemId(entry.item))
     throw new Error('That item cannot be equipped.');
   if (slot === 'off' && (entry.item !== 'shield' || !supportsShield(itemLoadout(next, set).main)))
     throw new Error('Equip an Axe or Sword first.');
-  if (!slotAccepts(entry.item as ItemId, slot)) throw new Error('That item belongs in a different slot.');
-  const sourceSet = entry.weaponSet ?? 0,
-    sourceMain = entry.slot === 'main';
-  const displace = next.filter(
-    (i) =>
-      i.id !== id &&
-      (slot !== 'main' && slot !== 'off' || (i.weaponSet ?? 0) === set) &&
-      (i.slot === slot ||
-        (slot === 'main' &&
-          itemDefinitions[entry.item as Loadout['main'] & string].hands === 2 &&
-          i.slot === 'off' &&
-          (i.weaponSet ?? 0) === set)),
-  );
-  if (sourceMain && sourceSet !== set)
-    displace.push(...next.filter((i) => i.slot === 'off' && (i.weaponSet ?? 0) === sourceSet));
+  if (!slotAccepts(entry.item, slot)) throw new Error('That item belongs in a different slot.');
+  const sourceSet = entry.weaponSet ?? 0;
+  const movingMainBetweenSets = entry.slot === 'main' && sourceSet !== set;
+  const handSlot = slot === 'main' || slot === 'off';
+  const needsBothHands = slot === 'main' && isWeaponItem(entry.item) && itemDefinitions[entry.item].hands === 2;
+  const displace = next.filter(other => {
+    if (other.id === id) return false;
+    const destinationSet = (other.weaponSet ?? 0) === set;
+    const occupiesSlot = other.slot === slot && (!handSlot || destinationSet);
+    const occupiesOffHand = needsBothHands && other.slot === 'off' && destinationSet;
+    return occupiesSlot || occupiesOffHand;
+  });
+  if (movingMainBetweenSets)
+    displace.push(...next.filter(other => other.slot === 'off' && (other.weaponSet ?? 0) === sourceSet));
   entry.slot = slot;
   if (slot === 'main' || slot === 'off') entry.weaponSet = set;
   else delete entry.weaponSet;
@@ -200,10 +207,7 @@ export function removeQuantity(
     set = entry.weaponSet ?? 0;
   entry.quantity -= quantity;
   const remaining = next.filter((i) => i.quantity > 0);
-  if (main)
-    for (const off of remaining.filter((i) => i.slot === 'off' && (i.weaponSet ?? 0) === set)) {
-      returnToBag(remaining, off);
-    }
+  if (main) returnShieldToBag(remaining, set);
   return remaining;
 }
 export function sortedItems(items: InventoryItem[]): InventoryItem[] {
@@ -242,7 +246,7 @@ function validItem(value: unknown): value is InventoryItem {
   const item = lootIds.find((id) => id === entry.item);
   if (!item) return false;
   const slot = entry.slot;
-  if (slot !== 'bag' && !isEquipmentSlot(String(slot)) && slot !== 'overflow') return false;
+  if (slot !== 'bag' && !isEquipmentSlot(slot) && slot !== 'overflow') return false;
   const quantityLimit = lootDefinitions[item].stackable
     ? slot === 'overflow'
       ? Number.MAX_SAFE_INTEGER
@@ -256,13 +260,12 @@ function validItem(value: unknown): value is InventoryItem {
   )
     return false;
   if (!Number.isInteger(entry.x) || !Number.isInteger(entry.y)) return false;
-  if (slot === 'main' || slot === 'off') {
-    if (entry.weaponSet !== undefined && entry.weaponSet !== 0 && entry.weaponSet !== 1)
-      return false;
-    if (!itemIds.some(id => id === item) || !slotAccepts(item as ItemId, slot)) return false;
-  }
-  if (isEquipmentSlot(String(slot)) && slot !== 'main' && slot !== 'off') {
-    if (entry.weaponSet !== undefined || !itemIds.some(id => id === item) || !slotAccepts(item as ItemId, slot as EquipmentSlot)) return false;
+  if (isEquipmentSlot(slot)) {
+    if (!isItemId(item) || !slotAccepts(item, slot)) return false;
+    if (slot === 'main' || slot === 'off') {
+      if (entry.weaponSet !== undefined && entry.weaponSet !== 0 && entry.weaponSet !== 1)
+        return false;
+    } else if (entry.weaponSet !== undefined) return false;
   }
   return true;
 }

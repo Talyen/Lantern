@@ -10,6 +10,8 @@ Inventory's set tabs edit only hand slots. Drag or select and Equip; rings offer
 
 The selected item shows its fixed properties and the effective-stat changes against its destination. Ground labels retain names only. Shared gear uses distinct icons and small category silhouettes on the ground; it does not replace or recolor the Paladin model. Hand models remain privately prepared Synty assets, with animations selected by compatible weapon family rather than item identity.
 
+Catalog membership and weapon checks belong to `isItemId` and `isWeaponItem` in [equipment](../src/gameplay/equipment.ts). The catalog type requires combat values for every weapon identity and constrains hand slots; inventory validation and save decoding use these same checks before indexing catalog data.
+
 ## Combat values
 
 Base health and mana are 100, mana recovery is 8 per active second, and movement speed is 3.2 m/s. Both current enemies have 200 health and deal 20 direct damage. Values are prototype tuning, not final balance.

@@ -24,8 +24,18 @@ export const itemDefinitions: Record<HandItem,ItemDefinition> = {
 
 export type Bonuses = Partial<Record<'armor' | 'health' | 'mana' | 'manaRegen' | 'damage' | 'attackRate' | 'moveSpeed', number>>;
 export type EquipmentDefinition = { name: string; slot: 'main' | 'off' | 'ring' | Exclude<SharedSlot,'ring-left'|'ring-right'>; width: number; height: number; bonuses: Bonuses; weapon?: { family: Weapon; damage: number; rate: number; reach: number } };
+/** Weapon identities must provide main-hand combat values; other gear cannot claim a hand slot. */
+type EquipmentCatalog = {
+  [Id in ItemId]: EquipmentDefinition & (
+    Id extends WeaponItem
+      ? { slot: 'main'; weapon: NonNullable<EquipmentDefinition['weapon']> }
+      : Id extends 'shield'
+        ? { slot: 'off' }
+        : { slot: Exclude<EquipmentDefinition['slot'], 'main' | 'off'> }
+  );
+};
 /** Fixed identities, footprints and properties; no generated affixes or stored stat copies. */
-export const equipmentCatalog: Record<ItemId, EquipmentDefinition> = {
+export const equipmentCatalog: EquipmentCatalog = {
   axe: {name:'Axe',slot:'main',width:2,height:3,bonuses:{},weapon:{family:'axe',damage:50,rate:1,reach:1.95}},
   sword: {name:'Sword',slot:'main',width:1,height:3,bonuses:{},weapon:{family:'sword',damage:50,rate:1,reach:1.95}},
   'iron-broadsword': {name:'Iron Broadsword',slot:'main',width:1,height:3,bonuses:{},weapon:{family:'sword',damage:70,rate:.8,reach:2.2}},
@@ -44,8 +54,15 @@ export const equipmentCatalog: Record<ItemId, EquipmentDefinition> = {
   'leather-belt': {name:'Leather Belt',slot:'belt',width:2,height:1,bonuses:{health:10}},
 };
 export const itemIds = Object.keys(equipmentCatalog) as ItemId[];
-export const weaponFamily = (item: WeaponItem | null): Weapon | null => item ? equipmentCatalog[item].weapon!.family : null;
-export const isEquipmentSlot = (slot: string): slot is EquipmentSlot => slot === 'main' || slot === 'off' || sharedSlots.some(value => value === slot);
+/** Catalog membership is checked before indexing untrusted save or loot values. */
+export function isItemId(value: unknown): value is ItemId {
+  return typeof value === 'string' && Object.hasOwn(equipmentCatalog, value);
+}
+export function isWeaponItem(value: unknown): value is WeaponItem {
+  return isItemId(value) && equipmentCatalog[value].slot === 'main';
+}
+export const weaponFamily = (item: WeaponItem | null): Weapon | null => item ? equipmentCatalog[item].weapon.family : null;
+export const isEquipmentSlot = (slot: unknown): slot is EquipmentSlot => slot === 'main' || slot === 'off' || sharedSlots.some(value => value === slot);
 export const slotAccepts = (item: ItemId, slot: EquipmentSlot): boolean => equipmentCatalog[item].slot === slot || equipmentCatalog[item].slot === 'ring' && (slot === 'ring-left' || slot === 'ring-right');
 export const arrowAsset = 'viking-realm:model:sm-wep-arrow-01';
 export const supportsShield = (weapon: WeaponItem | null) => weaponFamily(weapon) === 'axe' || weaponFamily(weapon) === 'sword';

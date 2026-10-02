@@ -1,6 +1,6 @@
 import { isRecord, parseJson } from '../data/json';
 import { initialBar, validBar, type ActionBar, type WeaponSet } from './abilities';
-import { equipmentCatalog, itemIds, normalizeLoadout, weaponFamily, type ItemId, type Loadout, type WeaponItem } from './equipment';
+import { isItemId, isWeaponItem, normalizeLoadout, weaponFamily, type ItemId, type Loadout } from './equipment';
 import {
   countItem,
   itemLoadout,
@@ -68,7 +68,7 @@ export function character(
     wood: { get: () => countItem(value.items, 'wood') },
     equipment: {
       get: () =>
-        value.items.filter((i) => itemIds.includes(i.item as ItemId)).map((i) => i.item as ItemId),
+        value.items.map(entry => entry.item).filter(isItemId),
     },
     loadout: { get: () => itemLoadout(value.items, value.activeSet) },
   }) as CharacterSave;
@@ -82,8 +82,6 @@ export function decodeCharacter(raw: string): CharacterSave {
   const value = parseJson(raw);
   const counter = (n: unknown): n is number =>
     typeof n === 'number' && Number.isFinite(n) && n >= 0 && n <= Number.MAX_SAFE_INTEGER;
-  const itemId = (id: unknown): id is ItemId => typeof id === 'string' && itemIds.includes(id as ItemId);
-  const weaponId = (id: unknown): id is WeaponItem => itemId(id) && equipmentCatalog[id].slot === 'main';
   if (!isRecord(value) || typeof value.version !== 'number' || ![1, 2, 3, 4, 5, 6].includes(value.version)
     || !Array.isArray(value.campfires) || !value.campfires.every((id: unknown): id is string => typeof id === 'string'))
     throw new Error('Invalid character save');
@@ -93,7 +91,7 @@ export function decodeCharacter(raw: string): CharacterSave {
   if (value.version === 4 && !hasHome && !hasCombat) throw new Error('Invalid character save');
   if (value.version >= 3) {
     if (!validItems(value.items) || !counter(xp.woodcutting) || !counter(xp.axeCombat)
-      || !Array.isArray(value.campClaims) || !value.campClaims.every(itemId))
+      || !Array.isArray(value.campClaims) || !value.campClaims.every(isItemId))
       throw new Error('Invalid inventory save');
     result = character(value.items);
     result.xp = { woodcutting: xp.woodcutting, axeCombat: xp.axeCombat, mining: 0 };
@@ -128,10 +126,10 @@ export function decodeCharacter(raw: string): CharacterSave {
     let legacyXp = { woodcutting: 0, axeCombat: 0, mining: 0 }, claimed = false;
     if (value.version === 2) {
       const savedLoadout = isRecord(value.loadout) ? value.loadout : {};
-      if (!Array.isArray(value.equipment) || !value.equipment.every(itemId)
+      if (!Array.isArray(value.equipment) || !value.equipment.every(isItemId)
         || !Number.isSafeInteger(value.wood) || !counter(value.wood)
         || !counter(xp.woodcutting) || !counter(xp.axeCombat) || typeof value.campEquipmentClaimed !== 'boolean'
-        || !(savedLoadout.main === null || weaponId(savedLoadout.main))
+        || !(savedLoadout.main === null || isWeaponItem(savedLoadout.main))
         || (savedLoadout.off !== null && savedLoadout.off !== 'shield')
         || (savedLoadout.main && !value.equipment.includes(savedLoadout.main))
         || (savedLoadout.off && !value.equipment.includes(savedLoadout.off)))
