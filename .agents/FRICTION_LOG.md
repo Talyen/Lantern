@@ -14,6 +14,7 @@ Centralized intake for unresolved agent friction while working in Lantern. Keep 
 
 | Date | Area | Symptom (expected vs actual) |
 |------|------|------------------------------|
+| 2026-10-02 | Click-to-gather approach | A Clearing click on `pine-3` stopped at approximately 1.133 m from its center, outside its 1.125 m interaction range, then abandoned the route without chopping. Clicking from 0.9 m completed all three contacts. [ClickApproach](../src/clearing/click-approach.ts) consumes the final waypoint within 0.18 m while [navigation](../src/gameplay/movement.ts) places the endpoint at 85% of interaction range; that tolerance can exceed the remaining reach margin. This path is unchanged by the runtime performance task; review final-waypoint arrival tolerance separately. |
 
 ## Archive
 

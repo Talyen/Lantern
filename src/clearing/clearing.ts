@@ -524,8 +524,7 @@ function tick(now: number): void {
   }
   if (!paused()) { active?.portals.forEach(p => p.update(dt)); adventureVisuals?.update(dt); }
   const portalPoint = adventure.portalPosition(currentArea);
-  const flames = currentArea.effects.fires.map(fire=>({id:fire.id,position:{x:fire.position[0],z:fire.position[1]},camp:fire.role==='campfire'})).sort((a,b)=>Math.hypot(a.position.x-encounter.player.x,a.position.z-encounter.player.z)-Math.hypot(b.position.x-encounter.player.x,b.position.z-encounter.player.z)).slice(0,6);
-  gameplayAudio.ambience(flames,portalPoint ? {x:portalPoint[0],z:portalPoint[1]} : null,lanternEnabled && encounter.player.hp>0 ? encounter.player : null);
+  gameplayAudio.ambience(currentArea.effects.fires,encounter.player,portalPoint ? {x:portalPoint[0],z:portalPoint[1]} : null,lanternEnabled && encounter.player.hp>0 ? encounter.player : null);
   controls.update();
   camera.updateMatrixWorld();
   pointerAim.capture(camera);

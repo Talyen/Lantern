@@ -35,7 +35,6 @@ export class MovementWorld implements Movement {
   private navigationRevision = 0;
   private navigationPending = false;
   private navigationPostQueued = false;
-  private queuedNavigation?: NavigationGeometry;
   private routes = new WeakMap<ActorState, { path: [number, number, number][]; target: number[]; age: number }>();
   readonly generationMs: number;
   private disposed = false;
@@ -60,10 +59,13 @@ export class MovementWorld implements Movement {
     this.world.step();
     this.generationMs = performance.now() - started;
   }
-  private rebuildNavigation(background = false): void {
+  private navigationGeometry(): NavigationGeometry {
     const surfaces = [...this.baseSurfaces, ...[...this.obstacles.values()].filter(o => !o.felled).map(o => box(o.definition))];
     const positions: number[] = [], indices: number[] = [];
     for (const surface of surfaces) { const offset = positions.length / 3; positions.push(...surface.positions); indices.push(...surface.indices.map(i => i + offset)); }
+    return { positions, indices };
+  }
+  private rebuildNavigation(background = false): void {
     this.reset();
     ++this.navigationRevision;
     if (background && typeof Worker !== 'undefined') {
@@ -77,16 +79,17 @@ export class MovementWorld implements Movement {
         };
         this.navigationWorker.onerror = event => { throw new Error(`Tree navigation could not update: ${event.message}`); };
       }
-      this.queuedNavigation = { positions, indices };
       if (!this.navigationPostQueued) {
         this.navigationPostQueued = true;
         // Applying session depletion on area arrival may change many trees in the same turn.
         queueMicrotask(() => {
           this.navigationPostQueued = false;
-          if (!this.disposed) this.navigationWorker?.postMessage({ revision: this.navigationRevision, geometry: this.queuedNavigation });
+          // Build only the final snapshot, rather than allocating it for every
+          // tree whose retained depletion is applied during the same arrival.
+          if (!this.disposed) this.navigationWorker?.postMessage({ revision: this.navigationRevision, geometry: this.navigationGeometry() });
         });
       }
-    } else { this.nav = buildNavigation({ positions, indices }); this.navigationPending = false; }
+    } else { this.nav = buildNavigation(this.navigationGeometry()); this.navigationPending = false; }
   }
   /** Collision commits immediately; expensive routes refresh off the gameplay thread. */
   setTreeFelled(id: string, felled: boolean): void {

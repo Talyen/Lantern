@@ -103,7 +103,38 @@ test('felling removes trunk collision and enemy detours, and regrowth restores b
     world.setTreeFelled('tree',false); state.player.x = -2;
     expect(world.lineOfSight(state.player,state.enemies.enemy)).toBe(false);
     expect(Math.abs(world.direction(state.player,state.enemies.enemy,.05).z)).toBeGreaterThan(.3);
-  } finally { world.dispose(); }
+    // Browser updates commit collision before the worker's coalesced route
+    // snapshot; old replies cannot make pickup/pursuit use stale navigation.
+    type Request = { revision: number; geometry: import('../src/gameplay/navigation').NavigationGeometry };
+    class WorkerStub {
+      static instance: WorkerStub;
+      onmessage?: (event: { data: { revision: number; nav: import('navcat').NavMesh } }) => void;
+      postMessage = vi.fn<(request: Request) => void>();
+      terminate = vi.fn();
+      constructor() { WorkerStub.instance = this; }
+    }
+    vi.stubGlobal('Worker', WorkerStub);
+    world.setTreeFelled('tree', true);
+    expect(world.lineOfSight(state.player,state.enemies.enemy)).toBe(true);
+    world.setTreeFelled('tree', false);
+    expect(world.lineOfSight(state.player,state.enemies.enemy)).toBe(false);
+    const worker = WorkerStub.instance;
+    expect(world.navigationReady).toBe(false);
+    await Promise.resolve();
+    expect(worker.postMessage).toHaveBeenCalledTimes(1);
+    const request = worker.postMessage.mock.calls[0][0];
+    const { buildNavigation } = await import('../src/gameplay/navigation');
+    const nav = buildNavigation(request.geometry);
+    worker.onmessage!({data:{revision:request.revision-1,nav}});
+    expect(world.navigationReady).toBe(false);
+    worker.onmessage!({data:{revision:request.revision,nav}});
+    expect(world.navigationReady).toBe(true);
+    expect(Math.abs(world.direction(state.player,state.enemies.enemy,.05).z)).toBeGreaterThan(.3);
+    world.setTreeFelled('tree', true); world.dispose();
+    await Promise.resolve();
+    expect(worker.postMessage).toHaveBeenCalledTimes(1);
+    expect(worker.terminate).toHaveBeenCalledTimes(1);
+  } finally { world.dispose(); vi.unstubAllGlobals(); }
 });
 
 

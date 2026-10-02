@@ -26,7 +26,10 @@ export class Graphics {
   private disposed = false;
   private casterBounds = new THREE.Box3();
   private casterBox = new THREE.Box3();
-  private fitKey = '';
+  private fitView = {
+    valid: false, position: new THREE.Vector3(), rotation: new THREE.Quaternion(),
+    left: 0, right: 0, top: 0, bottom: 0, zoom: 0, shadowWidth: 0, shadowHeight: 0,
+  };
   private shadowSize = new THREE.Vector3();
   private shadowCenter = new THREE.Vector3();
   private corner = new THREE.Vector2();
@@ -89,7 +92,7 @@ export class Graphics {
       scene.environmentIntensity = look.environment?.intensity ?? 1; scene.environmentRotation.y = look.environment?.rotation ?? 0;
       // Static caster bounds include offscreen trees/roofs that shade visible ground.
       // Actors and wind fit inside the padded depth envelope below.
-      this.fitKey = ''; this.casterBounds.makeEmpty(); scene.updateMatrixWorld(true);
+      this.fitView.valid = false; this.casterBounds.makeEmpty(); scene.updateMatrixWorld(true);
       scene.traverse(object => {
         if (!(object instanceof THREE.Mesh) || !object.castShadow || object instanceof THREE.SkinnedMesh) return;
         if (object instanceof THREE.InstancedMesh) object.computeBoundingBox();
@@ -125,9 +128,13 @@ export class Graphics {
 
   private fitLights(): void {
     const { sun, camera, lighting } = this.ctx;
-    const key = [...camera.position.toArray(), ...camera.quaternion.toArray(), camera.left, camera.right, camera.top, camera.bottom, camera.zoom, sun.shadow.mapSize.x, sun.shadow.mapSize.y].join(':');
-    if (key === this.fitKey) return;
-    this.fitKey = key;
+    const view = this.fitView, map = sun.shadow.mapSize;
+    if (view.valid && view.position.equals(camera.position) && view.rotation.equals(camera.quaternion)
+      && view.left === camera.left && view.right === camera.right && view.top === camera.top && view.bottom === camera.bottom
+      && view.zoom === camera.zoom && view.shadowWidth === map.x && view.shadowHeight === map.y) return;
+    view.valid = true; view.position.copy(camera.position); view.rotation.copy(camera.quaternion);
+    view.left = camera.left; view.right = camera.right; view.top = camera.top; view.bottom = camera.bottom;
+    view.zoom = camera.zoom; view.shadowWidth = map.x; view.shadowHeight = map.y;
     this.lightDirection.fromArray(lighting.definition.sun.position).normalize();
     this.shadowRotation.lookAt(this.lightDirection, this.origin, this.up).invert();
     this.shadowBounds.makeEmpty();

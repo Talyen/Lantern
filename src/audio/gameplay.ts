@@ -1,10 +1,19 @@
 import type { ActorId, ActorState, Encounter, EncounterEvent, Motion } from '../gameplay/encounter';
 import type { AdventureEvent } from '../gameplay/adventure';
+import type { AreaDefinition } from '../levels/types';
 import { GameAudio, type SoundCue, type SoundPosition } from './audio';
+
+type AuthoredFire = Pick<AreaDefinition['effects']['fires'][number], 'id' | 'position' | 'role'>;
+type AmbientFlame = { key: string; position: SoundPosition; camp: boolean; distance: number };
+const nearestFlame = (a: AmbientFlame, b: AmbientFlame) => a.distance - b.distance;
 
 /** Maps numeric action/results to the authored mix; animation replays stay silent. */
 export class GameplayAudio {
   private footsteps = new Map<ActorId, { x: number; z: number; phase: number; count: number }>();
+  private fireDefinitions?: readonly AuthoredFire[];
+  private authoredFlames: AmbientFlame[] = [];
+  private nearestFlames: AmbientFlame[] = [];
+  private loopKeys = new Set<string>();
   constructor(readonly audio: GameAudio) {}
   encounter(events: EncounterEvent[], state: Encounter): void {
     for (const event of events) {
@@ -51,24 +60,42 @@ export class GameplayAudio {
   }
   locomotion(id: ActorId, actor: ActorState, gait: number, motion: Motion | null, paused: boolean): void {
     const previous = this.footsteps.get(id), phase = Math.floor(gait * 2);
-    const count = previous?.count ?? 0;
-    this.footsteps.set(id, {x:actor.x,z:actor.z,phase,count});
-    if (paused || actor.hp <= 0 || motion !== 'run' || !previous) return;
-    const distance = Math.hypot(actor.x-previous.x,actor.z-previous.z);
-    if (distance < .001 || distance > 1 || phase === previous.phase) return;
+    if (!previous) { this.footsteps.set(id, {x:actor.x,z:actor.z,phase,count:0}); return; }
+    const { x, z, phase: oldPhase, count } = previous;
+    previous.x = actor.x; previous.z = actor.z; previous.phase = phase;
+    if (paused || actor.hp <= 0 || motion !== 'run') return;
+    const distance = Math.hypot(actor.x-x,actor.z-z);
+    if (distance < .001 || distance > 1 || phase === oldPhase) return;
     this.audio.play('footstep', actor, {gain:id === 'player' ? 1 : .65});
     if (id === 'player' && count % 2 === 0) this.audio.play('gear', actor);
-    this.footsteps.get(id)!.count++;
+    previous.count++;
   }
-  ambience(fires: {id:string;position:SoundPosition;camp:boolean}[], portal: SoundPosition | null, lantern: SoundPosition | null): void {
-    this.audio.keepLoops(new Set(['woodland',...fires.map(fire=>`fire-${fire.id}`),...(portal ? ['portal-hum'] : []),...(lantern ? ['personal-lantern'] : [])]));
+  ambience(fires: readonly AuthoredFire[], listener: SoundPosition, portal: SoundPosition | null, lantern: SoundPosition | null): void {
+    if (this.fireDefinitions !== fires) {
+      this.fireDefinitions = fires;
+      this.authoredFlames = fires.map(fire => ({key:`fire-${fire.id}`,position:{x:fire.position[0],z:fire.position[1]},camp:fire.role==='campfire',distance:0}));
+    }
+    // Refill in authored order so equal-distance flames retain the same stable
+    // priority, even after the listener has moved between previous frames.
+    this.nearestFlames.length = this.authoredFlames.length;
+    for (let i = 0; i < this.authoredFlames.length; i++) {
+      const flame = this.authoredFlames[i];
+      flame.distance = Math.hypot(flame.position.x-listener.x,flame.position.z-listener.z);
+      this.nearestFlames[i] = flame;
+    }
+    this.nearestFlames.sort(nearestFlame); this.nearestFlames.length = Math.min(6, this.nearestFlames.length);
+    this.loopKeys.clear(); this.loopKeys.add('woodland');
+    for (const fire of this.nearestFlames) this.loopKeys.add(fire.key);
+    if (portal) this.loopKeys.add('portal-hum');
+    if (lantern) this.loopKeys.add('personal-lantern');
+    this.audio.keepLoops(this.loopKeys);
     this.audio.loop('woodland', 'woodland');
     // Keep at most the six nearest authored flames, including optional scenery.
-    for (const fire of fires) this.audio.loop(`fire-${fire.id}`, fire.camp ? 'fire' : 'flame', fire.position);
+    for (const fire of this.nearestFlames) this.audio.loop(fire.key, fire.camp ? 'fire' : 'flame', fire.position);
     if (portal) this.audio.loop('portal-hum', 'portalHum', portal);
     else this.audio.stop('portal-hum');
     if (lantern) this.audio.loop('personal-lantern', 'flame', lantern, .2);
     else this.audio.stop('personal-lantern');
   }
-  reset(): void { this.audio.clearArea(); this.footsteps.clear(); }
+  reset(): void { this.audio.clearArea(); this.footsteps.clear(); this.fireDefinitions = undefined; this.authoredFlames.length = 0; this.nearestFlames.length = 0; this.loopKeys.clear(); }
 }
