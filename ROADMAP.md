@@ -171,6 +171,20 @@ Performance balance remains a feature goal. Only when specifically requested or 
 
 SSR, local captures, snow, storms, dynamic weather/wetting/drying, visible sky/cloud animation, refraction/underwater rendering and simulation-heavy water are conditional future work, activated by an authored scene or demonstrated need rather than a standing commitment to implement every effect.
 
+## UI design and polish
+
+The owner selected warm, crafted fantasy with restrained ornament and desktop keyboard/mouse first, with gamepad and smaller windows planned. The [UI design system](Docs/UI_DESIGN.md) owns shared rules; the [screen catalog](Docs/ui/SCREEN_CATALOG.md) records current/future surfaces and migration coverage. This is a staged presentation effort alongside gameplay milestones, preserving their existing mechanics and native WebGPU contract.
+
+- [x] Establish repository design direction, decision records, proposed foundation values, component contracts and an original ImageGen mockup workflow.
+- [x] Create original Inventory direction concepts with saved prompts/provenance and critique; runtime implementation remains outstanding.
+- [ ] Select a material/layout treatment and resolve typography, icon finish, compact window and UI-scale choices through a functional prototype.
+- [ ] Build a development-only fixed-data component specimen and a real Inventory/Equipment/Stash vertical slice; extract shared tokens and menu/control patterns from concrete consumers.
+- [ ] Apply the shared language to HUD/action bar, Skills, Options and Keybindings, preserving readability, live settings/draft policies and input ownership.
+- [ ] Finish travel, shelter, loot/context prompts, outcomes and startup/save-recovery presentation; cover shops, Smithing and future screens as gameplay requirements become available.
+- [ ] Observe unfamiliar players using representative menus and returning to play; refine specific hesitation and clarity problems. Record actual input/window/accessibility support and outstanding limits.
+
+Acceptance: every implemented screen serves a clear player task, uses the shared vocabulary, presents truthful states and recovery, retains reachable actions in its supported layout, and has relevant gameplay-scale visual/interaction evidence. Follow the [UI workflow](Docs/ui/WORKFLOW.md) and lean prototype policy; mockups/checks do not establish complete polish, gamepad support, accessibility conformance or cross-platform performance.
+
 ## Beyond the first complete slice
 
 - Expand the connected world and enemy challenges around the loot-driven adventure loop.

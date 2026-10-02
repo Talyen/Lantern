@@ -55,6 +55,8 @@ Agents use the [private task workflow](Docs/DEVELOPMENT.md#working-alongside-oth
 - [Asset preparation](Docs/ASSET_PREPARATION.md): explicit private imports and surface recipes.
 - [Interaction references](Docs/SMOKE_REFERENCES.md): optional targeted gameplay flows.
 - [Art direction](Docs/ART_DIRECTION.md): visual identity and review criteria.
+- [UI design system](Docs/UI_DESIGN.md): shared direction, foundation specifications, interaction rules and staged adoption.
+- [UI design workflow](Docs/ui/WORKFLOW.md): briefs, original ImageGen concepts, functional prototypes and screen coverage.
 - [Graphics settings](Docs/GRAPHICS.md): current controls, defaults and comparison URLs.
 - [Lighting](Docs/LIGHTING.md): shared Golden preset, local lights and explicit bake preparation.
 - [Gameplay sound](Docs/AUDIO.md): event timing, sound controls and private preparation.

@@ -77,7 +77,7 @@ Make strong visual choices within this identity and the requested task. Choose a
 
 - **World:** weathered craft, painterly surfaces, readable silhouettes, and amber refuge within a dangerous landscape.
 - **Composition:** asymmetrical arrangements with visual balance, clustered detail, quiet space, and a clear focal point.
-- **UI:** an instrument belonging to this world. Use the existing iron, brass, and smoky-glass [orb treatment](../assets/ui/orbs/PROMPTS.md) as a concrete starting reference; apply ornament selectively according to importance.
+- **UI:** an instrument belonging to this world. Use the existing iron, brass, and smoky-glass [orb treatment](../assets/ui/orbs/PROMPTS.md) as a concrete starting reference; apply ornament selectively according to importance. The [UI design system](UI_DESIGN.md) owns the adopted warm, crafted direction, proposed foundations and shared component rules.
 - **Motion:** purposeful feedback with clear timing and controlled settling. Avoid constant animation that competes with combat or attention.
 - **Restraint:** visual simplicity must feel intentional through proportion, alignment, material response, and finish.
 
@@ -148,6 +148,7 @@ Read this section before any player-facing visual change.
 
 ### Player-facing UI
 
+- Read the [UI design system](UI_DESIGN.md) and [screen design workflow](ui/WORKFLOW.md) before screen/component design. Keep briefs, original ImageGen concepts and adopted decisions in their documented owners; validate interaction and layout in the actual DOM implementation.
 - Use familiar menu names and predictable interactions, with compact layouts and a visual treatment specific to Lantern. Familiar behavior does not require default styling. Keep settings labels and values concise.
 - Do not add slogans, narrative flavor text, prototype/lab branding, explanatory paragraphs, or instructional/status panels unless the user requests them or they are necessary for an actionable error.
 - Keep the gameplay HUD limited to useful game state. Put settings and controls inside menus rather than around the scene.
