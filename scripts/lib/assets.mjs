@@ -87,6 +87,10 @@ export async function gameplayAssets(source = resolve(root, 'public')) {
     paths.add(path);
     if (extname(path) === '.glb') {
       const glb = await readGlb(path, source);
+      for (const material of glb.materials ?? []) {
+        const url = material.extras?.lanternSurface?.url;
+        if (url) { const field = assetPath(source, url, '/'); if (!existsSync(field)) throw new Error(`Missing prepared surface data: ${url}`); await include(field); }
+      }
       for (const entry of [...(glb.images ?? []), ...(glb.buffers ?? [])]) {
         if (entry.uri && !entry.uri.startsWith('data:')) await include(inside(source, resolve(dirname(path), decodeURIComponent(entry.uri))));
       }

@@ -35,7 +35,8 @@ test('graphics modes preserve defaults, saved choices and temporary comparison U
   vi.stubGlobal('location', { search: '' });
   vi.stubGlobal('localStorage', { getItem: (key: string) => storage.get(key) ?? null, setItem: (key: string, value: string) => storage.set(key, value) });
   try {
-    expect(readSettings()).toMatchObject({ dof: 'cinematic', sharpness: .5, outlines: true });
+    expect(readSettings()).toMatchObject({ dof: 'cinematic', sharpness: .5, outlines: true, textureDepth: true });
+    expect(migrateSettings({ defaultsVersion: 5, sharpness: .3, dof: 'off' })).toMatchObject({ textureDepth: true, sharpness: .3, dof: 'off' });
     for (const dof of depthOfFieldModes) {
       saveSettings({ ...defaults(), dof, exposure: .8 });
       expect([readSettings().dof, readSettings().exposure]).toEqual([dof, .8]);
@@ -51,7 +52,7 @@ test('graphics modes preserve defaults, saved choices and temporary comparison U
     expect(parseSettings(JSON.parse('{"dof":0.6}')).dof).toBe('cinematic');
     expect(parseSettings({}, new URLSearchParams('dof=0.6')).dof).toBe('cinematic');
     expect(parseSettings({}, new URLSearchParams('dof=unknown')).dof).toBe('cinematic');
-    for (const key of ['atmosphericParticles', 'outlines'] as const) for (const enabled of [true, false]) {
+    for (const key of ['atmosphericParticles', 'outlines', 'textureDepth'] as const) for (const enabled of [true, false]) {
       saveSettings({ ...defaults(), [key]: enabled });
       for (const value of enabled ? ['off', 'false'] : ['on', 'true']) {
         vi.stubGlobal('location', { search: `?${key}=${value}` });

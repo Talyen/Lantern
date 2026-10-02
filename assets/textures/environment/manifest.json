@@ -52,18 +52,21 @@
     "metalness": "0.65 metal; 0 otherwise",
     "regions": "sample authored palette before UV replacement; retain vertex colors and hierarchy",
     "privateOutputs": "public/vendor/synty/environment/",
-    "foliagePalette": "weathered autumn; classify authored regions before luminance-preserving recolor of sampled foliage and original text-prompted texture"
+    "foliagePalette": "weathered autumn; classify authored regions before luminance-preserving recolor of sampled foliage and original text-prompted texture",
+    "materialFields": "locally authored height, tangent normal, spatial roughness and cavity; protected POM atlas borders"
   },
   "assets": [
     {
       "id": "alpine-mountain:model:props-sm-prop-backpack-01",
       "kind": "backpack",
-      "url": "/vendor/synty/environment/props-sm-prop-backpack-01.glb"
+      "url": "/vendor/synty/environment/props-sm-prop-backpack-01.glb",
+      "bakeSize": 1024
     },
     {
       "id": "alpine-mountain:model:props-sm-prop-campfire-01",
       "kind": "campfire",
-      "url": "/vendor/synty/environment/props-sm-prop-campfire-01.glb"
+      "url": "/vendor/synty/environment/props-sm-prop-campfire-01.glb",
+      "bakeSize": 1024
     },
     {
       "id": "generic:model:sm-gen-env-bush-01",
@@ -74,7 +77,8 @@
         "shadow": "#653944",
         "shadowRetention": 0.65,
         "valueScale": 0.86
-      }
+      },
+      "bakeSize": 1024
     },
     {
       "id": "generic:model:sm-gen-env-fern-01",
@@ -85,17 +89,21 @@
         "shadow": "#626A45",
         "shadowRetention": 0.7,
         "valueScale": 0.74
-      }
+      },
+      "bakeSize": 1024
     },
     {
       "id": "generic:model:sm-gen-env-log-02",
       "kind": "log",
-      "url": "/vendor/synty/environment/sm-gen-env-log-02.glb"
+      "url": "/vendor/synty/environment/sm-gen-env-log-02.glb",
+      "bakeSize": 2048
     },
     {
       "id": "generic:model:sm-gen-env-rock-04",
       "kind": "rock",
-      "url": "/vendor/synty/environment/sm-gen-env-rock-04.glb"
+      "url": "/vendor/synty/environment/sm-gen-env-rock-04.glb",
+      "bakeSize": 2048,
+      "bevel": 0.003
     },
     {
       "id": "generic:model:sm-gen-env-tree-pine-01",
@@ -106,6 +114,31 @@
         "shadow": "#626A45",
         "shadowRetention": 0.42,
         "valueScale": 0.82
+      },
+      "bakeSize": 2048,
+      "upAxis": 1,
+      "shape": {
+        "canopyIrregularity": 0.2
+      },
+      "mapping": {
+        "bark": {
+          "mode": "cylinder",
+          "repeat": [
+            1.4,
+            2.4
+          ],
+          "blend": 0.7
+        },
+        "foliage": {
+          "scale": [
+            1.3,
+            0.85,
+            1.3
+          ],
+          "blend": 0.55,
+          "interior": 0.86,
+          "tips": 1.02
+        }
       }
     },
     {
@@ -117,6 +150,31 @@
         "shadow": "#626A45",
         "shadowRetention": 0.5,
         "valueScale": 0.78
+      },
+      "bakeSize": 2048,
+      "upAxis": 1,
+      "shape": {
+        "canopyIrregularity": 0.2
+      },
+      "mapping": {
+        "bark": {
+          "mode": "cylinder",
+          "repeat": [
+            1.4,
+            2.4
+          ],
+          "blend": 0.7
+        },
+        "foliage": {
+          "scale": [
+            1.3,
+            0.85,
+            1.3
+          ],
+          "blend": 0.55,
+          "interior": 0.86,
+          "tips": 1.02
+        }
       }
     },
     {
@@ -128,43 +186,76 @@
         "shadow": "#626A45",
         "shadowRetention": 0.5,
         "valueScale": 0.74
+      },
+      "bakeSize": 2048,
+      "upAxis": 1,
+      "shape": {
+        "canopyIrregularity": 0.2
+      },
+      "mapping": {
+        "bark": {
+          "mode": "cylinder",
+          "repeat": [
+            1.4,
+            2.4
+          ],
+          "blend": 0.7
+        },
+        "foliage": {
+          "scale": [
+            1.3,
+            0.85,
+            1.3
+          ],
+          "blend": 0.55,
+          "interior": 0.86,
+          "tips": 1.02
+        }
       }
     },
     {
       "id": "goblin-war-camp:model:buildings-sm-bld-tent-small-04",
       "kind": "tent",
-      "url": "/vendor/synty/environment/buildings-sm-bld-tent-small-04.glb"
+      "url": "/vendor/synty/environment/buildings-sm-bld-tent-small-04.glb",
+      "bakeSize": 2048
     },
     {
       "id": "goblin-war-camp:model:props-sm-prop-barrel-01",
       "kind": "barrel",
-      "url": "/vendor/synty/environment/props-sm-prop-barrel-01.glb"
+      "url": "/vendor/synty/environment/props-sm-prop-barrel-01.glb",
+      "bakeSize": 1024
     },
     {
       "id": "goblin-war-camp:model:props-sm-prop-bedroll-02",
       "kind": "bedroll",
-      "url": "/vendor/synty/environment/props-sm-prop-bedroll-02.glb"
+      "url": "/vendor/synty/environment/props-sm-prop-bedroll-02.glb",
+      "bakeSize": 1024
     },
     {
       "id": "goblin-war-camp:model:props-sm-prop-crate-01",
       "kind": "crate",
-      "url": "/vendor/synty/environment/props-sm-prop-crate-01.glb"
+      "url": "/vendor/synty/environment/props-sm-prop-crate-01.glb",
+      "bakeSize": 1024
     },
     {
       "id": "viking-realm:model:sm-prop-lantern-01",
       "kind": "lantern",
-      "url": "/vendor/synty/environment/sm-prop-lantern-01.glb"
+      "url": "/vendor/synty/environment/sm-prop-lantern-01.glb",
+      "bakeSize": 1024
     },
     {
       "id": "/vendor/synty/chest.glb",
       "kind": "chest",
-      "url": "/vendor/synty/environment/chest.glb"
+      "url": "/vendor/synty/environment/chest.glb",
+      "bakeSize": 2048
     },
     {
       "id": "/vendor/synty/art-lab/rock-painterly.glb",
       "kind": "rock",
       "url": "/vendor/synty/environment/cliff-rock.glb",
-      "sourceUrl": "/vendor/synty/art-lab/rock.glb"
+      "sourceUrl": "/vendor/synty/art-lab/rock.glb",
+      "bakeSize": 2048,
+      "bevel": 0.003
     }
   ],
   "showcase": {

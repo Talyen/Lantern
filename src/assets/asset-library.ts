@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { prepareStandardMaterials, filterMaterialTexture } from '../rendering/surface-detail';
 import { GLTFLoader, type GLTF } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
 
@@ -59,14 +60,14 @@ export class AssetLibrary {
   }
   private async gltf(id: string): Promise<GLTF> {
     const asset = await this.entry(id);
-    if (!this.gltfs.has(id)) this.gltfs.set(id, this.track(this.loader.loadAsync(asset.url)));
+    if (!this.gltfs.has(id)) this.gltfs.set(id, this.track(this.loader.loadAsync(asset.url).then(gltf => { prepareStandardMaterials(gltf.scene); return gltf; })));
     return this.gltfs.get(id)!;
   }
   private async texture(id: string, color: boolean): Promise<THREE.Texture> {
     const key = `${id}:${color}`;
     if (!this.textures.has(key)) this.textures.set(key, this.track(this.entry(id).then((asset) => new THREE.TextureLoader().loadAsync(asset.url)).then((texture) => {
       texture.colorSpace = color ? THREE.SRGBColorSpace : THREE.NoColorSpace; texture.flipY = false;
-      texture.wrapS = texture.wrapT = THREE.RepeatWrapping; this.ownedTextures.add(texture); return texture;
+      filterMaterialTexture(texture); texture.wrapS = texture.wrapT = THREE.RepeatWrapping; this.ownedTextures.add(texture); return texture;
     })));
     return this.textures.get(key)!;
   }
@@ -129,6 +130,7 @@ export class AssetLibrary {
     const variants = options.materialVariant ? await Promise.all(options.materialVariant.map((id) => this.material(id))) : undefined;
     if (this.disposed) { this.releaseSkeletons(object); throw new Error('Asset library disposed during load'); }
     object.traverse((o) => { if (o instanceof THREE.Mesh) { o.castShadow = o.receiveShadow = options.shadows ?? true; if (variants) o.material = variants.length === 1 ? variants[0] : variants; } });
+    prepareStandardMaterials(object);
     let released = false;
     const release = () => { if (released) return; released = true; object.removeFromParent(); this.releaseSkeletons(object); this.instances.delete(release); };
     this.instances.add(release); return { object, asset, release };

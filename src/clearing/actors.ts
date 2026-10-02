@@ -1,3 +1,4 @@
+import { prepareStandardMaterials } from '../rendering/surface-detail';
 import * as THREE from 'three';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
 import { motionStates, type CombatMotions, type AnimationRole } from '../animation/combat-animations';
@@ -29,7 +30,7 @@ export function play(actor: Actor, name: Motion): void {
   }
 }
 export function attachCharacter(actor: Actor, source: THREE.Group, clips: THREE.AnimationClip[], height = 1.8): void {
-  const model = cloneSkeleton(source); markOutline(model, 'actor');
+  const model = cloneSkeleton(source); prepareStandardMaterials(model); markOutline(model, 'actor');
   model.traverse(object => { if (object instanceof THREE.Mesh) object.castShadow = object.receiveShadow = true; });
   const wrapper = new THREE.Group(); wrapper.add(model); wrapper.updateMatrixWorld(true);
   const sourceHeight = new THREE.Box3().setFromObject(wrapper).getSize(new THREE.Vector3()).y;

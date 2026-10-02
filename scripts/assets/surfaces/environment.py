@@ -7,6 +7,8 @@ from pathlib import Path
 from collections import Counter
 import bpy
 import numpy as np
+sys.path.insert(0,str(Path(__file__).parent))
+from material_fields import author_fields, pixels as field_pixels, DEPTH
 
 
 def linear(c): return c / 12.92 if c <= .04045 else ((c + .055) / 1.055) ** 2.4
@@ -116,8 +118,22 @@ def bake(row, textures, output, size):
         pixels[:,:,:3]=autumn_colors(pixels[:,:,:3],look,reference)
         image.pixels.foreach_set(pixels.ravel());image.update()
         surfaces['foliage']=image
+    fields={family:author_fields(surface,family) for family,surface in surfaces.items()}
     for mesh in meshes:
         bpy.ops.object.select_all(action='DESELECT'); mesh.select_set(True); bpy.context.view_layer.objects.active=mesh
+        if row.get('bevel') and row['kind']=='rock':
+            original_lo=[min(v.co[i] for v in mesh.data.vertices) for i in range(3)]
+            original_hi=[max(v.co[i] for v in mesh.data.vertices) for i in range(3)]
+            spans=[original_hi[i]-original_lo[i] for i in range(3)]
+            modifier=mesh.modifiers.new('Weathered edges','BEVEL');modifier.width=min(spans)*row['bevel'];modifier.segments=1;modifier.limit_method='ANGLE';modifier.angle_limit=.65
+            bpy.ops.object.modifier_apply(modifier=modifier.name)
+            # Retain the original normalization envelope and conservative collision footprint.
+            new_lo=[min(v.co[i] for v in mesh.data.vertices) for i in range(3)]
+            new_hi=[max(v.co[i] for v in mesh.data.vertices) for i in range(3)]
+            for vertex in mesh.data.vertices:
+                for axis in range(3):vertex.co[axis]=original_lo[axis]+(vertex.co[axis]-new_lo[axis])/max(new_hi[axis]-new_lo[axis],.001)*spans[axis]
+            mesh.data.update()
+            mesh.data.normals_split_custom_set([tuple(face.normal) for face in mesh.data.polygons for _ in face.loop_indices])
         original_uv=mesh.data.uv_layers.active
         if original_uv is None: raise RuntimeError('No authored UVs: '+mesh.name)
         original_uv.name='Authored'
@@ -155,19 +171,19 @@ def bake(row, textures, output, size):
         topology=bpy.data.objects.new('Environment UV topology',temporary); bpy.context.collection.objects.link(topology)
         bpy.ops.object.select_all(action='DESELECT'); topology.select_set(True); bpy.context.view_layer.objects.active=topology
         temporary.uv_layers.new(name='Projection'); bpy.ops.object.mode_set(mode='EDIT'); bpy.ops.mesh.select_all(action='SELECT')
-        bpy.ops.uv.smart_project(island_margin=.006); bpy.ops.object.mode_set(mode='OBJECT')
+        bpy.ops.uv.smart_project(island_margin=.009); bpy.ops.object.mode_set(mode='OBJECT')
         if len(temporary.loops)!=len(mesh.data.loops): raise RuntimeError('UV topology changed corner count: '+mesh.name)
         baked_uv=mesh.data.uv_layers.new(name='EnvironmentBake')
         for index,loop in enumerate(temporary.uv_layers.active.data): baked_uv.data[index].uv=loop.uv
         bpy.data.objects.remove(topology,do_unlink=True); bpy.data.meshes.remove(temporary)
         bpy.ops.object.select_all(action='DESELECT'); mesh.select_set(True); bpy.context.view_layer.objects.active=mesh
         mesh.data.uv_layers.active=baked_uv; baked_uv.active_render=True
-        materials=[];colorsockets=[];alpha=[]
+        materials=[];colorsockets=[];alpha=[];fieldnodes=[];outputs=[];bumps=[]
         for family in counts:
             mat=bpy.data.materials.new(mesh.name+':'+family);mat.use_nodes=True;nodes=mat.node_tree.nodes;nodes.clear();links=mat.node_tree.links
             attr=nodes.new('ShaderNodeVertexColor');attr.layer_name='EnvironmentTint'
             color=attr.outputs['Color']
-            surface=surfaces.get(family)
+            surface=surfaces.get(family);field=None;bump=None
             if surface:
                 rule=row.get('mapping',{}).get(family,{})
                 coord=nodes.new('ShaderNodeTexCoord');mapping=nodes.new('ShaderNodeMapping')
@@ -179,6 +195,11 @@ def bake(row, textures, output, size):
                     grain=nodes.new('ShaderNodeUVMap');grain.uv_map='SurfaceGrain';tex.projection='FLAT';links.new(grain.outputs['UV'],tex.inputs['Vector'])
                 else:
                     links.new(coord.outputs['Generated'],mapping.inputs['Vector']);links.new(mapping.outputs['Vector'],tex.inputs['Vector'])
+                fieldtex=nodes.new('ShaderNodeTexImage');fieldtex.image=fields[family];fieldtex.projection=tex.projection;fieldtex.projection_blend=.25;fieldtex.extension='REPEAT'
+                links.new(tex.inputs['Vector'].links[0].from_socket,fieldtex.inputs['Vector'])
+                channels=nodes.new('ShaderNodeSeparateColor');channels.mode='RGB';links.new(fieldtex.outputs['Color'],channels.inputs[0]);field=channels
+                bump=nodes.new('ShaderNodeBump');bump.inputs['Strength'].default_value=.55;bump.inputs['Distance'].default_value=DEPTH[family]*1.8
+                links.new(channels.outputs['Red'],bump.inputs['Height'])
                 # Half authored palette, half original surface: recognizable facets without photographic contrast.
                 mix=nodes.new('ShaderNodeMixRGB');mix.blend_type='MIX';mix.inputs[0].default_value=rule.get('blend',row['projection']['colorBlend'] if family!='foliage' else row['projection']['foliageBlend'])
                 links.new(attr.outputs['Color'],mix.inputs[1]);links.new(tex.outputs['Color'],mix.inputs[2]);color=mix.outputs[0]
@@ -196,27 +217,49 @@ def bake(row, textures, output, size):
                 if 'valueScale' in rule:
                     finish=nodes.new('ShaderNodeMixRGB');finish.blend_type='MULTIPLY';finish.inputs[0].default_value=1;finish.inputs[2].default_value=(rule['valueScale'],)*3+(1,);links.new(color,finish.inputs[1]);color=finish.outputs[0]
             emission=nodes.new('ShaderNodeEmission');out=nodes.new('ShaderNodeOutputMaterial');links.new(color,emission.inputs['Color']);links.new(emission.outputs[0],out.inputs['Surface'])
-            materials.append((family,mat,emission));colorsockets.append(color);alpha.append(attr.outputs['Alpha'])
+            materials.append((family,mat,emission));colorsockets.append(color);alpha.append(attr.outputs['Alpha']);fieldnodes.append(field);outputs.append(out);bumps.append(bump)
         mesh.data.materials.clear()
         for _,mat,_ in materials:mesh.data.materials.append(mat)
         for face,family in zip(mesh.data.polygons,classes):face.material_index=[f for f,_,_ in materials].index(family)
         baked={}
         bpy.context.scene.render.engine='CYCLES';bpy.context.scene.cycles.samples=1
-        for channel in ['color','roughness','metalness','alpha'] if source_alpha else ['color','roughness','metalness']:
+        for channel in ['color','roughness','metalness','height','cavity','eligibility','coverage']+(['alpha'] if source_alpha else []):
             image=bpy.data.images.new(mesh.name+'-'+channel,size,size,alpha=False);image.colorspace_settings.name='sRGB' if channel=='color' else 'Non-Color'
             for index,(family,mat,emission) in enumerate(materials):
                 nodes=mat.node_tree.nodes;links=mat.node_tree.links
                 for link in list(emission.inputs['Color'].links):links.remove(link)
                 if channel=='color':links.new(colorsockets[index],emission.inputs['Color'])
                 elif channel=='alpha':links.new(alpha[index],emission.inputs['Color'])
+                elif channel in ['height','roughness','cavity'] and fieldnodes[index]:
+                    socket={'height':'Red','roughness':'Green','cavity':'Blue'}[channel]
+                    links.new(fieldnodes[index].outputs[socket],emission.inputs['Color'])
                 else:
-                    value=ROUGH[family] if channel=='roughness' else .65 if family=='metal' else 0
+                    value=ROUGH[family] if channel=='roughness' else .65 if channel=='metalness' and family=='metal' else .5 if channel=='height' else 1 if channel in ['cavity','coverage'] else 1 if channel=='eligibility' and family in ['stone','bark','timber'] else 0
                     emission.inputs['Color'].default_value=(value,value,value,1)
                 target=nodes.new('ShaderNodeTexImage');target.image=image;nodes.active=target
-            bpy.ops.object.bake(type='EMIT',margin=4);image.pack();baked[channel]=image
+            bpy.ops.object.bake(type='EMIT',margin=0 if channel=='coverage' else 8);image.pack();baked[channel]=image
+        # Bake tangent normals from the same projected height fields into the final atlas UVs.
+        normal=bpy.data.images.new(mesh.name+'-normal',size,size,alpha=False);normal.colorspace_settings.name='Non-Color'
+        for index,(family,mat,emission) in enumerate(materials):
+            nodes=mat.node_tree.nodes;links=mat.node_tree.links;principled=nodes.new('ShaderNodeBsdfPrincipled')
+            if bumps[index]:links.new(bumps[index].outputs['Normal'],principled.inputs['Normal'])
+            links.new(principled.outputs['BSDF'],outputs[index].inputs['Surface'])
+            target=nodes.new('ShaderNodeTexImage');target.image=normal;nodes.active=target
+        bpy.ops.object.bake(type='NORMAL',normal_space='TANGENT',margin=8);normal.pack();baked['normal']=normal
+        # Fade POM over atlas borders: smaller islands remain normal-mapped without unsafe UV shifts.
+        coverage=field_pixels(baked['coverage'])[:,:,0];edge=coverage.copy();distance=np.zeros_like(edge)
+        for step in range(1,17):
+            edge=np.minimum.reduce([edge,np.roll(edge,1,0),np.roll(edge,-1,0),np.roll(edge,1,1),np.roll(edge,-1,1)])
+            edge[0,:]=edge[-1,:]=0;edge[:,0]=edge[:,-1]=0;distance+=edge/16
+        packed=np.stack([field_pixels(baked['height'])[:,:,0],field_pixels(baked['cavity'])[:,:,0],field_pixels(baked['eligibility'])[:,:,0]*distance,np.ones_like(distance)],axis=-1)
+        from material_fields import field_image
+        basename=Path(row['filename']).stem+'-'+str(meshes.index(mesh))+'-surface.png'
+        surface_map=field_image(mesh.name+' surface data',packed,output/basename)
         mat=bpy.data.materials.new(mesh.name+' warm grimdark');mat.use_nodes=True;nodes=mat.node_tree.nodes;links=mat.node_tree.links;bsdf=nodes.get('Principled BSDF')
         for channel,socket in [('color','Base Color'),('roughness','Roughness'),('metalness','Metallic')]:
             tex=nodes.new('ShaderNodeTexImage');tex.image=baked[channel];links.new(tex.outputs['Color'],bsdf.inputs[socket])
+        tex=nodes.new('ShaderNodeTexImage');tex.image=baked['normal'];normal_node=nodes.new('ShaderNodeNormalMap');links.new(tex.outputs['Color'],normal_node.inputs['Color']);links.new(normal_node.outputs['Normal'],bsdf.inputs['Normal'])
+        mat['lanternSurface']={'url':str(Path(row['url']).parent/ basename),'depth':max([DEPTH[f] for f in counts if f in ['stone','bark','timber']],default=0),'version':2}
         if source_alpha:
             tex=nodes.new('ShaderNodeTexImage');tex.image=baked['alpha'];links.new(tex.outputs['Color'],bsdf.inputs['Alpha']);mat.surface_render_method='DITHERED'
         mat.use_backface_culling=not any(originals[m][2].use_backface_culling is False for m in originals)
@@ -224,7 +267,7 @@ def bake(row, textures, output, size):
         mesh.data.uv_layers.active=baked_uv;baked_uv.active_render=True
         # Remove sampled colors after baking; keep authored UVs for audit and preserve normals/hierarchy.
         mesh.data.color_attributes.remove(tint)
-        report['meshes'].append({'name':mesh.name,'vertices':len(mesh.data.vertices),'faces':len(mesh.data.polygons),'regions':dict(counts),'alphaPreserved':bool(source_alpha),'mapping':row.get('mapping'),'shape':row.get('shape')})
+        report['meshes'].append({'name':mesh.name,'vertices':len(mesh.data.vertices),'faces':len(mesh.data.polygons),'regions':dict(counts),'alphaPreserved':bool(source_alpha),'mapping':row.get('mapping'),'shape':row.get('shape'),'bakeSize':size,'bevel':row.get('bevel'),'atlasPadding':8,'surfaceData':basename})
     target=output/row['filename'];target.parent.mkdir(parents=True,exist_ok=True)
     bpy.ops.export_scene.gltf(filepath=str(target),export_format='GLB',export_apply=False,export_animations=False,export_extras=True,export_texcoords=True,export_normals=True,export_materials='EXPORT')
     report['output']=str(target);report['bytes']=target.stat().st_size

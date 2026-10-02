@@ -4,7 +4,7 @@ import type { LightProbeGrid } from 'three/addons/lighting/LightProbeGrid.js';
 import type { RenderTarget, WebGPURenderer } from 'three/webgpu';
 
 /** Increment when static shading or the pinned probe adapter changes. */
-export const lightingBakeVersion = 3;
+export const lightingBakeVersion = 4;
 export type PreparedProbeBake = { version: number; three: string; signature: string; probes: ProbeLighting; dimensions: [number, number, number]; data: number[] };
 
 /** Render inputs only: gameplay names, arrivals, enemies and rewards do not invalidate GI. */
@@ -21,7 +21,7 @@ export async function lightingBakeSignature(area: ResolvedAreaDefinition, root: 
       pending = (async () => {
         const image = texture.image as { width?: number; height?: number; data?: ArrayBufferView; src?: string } | undefined;
         return { width: image?.width, height: image?.height, data: image?.data ? await buffer(image.data) : undefined,
-          colorSpace: texture.colorSpace, flipY: texture.flipY, wrapS: texture.wrapS, wrapT: texture.wrapT,
+          anisotropy: texture.anisotropy, minFilter: texture.minFilter, magFilter: texture.magFilter, channel: texture.channel, colorSpace: texture.colorSpace, flipY: texture.flipY, wrapS: texture.wrapS, wrapT: texture.wrapT,
           offset: texture.offset.toArray(), repeat: texture.repeat.toArray(), rotation: texture.rotation };
       })(); textures.set(texture, pending);
     }
@@ -51,10 +51,13 @@ export async function lightingBakeSignature(area: ResolvedAreaDefinition, root: 
   }
   // GLB bytes cover embedded image contents; URLs are recorded by the asset owner
   // after projected/original/fallback selection, so the signature describes the actual art.
-  const sources = await Promise.all((root.userData.lightingSources as string[] | undefined ?? []).slice().sort().map(async url => {
-    const response = await fetch(url); if (!response.ok) throw new Error(`Cannot fingerprint lighting source: ${url}`);
-    return digest(new Uint8Array(await response.arrayBuffer()));
-  }));
+  // Bound transient source buffers: prepared GLBs now include larger normal atlases.
+  const sources: string[] = [];
+  for (const url of (root.userData.lightingSources as string[] | undefined ?? []).slice().sort()) {
+    const response = await fetch(url, { cache: 'no-store' });
+    if (!response.ok) throw new Error(`Cannot fingerprint lighting source: ${url}`);
+    sources.push(await digest(new Uint8Array(await response.arrayBuffer())));
+  }
   const look = area.lighting;
   const payload = { version: lightingBakeVersion, three: THREE.REVISION,
     sun: look.sun, environment: look.environment, probes: look.probes, meshes: meshes.sort(), sources: sources.sort(),

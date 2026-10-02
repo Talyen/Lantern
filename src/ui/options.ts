@@ -36,6 +36,7 @@ export class Options {
       ${(['shadowQuality', 'particleQuality'] as const).map(key => `<label>${key === 'shadowQuality' ? 'Shadow Quality' : 'Particle Effects'}<select id="option-${key}">${[...qualityLevels].reverse().map(value => `<option value="${value}">${value[0].toUpperCase() + value.slice(1)}</option>`).join('')}</select></label>`).join('')}
       <label>Depth of field<select id="option-dof">${depthOfFieldModes.map((mode) => `<option value="${mode}">${mode[0].toUpperCase() + mode.slice(1)}</option>`).join('')}</select></label>
       <label>Atmospheric particles<select id="option-atmosphericParticles"><option value="true">On</option><option value="false">Off</option></select></label>
+      <label title="Adds raised and recessed texture detail">Texture Depth<select id="option-textureDepth"><option value="true">On</option><option value="false">Off</option></select></label>
       <label>Outlines<select id="option-outlines"><option value="true">On</option><option value="false">Off</option></select></label>
       ${Object.keys(ranges).map((key) => `<label class="slider-label">${labels[key as NumericSetting]}<output id="value-${key}"></output><input id="option-${key}" type="range" min="${ranges[key as NumericSetting][0]}" max="${ranges[key as NumericSetting][1]}" step="${ranges[key as NumericSetting][2]}" aria-label="${labels[key as NumericSetting]}" /></label>`).join('')}`;
     document.getElementById('options-close')!.addEventListener('click', () => this.close());
@@ -50,7 +51,7 @@ export class Options {
       this.settings.fpsLimit = Number(this.input<HTMLSelectElement>('fpsLimit').value) as FrameRateLimit;
       this.apply(); this.ctx.resetMeasurements(); this.save('fpsLimit');
     });
-    for (const key of ['atmosphericParticles', 'outlines'] as const) this.input<HTMLSelectElement>(key).addEventListener('change', () => {
+    for (const key of ['atmosphericParticles', 'outlines', 'textureDepth'] as const) this.input<HTMLSelectElement>(key).addEventListener('change', () => {
       this.settings[key] = this.input<HTMLSelectElement>(key).value === 'true';
       this.apply(); this.save(key);
     });
@@ -93,6 +94,7 @@ export class Options {
     this.input<HTMLSelectElement>('dof').value = s.dof;
     this.input<HTMLSelectElement>('atmosphericParticles').value = String(s.atmosphericParticles);
     this.input<HTMLSelectElement>('outlines').value = String(s.outlines);
+    this.input<HTMLSelectElement>('textureDepth').value = String(s.textureDepth);
     for (const key of Object.keys(ranges) as NumericSetting[]) {
       this.input<HTMLInputElement>(key).value = String(s[key]);
       document.getElementById(`value-${key}`)!.textContent = s[key].toFixed(2);

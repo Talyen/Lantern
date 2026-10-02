@@ -14,19 +14,19 @@ export const upscaleRatio = (quality: UpscaleQuality) => ({ native: 1, quality: 
 export type GraphicsSettings = {
   upscaleQuality: UpscaleQuality; sharpness: number; shadowQuality: QualityLevel; particleQuality: QualityLevel; fpsLimit: FrameRateLimit;
   exposure: number; warmth: number; fog: number; bloom: number; ao: number; dof: DepthOfFieldMode;
-  atmosphericParticles: boolean; outlines: boolean;
+  atmosphericParticles: boolean; outlines: boolean; textureDepth: boolean;
 };
 export const defaultCameraZoom = 1.35;
 export const settingsKey = 'lantern.options.v1';
 export const defaults = (query = new URLSearchParams(typeof location === 'undefined' ? '' : location.search)): GraphicsSettings => ({ upscaleQuality: 'balanced', sharpness: 0.50, shadowQuality: 'high', particleQuality: 'high',
   fpsLimit: defaultFrameRate(Number(query.get('displayHz'))),
-  exposure: 1.25, warmth: 0.85, fog: 0.7, bloom: 0.4, ao: 0.65, dof: 'cinematic', atmosphericParticles: true, outlines: true });
+  exposure: 1.25, warmth: 0.85, fog: 0.7, bloom: 0.4, ao: 0.65, dof: 'cinematic', atmosphericParticles: true, outlines: true, textureDepth: true });
 export const ranges = {
   sharpness: [0, 1, 0.01],
   exposure: [0.5, 2, 0.01], warmth: [0, 1, 0.01], fog: [0, 1, 0.01], bloom: [0, 1, 0.01], ao: [0, 1, 0.01],
 } as const;
 export type NumericSetting = keyof typeof ranges;
-export const defaultsVersion = 5;
+export const defaultsVersion = 6;
 export type SavedSettings = Partial<GraphicsSettings> & { defaultsVersion?: number; quality?: 'laptop' | 'enhanced' };
 /** Apply this visual-default revision once; later player choices remain authoritative. */
 export function migrateSettings(saved: SavedSettings): GraphicsSettings {
@@ -53,7 +53,7 @@ export function readSettings(): GraphicsSettings {
 }
 export function parseSettings(saved: Partial<GraphicsSettings> = {}, query = new URLSearchParams()): GraphicsSettings {
   const result = defaults(query);
-  for (const key of ['atmosphericParticles', 'outlines'] as const) {
+  for (const key of ['atmosphericParticles', 'outlines', 'textureDepth'] as const) {
     if (typeof saved[key] === 'boolean') result[key] = saved[key];
     const override = query.get(key);
     if (override === 'on' || override === 'true') result[key] = true;

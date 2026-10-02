@@ -22,6 +22,7 @@ class PipelineGraph {
   private depthJitter = uniform(new Vector2());
   private depthTexel = uniform(new Vector2());
   private outlineScale = uniform(1);
+  private materialMipBias = uniform(0);
   private look?: AreaLighting;
   private shadowTint = uniform(new Color(1, 1, 1));
   private highlightTint = uniform(new Color(1, 1, 1));
@@ -61,6 +62,8 @@ class PipelineGraph {
     this.scale = 1 / upscaleRatio(settings.upscaleQuality);
     const scenePass = pass(this.scene, this.camera, { samples: 0 });
     scenePass.setResolutionScale(this.scale);
+    const surfaceContext = { materialMipBias: this.materialMipBias, textureDepth: settings.textureDepth };
+    scenePass.contextNode = context(surfaceContext);
     const sceneMRT = settings.outlines ? mrt({ output, normal: normalView, velocity, outline: vec4(outlineStrength(), 0, 0, output.a) }) : mrt({ output, normal: normalView, velocity });
     if (settings.outlines) {
       sceneMRT.setClearColor('outline', 0, 0);
@@ -89,11 +92,12 @@ class PipelineGraph {
       const geometry = pass(this.scene, this.camera, { samples: 0 });
       geometry.transparent = false; geometry.setResolutionScale(this.scale);
       geometry.setMRT(mrt({ output, normal: normalView }));
+      geometry.contextNode = context({ materialMipBias: this.materialMipBias, textureDepth: false });
       const contact = ao(geometry.getTextureNode('depth'), geometry.getTextureNode('normal'), this.camera);
       contact.resolutionScale = 0.5; contact.samples.value = 8;
       contact.radius.value = 0.18; contact.thickness.value = 0.3;
       this.resources.push(geometry, contact); this.sceneResources.push(geometry);
-      scenePass.contextNode = context({ getAO: (materialAO: Node<'float'> | null) =>
+      scenePass.contextNode = context({ ...surfaceContext, getAO: (materialAO: Node<'float'> | null) =>
         mix(float(1), contact.getTextureNode().sample(screenUV).r, this.aoStrength).mul(materialAO ?? float(1)) });
     }
     // PassNode's opaque filter avoids touching scene visibility or materials.
@@ -186,6 +190,7 @@ class PipelineGraph {
     }
     this.look = look; this.settings = { ...settings };
     this.outlineScale.value = this.scale;
+    this.materialMipBias.value = Math.max(-1, Math.min(0, Math.log2(this.scale)));
     if (this.fsr?.upscaler) this.fsr.upscaler.settings.sharpness = settings.sharpness;
     this.exposure.value = settings.exposure; this.saturation.value = saturation;
     this.aoStrength.value = settings.ao;
@@ -214,7 +219,7 @@ class PipelineGraph {
 
   diagnostics() {
     const rt = this.scenePass?.renderTarget;
-    return { ready: this.prepared, method: 'fsr-temporal', outlines: this.settings.outlines, outlineStage: this.settings.outlines ? 'pre-fsr' : 'off', sceneAttachments: rt?.textures.length ?? 0, dof: this.settings.dof, dofStage: 'resolved-output',
+    return { textureDepth: this.settings.textureDepth, materialMipBias: this.materialMipBias.value, materialAnisotropy: 16, ready: this.prepared, method: 'fsr-temporal', outlines: this.settings.outlines, outlineStage: this.settings.outlines ? 'pre-fsr' : 'off', sceneAttachments: rt?.textures.length ?? 0, dof: this.settings.dof, dofStage: 'resolved-output',
       sceneWidth: rt?.width ?? 0, sceneHeight: rt?.height ?? 0,
       outputWidth: this.renderer.domElement.width, outputHeight: this.renderer.domElement.height,
       reconstructionScale: this.scale, renderedFrames: this.successfulFrames,
@@ -261,7 +266,7 @@ class PipelineGraph {
 }
 
 function graphSignature(settings: GraphicsSettings): string {
-  return JSON.stringify([settings.dof !== 'off', settings.ao > 0, settings.bloom > 0, settings.outlines]);
+  return JSON.stringify([settings.dof !== 'off', settings.ao > 0, settings.bloom > 0, settings.outlines, settings.textureDepth]);
 }
 type PipelineRequest = { settings: GraphicsSettings; saturation: number; look?: AreaLighting };
 /** One shared graph owner. Keep the committed graph until its replacement is ready. */

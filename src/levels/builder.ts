@@ -1,6 +1,5 @@
 import { MeshStandardNodeMaterial } from 'three/webgpu';
-import { texture, positionWorld, mix, vec2, vec3, smoothstep, mx_noise_float } from 'three/tsl';
-import soilUrl from '../../assets/textures/soil-painterly.png?url';
+import { texture, mix, vec2, vec3, positionWorld } from 'three/tsl';
 import environmentManifest from '../../assets/textures/environment/manifest.json';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -8,13 +7,13 @@ import { environmentOutlineEligible, environmentSurface, prepareEnvironmentMater
 import { markOutline } from '../rendering/outlines';
 import { assetLibrary, updateAssetLods, type AssetInstance } from '../assets/asset-library';
 import { createGrass } from '../rendering/grass';
-import { woodlandLayerUrls, woodlandGroundRecipe, woodlandLayer, woodlandPatchWeight, woodlandPatchColor } from '../rendering/woodland-ground';
+import { woodlandGroundRecipe, woodlandMaterial } from '../rendering/woodland-ground';
 import { Portal } from '../rendering/portal';
 import { resolveLocalLight } from './local-lighting';
 import type { CoreEffects } from '../rendering/effects';
 import { generateDecoration } from './decoration';
 import { treeDefinitions } from './trees';
-import type { AreaDefinition, AssetRef, Placement, Primitive, GroundLayer, GroundPatch } from './types';
+import type { AreaDefinition, AssetRef, Placement, Primitive, GroundPatch } from './types';
 const loader = new GLTFLoader();
 const cache = new Map<string, Promise<THREE.Group>>();
 const shared = new Set<THREE.Object3D>();
@@ -44,67 +43,41 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
   const portals = (area.effects.portals ?? []).map(definition => { const portal = new Portal(definition, root); portal.root.userData.transient = true; return portal; });
   const missing: string[] = [], foliage: THREE.Object3D[] = [], fires: THREE.PointLight[] = []; let shadow: THREE.PointLight | null = null;
   const showcase = import.meta.env.DEV && surfaceMode === 'showcase' && area.id === environmentManifest.showcase.area ? environmentManifest.showcase : undefined;
-  const groundMaps = new Map<GroundLayer, THREE.Texture>();
-  const groundMap = (layer: GroundLayer): THREE.Texture => {
-    const existing = groundMaps.get(layer);
-    if (existing) return existing;
-    const url = woodlandLayerUrls[layer];
+  const groundMaps = new Map<string, THREE.Texture>();
+  const groundMap = (url: string, data: boolean): THREE.Texture => {
+    const existing = groundMaps.get(url); if (existing) return existing;
     let resolveTexture!: () => void, rejectTexture!: (error: unknown) => void;
     const ready = new Promise<void>((resolve, reject) => { resolveTexture = resolve; rejectTexture = reject; });
     const map = new THREE.TextureLoader().load(url, resolveTexture, undefined, rejectTexture);
     ready.catch(() => {}); textureReady.push(ready); lightingSources.add(url);
-    map.colorSpace = THREE.SRGBColorSpace; map.wrapS = map.wrapT = THREE.RepeatWrapping;
-    ownedTextures.add(map); groundMaps.set(layer, map); return map;
+    map.colorSpace = data ? THREE.NoColorSpace : THREE.SRGBColorSpace;
+    map.wrapS = map.wrapT = THREE.RepeatWrapping; ownedTextures.add(map); groundMaps.set(url, map); return map;
   };
-  const material = (p: Primitive) => { root.userData.lightingProcedural.push(p); const m = new MeshStandardNodeMaterial({ color: p.color, roughness: 1, side: p.doubleSided ? THREE.DoubleSide : THREE.FrontSide });
-    const samples = new Map<GroundLayer, ReturnType<typeof woodlandLayer>>();
-    const sample = (layer: GroundLayer) => { let value = samples.get(layer); if (!value) { value = woodlandLayer(groundMap(layer), layer); samples.set(layer, value); } return value; };
+  const groundPatches: GroundPatch[] = area.props.flatMap(p => {
+    const id = p.asset && ('libraryId' in p.asset ? p.asset.libraryId : p.asset.url);
+    const family = environmentManifest.assets.find(a => a.id === id)?.kind;
+    if (!family || !['pine', 'bush', 'fern', 'rock', 'log'].includes(family)) return [];
+    return [{ center: [p.position[0], p.position[2]], radius: family === 'pine' ? 2.7 : family === 'rock' ? 1.8 : 1.3,
+      color: family === 'rock' ? '#777568' : '#71533c', strength: family === 'pine' ? .78 : .6, layer: family === 'rock' ? 'rocky-soil' : 'litter' } as GroundPatch];
+  });
+  const material = (p: Primitive) => {
+    root.userData.lightingProcedural.push(p);
+    const m = new MeshStandardNodeMaterial({ color: p.color, roughness: 1, side: p.doubleSided ? THREE.DoubleSide : THREE.FrontSide });
     if (p.surface === 'woodland') {
-      if (showcase || p.patches?.some(patch => patch.layer)) root.userData.lightingProcedural.push({ woodlandLayerSampling: woodlandGroundRecipe });
-      let resolveTexture!: () => void, rejectTexture!: (error: unknown) => void;
-      const ready = new Promise<void>((resolve, reject) => { resolveTexture = resolve; rejectTexture = reject; }); ready.catch(() => {}); textureReady.push(ready);
-      const soil = new THREE.TextureLoader().load(soilUrl, resolveTexture, undefined, rejectTexture); lightingSources.add(soilUrl); soil.colorSpace = THREE.SRGBColorSpace; soil.wrapS = soil.wrapT = THREE.RepeatWrapping; ownedTextures.add(soil);
-      // Stable world-space blends break recognizable tile motifs without animated noise or seams.
-      const ground = positionWorld.xz;
-      const broad = mx_noise_float(ground.mul(.075)).mul(.5).add(.5);
-      const detail = mx_noise_float(ground.mul(.32).add(vec2(17, 43)));
-      const uvB = vec2(ground.x.mul(.8).sub(ground.y.mul(.6)), ground.x.mul(.6).add(ground.y.mul(.8))).mul(.137).add(vec2(.37, .61));
-      const uvC = vec2(ground.x.mul(.6).add(ground.y.mul(.8)), ground.x.mul(-.8).add(ground.y.mul(.6))).mul(.083).add(vec2(.73, .19));
-      const soilBlend = mix(texture(soil, ground.mul(.11)).rgb, texture(soil, uvB).rgb, smoothstep(.25, .75, broad));
-      // Palette inputs join the bake fingerprint; shader-only color changes must invalidate old irradiance.
-      const palette = { earth: '#68523d', recolor: .78, tint: '#766047', tintBlend: .12 };
-      root.userData.lightingProcedural.push({ woodlandPalette: palette });
-      const sampled = mix(soilBlend, texture(soil, uvC).rgb, detail.mul(.18).add(.28).clamp(0, .5)).mul(1.45);
-      const earth = new THREE.Color(palette.earth), weights = vec3(.2126, .7152, .0722);
-      const earthLuminance = earth.r * .2126 + earth.g * .7152 + earth.b * .0722;
-      const base = mix(sampled, vec3(...earth.toArray()).mul(sampled.dot(weights).div(earthLuminance)), palette.recolor);
-      let color = mix(base, vec3(...new THREE.Color(p.color).toArray()), smoothstep(.3, .8, broad).mul(.42));
-      for (const patch of p.patches ?? []) {
-        // Perturb the feathered boundary, keeping the authored center and radius in metres.
-        const distance = ground.sub(vec2(...patch.center)).length().div(patch.radius).add(detail.mul(.12));
-        const weight = smoothstep(.25, 1, distance).oneMinus().mul(patch.strength);
-        const worn = patch.layer ? woodlandPatchColor(sample(patch.layer), patch) : base.mul(.45).add(vec3(...new THREE.Color(patch.color).toArray()).mul(.75));
-        color = mix(color, worn, weight);
-      }
-      m.colorNode = mix(color, vec3(...new THREE.Color(palette.tint).toArray()), palette.tintBlend);
-      if (showcase) {
-        const study = showcase.ground, patches = study.patches as GroundPatch[];
-        const region = { center: study.center as [number, number], radius: study.radius, strength: 1 };
-        let painted = sample('earth');
-        for (const patch of patches) painted = mix(painted, woodlandPatchColor(sample(patch.layer!), patch), woodlandPatchWeight(patch));
-        m.colorNode = mix(m.colorNode, painted, woodlandPatchWeight(region));
-        root.userData.lightingProcedural.push({ woodlandShowcase: study });
-      }
+      const patches = [...groundPatches, ...(p.patches ?? []), ...(showcase?.ground.patches as GroundPatch[] ?? [])];
+      root.userData.lightingProcedural.push({ woodlandMaterial: woodlandGroundRecipe, patches });
+      const surface = woodlandMaterial(groundMap, patches);
+      m.colorNode = surface.color; m.normalNode = surface.normal; m.roughnessNode = surface.roughness; m.aoNode = surface.cavity;
       if (grass.coverage) {
-        // Explicit map reference includes the mask bytes in the existing bake fingerprint.
         m.map = grass.coverage.texture;
-        const coverage = texture(m.map, ground.sub(vec2(...grass.coverage.min)).div(vec2(...grass.coverage.span))).r;
-        const grassSoil = { color: '#4b4e32', strength: .42 };
+        const coverage = texture(m.map, positionWorld.xz.sub(vec2(...grass.coverage.min)).div(vec2(...grass.coverage.span))).r;
+        const grassSoil = { color: '#4b4e32', strength: .28 };
         root.userData.lightingProcedural.push({ grassSoil });
         m.colorNode = mix(m.colorNode, vec3(...new THREE.Color(grassSoil.color).toArray()), coverage.mul(grassSoil.strength));
       }
     }
-    ownedMaterial.add(m); return m; };
+    ownedMaterial.add(m); return m;
+  };
   const geometry = (p: Primitive) => { const s = p.size; let g: THREE.BufferGeometry;
     if (p.kind === 'box') g = new THREE.BoxGeometry(s[0], s[1], s[2]);
     else if (p.kind === 'cylinder') g = new THREE.CylinderGeometry(s[0], s[1], s[2], s[3] ?? 32);
@@ -137,8 +110,11 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
       source(instance.asset.id); return instance.object;
     }
     let pending = cache.get(ref.url);
-    if (!pending) { pending = loader.loadAsync(ref.url).then(gltf => { if (ref.url.startsWith('/vendor/synty/environment/')) prepareEnvironmentMaterials(gltf.scene); shared.add(gltf.scene); return gltf.scene; }); cache.set(ref.url, pending); pending.catch(() => cache.delete(ref.url)); }
-    const object = (await pending).clone(true); lightingSources.add(ref.url); return object;
+    if (!pending) { pending = loader.loadAsync(ref.url).then(async gltf => { if (ref.url.startsWith('/vendor/synty/environment/')) await prepareEnvironmentMaterials(gltf.scene); shared.add(gltf.scene); return gltf.scene; }); cache.set(ref.url, pending); pending.catch(() => cache.delete(ref.url)); }
+    const object = (await pending).clone(true); lightingSources.add(ref.url);
+    for (const url of object.userData.surfaceSources ?? []) lightingSources.add(url);
+    for (const url of object.userData.surfaceMissing ?? []) if (!missing.includes(url)) missing.push(url);
+    return object;
   }
   function transform(model: THREE.Object3D, p: Placement): void {
     // Center/bottom-normalize inside a placement root so yaw cannot move an off-center asset away from its collision proxy.
