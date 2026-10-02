@@ -26,10 +26,13 @@ export function ownTexture(texture: THREE.Texture): THREE.Texture {
   return texture;
 }
 export function sceneTextures(root: THREE.Object3D): Set<THREE.Texture> {
-  const textures = new Set<THREE.Texture>();
+  const textures = new Set<THREE.Texture>(), materials = new Set<THREE.Material>();
   root.traverse(object => {
     if (!isMesh(object)) return;
     for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
+      // Shared scenery materials expose the same textures on every placement.
+      if (materials.has(material)) continue;
+      materials.add(material);
       for (const value of Object.values(material)) if (isTexture(value)) textures.add(ownTexture(value));
     }
   });

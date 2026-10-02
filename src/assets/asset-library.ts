@@ -168,8 +168,10 @@ export class AssetLibrary {
     const geometries = new Set<THREE.BufferGeometry>();
     for (const pending of this.gltfs.values()) { const result = await pending.catch(() => null); result?.scene.traverse((o) => {
       if (isMesh(o)) { geometries.add(o.geometry); const materials = Array.isArray(o.material) ? o.material : [o.material];
-        materials.forEach((m) => { this.ownedMaterials.add(m); Object.values(m).forEach((v) => { if (isTexture(v)) this.ownedTextures.add(v); }); }); }
+        for (const material of materials) this.ownedMaterials.add(material); }
     }); }
+    // Inspect each shared material once, after every accepted load has settled.
+    for (const material of this.ownedMaterials) for (const value of Object.values(material)) if (isTexture(value)) this.ownedTextures.add(value);
     geometries.forEach((g) => g.dispose()); this.ownedMaterials.forEach((m) => m.dispose()); this.ownedTextures.forEach((t) => t.dispose());
     this.gltfs.clear(); this.json.clear(); this.textures.clear(); this.materials.clear();
     this.ownedMaterials.clear(); this.ownedTextures.clear(); this.catalog = undefined;

@@ -19,7 +19,8 @@ export class SceneCache {
     return { scene: entry.scene, release: () => { if (!released) { released = true; entry.references--; this.trim(); } } };
   }
   private trim(): void {
-    let unused = [...this.entries.values()].reduce((sum, entry) => sum + (entry.references ? 0 : entry.bytes), 0);
+    let unused = 0;
+    for (const entry of this.entries.values()) if (!entry.references) unused += entry.bytes;
     for (const [key, entry] of this.entries) {
       if (unused <= this.unusedBytes) break;
       if (entry.references || !entry.root) continue;
