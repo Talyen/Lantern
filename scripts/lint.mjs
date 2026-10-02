@@ -1,12 +1,11 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { ESLint } from 'eslint';
 import tseslint from 'typescript-eslint';
 import stylelint from 'stylelint';
 import { Workspace, PositionEncoding } from '@astral-sh/ruff-wasm-nodejs';
 import { requireDisableReason } from '../eslint/rules.mjs';
-import { cli, parseArgs, root } from './lib/cli.mjs';
+import { cli, isMain, parseArgs, root } from './lib/cli.mjs';
 import { git } from './agents/state.mjs';
 
 // This pass deliberately ignores inline configurations: a directive cannot disable
@@ -68,7 +67,7 @@ async function css() {
   return !result.errored && result.results.every(file => file.warnings.length === 0);
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) await cli(async () => {
+if (isMain(import.meta.url)) await cli(async () => {
   const args = parseArgs(process.argv.slice(2), { '--javascript': 'boolean', '--python': 'boolean', '--css': 'boolean' });
   if (args['--help']) { console.log('Usage: npm run lint -- [--javascript] [--python] [--css]\nChecks JavaScript/TypeScript, Python and CSS without fixes or downloads. No flags checks all languages.'); return; }
   const all = !args['--javascript'] && !args['--python'] && !args['--css'];

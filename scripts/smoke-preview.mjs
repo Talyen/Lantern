@@ -1,7 +1,6 @@
 import { preview } from 'vite';
 import { resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
-import { cli, parseArgs, root } from './lib/cli.mjs';
+import { cli, isMain, parseArgs, root } from './lib/cli.mjs';
 export async function verifyResources(origin) {
   const response = await fetch(origin, { signal: AbortSignal.timeout(5000) });
   if (!response.ok || !response.headers.get('content-type')?.includes('text/html')) throw new Error('Preview HTML unavailable');
@@ -24,7 +23,7 @@ export async function smokePreview() {
   try { await verifyResources(`http://127.0.0.1:${server.httpServer.address().port}/`); }
   finally { await server.close(); }
 }
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) await cli(async () => {
+if (isMain(import.meta.url)) await cli(async () => {
   const args = parseArgs(process.argv.slice(2));
   if (args['--help']) { console.log('Usage: npm run smoke:preview'); return; }
   await smokePreview();

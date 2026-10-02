@@ -148,6 +148,8 @@ Default acceptance is one preview session and one relevant interaction at normal
 
 Build and verification entry points remain in `scripts/`. Asset preparation lives in `scripts/assets/`: `synty/` owns Synty import and library conversion, `mixamo/` owns acquisition and rig-compatible motion export, `surfaces/` owns original texture projection and baking, and `characters/` owns private roster conversion and gallery captures. Library helper siblings remain together under `synty/library/`. Repeated Node argument/process/path behavior belongs in `scripts/lib/cli.mjs`. Supported wrappers provide `--help`, reject unknown/repeated flags and missing values before writing, pass literal arguments without a shell, and fail on failed/interrupted children. Exit codes are 0 success, 1 operation failure, 2 invalid invocation. Export defaults resolve from the repository, not the caller's directory; explicitly supplied paths resolve from the caller. Python verifiers also resolve their defaults from the repository.
 
+The check entry point in `scripts/check.mjs` owns invocation and cache coordination. `scripts/checks/inputs.mjs` owns source/art cache identity, `stages.mjs` owns change-aware stage selection, and `evidence.mjs` owns leased stage execution, bounded failure excerpts and successful-evidence retention. Importable command entry points use `isMain(import.meta.url)` from the CLI helper so library consumers do not trigger commands.
+
 Long exports stream output. Checks retain complete local logs and print short stage results. Do not add asset regeneration, downloads or formatting to verification. Shared helpers are for demonstrated repetition, not a general scripting framework.
 
 ## Publication

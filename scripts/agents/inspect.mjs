@@ -1,7 +1,6 @@
 import { readFile, readdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
-import { cli, parseArgs, root, UsageError } from '../lib/cli.mjs';
+import { cli, isMain, parseArgs, root, UsageError } from '../lib/cli.mjs';
 import { integer } from './read-text.mjs';
 
 function parts(path) {
@@ -56,7 +55,7 @@ export function inspectRecords(data, source, args = {}) {
   return page();
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) await cli(async () => {
+if (isMain(import.meta.url)) await cli(async () => {
   const args = parseArgs(process.argv.slice(2), {
     '--area': 'value', '--source': 'value', '--section': 'value', '--query': 'value', '--id': 'value',
     '--fields': 'value', '--limit': 'value', '--offset': 'value',

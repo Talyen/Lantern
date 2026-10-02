@@ -1,9 +1,13 @@
 import { spawn } from 'node:child_process';
 import { resolve, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 export const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 export const defaultBlender = '/Applications/Blender.app/Contents/MacOS/Blender';
 export class UsageError extends Error {}
+/** Importable command modules must not run their CLI when used as libraries. */
+export function isMain(moduleURL) {
+  return !!process.argv[1] && moduleURL === pathToFileURL(resolve(process.argv[1])).href;
+}
 export function parseArgs(argv, options = {}) {
   const values = {};
   for (let i = 0; i < argv.length; i++) {

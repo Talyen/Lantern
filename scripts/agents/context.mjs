@@ -1,7 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { resolve, relative, dirname } from 'node:path';
-import { pathToFileURL } from 'node:url';
-import { cli, parseArgs, root, UsageError } from '../lib/cli.mjs';
+import { cli, isMain, parseArgs, root, UsageError } from '../lib/cli.mjs';
 import { markdownHeadings } from '../lib/markdown.mjs';
 import { budget, integer, linePage, recordPage, repositoryPath } from './read-text.mjs';
 import { git } from './state.mjs';
@@ -50,7 +49,7 @@ export async function readDocumentation(references, maxChars, offset = 0) {
   return { maxChars, characters: maxChars - remaining, sections };
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) await cli(async () => {
+if (isMain(import.meta.url)) await cli(async () => {
   const args = parseArgs(process.argv.slice(2), { '--topic': 'value', '--json': 'boolean', '--include-docs': 'boolean', '--consumers': 'boolean', '--doc': 'value', '--offset': 'value', '--limit': 'value', '--max-chars': 'value' });
   if (args['--help']) { console.log('Usage: npm run agent:context -- [--topic TOPIC] [--include-docs] [--consumers] [--json] [--max-chars 12000] [--limit 20] [--offset 0]\nRead one document section: --doc PATH#HEADING [--offset LINE_OFFSET].\nDocumentation shares a content budget; sections include source lines and nextOffset, with omitted lines explicit. Consumers are direct literal relative imports/re-exports/require, paged separately; aliases and computed imports are excluded. Without a topic, list topics. Read-only.'); return; }
   const maxChars = budget(args), offset = integer(args['--offset'], 0, 0, Number.MAX_SAFE_INTEGER, 'Offset');

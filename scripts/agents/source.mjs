@@ -1,8 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { resolve, relative, dirname, extname } from 'node:path';
-import { pathToFileURL } from 'node:url';
 import ts from 'typescript';
-import { cli, parseArgs, root, UsageError } from '../lib/cli.mjs';
+import { cli, isMain, parseArgs, root, UsageError } from '../lib/cli.mjs';
 import { git } from './state.mjs';
 import { budget, integer, linePage, recordPage, repositoryPath } from './read-text.mjs';
 
@@ -58,7 +57,7 @@ export async function directConsumers(owners) {
   return found;
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) await cli(async () => {
+if (isMain(import.meta.url)) await cli(async () => {
   const args = parseArgs(process.argv.slice(2), { '--file': 'value', '--symbol': 'value', '--start-line': 'value', '--end-line': 'value', '--offset': 'value', '--limit': 'value', '--max-chars': 'value' });
   if (args['--help']) { console.log('Usage: npm run agent:source -- --file PATH [--symbol NAME | --start-line N [--end-line N]] [--offset 0] [--limit 20] [--max-chars 12000]\nList TS/JS top-level symbols and class/interface members, or read source lines. Offsets count records in the list, lines in a selected span. Content is bounded; nextOffset reports continuation. Read-only.'); return; }
   if (!args['--file']) throw new UsageError('Choose --file PATH.');

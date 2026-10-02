@@ -1,8 +1,7 @@
 import { readFile, readdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
 import ts from 'typescript';
-import { cli, root } from './lib/cli.mjs';
+import { cli, isMain, root } from './lib/cli.mjs';
 
 const legacyNames = new Set(['WebGLRenderer', 'WebGLBackend', 'forceWebGL', 'usesWebGPU', 'switchBackend', 'ShaderMaterial', 'RawShaderMaterial', 'onBeforeCompile']);
 const retiredNames = new Set(['TRAANode', 'TAAUNode', 'stableTemporalAA', 'checkedTAAU', 'VolumeNodeMaterial']);
@@ -135,7 +134,7 @@ export function renderingViolations(path, source) {
   return [...errors];
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) await cli(async () => {
+if (isMain(import.meta.url)) await cli(async () => {
   const files = [];
   async function walk(dir) {
     for (const entry of await readdir(resolve(root, dir), { withFileTypes: true })) {
