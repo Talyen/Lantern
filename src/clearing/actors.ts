@@ -21,7 +21,10 @@ export function play(actor: Actor, name: Motion, rate = 1): void {
   const next = actor.actions[name]; if (!next) return;
   const starting = actor.current===null;
   const blend = name === 'dodge' ? .035 : name === 'hit' ? .045 : ['attack','chop','mine','sweep','pierce'].includes(name) ? .055 : .10;
-  for (const action of Object.values(actor.actions)) if (action && action !== next && action.isScheduled()) action.fadeOut(blend);
+  for (const role in actor.actions) {
+    const action = actor.actions[role as PlaybackRole];
+    if (action && action !== next && action.isScheduled()) action.fadeOut(blend);
+  }
   next.reset().stopFading().setEffectiveWeight(1).setEffectiveTimeScale(name === 'dodge' ? next.getClip().duration / dodgeDuration : ['attack','sweep','pierce'].includes(name) ? rate : 1);
   if (!starting) next.fadeIn(blend);
   next.play();
@@ -60,7 +63,10 @@ function installActions(actor: Actor, clips: Partial<Record<AnimationRole, THREE
     }
   }
   mixer.stopAllAction();
-  for (const action of Object.values(actor.actions)) if (action) mixer.uncacheClip(action.getClip());
+  for (const role in actor.actions) {
+    const action = actor.actions[role as PlaybackRole];
+    if (action) mixer.uncacheClip(action.getClip());
+  }
   actor.actions = {}; actor.current = null; actor.previous = null; actor.velocity.set(0, 0);
   const playback: Partial<Record<PlaybackRole, THREE.AnimationClip>> = {...clips};
   if (clips.block) {

@@ -69,6 +69,9 @@ export function createGrass(area: AreaDefinition, patches: GrassPatch[]) {
     g.setIndex(bladeGeometry.index);
     const origins = new Float32Array(cell.length * 3), shapes = new Float32Array(cell.length * 3), worlds = new Float32Array(cell.length * 2), blades = new Float32Array(cell.length * 2);
     const mesh = new THREE.Mesh(g, material); mesh.name = `grass-cell-${key}`; mesh.position.set(x, 0, z); mesh.receiveShadow = true; mesh.castShadow = false;
+    // Cells keep fixed local placement; wind deforms vertices in the shared
+    // material. World matrices still follow any movement of the carpet/area.
+    mesh.updateMatrix(); mesh.matrixAutoUpdate = false;
     const box = new THREE.Box3();
     cell.forEach((blade, i) => {
       // Root height follows the authored flat terrain; bury roots slightly to avoid floating blades.

@@ -41,6 +41,14 @@ The asset library detects skinned meshes once in each cached GLTF. Static models
 
 Interaction contours refresh the selected target's ancestors and subtree once per frame instead of refreshing each outlined mesh's ancestor chain separately. Visibility checks, copied world matrices and world-width conversion remain unchanged. A private focused comparison matched static clone structure and shared resources, confirmed independent cloned skeletons, and matched 480 contour matrix/visibility/width results across parent motion and visibility changes. A normal-settings native WebGPU preview exercised hover and click interaction without browser errors. These checks establish behavior equivalence, not measured frame-time or RAM savings; evidence is retained in the resource-efficiency task archive.
 
+## October 2 grass transforms and animation transitions
+
+Grass cells compose their fixed local placement once at construction instead of on every scene update. Automatic world-matrix updates remain enabled, so carpet and area transforms still propagate. Blade geometry, attributes, bounds, material wind deformation and temporal history uniforms are unchanged. Actor transitions and motion replacement iterate the owned action record directly instead of allocating a values array; action order, scheduling, fades and playback remain unchanged.
+
+A private comparison matched grass geometry and local/world matrices across 40 updates with translated, rotated and scaled parents. Its 16-cell fixture avoided 640 repeated local-matrix compositions. Another 60 transition updates matched animation action times, scheduling, weights and rates. Evidence lives under `.local/transform-parity/`, retained in the task archive after cleanup. These are correctness and avoided-work observations, not measured CPU-time or process-memory savings. No benchmark or full local suite was run.
+
+Native gameplay inspection remains unverified because another task held the shared GPU-review slot. The owned queued preview was stopped without disturbing that session. This pass does not establish pixel parity or cross-platform performance.
+
 ## Current measurement protocol
 
 Run a fresh production build before measuring. Use hidden `npm run desktop:check -- --debug-port=9231` and attach CDP, or use a real browser. Keep GPU acceleration enabled. Record hardware, OS, browser/Electron and three.js versions, native WebGPU adapter, content viewport, scene/output dimensions, fixed output pixel ratio, FSR Resolution Quality and sharpening, graphics settings, camera, and asset set. Use [current graphics settings](GRAPHICS.md) for controls and temporary overrides.
