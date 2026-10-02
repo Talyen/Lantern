@@ -41,8 +41,9 @@ export function receive(
   return initial - quantity;
 }
 /** Used only on unpublished candidates; failed placement leaves the caller's inventory intact. */
-function returnToBag(items: InventoryItem[], entry: InventoryItem): void {
-  const point = emptyPosition(items, entry.item);
+function returnToBag(items: InventoryItem[], entry: InventoryItem, preferred?: { x: number; y: number }): void {
+  const point = preferred && fits(items, entry.item, preferred.x, preferred.y, entry.id)
+    ? preferred : emptyPosition(items, entry.item);
   if (!point) throw new Error('Inventory full.');
   Object.assign(entry, { slot: 'bag', ...point });
   delete entry.weaponSet;
@@ -104,6 +105,7 @@ export function equipInstance(
     throw new Error('Equip an Axe or Sword first.');
   if (!slotAccepts(entry.item, slot)) throw new Error('That item belongs in a different slot.');
   const sourceSet = entry.weaponSet ?? 0;
+  const vacated = entry.slot === 'bag' ? { x: entry.x, y: entry.y } : undefined;
   const movingMainBetweenSets = entry.slot === 'main' && sourceSet !== set;
   const handSlot = slot === 'main' || slot === 'off';
   const needsBothHands = slot === 'main' && isWeaponItem(entry.item) && itemDefinitions[entry.item].hands === 2;
@@ -125,7 +127,7 @@ export function equipInstance(
     return second.width * second.height - first.width * first.height;
   });
   for (const old of displace) {
-    returnToBag(next, old);
+    returnToBag(next, old, vacated);
   }
   return next;
 }

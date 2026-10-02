@@ -55,6 +55,7 @@ export class Adventure {
   character = character();
   portal: PortalLink | null = null;
   castRemaining = 0;
+  private castItemId: string | undefined;
   notice = '';
   private noticeTime = 0;
   private atShelter = false;
@@ -105,8 +106,8 @@ export class Adventure {
     this.save();
   }
 
-  usePotion(encounter: Encounter): boolean {
-    const entry = this.character.items.find(entry => entry.item === 'potion' && entry.slot === 'bag');
+  usePotion(encounter: Encounter, id?: string): boolean {
+    const entry = this.character.items.find(entry => entry.item === 'potion' && entry.slot === 'bag' && (id === undefined || entry.id === id));
     if (!entry || encounter.player.hp <= 0 || encounter.player.hp >= encounter.stats.maxHealth
       || encounter.potionCooldown > 0 || !['playing', 'won'].includes(encounter.phase)) return false;
     encounter.player.hp = Math.min(encounter.stats.maxHealth, encounter.player.hp + 40);
@@ -329,8 +330,10 @@ export class Adventure {
       .map(fire => ({ area, fire, available: this.fireSafe(area, fire) })));
   }
 
-  beginCast(alive: boolean): boolean {
+  beginCast(alive: boolean, id?: string): boolean {
     if (!alive || this.currentArea === homeArea || this.character.scrolls === 0 || this.castRemaining > 0) return false;
+    if (id !== undefined && !this.character.items.some(entry => entry.id === id && entry.item === 'scroll' && entry.slot === 'bag')) return false;
+    this.castItemId = id;
     this.castRemaining = 2;
     this.events.push({ type: 'returnCast' });
     return true;
@@ -407,7 +410,9 @@ export class Adventure {
     if (!(this.castRemaining > 0)) return;
     this.castRemaining = Math.max(0, this.castRemaining - dt);
     if (this.castRemaining !== 0) return;
-    const scroll = this.character.items.find(entry => entry.item === 'scroll' && entry.slot === 'bag');
+    const scroll = this.character.items.find(entry => entry.id === this.castItemId && entry.item === 'scroll' && entry.slot === 'bag')
+      ?? this.character.items.find(entry => entry.item === 'scroll' && entry.slot === 'bag');
+    this.castItemId = undefined;
     if (!scroll) return;
     scroll.quantity--;
     this.character.items = this.character.items.filter(entry => entry.quantity > 0);

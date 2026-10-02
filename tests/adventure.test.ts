@@ -26,7 +26,7 @@ test('failed equipment preparation retains saved gear and releases the gate for 
   const player = makeActor(new THREE.Scene(), encounter.player);
   player.mixer = new THREE.AnimationMixer(player.root);
   const prepare = vi.fn().mockRejectedValueOnce(new Error('Missing weapon art')).mockResolvedValue(undefined);
-  const inventory = new InventoryController(adventure, encounter, player, { prepare }, { play: () => {} }, {
+  const inventory = new InventoryController(adventure, encounter, player, { prepare, activate: () => {} }, { play: () => {} }, {
     clearInput: () => {}, equipmentBlocked: () => false,
     updateCharacter: () => {}, syncAdventure: () => {},
   });
@@ -344,6 +344,34 @@ test('potions heal during an action, never consume at full health, and keep thei
   expect(adventure.usePotion(encounter)).toBe(false);encounter.playerMana=37;encounter.abilityCooldowns.sweep=3;adventure.character.items=[...adventure.character.items.filter(item=>item.slot!=='main'),{id:'sword-equipped',item:'sword',quantity:1,slot:'main',x:0,y:0},{id:'shield-equipped',item:'shield',quantity:1,slot:'off',x:0,y:0}];applyEquipment(encounter,adventure.character.items,0);
   adventure.enter(encounter,home);expect([encounter.potionCooldown,encounter.playerMana,encounter.abilityCooldowns.sweep,encounter.weapon,encounter.shield]).toEqual([8,37,3,'sword',true]);
   encounter.player.hp=0;expect(adventure.usePotion(encounter)).toBe(false);expect(adventure.character.potions).toBe(2);
+});
+
+test('inventory consumable actions use the requested stack without consuming its neighbours', () => {
+  const adventure = new Adventure(), encounter = createEncounter('playing'); adventure.enter(encounter, field);
+  adventure.character.items.push({ id: 'second-potion', item: 'potion', quantity: 2, slot: 'bag', x: 3, y: 0 },
+    { id: 'second-scroll', item: 'scroll', quantity: 2, slot: 'bag', x: 4, y: 0 });
+  encounter.player.hp = 20;
+  expect(adventure.usePotion(encounter, 'second-potion')).toBe(true);
+  expect(adventure.character.items.find(i => i.id === 'item-3')?.quantity).toBe(3);
+  expect(adventure.character.items.find(i => i.id === 'second-potion')?.quantity).toBe(1);
+  expect(adventure.beginCast(true, 'second-scroll')).toBe(true); adventure.step(encounter, field, 2);
+  expect(adventure.character.items.find(i => i.id === 'item-2')?.quantity).toBe(3);
+  expect(adventure.character.items.find(i => i.id === 'second-scroll')?.quantity).toBe(1);
+});
+
+test('equipment swaps return displaced gear to vacated cells and retain both items when it cannot fit', () => {
+  const items: InventoryItem[] = [
+    { id: 'old', item: 'axe', quantity: 1, slot: 'main', x: 0, y: 0 },
+    { id: 'new', item: 'sword', quantity: 1, slot: 'bag', x: 7, y: 4 },
+  ];
+  const next = equipInstance(items, 'new', 'main');
+  expect(next.find(i => i.id === 'old')).toMatchObject({ slot: 'bag', x: 7, y: 4 });
+  expect(validItems(next)).toBe(true);
+  const full = [...items, ...Array.from({ length: 96 }, (_, i) => ({ id: `filler-${i}`, item: 'wood' as const, quantity: 1, slot: 'bag' as const, x: i % 12, y: Math.floor(i / 12) }))
+    .filter(i => i.x !== 7 || i.y < 4 || i.y > 6)];
+  const before = structuredClone(full);
+  expect(() => equipInstance(full, 'new', 'main')).toThrow('Inventory full.');
+  expect(full).toEqual(before);
 });
 
 test('revision 4 Homestead progress migrates with combat controls and starter potions without changing stash identities',()=>{

@@ -4,7 +4,7 @@ This is the canonical owner of Lantern's UI design direction and shared presenta
 
 ## Status and intent
 
-On October 2, 2026, the owner selected **warm, crafted fantasy with restrained ornament**, with **desktop keyboard/mouse first, gamepad and smaller windows planned**, then chose **A — Crafted instrument** as the preferred material treatment. The owner subsequently asked for substantially more layout/hierarchy exploration and explicitly instructed us not to build the prototype. **Stay in the [design-only phase](ui/DESIGN_EXPLORATION.md) until the owner requests implementation.** A's organization is not approved. The foundation values below remain proposals. Existing screens have not yet been migrated and this document does not certify their accessibility or quality.
+On October 2, 2026, the owner selected warm, crafted fantasy with restrained ornament, desktop keyboard/mouse first and A — Crafted instrument materials. After the layout/sketch/interaction studies, the owner explicitly authorized implementing Inventory and stash. These screens now use [InventoryPanel](../src/ui/inventory-panel.ts), [its style/token owner](../src/ui/inventory.css), [original item art](../assets/ui/inventory/PROMPT.md), and [the shared art renderer](../src/ui/inventory-art.ts). Continue focused guiding questions during implementation. Other screens remain in design until requested; this does not certify whole-game accessibility or quality.
 
 Design from first principles of player goals, meaningful information and simple interaction. Do not preserve prototype UI elements or flows merely because they exist; many are rough or unintended. Read current models to understand available data, then recommend the best design and ask focused guiding questions at every consequential design step. The latest owner decisions below take precedence over earlier concept composition.
 
@@ -59,7 +59,7 @@ These are seed values, not verified contrast pairs. Measure actual foreground/ba
 | Menu control size | 40px minimum intended hit area, 44px for main actions; small visual icons may sit inside larger targets |
 | Inventory cells | Spatial bag with different footprints adopted; one shared item-art ruler across bag/equipment/carry; grid dimensions remain a design question |
 
-The inventory-cell target and spatial organization remain proposals for discussion; do not inherit grid dimensions solely from prototype UI. Do not silently shrink cells or text until they fit. Resolve the layout, scroll or supported minimum instead. Keep text live in the DOM. Generated typography and glyphs are visual reference only. Item and ability art should share silhouette, light direction, padding and edge treatment, with icon art distinct from actionable control chrome.
+The implemented spatial bag and stash use the current 12 × 8 model and different item footprints, without a save migration. All item contexts use one 48px ruler; the measured atlas bounds normalize original artwork once per identity. DOM text, hit geometry, focus and state chrome remain separate from raster art. [inventory.css](../src/ui/inventory.css) and [inventory-art.ts](../src/ui/inventory-art.ts) own exact implementation values.
 
 **Grounded item scale:** the same item retains the same artwork scale in the bag, equipment slot and carried/drag representation. Accommodate its bounds/footprint in the slot; do not shrink it to fit a smaller equipment icon or enlarge it for inspection. No enlarged item preview or duplicated inspector artwork. Responsive layouts reflow instead of independently resizing items; an explicitly chosen whole-UI accessibility scale applies uniformly.
 
@@ -71,11 +71,13 @@ Avoid idle pulses, looping button shimmer and broad camera/screen motion for rou
 
 ## Layout and responsiveness
 
-Proposed first targets are desktop 1920 × 1080 and 1440 × 900, with 1280 × 720 as the initial minimum acceptance target. A 960 × 640 compact study explores fallback behavior; it is not a support promise. Confirm these targets on the first functional prototype. Mobile/touch is outside the current target decision. Gamepad navigation is planned and not currently certified.
+The adopted minimum supported game-content viewport is **1280 × 800 (16:10)**, matching [Valve’s Steam Deck display specification](https://www.steamdeck.com/en/tech). Common 16:9 and 16:10 desktop layouts are the primary range. This supersedes the briefly considered 1600 × 900 minimum. Steam Deck controller navigation, SteamOS/native-WebGPU operation and on-device performance remain future validation; minimum-size browser review is not device certification.
 
-Use available CSS viewport space, including short windows, rather than a fixed image-sized canvas. Keep headers, close/back and consequential actions reachable; scroll the content region. Support longer labels and enlarged text through wrapping and reflow. Proposed UI-scale choices are 100%, 125% and 150%, to be decided after the compact Inventory study. Browser text enlargement must not lose access to menu actions; full accessibility scope remains separately tracked.
+Inventory and stash retain one 48px CSS cell ruler across bag, equipment, storage and carry, with fixed authored item footprints and live text. The sheet fits the adopted minimum without shrinking item art; headers/close remain reachable and content scrolls when genuinely needed. No portrait/mobile layout or broad viewport matrix is implied. A whole-UI accessibility scale remains future design work.
 
 For Inventory, develop the preferred **single 40/60 split panel: paper doll/equipment left, spatial bag right**. Equipment receptacles follow compact shared columns and row anchors while remaining relative to body regions. The Vitruvian-inspired person is a faint rough sketch used as background orientation only; no detailed anatomy, rendered model or dominant figure. Equipment/items are primary. Keep one item-art ruler while tightening spacing; empty slots use subtle outline glyphs. The unified toolbar holds actual main-hand glyphs with tiny I/II badges upper left, Sort toward upper right and Close far right. Continue detailed composition and responsive studies with guiding questions. Hover/focus supplies properties with no inspector/selection; carry is temporary. Stash and compact reflow need their own questions.
+
+Stash replaces equipment on the left and keeps Bag on the right; it is a two-container sheet rather than a three-region view. Both grids remain visible at normal item scale, with independent toolbar Sort controls. Right-click transfers to the other container while stash is open; drag specifies a position. Inventory set icons both show and activate their chosen prepared set.
 
 Keep Inventory about carried and equipped items. Woodcutting, Mining and Axe Combat/proficiency do not belong in an Inventory footer. Scroll of Return and Health Potions are items in the bag, not separate menu sections. Remove redundant category copy such as “Helmet” below “Guard Helm,” instructional paragraphs and nonessential status. Prefer recognizable icon controls, including an × close affordance, with accessible names and concise hover/focus labels when useful. Use text when it provides necessary identity or meaning that an icon alone cannot communicate.
 
@@ -116,7 +118,7 @@ Primary references: [text contrast](https://www.w3.org/WAI/WCAG22/Understanding/
 
 ## Design phase and eventual adoption
 
-Current work follows [design exploration](ui/DESIGN_EXPLORATION.md): many organizational directions, information hierarchy, density/proportion, responsive compositions, interaction/state storyboards and cross-screen family studies. Keep preferred materials separate from layout/behavior decisions. Do not build a specimen or prototype during this phase.
+Inventory/stash implementation is authorized and follows the managed workflow. First-principles [design exploration](ui/DESIGN_EXPLORATION.md) continues for later screens and remaining questions. Do not infer that one implemented screen approves all HUD/menu layouts.
 
 When the owner explicitly requests implementation, the proposed adoption sequence is:
 

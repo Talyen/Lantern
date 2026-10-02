@@ -2,6 +2,10 @@
 
 Lantern is developed on macOS; Windows x64 is the primary Steam release target. The current desktop deliverable is an unsigned ZIP containing the executable and supporting files. Electron Forge also produces a native-architecture macOS ZIP for local inspection. Installers, signing/notarization, automatic updates and Steam integration are deferred.
 
+## Window and UI minimum
+
+The supported game-content viewport starts at 1280 × 800, matching [Steam Deck’s display](https://www.steamdeck.com/en/tech), with common 16:9/16:10 desktops as the primary range. Electron sizes content explicitly and derives its minimum outer size from the OS frame. When the available work area cannot contain that viewport, startup fits the display; those smaller windows are not supported-size acceptance. Steam Deck fullscreen/SteamOS, native WebGPU compatibility, gamepad navigation and physical-device performance require future validation. This minimum is a UI layout target, not Deck Verified certification.
+
 ## Prepare and distribute a candidate
 
 Use the [managed task workflow](DEVELOPMENT.md#working-alongside-other-agents) for source changes. Prepare distributables from a clean, reviewed, committed revision after integration. The packaging implementation does not push, create releases or dispatch remote work automatically.

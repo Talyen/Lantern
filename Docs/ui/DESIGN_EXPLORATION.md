@@ -1,6 +1,6 @@
 # Active UI design exploration
 
-**Current phase: design only.** On October 2, 2026, the owner explicitly asked to stay in design much longer, exploring many directions and information hierarchy, and instructed us not to build the prototype. Do not create a component specimen, clickable/code prototype or runtime UI migration until the owner explicitly asks to enter implementation. Continue with briefs, original mockups, annotated layouts, flow/state storyboards and documented comparisons.
+**Current phase: Inventory/stash implementation authorized; later screens remain in design.** The owner lifted the earlier no-prototype hold after approving the refined composition. Continue first-principles design and focused guiding questions; do not infer approval of unreviewed screen families.
 
 The owner prefers **A — Crafted instrument** for materials. That choice does **not** approve A's organizational layout. The original three-column organization remains unresolved; the owner requested multiple layout directions. See the [decision record](DESIGN_DECISIONS.md), [foundation](../UI_DESIGN.md), and [Inventory layout round](concepts/inventory-layouts/README.md).
 
@@ -10,7 +10,7 @@ Inventory constraints adopted from owner feedback: equipment slots surround an i
 
 Guiding-question answers: prioritize loadout/quick gear exchange with equipment and bag visible together; use a spatial bag with different footprints; tooltip contains name and useful properties only, without automatic comparison. Layout studies compare arrangements of those functions while exact grid dimensions remain open.
 
-After reviewing layout families, the owner chose **#1 as closest**, with **one large split panel: 40% equipment/paper doll left, 60% inventory right**, and **subtle outline glyphs in empty slots**. Continue detailed hierarchy, art/slot composition, interaction and responsive exploration within that family. These choices do not establish a finished screen or permission to prototype.
+After reviewing layout families, the owner chose #1, 40% equipment left / 60% inventory right, outline empty glyphs, grid-like body-relative receptacles and a faint rough sketch background. The owner then authorized implementation of that direction.
 
 Further direction: tighter slots around an artistic Vitruvian-inspired figure sketch; upper-left toolbar set icons show each main-hand weapon plus a tiny I/II badge, and Sort moves into the toolbar. Right-click uses/equips/unequips; drag chooses placement. Rings fill empty slots first, otherwise replace left; drag can replace right, with no choice UI. Replaced gear returns to vacated/free bag space automatically, otherwise the swap is blocked safely with brief local feedback. Viewing/activation, detailed art scale/finish and responsive behavior remain open.
 
@@ -47,4 +47,4 @@ For each option, record the player task it prioritizes, the information visible 
 
 Use familiar screen identity, meaningful properties and simple direct actions. A view switch or split carried-item compartment is a proposed organization change; document any underlying model implication. Equipment and bag stay visible together for the adopted Inventory goal. Do not infer approval of hierarchy or interaction from approval of texture/material.
 
-Save each round's exact prompts, outputs, provenance and critique beside its README. The [screen brief template](SCREEN_BRIEF_TEMPLATE.md) supports layout/flow notes; the [screen catalog](SCREEN_CATALOG.md) records concepts and unresolved decisions. Existing player UI remains unchanged during this phase. No gameplay preview, benchmark, prototype build or full local suite is needed to accept concept/documentation work.
+Save each round's exact prompts, outputs, provenance and critique beside its README. The [screen brief template](SCREEN_BRIEF_TEMPLATE.md) supports layout/flow notes; the [screen catalog](SCREEN_CATALOG.md) records concepts and unresolved decisions. Concept-only work needs links/diff review and no gameplay preview or benchmark. Authorized implementation uses its focused owned interaction and lean sanity gate; Inventory/stash are now in that phase.

@@ -37,4 +37,4 @@ Performance testing requires a specific user request or an evidenced performance
 
 ## Equipment acceptance
 
-[Combat and equipment](EQUIPMENT.md) owns the full shared layout, fixed catalog values, guaranteed reward sources and revision 6 save compatibility. Use one short owned preview to collect, compare and equip gear, confirm armor and attack-rate behavior, swap prepared sets, choose ring destinations and reload. No resource refill occurs on equipment changes. Preserve the native WebGPU pipeline and original Paladin appearance.
+[Combat and equipment](EQUIPMENT.md) owns fixed catalog values, reward sources and save compatibility. For Inventory work, choose one relevant owned flow: hover properties, right-click equip/unequip, drag a ring to its explicit destination, activate a prepared set, or transfer one stash item. Inventory has no persistent selection/comparison panel or ring-choice UI. Stash shows storage left and Bag right without equipment. Preserve resources, counts and model-preparation safety; review the affected layout at the 1280 × 800 minimum when sizing changes. Broader combat/reward/reload paths are targeted supplements, not a routine checklist.

@@ -165,8 +165,14 @@ const inventory = new InventoryController(adventure, encounter, player, equipmen
   updateCharacter: character => menus.updateCharacter(character), syncAdventure,
 });
 
-const menus = new AdventureMenus(clearInput, () => renderer.domElement.focus(), () => { if (!paused()) adventure.beginCast(encounter.player.hp > 0); }, {
+const menus = new AdventureMenus(clearInput, () => renderer.domElement.focus(), id => { if (!paused()) adventure.beginCast(encounter.player.hp > 0, id); }, {
   change: items => inventory.change(items), newId: adventure.newId,
+  activateSet: set => inventory.activateSet(set),
+  canEquip: () => inventory.canEditEquipment(),
+  potion: id => {
+    if (!adventure.usePotion(encounter, id)) throw new Error(encounter.player.hp >= encounter.stats.maxHealth ? 'Health is full.' : 'Potion is not ready.');
+    syncAdventure();
+  },
   changeContainers: (items, stash) => inventory.changeContainers(items, stash),
   transfer: (id, quantity, toStash, point) => inventory.transfer(id, quantity, toStash, point),
   repair: async () => {

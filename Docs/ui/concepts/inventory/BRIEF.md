@@ -1,6 +1,6 @@
 # Inventory design brief
 
-Status: active first-principles design exploration, October 2, 2026. No prototype or runtime migration is authorized. The owner prefers A — Crafted instrument materials; organization remains open. See [current layout studies](../inventory-layouts/README.md), [decisions](../../DESIGN_DECISIONS.md), and [design exploration](../../DESIGN_EXPLORATION.md).
+Status: implementation authorized after concept review, October 2, 2026. [InventoryPanel](../../../../src/ui/inventory-panel.ts) now implements the preferred design; [styles](../../../../src/ui/inventory.css) and [art](../../../../src/ui/inventory-art.ts) own exact presentation values. Continue guiding questions for unresolved behavior and future screens.
 
 ## Player goal
 
@@ -13,7 +13,7 @@ Prioritize understanding the equipped loadout and quickly exchanging gear, with 
 - Hover tooltips show the name and useful properties only; also available on keyboard focus. No automatic comparison, redundant category line or instructional text.
 - No persistent item selection or selected-item inspector. Carry/drag is an active temporary interaction.
 - Unified toolbar: actual main-hand weapon glyphs with tiny I/II badges upper left, Sort toward upper right and Close far right, with accessible names. Keep necessary identity/value text.
-- Direct right-click consumable use / bag gear equip / equipped gear unequip, plus drag placement. A ring fills an empty slot first, otherwise replaces left; drag explicitly replaces right. No ring-slot choice UI. Replaced gear returns to vacated/free bag space automatically; safely block when none exists. Set viewing/activation and keyboard equivalents remain guided questions.
+- Direct right-click consumable use / bag gear equip / equipped gear unequip, plus drag placement. A ring fills an empty slot first, otherwise replaces left; drag explicitly replaces right. No ring-slot choice UI. Replaced gear returns to vacated/free bag space automatically; safely block when none exists. Set icons show and activate together; Enter is the primary action, Space picks up, arrows move the carry, and Escape cancels.
 - No Woodcutting/Mining/Axe Combat footer, unrelated progression/status, separate Scroll of Return section, Equip/Use action rows or random instructions. Scrolls and potions live in the bag as items.
 
 ## Available data, not inherited UI requirements
@@ -26,8 +26,8 @@ Representative examples: Sword 1×3, Bow 2×4, Shield/Mail 2×3, Guard Helm/Glov
 
 The owner preferred #1's family: one large split panel, 40% paper-doll/equipment left and 60% spatial inventory right, with subtle outline glyphs in empty slots. Continue body-slot association, art-scale/finish, weapon-set viewing, tooltip/direct-action behavior, overflow, responsive and stash studies without permanent information panels.
 
-After layout breadth, explore density/proportion, exact silhouette/art treatment, compact/short-window reflow at unchanged item scale, and static hover/right-click/drag/cancel/error storyboards. No layout is approved by selection of its material palette.
+Stash uses Stash left / Bag right and no equipment, with right-click transfer. Minimum supported content viewport is 1280 × 800; physical Steam Deck/controller validation remains future work. Item scale remains constant across all contexts.
 
 ## Concept acceptance
 
-Save original outputs, exact prompts/provenance and specific critique. Record useful elements, generated drift and unresolved questions; review documentation links/diffs and the lean integration sanity gate. No gameplay preview, measurements or prototype build. Do not claim precise artwork parity, functional usability, accessibility, controller or window support from a generated image.
+Save original outputs, exact prompts/provenance and specific critique. Record useful elements, generated drift and unresolved questions; review documentation links/diffs and the lean integration sanity gate. The original concept acceptance required no gameplay preview or prototype build; implementation now follows the focused gameplay acceptance in the UI workflow. No measurements are implied. Do not claim precise artwork parity, functional usability, accessibility, controller or window support from a generated image.

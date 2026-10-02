@@ -2,7 +2,7 @@
 
 This extends [the daily task workflow](../DEVELOPMENT.md); it does not add a second approval system, benchmark requirement or full local test gate. Read [the design system](../UI_DESIGN.md), [art workflow](../ART_DIRECTION.md#agent-visual-workflow), the affected runtime owner and its consumers before editing. One agent owns a task through local integration.
 
-**Current owner instruction: remain in design; do not build the prototype.** Follow [the active exploration plan](DESIGN_EXPLORATION.md). Sections 3–4 describe eventual implementation and only apply when the owner explicitly asks to enter that phase. A preferred material treatment is not approval of layout, hierarchy or behavior.
+**Current authorization: implement the chosen Inventory/stash design and continue asking guiding questions as they arise.** Sections 3–4 apply to that work. The earlier design-only hold was lifted explicitly by the owner after concept review; other screen families still follow design exploration.
 
 Design from first principles. Do not carry forward rough prototype elements/flows by default. Ask guiding questions with recommendations at each consequential design step; use answers to direct layout/hierarchy exploration. Source owners inform available data and eventual integration, while existing UI organization remains replaceable.
 
@@ -40,13 +40,13 @@ Critique at the intended use size: first focus, task clarity, density, material 
 
 ## 3. Make the design functional
 
-Deferred until the owner requests implementation; do not execute this section during the active design-only phase.
+The owner authorized this phase for Inventory/stash. Keep later screen implementation within its own requested scope.
 
 Translate the chosen first-principles design into the DOM UI. Keep text, hit areas, focus, responsive layout and state chrome in code; use raster art only for appropriate visual surfaces/icons. Implement the documented chosen interaction rather than retaining unintended prototype behavior. Preserve mutation/data safety and document required model changes. All 3D routes continue using the shared native WebGPU pipeline.
 
-The first implementation should provide a development-only fixed-data specimen for concrete components and states, isolated from character saves, gameplay mutations, audio/haptics and production navigation. Reuse those components in a real Inventory slice; do not create a parallel design-demo implementation. Document how to open the specimen when it exists. No specimen route is implemented by this documentation task.
+The first implementation uses the actual Inventory/stash components and original atlas, reviewed with representative data in an isolated owned browser profile. A separate specimen route is optional when it answers a concrete design question; do not build a parallel demo or expose fixture/save controls in production navigation.
 
-Start with shell, type/spacing/color roles, buttons, focus/selection, item slots and detail/comparison. Extract shared code/CSS once a second concrete consumer needs it. Prefer one canonical token definition and small explicit functions/classes to a generic UI engine. Update the design system with the resulting code owner and actual values; delete superseded per-screen overrides only within the migration's scope.
+Start with shell, type/spacing/color roles, buttons, focus/hover, item slots, useful tooltips and direct actions. Extract shared code/CSS once a second concrete consumer needs it. Prefer one canonical token definition and small explicit functions/classes to a generic UI engine. Update the design system with the resulting code owner and actual values; delete superseded per-screen overrides only within the migration's scope.
 
 Complete ordinary, hovered, focused, carried, unavailable and pending/error behavior relevant to the task. Persistent selection only applies to components that actually require it; Inventory has no selected-item inspector. Long labels, empty/full containers and invalid destinations matter where owned. Display real mutation results. Busy styling must reflect the owner's state and cannot manufacture success.
 

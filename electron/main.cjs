@@ -38,9 +38,17 @@ app.whenReady().then(async () => {
   const origin = 'lantern://app';
   const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
   const area = display.workArea;
-  const width = Math.min(1280, Math.floor(area.width * 0.9));
-  const height = Math.min(900, Math.floor(area.height * 0.9));
-  const window = new BrowserWindow({ width, height, x: area.x + Math.floor((area.width - width) / 2), y: area.y + Math.floor((area.height - height) / 2), minWidth: Math.min(800, width), minHeight: Math.min(560, height), show: false, focusable: !background, skipTaskbar: background, backgroundColor: '#111e24', title: 'Lantern', webPreferences: { preload: path.join(__dirname, 'preload.cjs'), nodeIntegration: false, contextIsolation: true, sandbox: true, backgroundThrottling: false, focusOnNavigation: !background } });
+  const minimumViewport = { width: 1280, height: 800 };
+  const width = Math.min(minimumViewport.width, area.width);
+  const height = Math.min(900, area.height);
+  const window = new BrowserWindow({ width, height, useContentSize: true, x: area.x + Math.floor((area.width - width) / 2), y: area.y + Math.floor((area.height - height) / 2), show: false, focusable: !background, skipTaskbar: background, backgroundColor: '#111e24', title: 'Lantern', webPreferences: { preload: path.join(__dirname, 'preload.cjs'), nodeIntegration: false, contextIsolation: true, sandbox: true, backgroundThrottling: false, focusOnNavigation: !background } });
+  // UI support is measured in content pixels, not the operating-system frame.
+  const outer = window.getBounds(), content = window.getContentBounds();
+  const frameWidth = outer.width - content.width, frameHeight = outer.height - content.height;
+  const contentWidth = Math.max(1, Math.min(width, area.width - frameWidth));
+  const contentHeight = Math.max(1, Math.min(height, area.height - frameHeight));
+  window.setContentSize(contentWidth, contentHeight);
+  window.setMinimumSize(Math.min(minimumViewport.width, contentWidth) + frameWidth, Math.min(minimumViewport.height, contentHeight) + frameHeight);
   let build = { version: app.getVersion(), revision: 'development', dirty: true };
   try { build = JSON.parse(await fs.readFile(path.join(root, 'build-identity.json'), 'utf8')); } catch { /* Local development builds may precede candidate preparation. */ }
   installReporting(window, build);

@@ -10,7 +10,7 @@ Use [the design system](../UI_DESIGN.md) for shared rules and [the workflow](WOR
 | Desktop keyboard/mouse first | Adopted by owner | Explicit choice; prioritize readable desktop interactions |
 | Plan gamepad and smaller windows | Adopted by owner | Include focus/back/alternate-operation design and compact layout studies; implementation/support remains outstanding |
 | A — Crafted instrument is the preferred material treatment | Adopted by owner | Explicit selection after reviewing A/B/C; fine brass and warmer detail; organization not approved |
-| Stay in design much longer; do not build the prototype | Explicit owner instruction | Explore many layout directions, information hierarchy, responsive compositions and flow/state studies; implementation waits for an explicit owner request |
+| Stay in design much longer; do not build the prototype | Historical; explicitly lifted for Inventory/stash | Explore many layout directions, information hierarchy, responsive compositions and flow/state studies; implementation waits for an explicit owner request |
 | Design from first principles; ask guiding questions with recommendations at every step | Explicit owner instruction | Prototype UI is rough/unintended; do not preserve its elements or flows as design requirements |
 | Illustrated paper doll with surrounding equipment slots | Adopted by owner | A person silhouette, not a rendered character model |
 | Consistent item artwork scale | Adopted by owner | Same scale in bag, equipment and carry; no enlarged inspection art or smaller equipped art |
@@ -31,6 +31,11 @@ Use [the design system](../UI_DESIGN.md) for shared rules and [the workflow](WOR
 | Set toolbar icons show actual main-hand weapon plus tiny I/II badge | Adopted by owner | Explicit choice; glyph communicates current loadout and badge stable set identity |
 | Equipment receptacles are compact and grid-aligned | Adopted by owner | Shared columns/row anchors, still associated with body regions; no scattered orbit or artwork shrinking |
 | Paper doll is a faint rough background sketch | Adopted by owner | Vitruvian-inspired pose with minimal detail; items/slots are the focal point, not the figure |
+| Implement the refined Inventory and stash | Explicit owner authorization | Continue guiding questions; later screens remain separate design work |
+| Set icons show and activate the chosen set | Adopted by owner | Highlighted set is the active prepared loadout; no resource refill or cooldown reset |
+| Stash left / Bag right, without equipment | Adopted by owner | Supersedes three-region and tab proposals; independent Sort controls |
+| Right-click transfers while stash is open | Adopted by owner | Drag specifies placement; normal Inventory retains use/equip/unequip |
+| Minimum supported viewport 1280 × 800 | Adopted by owner | [Steam Deck display specification](https://www.steamdeck.com/en/tech); 16:10 floor, common 16:9/16:10 desktop range; supersedes 1600 × 900 |
 | All screens/components should converge on a shared system | Requested by owner | One reusable vocabulary and screen migration process; no numerical quality certification |
 | Original ImageGen mockups for screen/layout direction | Requested by owner | Save prompts, images, critique and decision status; verify interactions in DOM prototypes |
 
@@ -45,13 +50,13 @@ The native-only WebGPU pipeline and private-art boundaries remain owned by their
 | Icon finish | Original painterly item/ability art with shared silhouette/padding/light; DOM text and code-owned state chrome | Compare several representative icons at actual slot size; respect licensed-art provenance | Proposed |
 | Split-panel detailed hierarchy | Refine chosen 40/60 panel at one item-art scale | Static art/slot/tooltip composition and responsive studies with guiding questions | Open within adopted family |
 | Empty slot finish | Refine selected subtle outline glyphs, useful hover information | Study silhouette association, line weight and occupied/empty contrast | Open refinement |
-| Weapon-set viewing/activation behavior | Discuss whether inventory toolbar views/edits a set or also activates it | Guided flow study; don't inherit prototype behavior by default | Open |
-| Compact layout | Reflow paper-doll/bag regions without shrinking individual item art; explore Bag/Stash organization | Design wide/short/compact sheets with guiding questions | Proposed |
-| Minimum window/UI scale | Discuss target sizes and whole-UI scaling; individual item art remains consistent across contexts | Static wide/short/compact studies now; functional evidence only after implementation request | Proposed; not support certification |
+| Weapon-set viewing/activation behavior | Show and activate together | Implemented through prepared equipment owner | Adopted / implemented |
+| Stash organization | Stash left / Bag right, equipment hidden; both grids remain full size | Reviewed at 1280 × 800 | Adopted / implemented |
+| Minimum window/UI scale | Adopted 1280 × 800 content viewport; one 48px item ruler | Minimum-size native-WebGPU browser interaction review | Implemented; device/controller certification remains future work |
 | HUD hierarchy/organization | Start from urgent player information and protected play space; do not inherit orb/bar organization | Guiding questions, multiple resource/action layouts and feedback storyboards | Open design study |
 | Accessibility scope | Menu contrast, visible focus, keyboard paths, larger targets, reduced motion and color-independent state as baseline | Validate changed component pairs and one representative input flow; record wider gaps | Proposed; conformance unverified |
 | Navigation architecture | Start from player tasks and predictable icon/back behavior, not existing menu arrangement | Guiding questions and static entry/exit/navigation storyboards | Open design study |
-| First implementation | Development-only fixed-data specimen + Inventory vertical slice when requested | Defer until the owner explicitly asks to leave the design phase | Deferred by owner |
+| First implementation | Real Inventory/stash with shared art, tooltips and direct actions | Owned native-WebGPU preview and focused interaction review | Authorized / implemented |
 
 Material identity is sufficiently established for layout studies. Ask guiding questions with recommendations at every consequential design step. Routine design work may proceed within the current phase; implementation waits for the owner's explicit request.
 

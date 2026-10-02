@@ -39,12 +39,13 @@ function bonusValue(key: keyof Bonuses, value: number): string {
   return `+${value}${key === 'manaRegen' ? '/s' : ''}`;
 }
 
-/** Inventory and trading use the same authored properties and effective-loadout comparison. */
-export function renderEquipmentDetails(
-  details: HTMLElement, comparison: HTMLElement, entry: InventoryItem,
-  character: CharacterSave, set: WeaponSet, slot: EquipmentSlot,
-): void {
-  if (!isItemId(entry.item)) return;
+/** Useful authored properties without category, instruction or comparison. */
+export function renderItemProperties(details: HTMLElement, entry: InventoryItem): void {
+  if (!isItemId(entry.item)) {
+    if (entry.item === 'potion') details.textContent = 'Restores 40 Health';
+    if (entry.item === 'scroll') details.textContent = 'Opens a return portal';
+    return;
+  }
   const definition = equipmentCatalog[entry.item];
   if (definition.weapon) {
     for (const [key, value] of [
@@ -57,6 +58,15 @@ export function renderEquipmentDetails(
   }
   if (entry.item === 'shield') details.append(statRow('Frontal block', '50% damage reduction'));
 
+}
+
+/** Trading retains its effective-loadout comparison. */
+export function renderEquipmentDetails(
+  details: HTMLElement, comparison: HTMLElement, entry: InventoryItem,
+  character: CharacterSave, set: WeaponSet, slot: EquipmentSlot,
+): void {
+  if (!isItemId(entry.item)) return;
+  renderItemProperties(details, entry);
   const hand = slot === 'main' || slot === 'off';
   const occupiesDestination = (item: InventoryItem) => item.slot === slot && (!hand || (item.weaponSet ?? 0) === set);
   const equipped = character.items.find(occupiesDestination);

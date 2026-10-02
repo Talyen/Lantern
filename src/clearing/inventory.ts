@@ -8,6 +8,7 @@ import {
 } from '../gameplay/inventory';
 import { play, type Actor } from './actors';
 import type { EquipmentSets } from './equipment-sets';
+import type { WeaponSet } from '../gameplay/abilities';
 
 type InventoryContext = {
   clearInput(): void;
@@ -24,7 +25,7 @@ export class InventoryController {
     private readonly adventure: Adventure,
     private readonly encounter: Encounter,
     private readonly player: Actor,
-    private readonly equipment: Pick<EquipmentSets, 'prepare'>,
+    private readonly equipment: Pick<EquipmentSets, 'prepare' | 'activate'>,
     private readonly audio: Pick<GameAudio, 'play'>,
     private readonly context: InventoryContext,
   ) {}
@@ -44,6 +45,17 @@ export class InventoryController {
   syncLoadout(): void {
     const { character } = this.adventure;
     applyEquipment(this.encounter,character.items,character.activeSet);
+  }
+
+  activateSet(set: WeaponSet): void {
+    if (set === this.adventure.character.activeSet) return;
+    const { player, phase, dodgeRemaining, attackCooldown } = this.encounter;
+    if (!['playing', 'won'].includes(phase) || player.hp <= 0 || player.lock > 0 || dodgeRemaining > 0 || attackCooldown > 0 || this.loading || this.context.equipmentBlocked())
+      throw new Error('Weapon set cannot change during an action.');
+    this.context.clearInput(); this.equipment.activate(set);
+    this.encounter.pending = null; this.encounter.blocking = false; this.encounter.player.attackTime = -1;
+    this.adventure.setWeaponSet(set); this.syncLoadout(); play(this.player, 'idle');
+    this.context.updateCharacter(this.adventure.character); this.audio.play('equip');
   }
 
   private async prepareEquipment(items: InventoryItem[], save: boolean): Promise<void> {
