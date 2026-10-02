@@ -28,7 +28,7 @@ document.title = 'Lantern — Animation Comparison';
 const app = document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML = `
   <main class="animation-lab">
-    <header class="lab-header"><div><a href="/">← Return to clearing</a><h1>Animations</h1><p id="lab-status" role="status">Loading local animation library…</p></div><span class="lab-badge">STUDIO LIGHTING</span></header>
+    <header class="lab-header"><div><a href="/">← Return to clearing</a><h1>Animations</h1><p id="lab-status" role="status">Loading local animation library…</p></div></header>
     <section class="lab-stage" aria-label="Side by side animation preview"><div id="lab-canvas"></div><div class="stage-label stage-label-a">A</div><div class="stage-label stage-label-b">B</div><div class="stage-tip">Drag to orbit · scroll to zoom</div></section>
     <section class="lab-toolbar" aria-label="Playback controls">
       <label>Show <select id="lab-category"><option value="all">All motions</option><option value="attack" selected>Attacks</option><option value="idle">Idles</option><option value="run">Running</option><option value="directional">Backward & strafe</option><option value="walk">Walking</option><option value="hit">Hit reactions</option><option value="death">Deaths</option><option value="block">Blocking</option><option value="chop">Chopping</option><option value="dodge">Dodges & rolls</option><option value="movement">Other movement</option><option value="other">Interactions & emotes</option><option value="favorites">Favorites</option></select></label>
