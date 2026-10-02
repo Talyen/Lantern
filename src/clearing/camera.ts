@@ -2,7 +2,7 @@ import { cameraOffset as offset, desktopViewHeight } from './projection';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { AreaDefinition } from '../levels/types';
-import { defaultCameraZoom } from '../rendering/graphics-settings';
+import { cameraDistanceMultipliers, type CameraDistance } from '../rendering/graphics-settings';
 
 export function createCamera(canvas: HTMLCanvasElement) {
   const camera = new THREE.OrthographicCamera(-9, 9, 6, -6, 0.1, 100);
@@ -13,9 +13,9 @@ export function createCamera(canvas: HTMLCanvasElement) {
   controls.enableRotate = false; controls.enableZoom = false;
   controls.enablePan = false;
   controls.enableDamping = false;
-  controls.minZoom = 0.9;
-  controls.maxZoom = 2;
-  camera.zoom = defaultCameraZoom;
+  let gameplayZoom = 1 / cameraDistanceMultipliers.default;
+  let preview = false;
+  camera.zoom = gameplayZoom;
   camera.updateProjectionMatrix();
   controls.target.set(0, 0.9, 0);
   camera.position.copy(controls.target).add(cameraOffset);
@@ -41,10 +41,10 @@ export function createCamera(canvas: HTMLCanvasElement) {
   }
   return { camera, controls, resetFollow,
     captureView() { return { target: controls.target.toArray(), zoom: camera.zoom }; },
-    restoreView(view: { target: THREE.Vector3Tuple; zoom: number }) { setView(view.target, view.zoom); },
+    restoreView(view: { target: THREE.Vector3Tuple; zoom: number }) { preview = true; setView(view.target, view.zoom); },
     previewView(area: Pick<AreaDefinition, 'views' | 'envelope'>, id: string) {
       sampled = false;
-      controls.minZoom = .1;
+      preview = true;
       const { envelope } = area;
       const zoom = envelope.reference.zoom;
       const overviewZoom = Math.min(zoom, zoom * Math.min(
@@ -53,7 +53,18 @@ export function createCamera(canvas: HTMLCanvasElement) {
       ) * .9);
       setView(area.views.find(view => view.id === id)?.target ?? [0, .9, 0], id === 'overview' ? overviewZoom : zoom);
     },
-    zoom(direction: number) { camera.zoom=THREE.MathUtils.clamp(camera.zoom*Math.exp(direction*.09),controls.minZoom,controls.maxZoom); camera.updateProjectionMatrix(); },
+    setDistance(distance: CameraDistance): boolean {
+      gameplayZoom = 1 / cameraDistanceMultipliers[distance];
+      if (preview) return false;
+      if (inspectionZoom !== undefined) { inspectionZoom = gameplayZoom; return false; }
+      if (camera.zoom === gameplayZoom) return false;
+      camera.zoom = gameplayZoom; camera.updateProjectionMatrix(); return true;
+    },
+    restoreGameplayView() {
+      preview = false;
+      if (inspectionZoom !== undefined) inspectionZoom = gameplayZoom;
+      else { camera.zoom = gameplayZoom; camera.updateProjectionMatrix(); }
+    },
     suspendFollow() { sampled = false; },
     follow(position: THREE.Vector3, dt: number) {
       if (dt <= 0) return;

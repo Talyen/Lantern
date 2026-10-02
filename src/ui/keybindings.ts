@@ -1,5 +1,5 @@
 import {
-  allowsWheelBinding, isMovementAction, keyboardInput, actionSlotInputs, actionNames,
+  isMovementAction, keyboardInput, actionSlotInputs, actionNames,
   bindingConflict, bindingLabel, defaultBindings, inputActions, inputGroups,
   validBinding, validBindings, type Bindings, type InputAction, type InputPreferences,
 } from '../input/bindings';
@@ -70,12 +70,6 @@ export class KeybindingsMenu {
     }, true);
     this.dialog.addEventListener('auxclick', event => event.preventDefault());
     this.dialog.addEventListener('contextmenu', event => event.preventDefault());
-    this.dialog.addEventListener('wheel', event => {
-      if (!this.capture || !event.deltaY) return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      this.choose(event.deltaY < 0 ? 'wheel:up' : 'wheel:down');
-    }, { passive: false, capture: true });
     window.addEventListener('blur', () => {
       if (this.capture) {
         this.capture = null;
@@ -107,10 +101,6 @@ export class KeybindingsMenu {
     if (!cell) return;
     if (!validBinding(binding)) {
       this.status.textContent = 'This input is unavailable.';
-      return;
-    }
-    if (binding.startsWith('wheel:') && !allowsWheelBinding(cell.action)) {
-      this.status.textContent = 'Wheel inputs are for camera zoom.';
       return;
     }
     const other = bindingConflict(this.draft, binding, cell.action, cell.index);
@@ -200,10 +190,6 @@ export class KeybindingsMenu {
         const button = document.createElement('button');
         button.textContent = name;
         button.onclick = callback;
-        const previous = this.draft[this.conflict.cell.action][this.conflict.cell.index];
-        button.disabled = name === 'Swap' && !!previous?.startsWith('wheel:') && !allowsWheelBinding(this.conflict.other.action);
-        if (button.disabled)
-          button.title = 'Wheel inputs are for camera zoom.';
         this.status.append(button);
       }
     } else if (missing.length)

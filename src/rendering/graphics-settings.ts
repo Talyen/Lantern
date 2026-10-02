@@ -12,14 +12,18 @@ export type UpscaleQuality = typeof upscaleQualities[number];
 export const depthOfFieldModes = ['off', 'soft', 'cinematic'] as const;
 export type DepthOfFieldMode = typeof depthOfFieldModes[number];
 export const upscaleRatio = (quality: UpscaleQuality) => ({ native: 1, quality: 1.5, balanced: 1.7, performance: 2 })[quality];
+export const cameraDistances = ['default', 'far'] as const;
+export type CameraDistance = typeof cameraDistances[number];
+export const cameraDistanceMultipliers: Record<CameraDistance, number> = { default: 1.2, far: 1.4 };
+export const defaultCameraZoom = 1 / cameraDistanceMultipliers.default;
 export type GraphicsSettings = {
+  cameraDistance: CameraDistance;
   upscaleQuality: UpscaleQuality; sharpness: number; shadowQuality: QualityLevel; particleQuality: QualityLevel; fpsLimit: FrameRateLimit;
   exposure: number; warmth: number; fog: number; bloom: number; ao: number; dof: DepthOfFieldMode;
   atmosphericParticles: boolean; outlines: boolean; textureDepth: boolean;
 };
-export const defaultCameraZoom = 1.35;
 export const settingsKey = 'lantern.options.v1';
-export const defaults = (query = new URLSearchParams(typeof location === 'undefined' ? '' : location.search)): GraphicsSettings => ({ upscaleQuality: 'balanced', sharpness: 0.50, shadowQuality: 'high', particleQuality: 'high',
+export const defaults = (query = new URLSearchParams(typeof location === 'undefined' ? '' : location.search)): GraphicsSettings => ({ cameraDistance: 'default', upscaleQuality: 'balanced', sharpness: 0.50, shadowQuality: 'high', particleQuality: 'high',
   fpsLimit: defaultFrameRate(Number(query.get('displayHz'))),
   exposure: 1.25, warmth: 0.85, fog: 0.7, bloom: 0.4, ao: 0.65, dof: 'cinematic', atmosphericParticles: true, outlines: true, textureDepth: true });
 export const ranges = {
@@ -27,7 +31,7 @@ export const ranges = {
   exposure: [0.5, 2, 0.01], warmth: [0, 1, 0.01], fog: [0, 1, 0.01], bloom: [0, 1, 0.01], ao: [0, 1, 0.01],
 } as const;
 export type NumericSetting = keyof typeof ranges;
-export const defaultsVersion = 6;
+export const defaultsVersion = 7;
 export type SavedSettings = Partial<GraphicsSettings> & { defaultsVersion?: number; quality?: 'laptop' | 'enhanced' };
 /** Apply this visual-default revision once; later player choices remain authoritative. */
 export function migrateSettings(value: unknown): GraphicsSettings {
@@ -62,6 +66,8 @@ export function parseSettings(value: unknown = {}, query = new URLSearchParams()
     if (override === 'on' || override === 'true') result[key] = true;
     else if (override === 'off' || override === 'false') result[key] = false;
   }
+  const cameraDistance = query.get('cameraDistance') ?? saved.cameraDistance;
+  if (cameraDistances.includes(cameraDistance as CameraDistance)) result.cameraDistance = cameraDistance as CameraDistance;
   const dof = query.get('dof') ?? saved.dof;
   if (depthOfFieldModes.includes(dof as DepthOfFieldMode)) result.dof = dof as DepthOfFieldMode;
   const upscaleQuality = query.get('upscaleQuality') ?? saved.upscaleQuality;

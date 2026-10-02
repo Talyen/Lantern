@@ -6,6 +6,7 @@ Options contains Graphics and Sound, opens Keybindings, and pauses play while op
 
 | Control | Fresh/reset default | Choices or range |
 | --- | --- | --- |
+| Camera Distance | Default | Default, Far |
 | Resolution Quality | Balanced | Native, Quality, Balanced, Performance |
 | Sharpening | 0.50 | 0–1 |
 | Shadow Quality | High | Low, Medium, High |
@@ -35,7 +36,7 @@ Material textures use fixed 16× anisotropic filtering and conservative FSR-awar
 
 Electron supplies its initial display refresh rate. First launch/reset chooses the highest listed cap no higher than that rate, allowing 1 Hz for nominal rates such as 59.94; otherwise it uses 60. Saved caps take precedence. Unlimited removes the application cap but retains requestAnimationFrame display pacing. Simulation and animation include skipped callback time, with the existing 50 ms stall clamp.
 
-The camera has a 35-degree downward pitch, 45-degree azimuth and default zoom 1.35; the wheel remains available. Existing area envelopes retain their saved dimensions. Camera ownership and follow behavior are documented in [Architecture](ARCHITECTURE.md#owners-and-data-flow).
+The orthographic camera has a 35-degree downward pitch and 45-degree azimuth. Camera Distance selects Default (distance multiplier 1.2) or Far (1.4), with zoom equal to the reciprocal of the multiplier. Far shows about 17% more world across each dimension. The choice applies immediately, persists across reloads and travel, and Reset selects Default. Gameplay wheel zoom and zoom keybindings are removed; temporary developer inspection and authored views restore the selected distance on return to gameplay. Existing area envelopes retain their saved dimensions. Camera ownership and follow behavior are documented in [Architecture](ARCHITECTURE.md#owners-and-data-flow).
 
 ## Temporary comparisons and persistence
 
@@ -47,7 +48,7 @@ Comparison URLs override settings for the current load without saving them throu
 - `?outlines=off`
 - `?textureDepth=off`
 
-Explicitly editing a control saves that choice. Reset defaults restores graphics and sound defaults. Graphics uses `lantern.options.v1`, revision 6, preserving applicable existing preferences, including sharpening and the old quality-to-shadow/particle migration, while stripping retired fields. Rendering-method, render-scale and volumetric preferences/URLs are ignored.
+Explicitly editing a control saves that choice. Reset defaults restores graphics and sound defaults. Graphics uses `lantern.options.v1`, revision 7, preserving applicable existing preferences, including sharpening and the old quality-to-shadow/particle migration, while stripping retired fields. Rendering-method, render-scale and volumetric preferences/URLs are ignored.
 
 Controls update immediately and submit immutable snapshots once per presentation frame. Structural graph changes settle for 150 ms, flushing the latest choice on close. Preparation is serialized; gameplay pauses and the last image remains visible during compilation. Failed replacements retain the working graph with an actionable menu error. Resolution Quality resizes existing buffers; two recently used effect graphs are retained at most. HTML UI remains on the main thread, so cold preparation can still stall it.
 

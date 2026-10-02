@@ -32,7 +32,7 @@ export function createInput(
 
   function dispatch(binding: string, repeat = false): void {
     const action = inputFor(preferences.value, binding);
-    if (action && (!repeat || action === 'zoomIn' || action === 'zoomOut')) onAction(action);
+    if (action && !repeat) onAction(action);
   }
 
   canvas.addEventListener('pointermove', event => {
@@ -86,11 +86,6 @@ export function createInput(
   }, { signal });
   window.addEventListener('keyup', event => down.delete(keyboardInput(event)), { signal });
   window.addEventListener('blur', clear, { signal });
-  canvas.addEventListener('wheel', event => {
-    if (menuOpen() || event.deltaY === 0) return;
-    event.preventDefault();
-    dispatch(event.deltaY < 0 ? 'wheel:up' : 'wheel:down');
-  }, { passive: false, signal });
 
   const held = (action: InputAction) =>
     preferences.value[action].some(binding => binding !== null && down.has(binding));

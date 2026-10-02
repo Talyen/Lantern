@@ -1,6 +1,6 @@
 import { diagnosticExportButton } from '../diagnostics/report';
 import { qualityLevels } from '../rendering/quality-presets';
-import { defaults, depthOfFieldModes, frameRateLimits, ranges, readSettings, saveSettings, upscaleQualities, type GraphicsSettings, type NumericSetting, type FrameRateLimit } from '../rendering/graphics-settings';
+import { cameraDistances, defaults, depthOfFieldModes, frameRateLimits, ranges, readSettings, saveSettings, upscaleQualities, type GraphicsSettings, type NumericSetting, type FrameRateLimit } from '../rendering/graphics-settings';
 import './options.css';
 import { audioDefaults, readAudioSettings, saveAudioSettings, type AudioSettings } from '../audio/settings';
 import { bindMenuDismissal } from './menu';
@@ -35,7 +35,8 @@ export class Options {
   }
   private buildControls(): void {
     const mount = document.getElementById('graphics-settings')!;
-    mount.innerHTML = `<label>Resolution Quality<select id="option-upscaleQuality">${upscaleQualities.map((quality) => `<option value="${quality}">${quality[0].toUpperCase() + quality.slice(1)}</option>`).join('')}</select></label>
+    mount.innerHTML = `<label>Camera Distance<select id="option-cameraDistance">${cameraDistances.map(distance => `<option value="${distance}">${distance === 'default' ? 'Default' : 'Far'}</option>`).join('')}</select></label>
+      <label>Resolution Quality<select id="option-upscaleQuality">${upscaleQualities.map((quality) => `<option value="${quality}">${quality[0].toUpperCase() + quality.slice(1)}</option>`).join('')}</select></label>
       <label>Frame rate limit<select id="option-fpsLimit">${frameRateLimits.map((limit) => `<option value="${limit}">${limit || 'Unlimited'}</option>`).join('')}</select></label>
       ${(['shadowQuality', 'particleQuality'] as const).map(key => `<label>${key === 'shadowQuality' ? 'Shadow Quality' : 'Particle Effects'}<select id="option-${key}">${[...qualityLevels].reverse().map(value => `<option value="${value}">${value[0].toUpperCase() + value.slice(1)}</option>`).join('')}</select></label>`).join('')}
       <label>Depth of field<select id="option-dof">${depthOfFieldModes.map((mode) => `<option value="${mode}">${mode[0].toUpperCase() + mode.slice(1)}</option>`).join('')}</select></label>
@@ -45,6 +46,7 @@ export class Options {
       ${Object.keys(ranges).map((key) => `<label class="slider-label">${labels[key as NumericSetting]}<output id="value-${key}"></output><input id="option-${key}" type="range" min="${ranges[key as NumericSetting][0]}" max="${ranges[key as NumericSetting][1]}" step="${ranges[key as NumericSetting][2]}" aria-label="${labels[key as NumericSetting]}" /></label>`).join('')}`;
     document.getElementById('options-close')!.addEventListener('click', () => this.close());
     bindMenuDismissal(this.dialog, () => this.close());
+    this.input<HTMLSelectElement>('cameraDistance').addEventListener('change', () => { this.settings.cameraDistance = this.input<HTMLSelectElement>('cameraDistance').value as GraphicsSettings['cameraDistance']; this.apply(); this.save('cameraDistance'); });
     this.input<HTMLSelectElement>('upscaleQuality').addEventListener('change', () => { this.settings.upscaleQuality = this.input<HTMLSelectElement>('upscaleQuality').value as GraphicsSettings['upscaleQuality']; this.apply(); this.save('upscaleQuality'); });
     for (const key of ['shadowQuality', 'particleQuality'] as const) this.input<HTMLSelectElement>(key).addEventListener('change', () => { this.settings[key] = this.input<HTMLSelectElement>(key).value as GraphicsSettings[typeof key]; this.apply(); this.save(key); });
     this.input<HTMLSelectElement>('dof').addEventListener('change', () => {
@@ -92,6 +94,7 @@ export class Options {
 
   private apply(): void {
     const s = this.settings;
+    this.input<HTMLSelectElement>('cameraDistance').value = s.cameraDistance;
     for (const key of ['shadowQuality', 'particleQuality'] as const) this.input<HTMLSelectElement>(key).value = s[key];
     this.input<HTMLSelectElement>('fpsLimit').value = String(s.fpsLimit);
     this.input<HTMLSelectElement>('upscaleQuality').value = s.upscaleQuality;

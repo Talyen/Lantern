@@ -1,5 +1,5 @@
 import { parseJson } from '../data/json';
-import { defaultBindings, validBindings, type Bindings } from './binding-model';
+import { defaultBindings, inputActions, validBindings, type Bindings } from './binding-model';
 
 export const bindingKey = 'lantern.bindings.v1';
 const retryDelays = [1000, 2000, 5000, 15000, 30000];
@@ -20,7 +20,8 @@ export class InputPreferences {
       if (!raw) return;
       const saved = parseJson(raw);
       if (!validBindings(saved)) throw new Error('Invalid bindings');
-      this.value = saved;
+      // Project onto current actions so retired zoom bindings never return at runtime.
+      this.value = Object.fromEntries(inputActions.map(action => [action, saved[action]])) as Bindings;
     } catch (error) {
       this.error = String(error);
     }

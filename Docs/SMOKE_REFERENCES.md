@@ -27,7 +27,7 @@ Camera defaults are a 0.15 m ground dead zone, 0.20 seconds of movement look-ahe
 
 ## Combat controls and focused acceptance
 
-Defaults use WASD/arrows to move and Shift to dodge. The six action slots use **Q, E, R, G, LMB, RMB**; **F** uses a Health Potion, **T** uses a Scroll of Return, **Tab** swaps weapon sets, **K** opens Skills, **B** opens Inventory, and **Escape** opens Options or closes a menu. Wheel zoom is remappable alongside the other controls in Options → Keybindings. Preferences have primary/secondary inputs and apply only after resolving conflicts and binding every movement direction.
+Defaults use WASD/arrows to move and Shift to dodge. The six action slots use **Q, E, R, G, LMB, RMB**; **F** uses a Health Potion, **T** uses a Scroll of Return, **Tab** swaps weapon sets, **K** opens Skills, **B** opens Inventory, and **Escape** opens Options or closes a menu. Options → Camera Distance selects Default or Far; the wheel does not zoom. Other controls are remappable in Options → Keybindings. Preferences have primary/secondary inputs and apply only after resolving conflicts and binding every movement direction.
 
 Left-click loot or a usable chest, fire, portal, tree, mineral deposit, shelter or stash to approach and interact. Hover identifies its visible shape with a restrained brass contour. A resource starts automatic chopping/mining with a temporary basic tool; no owned tool is required. Movement, damage, combat actions, menus and travel interrupt it. Shield blocking is a hold-activated Shield Basic assigned through Skills.
 

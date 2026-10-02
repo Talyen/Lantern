@@ -2,7 +2,7 @@ import { isRecord } from '../data/json';
 
 export const actionSlotInputs = ['slot0', 'slot1', 'slot2', 'slot3', 'slot4', 'slot5'] as const;
 export type BindingPair = [string | null, string | null];
-type ActionDefinition = { name: string; group: 'Action Bar' | 'Movement' | 'Combat & Utility' | 'Camera' | 'Menus'; bindings: BindingPair };
+type ActionDefinition = { name: string; group: 'Action Bar' | 'Movement' | 'Combat & Utility' | 'Menus'; bindings: BindingPair };
 
 // Declaration order is the action dispatch and Keybindings display order.
 const definitions = {
@@ -20,8 +20,6 @@ const definitions = {
   swap: { name: 'Swap weapons', group: 'Combat & Utility', bindings: ['key:Tab', null] },
   potion: { name: 'Use Health Potion', group: 'Combat & Utility', bindings: ['key:KeyF', null] },
   portal: { name: 'Use Scroll of Return', group: 'Combat & Utility', bindings: ['key:KeyT', null] },
-  zoomIn: { name: 'Zoom in', group: 'Camera', bindings: ['wheel:up', null] },
-  zoomOut: { name: 'Zoom out', group: 'Camera', bindings: ['wheel:down', null] },
   inventory: { name: 'Inventory', group: 'Menus', bindings: ['key:KeyB', null] },
   skills: { name: 'Skills', group: 'Menus', bindings: ['key:KeyK', null] },
   options: { name: 'Options', group: 'Menus', bindings: ['key:Escape', null] },
@@ -44,12 +42,8 @@ export function isMovementAction(action: InputAction): boolean {
   return definitions[action].group === 'Movement';
 }
 
-export function allowsWheelBinding(action: InputAction): boolean {
-  return definitions[action].group === 'Camera';
-}
-
 export function validBinding(value: unknown): value is string | null {
-  return value === null || typeof value === 'string' && /^(key:(Key[A-Z]|Digit[0-9]|Arrow(Up|Down|Left|Right)|F([1-9]|1[0-9]|2[0-4])|Shift(Left|Right)|Control(Left|Right)|Alt(Left|Right)|Meta(Left|Right)|Space|Tab|Escape|Enter|Numpad\w+|Backspace|Delete|Insert|Home|End|PageUp|PageDown|CapsLock|Backquote|Minus|Equal|BracketLeft|BracketRight|Backslash|Semicolon|Quote|Comma|Period|Slash)|mouse:[0-4]|wheel:(up|down))$/.test(value);
+  return value === null || typeof value === 'string' && /^(key:(Key[A-Z]|Digit[0-9]|Arrow(Up|Down|Left|Right)|F([1-9]|1[0-9]|2[0-4])|Shift(Left|Right)|Control(Left|Right)|Alt(Left|Right)|Meta(Left|Right)|Space|Tab|Escape|Enter|Numpad\w+|Backspace|Delete|Insert|Home|End|PageUp|PageDown|CapsLock|Backquote|Minus|Equal|BracketLeft|BracketRight|Backslash|Semicolon|Quote|Comma|Period|Slash)|mouse:[0-4])$/.test(value);
 }
 export function validBindings(value: unknown): value is Bindings {
   if (!isRecord(value)) return false;
@@ -61,7 +55,6 @@ export function validBindings(value: unknown): value is Bindings {
     for (const binding of pair as unknown[]) {
       if (!validBinding(binding)) return false;
       if (binding === null) continue;
-      if (binding.startsWith('wheel:') && !allowsWheelBinding(action)) return false;
       if (inputs.has(binding)) return false;
       inputs.add(binding);
     }
@@ -72,7 +65,6 @@ export function validBindings(value: unknown): value is Bindings {
 export function bindingLabel(binding: string | null): string {
   if (!binding) return '—';
   if (binding.startsWith('mouse:')) return ['LMB', 'MMB', 'RMB', 'Mouse 4', 'Mouse 5'][Number(binding.slice(6))];
-  if (binding.startsWith('wheel:')) return binding === 'wheel:up' ? 'Wheel ↑' : 'Wheel ↓';
   const code = binding.slice(4);
   return code
     .replace(/^Key|^Digit/, '')

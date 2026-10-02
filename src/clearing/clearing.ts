@@ -273,8 +273,6 @@ function dispatchInput(action: InputAction): void {
     case 'swap': combat.swap(); break;
     case 'potion': usePotion(); break;
     case 'portal': castReturn(); break;
-    case 'zoomIn': cameraOwner.zoom(1); break;
-    case 'zoomOut': cameraOwner.zoom(-1); break;
   }
 }
 function usePotion():void {if(!paused()){adventure.usePotion(encounter);syncAdventure();}}
@@ -423,7 +421,10 @@ try {
   const effects = new CoreEffects(); scene.add(effects.root);
   const lighting = { get definition() { return committedLighting; }, get fires() { return active?.fires ?? []; }, get shadow() { return active?.shadow ?? null; } };
   options = new Options({
-    apply: settings => graphics?.apply(settings), flushSettings: () => graphics?.flushSettings(),
+    apply: settings => {
+      if (cameraOwner.setDistance(settings.cameraDistance)) { graphics?.resetHistory(); invalidateFrame(); }
+      graphics?.apply(settings);
+    }, flushSettings: () => graphics?.flushSettings(),
     resetMeasurements: () => graphics?.resetMeasurements(), clearInput,
     focus: () => renderer.domElement.focus(), keybindings:()=>bindingsMenu.open(), audio: {apply:settings=>audio.applySettings(settings),play:cue=>audio.play(cue)},
   });
@@ -525,8 +526,7 @@ function diagnostics() {
 
 function freezePreview(value: boolean): void {
   frozen = value; fixedCamera = value; clearInput();
-  controls.minZoom = value ? .1 : .9;
-  if (!value) { camera.zoom = defaultPreviewZoom(); camera.updateProjectionMatrix(); cameraOwner.resetFollow(player.root.position); graphics?.resetHistory(); }
+  if (!value) { cameraOwner.restoreGameplayView(); cameraOwner.resetFollow(player.root.position); graphics?.resetHistory(); }
   if (value) { reset(); for (const actor of Object.values(actors)) { play(actor, 'idle'); actor.actions.idle?.stopFading().setEffectiveWeight(1); actor.mixer?.setTime(0); } graphics?.effects.clearArea(); active?.activate(graphics!.effects); graphics?.resetSceneTime(); }
 }
 function previewView(id: string): void {
@@ -539,7 +539,6 @@ async function changeAppearance(appearance: { surfaces?: SurfaceMode; lantern?: 
   return changeArea({ kind: 'refresh', spawn: { position: [encounter.player.x, encounter.player.z], yaw: encounter.player.yaw },
     appearance: { lantern: appearance.lantern ?? lanternEnabled, surfaces: appearance.surfaces ?? surfaceMode } });
 }
-function defaultPreviewZoom(): number { return currentArea.envelope.reference.zoom; }
 async function changeArea(change: AreaChange): Promise<boolean> {
   const id = change.kind === 'travel' ? change.area : currentArea.id;
   const { arrivalId, transition = false, recover = false } = change.kind === 'travel' ? change : {};
@@ -624,6 +623,7 @@ async function changeArea(change: AreaChange): Promise<boolean> {
     resetPresentation();
     syncAdventure();
     cameraOwner.inspect(false, { x: 0, z: 0 });
+    if (!frozen) cameraOwner.restoreGameplayView();
     cameraOwner.resetFollow(player.root.position);
     graphics!.apply(options!.settings);
     graphics!.resetSceneTime();
