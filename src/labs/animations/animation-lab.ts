@@ -12,7 +12,7 @@ import { markOutline } from '../../rendering/outlines';
 import { Equipment } from '../../rendering/equipment';
 import { assetLibrary } from '../../assets/asset-library';
 import { getMotionCatalog, loadEquipmentMotions, holdStaffArm, type MotionCatalog, type MotionClip, type MotionPack } from '../../animation/combat-animations';
-import type { ActorId } from '../../gameplay/encounter';
+import type { RigId } from '../../animation/combat-animations';
 import type { Loadout } from '../../gameplay/equipment';
 import './animation-lab.css';
 import characters from '../../../assets/playable-characters.json';
@@ -21,7 +21,7 @@ type Clip = MotionClip & { mappedBones?: number; auditRole?: string };
 type Pack = Omit<MotionPack, 'clips'> & { license?: string; url?: string; clips: Clip[] };
 type Catalog = Omit<MotionCatalog, 'packs'> & { character: string; characterLabel: string; motion: string; packs: Pack[] };
 type Favorite = { pack: string; clip: string };
-type Lane = { group: THREE.Group; rig: ActorId; rigLoading: boolean; catalog?: Catalog; source?: THREE.Group; equipment?: Equipment; loadout: Loadout; model?: THREE.Group; mixer?: THREE.AnimationMixer; action?: THREE.AnimationAction; clip?: Clip; pack?: Pack; generation: number; rigSelect: HTMLSelectElement; loadoutSelect: HTMLSelectElement; packSelect: HTMLSelectElement; clipSelect: HTMLSelectElement; search: HTMLInputElement; info: HTMLElement; favorite: HTMLButtonElement; timing: HTMLElement };
+type Lane = { group: THREE.Group; rig: RigId; rigLoading: boolean; catalog?: Catalog; source?: THREE.Group; equipment?: Equipment; loadout: Loadout; model?: THREE.Group; mixer?: THREE.AnimationMixer; action?: THREE.AnimationAction; clip?: Clip; pack?: Pack; generation: number; rigSelect: HTMLSelectElement; loadoutSelect: HTMLSelectElement; packSelect: HTMLSelectElement; clipSelect: HTMLSelectElement; search: HTMLInputElement; info: HTMLElement; favorite: HTMLButtonElement; timing: HTMLElement };
 const loadouts: Record<string, Loadout> = { axe: { main: 'axe', off: null }, 'axe-shield': { main: 'axe', off: 'shield' }, sword: { main: 'sword', off: null }, 'sword-shield': { main: 'sword', off: 'shield' }, bow: { main: 'bow', off: null }, staff: { main: 'staff', off: null } };
 const loadoutNames: Record<string, string> = { axe: 'Axe', 'axe-shield': 'Axe + Shield', sword: 'Sword', 'sword-shield': 'Sword + Shield', bow: 'Bow', staff: 'Staff' };
 document.title = 'Lantern — Animation Comparison';
@@ -241,7 +241,7 @@ async function fillClips(lane: Lane, preferred?: string): Promise<void> {
   }
   await selectClip(lane);
 }
-async function selectRig(lane: Lane, rig: ActorId): Promise<void> {
+async function selectRig(lane: Lane, rig: RigId): Promise<void> {
   const generation = ++lane.generation;
   lane.rigLoading = true; lane.info.textContent = 'Loading character…';
   lane.rigSelect.disabled = lane.loadoutSelect.disabled = lane.packSelect.disabled = lane.clipSelect.disabled = lane.search.disabled = true;
@@ -266,7 +266,7 @@ async function selectLoadout(lane: Lane, key: string): Promise<void> {
   await fillClips(lane, preferred);
 }
 for (const lane of lanes) {
-  lane.rigSelect.addEventListener('change', () => { void selectRig(lane, lane.rigSelect.value as ActorId); });
+  lane.rigSelect.addEventListener('change', () => { void selectRig(lane, lane.rigSelect.value as RigId); });
   lane.loadoutSelect.addEventListener('change', () => { void selectLoadout(lane, lane.loadoutSelect.value); });
   lane.packSelect.addEventListener('change', () => { void fillClips(lane); });
   lane.search.addEventListener('input', () => { void fillClips(lane); });
@@ -325,7 +325,7 @@ const laneAt = (index: number | 'a' | 'b') => {
   if (!lane) throw new Error('Unknown comparison lane'); return lane;
 };
 const diagnostics = {
-  setRig: (index: number | 'a' | 'b', rig: ActorId) => selectRig(laneAt(index), rig),
+  setRig: (index: number | 'a' | 'b', rig: RigId) => selectRig(laneAt(index), rig),
   setLoadout: (index: number | 'a' | 'b', loadout: string) => selectLoadout(laneAt(index), loadout),
   async setClip(index: number | 'a' | 'b', clip: string) {
     const lane = laneAt(index);

@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import characters from '../../assets/playable-characters.json';
-import type { ActorId, Motion } from '../gameplay/encounter';
+import type { Motion } from '../gameplay/encounter';
 import type { Loadout } from '../gameplay/equipment';
 
+export type RigId = 'player' | 'enemy';
 export const motionStates = ['idle', 'run', 'attack', 'hit', 'death'] as const;
 export type MotionState = typeof motionStates[number];
 export type AnimationRole = Motion | 'backward' | 'left' | 'right' | 'blockForward' | 'blockBackward' | 'blockLeft' | 'blockRight' | 'grip';
@@ -13,7 +14,7 @@ export type MotionCatalog = { version: number; packs: MotionPack[]; defaults: Re
 export type CombatMotions = { clips: Record<MotionState, THREE.AnimationClip> & Partial<Record<AnimationRole, THREE.AnimationClip>>; contacts: number[]; runSpeed: number; speeds: Partial<Record<AnimationRole, number>>; chopContact: number; phases: Partial<Record<AnimationRole, number>> };
 const cache = new Map<string, Promise<THREE.AnimationClip>>();
 const catalogs = new Map<string, Promise<MotionCatalog>>();
-export function getMotionCatalog(who: ActorId): Promise<MotionCatalog> {
+export function getMotionCatalog(who: RigId): Promise<MotionCatalog> {
   const url = characters[who].catalog;
   if (!catalogs.has(url)) catalogs.set(url, fetch(url).then(async response => {
     if (!response.ok) throw new Error('Prepare compatible Mixamo motions with npm run assets:export-character.');
@@ -31,7 +32,7 @@ async function loadClip(loader: GLTFLoader, clip: MotionClip): Promise<THREE.Ani
   }).catch((error: unknown) => { cache.delete(url); throw error; }));
   return (await cache.get(url)!).clone();
 }
-export async function loadEquipmentMotions(loader: GLTFLoader, who: ActorId, loadout: Loadout): Promise<CombatMotions> {
+export async function loadEquipmentMotions(loader: GLTFLoader, who: RigId, loadout: Loadout): Promise<CombatMotions> {
   const catalog = await getMotionCatalog(who);
   const profile = catalog.profiles[`${loadout.main ?? 'unarmed'}${loadout.off ? '-shield' : ''}`];
   const pack = catalog.packs.find(item => item.id === 'mixamo');

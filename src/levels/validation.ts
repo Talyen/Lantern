@@ -25,7 +25,7 @@ export function validateAreas(input: Record<string, AreaDefinition>): string[] {
         if (boundary.points.length < 3 || !boundary.points.every(p => finite(p, 2))) fail('invalid polygon');
         boundary.points.forEach((a, i, points) => { const b = points[(i + 1) % points.length]; if (Math.hypot(a[0] - b[0], a[1] - b[1]) < .001 || points.some(p => (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]) < -.001)) fail('boundary must be convex and counterclockwise'); });
       } else fail('unknown boundary kind');
-      for (const who of (area.kind === 'safe' ? ['player'] : ['player', 'enemy']) as ('player' | 'enemy')[]) { owner = `${key}/${who}`; const spawn = area.layout[who]!; if (!finite(spawn.position, 2) || !Number.isFinite(spawn.yaw) || boundaryDistance(boundary, spawn.position) < 0) fail('spawn must be finite and inside the walkable boundary'); }
+      for (const who of (area.kind === 'safe' ? ['player'] : ['player', 'enemy', ...(area.layout.caster ? ['caster'] : [])]) as ('player' | 'enemy' | 'caster')[]) { owner = `${key}/${who}`; const spawn = area.layout[who]!; if (!finite(spawn.position, 2) || !Number.isFinite(spawn.yaw) || boundaryDistance(boundary, spawn.position) < 0) fail('spawn must be finite and inside the walkable boundary'); }
       if (area.kind !== undefined && !['safe', 'encounter'].includes(area.kind)) fail('unknown area kind');
       for (const fire of area.campfires ?? []) {
         id(fire.id);
@@ -66,6 +66,7 @@ export function validateAreas(input: Record<string, AreaDefinition>): string[] {
         if (!finite(portal.position, 3) || !finite([portal.yaw, portal.width, portal.height]) || portal.width <= 0 || portal.height <= 0) fail('invalid portal transform');
       }
       for (const chest of area.chests ?? []) {
+        if (chest.guard !== undefined && (!['enemy','caster'].includes(chest.guard) || !area.layout[chest.guard])) fail('chest guard must name a placed enemy');
         id(chest.id);
         if (!finite(chest.position, 2) || boundaryDistance(boundary, chest.position) < 0 || !Number.isInteger(chest.scrolls) || chest.scrolls <= 0) fail('invalid chest position/reward');
         const prop = area.props.find(p => p.id === chest.prop);

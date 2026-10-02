@@ -26,7 +26,7 @@ function box(obstacle: Obstacle): Surface {
 export class MovementWorld implements Movement {
   private readonly world = new RAPIER.World({ x: 0, y: 0, z: 0 });
   private readonly controller = this.world.createCharacterController(.015);
-  private readonly actors = { player: this.world.createCollider(RAPIER.ColliderDesc.capsule(halfHeight, radius).setSensor(true)), enemy: this.world.createCollider(RAPIER.ColliderDesc.capsule(halfHeight, radius).setSensor(true)) };
+  private readonly actors = { player: this.world.createCollider(RAPIER.ColliderDesc.capsule(halfHeight, radius).setSensor(true)), enemy: this.world.createCollider(RAPIER.ColliderDesc.capsule(halfHeight, radius).setSensor(true)), caster: this.world.createCollider(RAPIER.ColliderDesc.capsule(halfHeight, radius).setSensor(true)) };
   private readonly solid = new Set<number>();
   private nav!: NavMesh;
   private readonly baseSurfaces: Surface[];
@@ -36,9 +36,7 @@ export class MovementWorld implements Movement {
   private navigationPending = false;
   private navigationPostQueued = false;
   private queuedNavigation?: NavigationGeometry;
-  private path: [number, number, number][] = [];
-  private target = [Infinity, Infinity];
-  private pathAge = Infinity;
+  private routes = new WeakMap<ActorState, { path: [number, number, number][]; target: number[]; age: number }>();
   readonly generationMs: number;
   private disposed = false;
   static async create(boundary: Boundary, traversal: Traversal = { obstacles: [] }): Promise<MovementWorld> {
@@ -112,14 +110,16 @@ export class MovementWorld implements Movement {
       // Until fresh routes arrive, use clear direct travel or wait; never follow a stale path into regrowth.
       return this.lineOfSight(from, to) ? { x: to.x - from.x, z: to.z - from.z } : { x: 0, z: 0 };
     }
-    this.pathAge += dt;
-    if (this.pathAge >= .25 || Math.hypot(to.x - this.target[0], to.z - this.target[1]) >= .4) {
+    let route = this.routes.get(from);
+    if (!route) { route = {path:[],target:[Infinity,Infinity],age:Infinity}; this.routes.set(from,route); }
+    route.age += dt;
+    if (route.age >= .25 || Math.hypot(to.x - route.target[0], to.z - route.target[1]) >= .4) {
       const result = findPath(this.nav, [from.x, from.y, from.z], [to.x, to.y, to.z], [.6, 1, .6], DEFAULT_QUERY_FILTER);
-      this.path = result.success ? result.path.map(p => [...p.position] as [number, number, number]) : [];
-      this.target = [to.x, to.z]; this.pathAge = 0;
+      route.path = result.success ? result.path.map(p => [...p.position] as [number, number, number]) : [];
+      route.target = [to.x, to.z]; route.age = 0;
     }
-    while (this.path.length && Math.hypot(this.path[0][0] - from.x, this.path[0][2] - from.z) < .18) this.path.shift();
-    const next = this.path[0];
+    while (route.path.length && Math.hypot(route.path[0][0] - from.x, route.path[0][2] - from.z) < .18) route.path.shift();
+    const next = route.path[0];
     return next ? { x: next[0] - from.x, z: next[2] - from.z } : { x: 0, z: 0 };
   }
   lineOfSight(from: ActorState, to: ActorState): boolean {
@@ -136,6 +136,6 @@ export class MovementWorld implements Movement {
     return hit ? hit.timeOfImpact / length : null;
   }
   get navigationReady(): boolean { return !this.navigationPending && !this.disposed; }
-  reset(): void { this.path = []; this.target = [Infinity, Infinity]; this.pathAge = Infinity; }
+  reset(): void { this.routes = new WeakMap(); }
   dispose(): void { if (this.disposed) return; this.disposed = true; this.navigationWorker?.terminate(); this.world.free(); }
 }

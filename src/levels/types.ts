@@ -18,7 +18,7 @@ export type Placement = {
 export type Region = { id: string; center: Point; radius: number; role: 'combat' | 'arrival' | 'route' };
 export type LightingGrade = { shadows: string; highlights: string; strength: number };
 export type AreaLighting = { background: string; fogNear: number; fogFar: number; ambient: { sky: string; ground: string; intensity: number }; sun: { color: string; intensity: number; position: [number, number, number]; shadowExtent: number }; environment?: EnvironmentLighting; probes?: ProbeLighting; saturation?: number; grade?: LightingGrade };
-export type Chest = { id: string; prop: string; position: Point; scrolls: number };
+export type Chest = { id: string; prop: string; position: Point; scrolls: number; guard?: 'enemy' | 'caster' };
 export type Campfire = { id: string; name: string; position: Point; arrival: Spawn; heals?: boolean };
 export type AreaDefinition = {
   version: 1; id: string; name: string; legacy?: boolean; terminal?: boolean; chests?: Chest[]; kind?: 'safe' | 'encounter'; campfires?: Campfire[]; portalArrival?: Spawn;

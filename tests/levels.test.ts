@@ -73,20 +73,20 @@ test('felling removes trunk collision and enemy detours, and regrowth restores b
   const world = await MovementWorld.create(boundary, { obstacles: [{ id: 'tree', tree: true, position: [0,1,0], size: [1,2,1], yaw: 0 }] });
   const state = createEncounter('playing', { boundary, player: { position: [-2,0], yaw: 0 }, enemy: { position: [2,0], yaw: 0 } });
   try {
-    expect(world.lineOfSight(state.player, state.enemy)).toBe(false);
+    expect(world.lineOfSight(state.player, state.enemies.enemy)).toBe(false);
     expect(world.segmentHit({ x: -2, y: .9, z: 0 }, { x: 2, y: .9, z: 0 })).toBeCloseTo(.375);
     expect(world.segmentHit({ x: -2, y: 3, z: 0 }, { x: 2, y: 3, z: 0 })).toBeNull();
-    expect(Math.abs(world.direction(state.player,state.enemy,.05).z)).toBeGreaterThan(.3);
+    expect(Math.abs(world.direction(state.player,state.enemies.enemy,.05).z)).toBeGreaterThan(.3);
     for (let i = 0; i < 40; i++) world.move('player',state.player,.1,0,.05);
     expect(state.player.x).toBeLessThan(-.7);
     world.setTreeFelled('tree',true); state.player.x = -2;
-    expect(world.lineOfSight(state.player,state.enemy)).toBe(true);
+    expect(world.lineOfSight(state.player,state.enemies.enemy)).toBe(true);
     expect(world.segmentHit({ x: -2, y: .9, z: 0 }, { x: 2, y: .9, z: 0 })).toBeNull();
-    expect(Math.abs(world.direction(state.player,state.enemy,.05).z)).toBeLessThan(.05);
+    expect(Math.abs(world.direction(state.player,state.enemies.enemy,.05).z)).toBeLessThan(.05);
     for (let i = 0; i < 40; i++) world.move('player',state.player,.1,0,.05);
     expect(state.player.x).toBeGreaterThan(1.8);
     world.setTreeFelled('tree',false); state.player.x = -2;
-    expect(world.lineOfSight(state.player,state.enemy)).toBe(false);
-    expect(Math.abs(world.direction(state.player,state.enemy,.05).z)).toBeGreaterThan(.3);
+    expect(world.lineOfSight(state.player,state.enemies.enemy)).toBe(false);
+    expect(Math.abs(world.direction(state.player,state.enemies.enemy,.05).z)).toBeGreaterThan(.3);
   } finally { world.dispose(); }
 });

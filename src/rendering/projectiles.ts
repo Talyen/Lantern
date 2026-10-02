@@ -26,9 +26,9 @@ export class ProjectileVisuals {
     for (const projectile of projectiles) {
       let object = this.objects.get(projectile.id);
       if (!object) {
-        object = projectile.kind === 'arrow' ? this.arrows?.object.clone(true) : new THREE.Mesh(this.boltGeometry,projectile.owner === 'enemy' ? this.enemyBoltMaterial : this.boltMaterial);
+        object = projectile.kind === 'arrow' ? this.arrows?.object.clone(true) : new THREE.Mesh(this.boltGeometry,projectile.owner !== 'player' ? this.enemyBoltMaterial : this.boltMaterial);
         if (!object) continue;
-        if (projectile.kind === 'bolt') object.scale.set(projectile.owner === 'enemy' ? 2 : 1, projectile.owner === 'enemy' ? 2 : 1, projectile.owner === 'enemy' ? 5 : 2.5);
+        if (projectile.kind === 'bolt') object.scale.set(projectile.owner !== 'player' ? 2 : 1, projectile.owner !== 'player' ? 2 : 1, projectile.owner !== 'player' ? 5 : 2.5);
         this.root.add(object); this.objects.set(projectile.id,object);
       }
       object.position.set(projectile.x,projectile.y,projectile.z); object.rotation.y=Math.atan2(projectile.dx,projectile.dz);
@@ -49,8 +49,8 @@ export class CasterVisuals {
   private hand?: THREE.Object3D;
   constructor(parent: THREE.Object3D, private actor: THREE.Object3D) { this.root.userData.transient = true; this.root.add(this.charge); parent.add(this.root); this.clear(); }
   sync(state: Encounter, release: number, dt: number, visible: boolean): void {
-    const { enemy } = state;
-    if (!visible || state.enemyKind !== 'caster' || enemy.hp <= 0 || state.phase === 'lost') { this.clear(); return; }
+    const enemy = state.enemies.caster;
+    if (!visible || !enemy.home || enemy.hp <= 0 || state.phase === 'lost') { this.clear(); return; }
     const casting = enemy.attackTime >= 0;
     if (!casting) this.released = false;
     else if (enemy.contactIndex > 0 && !this.released) { this.flash = .12; this.released = true; }

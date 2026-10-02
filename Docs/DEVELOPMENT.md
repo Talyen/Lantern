@@ -143,7 +143,7 @@ Choose the relevant portion for the changed behavior. These flows are a referenc
 
 3. **Home and return loop:** start at the clearing midpoint, walk home through the woodland entrance, verify safe movement and disabled scroll use at home, travel from the fire with E, collect a dropped scroll, cast from Inventory with B while moving/taking damage, enter the portal, heal gradually near the home fire, and return to the exact departure point. Confirm the portal closes, enemies/drops retain session state, and restarting retains scrolls/discovered fires but refreshes encounters.
 
-For the solo caster, open `/?area=clearing&enemy=caster`: approach into sight, read its windup, sidestep/dodge the committed straight bolt, and attack during recovery. Damage interrupts windup. The normal route retains the raider; travel/death retains the chosen solo enemy and its session health/rewards.
+For the solo caster, follow the left branch of the woodland approach to the glade at `[-10, -5]` in the normal clearing. Read its windup, sidestep/dodge the committed straight bolt, and attack during recovery. Damage interrupts windup. The camp guard stays inactive during this fight; travel/death retains each enemy's session health/defeat and rewards independently. The camp chest requires its guard's defeat. There is no query-selected replacement scenario.
 
 Use default native WebGPU FSR Temporal. Renderer initialization/dependency changes may warrant a focused unsupported-WebGPU/FSR error probe; no reconstruction or WebGL fallback exists. Inspect the animation lab (`/?lab=animations`) only when its changed behavior needs review. Older art/renderer routes load the normal clearing without opening Options; use Escape to open it.
 
