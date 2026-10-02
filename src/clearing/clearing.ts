@@ -11,9 +11,12 @@ import { Adventure, homeArea, near } from '../gameplay/adventure';
 import { AdventureMenus } from '../ui/adventure';
 import { AdventureVisuals } from '../rendering/adventure';
 import { LootLabels } from '../ui/loot';
-import type { Spawn, Point } from '../gameplay/area';
+import type { Point } from '../gameplay/area';
 import { MovementWorld } from '../gameplay/movement';
 import { prepareAreaCandidate } from './area-candidate';
+import type { AreaChange } from './area-change';
+import { MenuController } from './menu-controller';
+import { InteractionActions, areaChangeFailed } from './interaction-actions';
 import { cameraOffset } from './projection';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -236,30 +239,22 @@ function reset(): void {
   resetPresentation();
 }
 const bindingsMenu=new KeybindingsMenu(preferences,()=>adventure.character.actionBar,clearInput,()=>renderer.domElement.focus());
-function closeMenus(): void {
-  if (bindingsMenu.paused) bindingsMenu.close();
-  if (combatUI?.paused) combatUI.close();
-  if (menus.paused) menus.close();
-  if (options?.paused) options.close();
-}
-function toggleOptions(): void {
-  if (bindingsMenu.paused || combatUI?.paused || menus.paused || options?.paused) closeMenus();
-  else options?.open();
-}
-function openInventory(): void {
-  if (menus.paused) { menus.close(); return; }
-  closeMenus();
-  if (!paused() && encounter.player.hp > 0) menus.openInventory();
-}
-function openSkills(): void {
-  if (combatUI?.paused) { combatUI.close(); return; }
-  closeMenus();
-  if (!paused() && encounter.player.hp > 0) combatUI?.open();
-}
+const menuController = new MenuController(
+  {
+    get adventure() { return menus; },
+    get skills() { return combatUI; },
+    get bindings() { return bindingsMenu; },
+    get options() { return options; },
+  },
+  () => !paused() && encounter.player.hp > 0,
+);
+const interactionActions = new InteractionActions(adventure, encounter, menus, gathering, audio, {
+  area: () => currentArea, definitions: () => definitions, paused, changeArea, syncAdventure,
+});
 function dispatchInput(action: InputAction): void {
-  if (action === 'inventory') { openInventory(); return; }
-  if (action === 'skills') { openSkills(); return; }
-  if (action === 'options') { toggleOptions(); return; }
+  if (action === 'inventory') { menuController.toggleInventory(); return; }
+  if (action === 'skills') { menuController.toggleSkills(); return; }
+  if (action === 'options') { menuController.toggleOptions(); return; }
   if (paused()) return;
 
   switch (action) {
@@ -292,7 +287,7 @@ const combatUI = new CombatUI({
 const optionsButton = document.createElement('button');
 optionsButton.id = 'hud-options'; optionsButton.textContent = '⚙';
 optionsButton.title = 'Options'; optionsButton.setAttribute('aria-label', 'Options');
-optionsButton.onclick = toggleOptions;
+optionsButton.onclick = () => menuController.toggleOptions();
 document.getElementById('app')!.append(optionsButton);
 
 function worldTargets(): readonly WorldInteraction[] {
@@ -319,47 +314,6 @@ function worldClick(clientX: number, clientY: number): boolean {
   approach.selectWorld(target, movementWorld);
   return true;
 }
-function interact(target: WorldInteraction): void {
-  if (paused() || encounter.player.hp <= 0 || encounter.player.lock > 0 || encounter.dodgeRemaining > 0) return;
-  const error = interactionError(target);
-  if (error) { adventure.message(error); return; }
-  switch (target.type) {
-    case 'resource': gathering.select(target.resource); break;
-    case 'shelter': menus.openRepair(); break;
-    case 'stash': menus.openInventory(true); break;
-    case 'chest': adventure.openChest(encounter, currentArea, target.chest); break;
-    case 'fire': {
-      adventure.discover(currentArea, [encounter.player.x, encounter.player.z]);
-      const sourceArea = currentArea, sourceFire = target.fire;
-      menus.openTravel(adventure.destinations(definitions).map(({ area, fire, available }) => ({
-        name: fire.name, available,
-        travel: () => {
-          const allowed = () => adventure.canTravel(encounter, sourceArea, sourceFire, area, fire);
-          if (allowed()) void changeArea({ kind: 'travel', area: area.id, transition: true, spawn: fire.arrival, canCommit: allowed }).then(ok => {
-            if (ok) audio.play('fireTravel');
-          }).catch(areaChangeFailed);
-        },
-      })));
-      break;
-    }
-    case 'portal': {
-      const link = adventure.portal;
-      if (!link) return;
-      if (currentArea.id === homeArea) {
-        void changeArea({ kind: 'travel', area: link.area, transition: true, spawn: link.departure }).then(ok => {
-          if (!ok) return;
-          audio.play('portalPass');
-          if (adventure.portal === link) { adventure.portal = null; syncAdventure(); audio.play('portalClose'); }
-        }).catch(areaChangeFailed);
-      } else {
-        void changeArea({ kind: 'travel', area: homeArea, transition: true, spawn: definitions.homestead.portalArrival }).then(ok => {
-          if (ok) audio.play('portalPass');
-        }).catch(areaChangeFailed);
-      }
-      break;
-    }
-  }
-}
 
 function syncAdventure(): void {
   adventureVisuals?.sync(adventure.session(currentArea.id).drops, adventure.portalPosition(currentArea), lootLabels.hovered, adventure.portalHeight(currentArea));
@@ -372,8 +326,7 @@ function syncAdventure(): void {
   combatUI?.update();
 }
 function paused(): boolean {
-  return Boolean(hidden() || characterMissing || options?.paused || menus.paused || combatUI?.paused ||
-    bindingsMenu.paused || inventory.loading || inspecting || graphics?.preparingSettings || frozen || transitioning);
+  return Boolean(hidden() || characterMissing || menuController.paused || inventory.loading || inspecting || graphics?.preparingSettings || frozen || transitioning);
 }
 function resolveAim(pointer = input.pointer()): AimPoint | undefined {
   return pointerAim.resolve(pointer, encounter.player.y);
@@ -389,7 +342,8 @@ function updateGame(dt: number): void {
   if(encounter.pending?.kind==='ability' && encounter.pending.ability==='shield-basic' && !block)encounter.pending=null;
   gathering.cancelIfInterrupted(movement, block);
   const approachCommand = isPaused ? undefined : approach.update(dt, {
-    movement, block, navigation: movementWorld, targets: worldTargets, error: interactionError, interact,
+    movement, block, navigation: movementWorld, targets: worldTargets, error: interactionError,
+    interact: target => interactionActions.execute(target),
   });
   if (approachCommand) movement = approachCommand.movement;
   const commands = { ...movement, block, paused: isPaused || paused(), aim: isPaused ? undefined : approachCommand?.aim ?? resolveAim() };
@@ -579,11 +533,6 @@ async function changeAppearance(appearance: { surfaces?: SurfaceMode; lantern?: 
     appearance: { lantern: appearance.lantern ?? lanternEnabled, surfaces: appearance.surfaces ?? surfaceMode } });
 }
 function defaultPreviewZoom(): number { return currentArea.envelope.reference.zoom; }
-type AreaAppearance = { lantern?: boolean; surfaces?: SurfaceMode; shelterRestored?: boolean };
-type AreaChange =
-  | { kind: 'travel'; area: string; arrivalId?: string; transition?: boolean; spawn?: Spawn & { height?: number }; recover?: boolean; canCommit?: () => boolean }
-  | { kind: 'refresh'; spawn?: Spawn; appearance?: AreaAppearance; canCommit?:()=>boolean; onCommit?:()=>void };
-function areaChangeFailed(error: unknown): void { console.error('Unable to change area.', error); }
 async function changeArea(change: AreaChange): Promise<boolean> {
   const id = change.kind === 'travel' ? change.area : currentArea.id;
   const { arrivalId, transition = false, recover = false } = change.kind === 'travel' ? change : {};
