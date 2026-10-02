@@ -100,10 +100,10 @@ export function decodeCharacter(raw: string): CharacterSave {
     )
       throw new Error('Invalid inventory save');
     if (hasHome) {
-      if (!validItems(value.stash) || value.stash.some((i) => i.slot !== 'bag')) {
+      if (!validItems(value.stash) || value.stash.some((i: InventoryItem) => i.slot !== 'bag')) {
         throw new Error('Invalid Homestead save');
       }
-      const storedItems = [...value.items, ...value.stash];
+      const storedItems: InventoryItem[] = [...value.items, ...value.stash];
       if (new Set(storedItems.map((i) => i.id)).size !== storedItems.length) {
         throw new Error('Invalid Homestead save');
       }
