@@ -1,15 +1,22 @@
 import type { CharacterSave } from './character-save';
-import { countItem, validItems, type InventoryItem, type LootItem } from './inventory';
+import { countItem, validItems, type InventoryItem } from './inventory';
 import { progression, shelterRecipe } from './skills';
 
 type ShelterState = Pick<CharacterSave, 'items' | 'shelterRestored'>;
 type Containers = Pick<CharacterSave, 'items' | 'stash'>;
 
+/** Recipe progress is shared by the repair menu and the transaction eligibility check. */
+export function shelterMaterials(items: readonly InventoryItem[]) {
+  const carried = items.filter(entry => entry.slot === 'bag');
+  return (Object.keys(shelterRecipe) as (keyof typeof shelterRecipe)[]).map(item => ({
+    item,
+    cost: shelterRecipe[item],
+    held: countItem(carried, item),
+  }));
+}
+
 export function canRepairShelter(state: ShelterState): boolean {
-  const carried = state.items.filter(entry => entry.slot === 'bag');
-  return !state.shelterRestored && Object.entries(shelterRecipe).every(
-    ([item, cost]) => countItem(carried, item as LootItem) >= cost,
-  );
+  return !state.shelterRestored && shelterMaterials(state.items).every(({ held, cost }) => held >= cost);
 }
 
 /** Consume the recipe on a candidate; area preparation must succeed before commit. */

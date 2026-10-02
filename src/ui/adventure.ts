@@ -2,8 +2,9 @@ import { renderEquipmentDetails, statLabel, statValue } from './equipment-detail
 import { bindMenuDismissal } from './menu';
 import type { CharacterSave } from '../gameplay/character-save';
 import { bagWidth, bagHeight, stackLimit, emptyPosition, equipInstance, lootDefinitions, moveItem, sortedItems, transferItem, itemLoadout, type InventoryItem } from '../gameplay/inventory';
-import { progression, shelterRecipe, skillProgress } from '../gameplay/skills';
-import { countItem } from '../gameplay/inventory';
+import { progression, skillProgress } from '../gameplay/skills';
+import { canRepairShelter, shelterMaterials } from '../gameplay/homestead-transactions';
+import { inventoryItemButton, placeInventoryItem } from './inventory-item';
 import type { WeaponSet } from '../gameplay/abilities';
 import { equipmentCatalog, isEquipmentSlot, isItemId, sharedSlots, supportsShield, type EquipmentSlot } from '../gameplay/equipment';
 import { resolveCombatStats } from '../gameplay/combat-stats';
@@ -11,9 +12,27 @@ import { itemIcon } from './item-icons';
 import { setText, setDisabled } from './dom';
 
 export type TravelChoice = { name: string; available: boolean; travel(): void };
-export type InventoryMenuContext = { change(items: InventoryItem[]): Promise<void>; drop(id: string, quantity: number): Promise<void>; recover(id: string): void; newId(this: void): string; changeContainers(items:InventoryItem[],stash:InventoryItem[]):void; transfer(id:string,quantity:number,toStash:boolean,point?:{x:number;y:number}):void; repair():Promise<void> };
+export type InventoryMenuContext = {
+  change(items: InventoryItem[]): Promise<void>;
+  drop(id: string, quantity: number): Promise<void>;
+  recover(id: string): void;
+  newId(this: void): string;
+  changeContainers(items: InventoryItem[], stash: InventoryItem[]): void;
+  transfer(id: string, quantity: number, toStash: boolean, point?: { x: number; y: number }): void;
+  repair(): Promise<void>;
+};
 type Container = 'bag' | 'stash';
-type Drag = { container:Container; id: string; quantity: number; startX: number; startY: number; offsetX: number; offsetY: number; active: boolean; carried: boolean };
+type Drag = {
+  container: Container;
+  id: string;
+  quantity: number;
+  startX: number;
+  startY: number;
+  offsetX: number;
+  offsetY: number;
+  active: boolean;
+  carried: boolean;
+};
 /** Menus submit complete inventory operations; simulation remains the owner of transfers. */
 export class AdventureMenus {
   private inventory = document.getElementById('inventory-dialog') as HTMLDialogElement;
@@ -132,12 +151,24 @@ export class AdventureMenus {
   private container(id:string):Container { return this.character?.stash.some(i=>i.id===id) ? 'stash' : 'bag'; }
   private contents(container:Container):InventoryItem[] { return container==='stash' ? this.character!.stash : this.character!.items; }
   private button(entry: InventoryItem): HTMLButtonElement {
-    const button = document.createElement('button'); button.type = 'button'; button.className = 'bag-item'; button.dataset.instance = entry.id;
-    const definition = lootDefinitions[entry.item]; button.setAttribute('aria-label', `${definition.name}${definition.stackable ? `, ${entry.quantity}` : ''}`);
-    button.title = definition.name; button.innerHTML = `${itemIcon(entry.item)}${isEquipmentSlot(entry.slot) ? `<span class="equip-name">${definition.name}</span>` : ''}${definition.stackable ? `<span class="stack-count">${entry.quantity}</span>` : ''}`;
-    button.onclick = () => { this.selected = entry.id; this.refreshSelection(); };
-    button.ondblclick = () => { if(this.stashMode && ['bag','overflow'].includes(entry.slot)){void this.perform(()=>this.context.transfer(entry.id,entry.quantity,this.container(entry.id)==='bag')).catch(this.failed);return;} if (!definition.stackable && entry.slot === 'bag') void this.perform(() => this.context.change(equipInstance(this.character!.items, entry.id, this.destinationSlot(entry),this.viewSet))).catch(this.failed); };
-    button.disabled = this.busy; return button;
+    const button = inventoryItemButton(entry, isEquipmentSlot(entry.slot));
+    const definition = lootDefinitions[entry.item];
+    button.dataset.instance = entry.id;
+    button.onclick = () => {
+      this.selected = entry.id;
+      this.refreshSelection();
+    };
+    button.ondblclick = () => {
+      if (this.stashMode && (entry.slot === 'bag' || entry.slot === 'overflow')) {
+        void this.perform(() => this.context.transfer(entry.id, entry.quantity, this.container(entry.id) === 'bag')).catch(this.failed);
+      } else if (!definition.stackable && entry.slot === 'bag') {
+        void this.perform(() => this.context.change(equipInstance(
+          this.character!.items, entry.id, this.destinationSlot(entry), this.viewSet,
+        ))).catch(this.failed);
+      }
+    };
+    button.disabled = this.busy;
+    return button;
   }
   private refresh(): void {
     const character = this.character; if (!character) return;
@@ -145,11 +176,16 @@ export class AdventureMenus {
     this.characterKey = JSON.stringify({...character,restedSeconds:undefined});
     document.getElementById('stash-section')!.hidden=!this.stashMode;this.inventory.classList.toggle('with-stash',this.stashMode);
     this.stashGrid.querySelectorAll('[data-instance]').forEach(el=>el.remove());
-    for(const entry of character.stash){const button=this.button(entry),definition=lootDefinitions[entry.item];Object.assign(button.style,{gridColumn:`${entry.x+1} / span ${definition.width}`,gridRow:`${entry.y+1} / span ${definition.height}`});this.stashGrid.append(button);}
+    for (const entry of character.stash) {
+      const button = this.button(entry);
+      placeInventoryItem(button, entry);
+      this.stashGrid.append(button);
+    }
     this.grid.querySelectorAll('[data-instance]').forEach(el => el.remove());
     for (const entry of character.items.filter(i => i.slot === 'bag')) {
-      const button = this.button(entry), definition = lootDefinitions[entry.item];
-      Object.assign(button.style, { gridColumn: `${entry.x + 1} / span ${definition.width}`, gridRow: `${entry.y + 1} / span ${definition.height}` }); this.grid.append(button);
+      const button = this.button(entry);
+      placeInventoryItem(button, entry);
+      this.grid.append(button);
     }
     for (const slot of ['main', 'off',...sharedSlots] as const) {
       const host = document.getElementById(`equipment-${slot}`)!; host.replaceChildren();
@@ -164,8 +200,18 @@ export class AdventureMenus {
     document.getElementById('woodcutting-xp')!.textContent = skillProgress(character.xp.woodcutting);
     document.getElementById('axe-combat-xp')!.textContent = `${Math.floor(character.xp.axeCombat)} XP`;
     document.getElementById('mining-xp')!.textContent=skillProgress(character.xp.mining);
-    const materials=document.getElementById('repair-materials')!; materials.replaceChildren(...Object.entries(shelterRecipe).map(([item,cost])=>{const row=document.createElement('div'),name=document.createElement('span'),amount=document.createElement('strong');name.textContent=lootDefinitions[item as 'wood'|'stone'|'iron'].name;const held=countItem(character.items.filter(i=>i.slot==='bag'),item as 'wood'|'stone'|'iron');amount.textContent=`${held} / ${cost}`;row.dataset.ready=String(held>=cost);row.append(name,amount);return row;}));
-    (document.getElementById('shelter-repair') as HTMLButtonElement).disabled=this.busy || character.shelterRestored || !Object.entries(shelterRecipe).every(([item,cost])=>countItem(character.items.filter(i=>i.slot==='bag'),item as 'wood'|'stone'|'iron')>=cost);
+    const materials = document.getElementById('repair-materials')!;
+    materials.replaceChildren(...shelterMaterials(character.items).map(({ item, held, cost }) => {
+      const row = document.createElement('div');
+      const name = document.createElement('span');
+      const amount = document.createElement('strong');
+      name.textContent = lootDefinitions[item].name;
+      amount.textContent = `${held} / ${cost}`;
+      row.dataset.ready = String(held >= cost);
+      row.append(name, amount);
+      return row;
+    }));
+    (document.getElementById('shelter-repair') as HTMLButtonElement).disabled = this.busy || !canRepairShelter(character);
     (document.getElementById('stash-sort') as HTMLButtonElement).disabled=this.busy;
     (document.getElementById('inventory-sort') as HTMLButtonElement).disabled = this.busy;
     const stats=resolveCombatStats(character.items,this.viewSet);
@@ -210,34 +256,80 @@ export class AdventureMenus {
     this.ghost.innerHTML = `${itemIcon(entry.item)}<span class="stack-count">${this.drag!.quantity > 1 ? this.drag!.quantity : ''}</span>`;
     this.ghost.style.width = `${cell * definition.width}px`; this.ghost.style.height = `${cell * definition.height}px`; this.ghost.hidden = false;
   }
-  private targetGrid(x:number,y:number):{grid:HTMLElement;container:Container}|null {
-    for(const [grid,container] of [[this.grid,'bag'],[this.stashGrid,'stash']] as const){if(container==='stash' && !this.stashMode)continue;const r=grid.getBoundingClientRect();if(x>=r.left && x<=r.right && y>=r.top && y<=r.bottom)return {grid,container};}return null;
+  private targetGrid(x: number, y: number): { grid: HTMLElement; container: Container } | null {
+    for (const [grid, container] of [[this.grid, 'bag'], [this.stashGrid, 'stash']] as const) {
+      if (container === 'stash' && !this.stashMode) continue;
+      const rect = grid.getBoundingClientRect();
+      if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) return { grid, container };
+    }
+    return null;
   }
-  private destination(grid:HTMLElement,x:number,y:number):{x:number;y:number} {
-    const rect=grid.getBoundingClientRect(),cell=rect.width/bagWidth;
-    return {x:Math.floor((x-(this.drag?.offsetX??0)-rect.left+cell*.3)/cell),y:Math.floor((y-(this.drag?.offsetY??0)-rect.top+cell*.3)/cell)};
+  private destination(grid: HTMLElement, x: number, y: number): { x: number; y: number } {
+    const rect = grid.getBoundingClientRect();
+    const cell = rect.width / bagWidth;
+    return {
+      x: Math.floor((x - (this.drag?.offsetX ?? 0) - rect.left + cell * .3) / cell),
+      y: Math.floor((y - (this.drag?.offsetY ?? 0) - rect.top + cell * .3) / cell),
+    };
   }
-  private previewPlacement(x:number,y:number):void {
-    const entry=this.entries().find(i=>i.id===this.drag?.id),target=this.targetGrid(x,y);this.marker.hidden=!target;if(!entry || !target)return;
-    const point=this.destination(target.grid,x,y),definition=lootDefinitions[entry.item];target.grid.append(this.marker);
-    Object.assign(this.marker.style,{gridColumn:`${Math.max(0,point.x)+1} / span ${definition.width}`,gridRow:`${Math.max(0,point.y)+1} / span ${definition.height}`});
-    this.marker.hidden=point.x<0 || point.y<0 || point.x+definition.width>bagWidth || point.y+definition.height>bagHeight;
-    try {if(target.container===this.drag!.container)moveItem(this.contents(target.container),entry.id,point.x,point.y,this.drag!.quantity,()=> 'preview');else transferItem(this.contents(this.drag!.container),this.contents(target.container),entry.id,this.drag!.quantity,()=> 'preview',point);this.marker.dataset.valid='true';}catch{this.marker.dataset.valid='false';}
+  private previewPlacement(x: number, y: number): void {
+    const drag = this.drag;
+    if (!drag) return;
+    const entry = this.entries().find(item => item.id === drag.id);
+    const target = this.targetGrid(x, y);
+    this.marker.hidden = !target;
+    if (!entry || !target) return;
+    const point = this.destination(target.grid, x, y);
+    const { width, height } = lootDefinitions[entry.item];
+    target.grid.append(this.marker);
+    Object.assign(this.marker.style, {
+      gridColumn: `${Math.max(0, point.x) + 1} / span ${width}`,
+      gridRow: `${Math.max(0, point.y) + 1} / span ${height}`,
+    });
+    this.marker.hidden = point.x < 0 || point.y < 0 || point.x + width > bagWidth || point.y + height > bagHeight;
+    // Exercise the same candidate builders as a release, without committing or allocating real IDs.
+    try {
+      if (target.container === drag.container) {
+        moveItem(this.contents(target.container), entry.id, point.x, point.y, drag.quantity, () => 'preview');
+      } else {
+        transferItem(this.contents(drag.container), this.contents(target.container), entry.id, drag.quantity, () => 'preview', point);
+      }
+      this.marker.dataset.valid = 'true';
+    } catch {
+      this.marker.dataset.valid = 'false';
+    }
   }
-  private async release(x:number,y:number):Promise<void> {
-    const drag=this.drag;if(!drag)return;const entry=this.entries().find(i=>i.id===drag.id),active=drag.active,target=this.targetGrid(x,y),point=target ? this.destination(target.grid,x,y) : null;
-    this.cancelDrag();if(!active || !entry)return;
-    const panel=this.inventory.getBoundingClientRect();
-    await this.perform(()=>{
-      if(x<panel.left || x>panel.right || y<panel.top || y>panel.bottom){if(drag.container==='stash')throw new Error('Take the item into your bag first.');return this.context.drop(entry.id,drag.quantity);}
-      const slot=document.elementFromPoint(x,y)?.closest<HTMLElement>('[data-equipment-slot]')?.dataset.equipmentSlot;
-      if(slot && isEquipmentSlot(slot)){if(drag.container==='stash')throw new Error('Take the item into your bag first.');return this.context.change(equipInstance(this.character!.items,entry.id,slot,this.viewSet));}
-      if(!target || !point)throw new Error('Item does not fit.');
-      if(target.container!==drag.container)return this.context.transfer(entry.id,drag.quantity,target.container==='stash',point);
-      const next=moveItem(this.contents(drag.container),entry.id,point.x,point.y,drag.quantity,this.context.newId);
-      if(drag.container==='stash')return this.context.changeContainers(this.character!.items,next);
+  private async release(x: number, y: number): Promise<void> {
+    const drag = this.drag;
+    if (!drag) return;
+    const entry = this.entries().find(item => item.id === drag.id);
+    const target = this.targetGrid(x, y);
+    // Capture the destination before cancellation clears the drag's pointer offset.
+    const point = target ? this.destination(target.grid, x, y) : null;
+    this.cancelDrag();
+    if (!drag.active || !entry) return;
+    const panel = this.inventory.getBoundingClientRect();
+    await this.perform(() => {
+      if (x < panel.left || x > panel.right || y < panel.top || y > panel.bottom) {
+        this.requireBag(drag.container);
+        return this.context.drop(entry.id, drag.quantity);
+      }
+      const slot = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-equipment-slot]')?.dataset.equipmentSlot;
+      if (slot && isEquipmentSlot(slot)) {
+        this.requireBag(drag.container);
+        return this.context.change(equipInstance(this.character!.items, entry.id, slot, this.viewSet));
+      }
+      if (!target || !point) throw new Error('Item does not fit.');
+      if (target.container !== drag.container) {
+        return this.context.transfer(entry.id, drag.quantity, target.container === 'stash', point);
+      }
+      const next = moveItem(this.contents(drag.container), entry.id, point.x, point.y, drag.quantity, this.context.newId);
+      if (drag.container === 'stash') return this.context.changeContainers(this.character!.items, next);
       return this.context.change(next);
     });
+  }
+  private requireBag(container: Container): void {
+    if (container === 'stash') throw new Error('Take the item into your bag first.');
   }
   private cancelDrag(): void { this.drag = null; this.ghost.hidden = true; this.marker.hidden = true; this.split.hidden = true; this.splitId = null; }
   private failed = (error: unknown): void => {

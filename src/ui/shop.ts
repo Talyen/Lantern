@@ -1,6 +1,7 @@
 import './shop.css';
 import { bindMenuDismissal } from './menu';
 import { itemIcon } from './item-icons';
+import { inventoryItemButton, placeInventoryItem } from './inventory-item';
 import { renderEquipmentDetails } from './equipment-details';
 import { shopStock, sellPrices } from '../gameplay/economy';
 import { equipmentCatalog, isItemId } from '../gameplay/equipment';
@@ -77,11 +78,8 @@ export class ShopMenu {
     if (this.tab === 'buyback' && !character.buyback.length) { const empty = document.createElement('p'); empty.className = 'shop-empty'; empty.textContent = 'No sold items'; this.offers.append(empty); }
     this.bag.replaceChildren();
     for (const entry of character.items.filter(entry => entry.slot === 'bag')) {
-      const button = document.createElement('button'); button.type = 'button'; button.className = 'bag-item';
-      const definition = lootDefinitions[entry.item]; button.innerHTML = itemIcon(entry.item);
-      button.setAttribute('aria-label', `${definition.name}${definition.stackable ? `, ${entry.quantity}` : ''}`); button.title = definition.name;
-      if (definition.stackable) { const count = document.createElement('span'); count.className = 'stack-count'; count.textContent = String(entry.quantity); button.append(count); }
-      Object.assign(button.style, { gridColumn: `${entry.x + 1} / span ${definition.width}`, gridRow: `${entry.y + 1} / span ${definition.height}` });
+      const button = inventoryItemButton(entry);
+      placeInventoryItem(button, entry);
       button.dataset.selection = JSON.stringify({ kind: 'bag', id: entry.id }); button.onclick = () => this.select({ kind: 'bag', id: entry.id }); this.bag.append(button);
     }
     this.refreshSelection();
