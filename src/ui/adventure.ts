@@ -88,7 +88,7 @@ export class AdventureMenus {
   private button(entry: InventoryItem): HTMLButtonElement {
     const button = document.createElement('button'); button.type = 'button'; button.className = 'bag-item'; button.dataset.instance = entry.id;
     const definition = lootDefinitions[entry.item]; button.setAttribute('aria-label', `${definition.name}${definition.stackable ? `, ${entry.quantity}` : ''}`);
-    button.title = definition.name; button.innerHTML = `${itemIcon(entry.item)}${definition.stackable ? `<span class="stack-count">${entry.quantity}</span>` : ''}`;
+    button.title = definition.name; button.innerHTML = `${itemIcon(entry.item)}${entry.slot === 'main' || entry.slot === 'off' ? `<span class="equip-name">${definition.name}</span>` : ''}${definition.stackable ? `<span class="stack-count">${entry.quantity}</span>` : ''}`;
     button.onclick = () => { this.selected = entry.id; this.refreshSelection(); };
     button.ondblclick = () => { if (!definition.stackable && entry.slot === 'bag') void this.perform(() => this.context.change(equipInstance(this.character!.items, entry.id, entry.item === 'shield' ? 'off' : 'main'))); };
     button.disabled = this.busy; return button;

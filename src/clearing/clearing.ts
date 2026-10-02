@@ -130,7 +130,10 @@ const menus = new AdventureMenus(clearInput, () => renderer.domElement.focus(), 
   recover: id => { adventure.recoverItem(id); menus.updateCharacter(adventure.character); },
   drop: async (id, quantity) => {
     const entry = adventure.character.items.find(i => i.id === id); if (!entry) throw new Error('Item is no longer available.');
-    if (entry.item === 'scroll' && adventure.castRemaining > 0 && adventure.character.scrolls - quantity < 1) throw new Error('Scroll is in use.');
+    if (entry.slot === 'bag' || entry.slot === 'overflow') {
+      adventure.dropItem(id, quantity, [encounter.player.x, encounter.player.z]);
+      menus.updateCharacter(adventure.character); syncAdventure(); return;
+    }
     const next = removeQuantity(adventure.character.items, id, quantity);
     await changeInventory(next);
     adventure.spawnDrop(entry.item, quantity, [encounter.player.x, encounter.player.z], { blocked: lootDefinitions[entry.item].stackable, instanceId: lootDefinitions[entry.item].stackable ? undefined : entry.id });

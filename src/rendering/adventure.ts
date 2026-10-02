@@ -73,11 +73,21 @@ export class AdventureVisuals {
     } catch { instance?.release(); /* The name and category silhouette remain available. */ }
   }
   pick(ray: THREE.Raycaster): string | null {
-    for (const hit of ray.intersectObjects([...this.drops.values()].map(v => v.root), true)) {
+    const roots = [...this.drops.values()].map(v => v.root);
+    for (const hit of ray.intersectObjects(roots, true)) {
       let object: THREE.Object3D | null = hit.object;
       while (object) { if (object.userData.dropId) return object.userData.dropId; object = object.parent; }
     }
-    return null;
+    // Thin blades and rolled papers need a little click tolerance at gameplay scale.
+    const bounds = new THREE.Box3(), point = new THREE.Vector3();
+    let selected: string | null = null, distance = Infinity;
+    for (const root of roots) {
+      bounds.setFromObject(root).expandByScalar(.1);
+      if (!ray.ray.intersectBox(bounds, point)) continue;
+      const next = ray.ray.origin.distanceToSquared(point);
+      if (next < distance) { distance = next; selected = root.userData.dropId; }
+    }
+    return selected;
   }
   update(dt: number): void { this.portal?.update(dt); }
   dispose(): void {
