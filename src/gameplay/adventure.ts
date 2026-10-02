@@ -11,10 +11,10 @@ import { createEncounter, type Encounter, type EnemyId } from './encounter';
 import { near, type Point, type Spawn } from './area';
 import type { AreaDefinition, Campfire, Chest } from '../levels/types';
 import { isEquipmentSlot } from './equipment';
-import { character, type CharacterSave } from './character-save';
+import { character, type CharacterSave } from './character';
 import { CharacterPersistence, type StorageSource } from './character-persistence';
 export { characterSaveKey } from './character-save';
-export type { CharacterSave } from './character-save';
+export type { CharacterSave } from './character';
 import { lootDefinitions, receive, transferItem, stackLimit, type InventoryItem, type LootItem } from './inventory';
 
 import { progression, progressMultiplier, type Skill, type GatheringSkill } from './skills';

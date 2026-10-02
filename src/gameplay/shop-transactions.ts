@@ -1,4 +1,4 @@
-import type { CharacterSave } from './character-save';
+import type { CharacterSave } from './character';
 import { buybackLimit, sellPrices, shopStock } from './economy';
 import { isItemId } from './equipment';
 import { receive, type LootItem } from './inventory';

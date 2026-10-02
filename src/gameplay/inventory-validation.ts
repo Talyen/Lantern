@@ -1,3 +1,4 @@
+import { isRecord } from '../data/json';
 import { isEquipmentSlot, isItemId, slotAccepts, supportsShield } from './equipment';
 import { lootDefinitions, lootIds, stackLimit, type InventoryItem } from './inventory-catalog';
 import { itemLoadout } from './inventory-equipment';
@@ -5,8 +6,8 @@ import { fits } from './inventory-placement';
 
 /** Validate each untrusted entry before checking relationships between entries. */
 function validItem(value: unknown): value is InventoryItem {
-  if (typeof value !== 'object' || value === null) return false;
-  const entry = value as Record<string, unknown>;
+  if (!isRecord(value)) return false;
+  const entry = value;
   if (typeof entry.id !== 'string' || !entry.id) return false;
   const item = lootIds.find((id) => id === entry.item);
   if (!item) return false;
@@ -61,4 +62,11 @@ export function validItems(value: unknown): value is InventoryItem[] {
     const loadout = itemLoadout(items, set);
     return !loadout.off || supportsShield(loadout.main);
   });
+}
+
+/** Stash entries must fit the bag and cannot reuse a carried item's identity. */
+export function validStash(value: unknown, carried: readonly InventoryItem[]): value is InventoryItem[] {
+  if (!validItems(value) || value.some(entry => entry.slot !== 'bag')) return false;
+  const carriedIds = new Set(carried.map(entry => entry.id));
+  return value.every(entry => !carriedIds.has(entry.id));
 }

@@ -1,4 +1,4 @@
-import type { CharacterSave } from '../gameplay/character-save';
+import type { CharacterSave } from '../gameplay/character';
 import type { WeaponSet } from '../gameplay/abilities';
 import { resolveCombatStats, type CombatStats } from '../gameplay/combat-stats';
 import { equipmentCatalog, isItemId, isWeaponItem, supportsShield, type Bonuses, type EquipmentSlot } from '../gameplay/equipment';

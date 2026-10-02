@@ -1,5 +1,5 @@
-import type { CharacterSave } from './character-save';
-import { countItem, validItems, type InventoryItem } from './inventory';
+import type { CharacterSave } from './character';
+import { countItem, validItems, validStash, type InventoryItem } from './inventory';
 import { progression, shelterRecipe } from './skills';
 
 type ShelterState = Pick<CharacterSave, 'items' | 'shelterRestored'>;
@@ -40,8 +40,7 @@ export function restoredShelter(state: ShelterState): Pick<CharacterSave, 'items
 
 /** Validate both containers together, including identities shared across them. */
 export function validatedContainers(items: InventoryItem[], stash: InventoryItem[]): Containers {
-  if (!validItems(items) || !validItems(stash) || stash.some(entry => entry.slot !== 'bag')
-    || new Set([...items, ...stash].map(entry => entry.id)).size !== items.length + stash.length)
+  if (!validItems(items) || !validStash(stash, items))
     throw new Error('Item does not fit.');
   return { items, stash };
 }

@@ -1,5 +1,5 @@
 import { abilities, abilityIds, abilitySet, type AbilityId, type ActionBar } from '../gameplay/abilities';
-import type { CharacterSave } from '../gameplay/character-save';
+import type { CharacterSave } from '../gameplay/character';
 import type { Encounter } from '../gameplay/encounter';
 import { bindingLabel, actionSlotInputs, type InputPreferences } from '../input/bindings';
 import { abilityIcon } from './ability-icons';

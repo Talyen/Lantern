@@ -6,7 +6,7 @@ import { renderEquipmentDetails } from './equipment-details';
 import { shopStock, sellPrices } from '../gameplay/economy';
 import { equipmentCatalog, isItemId } from '../gameplay/equipment';
 import { lootDefinitions, type InventoryItem, type LootItem } from '../gameplay/inventory';
-import type { CharacterSave } from '../gameplay/character-save';
+import type { CharacterSave } from '../gameplay/character';
 
 type Selection = { kind: 'stock'; item: LootItem } | { kind: 'bag' | 'buyback'; id: string };
 type ShopContext = { buy(item: LootItem): void; sell(id: string): void; buyBack(id: string): void; clear(): void; focus(): void; sound(cue: 'menuOpen' | 'menuClose'): void };

@@ -1,10 +1,9 @@
+import { character, type CharacterSave } from './character';
 import { RetryTimer, storageRetryDelays } from '../data/retry';
 import {
-  character,
   characterBackupKey,
   characterSaveKey,
   decodeCharacter,
-  type CharacterSave,
 } from './character-save';
 
 export type Storage = Pick<globalThis.Storage, 'getItem' | 'setItem'>;

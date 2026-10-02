@@ -1,6 +1,6 @@
 import { near, type Point } from './area';
 import type { ItemId } from './equipment';
-import type { CharacterSave } from './character-save';
+import type { CharacterSave } from './character';
 import { lootDefinitions, receive, type LootItem } from './inventory';
 import type { GatheringSkill } from './skills';
 

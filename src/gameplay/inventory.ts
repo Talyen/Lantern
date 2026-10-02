@@ -8,7 +8,7 @@ import { fits, emptyPosition } from './inventory-placement';
 export { bagWidth, bagHeight, stackLimit, lootDefinitions, lootIds, type InventoryItem, type LootItem } from './inventory-catalog';
 export { sameEquipment, itemLoadout } from './inventory-equipment';
 export { fits, emptyPosition } from './inventory-placement';
-export { validItems } from './inventory-validation';
+export { validItems, validStash } from './inventory-validation';
 
 export const countItem = (items: readonly InventoryItem[], item: LootItem) =>
   items.reduce((sum, entry) => sum + (entry.item === item ? entry.quantity : 0), 0);

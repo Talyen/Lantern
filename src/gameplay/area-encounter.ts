@@ -1,5 +1,5 @@
 import { applyEquipment, createEncounter, type Encounter } from './encounter';
-import type { CharacterSave } from './character-save';
+import type { CharacterSave } from './character';
 import type { Spawn } from './area';
 import type { AreaDefinition } from '../levels/types';
 

@@ -1,6 +1,6 @@
 import { renderEquipmentDetails, statLabel, statValue } from './equipment-details';
 import { bindMenuDismissal } from './menu';
-import type { CharacterSave } from '../gameplay/character-save';
+import type { CharacterSave } from '../gameplay/character';
 import { bagWidth, bagHeight, stackLimit, emptyPosition, equipInstance, lootDefinitions, moveItem, sortedItems, transferItem, itemLoadout, type InventoryItem } from '../gameplay/inventory';
 import { progression, skillProgress } from '../gameplay/skills';
 import { canRepairShelter, shelterMaterials } from '../gameplay/homestead-transactions';

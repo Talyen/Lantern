@@ -1,11 +1,11 @@
 import { isRecord, parseJson } from '../data/json';
-import { initialBar, validBar, type ActionBar, type WeaponSet } from './abilities';
-import { isItemId, isWeaponItem, normalizeLoadout, weaponFamily, type ItemId, type Loadout } from './equipment';
+import { validBar } from './abilities';
+import { character, type CharacterSave } from './character';
+import { isItemId, isWeaponItem, normalizeLoadout, type ItemId, type Loadout } from './equipment';
 import {
-  countItem,
-  itemLoadout,
   receive,
   validItems,
+  validStash,
   stackLimit,
   type InventoryItem,
   type LootItem,
@@ -15,70 +15,6 @@ import { progression } from './skills';
 
 export const characterSaveKey = 'lantern.character.v1';
 export const characterBackupKey = `${characterSaveKey}.backup`;
-export type CharacterSave = {
-  version: 7;
-  gold: number;
-  buyback: BuybackEntry[];
-  activeSet: WeaponSet;
-  actionBar: ActionBar;
-  items: InventoryItem[];
-  stash: InventoryItem[];
-  shelterRestored: boolean;
-  restedSeconds: number;
-  campfires: string[];
-  xp: { woodcutting: number; mining: number; axeCombat: number };
-  campClaims: ItemId[];
-  readonly scrolls: number;
-  readonly potions: number;
-  readonly wood: number;
-  readonly equipment: ItemId[];
-  readonly loadout: Loadout;
-};
-export function character(
-  items: InventoryItem[] = [
-    { id: 'item-1', item: 'axe', quantity: 1, slot: 'main', x: 0, y: 0 },
-    { id: 'item-2', item: 'scroll', quantity: 3, slot: 'bag', x: 0, y: 0 },
-    { id: 'item-3', item: 'potion', quantity: 3, slot: 'bag', x: 1, y: 0 },
-  ],
-): CharacterSave {
-  const value = {
-    version: 7 as const,
-    gold: 0,
-    buyback: [] as BuybackEntry[],
-    activeSet: 0 as WeaponSet,
-    actionBar: initialBar(weaponFamily(itemLoadout(items).main)),
-    items,
-    stash: [] as InventoryItem[],
-    shelterRestored: false,
-    restedSeconds: 0,
-    campfires: ['homestead/camp'],
-    xp: { woodcutting: 0, mining: 0, axeCombat: 0 },
-    campClaims: [] as ItemId[],
-  };
-  return Object.defineProperties(value, {
-    scrolls: {
-      get: () =>
-        countItem(
-          value.items.filter((i) => i.slot !== 'overflow'),
-          'scroll',
-        ),
-    },
-    potions: {
-      get: () =>
-        countItem(
-          value.items.filter((i) => i.slot !== 'overflow'),
-          'potion',
-        ),
-    },
-    wood: { get: () => countItem(value.items, 'wood') },
-    equipment: {
-      get: () =>
-        value.items.map(entry => entry.item).filter(isItemId),
-    },
-    loadout: { get: () => itemLoadout(value.items, value.activeSet) },
-  }) as CharacterSave;
-}
-
 type SavedFields = Record<string, unknown>;
 
 function counter(n: unknown): n is number {
@@ -126,10 +62,7 @@ function restoreInventory(value: SavedFields, xp: SavedFields, hasHome: boolean,
 }
 
 function restoreHomestead(value: SavedFields, xp: SavedFields, result: CharacterSave): void {
-  if (!validItems(value.stash) || value.stash.some(i => i.slot !== 'bag'))
-    throw new Error('Invalid Homestead save');
-  const storedItems = [...result.items, ...value.stash];
-  if (new Set(storedItems.map(i => i.id)).size !== storedItems.length)
+  if (!validStash(value.stash, result.items))
     throw new Error('Invalid Homestead save');
   if (typeof value.shelterRestored !== 'boolean' || !counter(value.restedSeconds)
     || value.restedSeconds > progression.restedSeconds || !counter(xp.mining)
