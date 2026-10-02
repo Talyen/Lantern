@@ -1,4 +1,4 @@
-import { sceneTextures, isMesh, isTexture } from '../assets/resource-ownership';
+import { disposeSceneResources, sceneTextures, isMesh } from '../assets/resource-ownership';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { resolveLocalLight } from '../levels/local-lighting';
@@ -51,9 +51,10 @@ export class PlayerLantern {
   setEnabled(value: boolean): void { this.root.visible = value; }
   diagnostics() { return { enabled: this.root.visible, model: !!this.model, position: this.light.getWorldPosition(new THREE.Vector3()).toArray(), intensity: this.light.intensity, distance: this.light.distance, ownerBounce: { intensity: this.ownerBounce.intensity, distance: this.ownerBounce.distance }, attachedToRig: this.root.parent?.name === 'Hips' }; }
   private disposeModel(): void {
-    const geometries = new Set<THREE.BufferGeometry>(), materials = new Set<THREE.Material>(), textures = new Set<THREE.Texture>();
-    this.model?.traverse(object => { if (isMesh(object)) { geometries.add(object.geometry); for (const material of Array.isArray(object.material) ? object.material : [object.material]) { materials.add(material); for (const value of Object.values(material)) if (isTexture(value)) textures.add(value); } } });
-    textures.forEach(texture => texture.dispose()); materials.forEach(material => material.dispose()); geometries.forEach(geometry => geometry.dispose()); this.model = null;
+    if (!this.model) return;
+    this.model.removeFromParent();
+    disposeSceneResources(this.model);
+    this.model = null;
   }
   dispose(): void { this.disposed = true; this.root.removeFromParent(); this.light.dispose(); this.ownerBounce.dispose(); this.disposeModel(); }
 }

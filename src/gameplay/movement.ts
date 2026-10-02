@@ -28,6 +28,9 @@ export class MovementWorld implements Movement {
   private readonly controller = this.world.createCharacterController(.015);
   private readonly actors = { player: this.world.createCollider(RAPIER.ColliderDesc.capsule(halfHeight, radius).setSensor(true)), enemy: this.world.createCollider(RAPIER.ColliderDesc.capsule(halfHeight, radius).setSensor(true)), caster: this.world.createCollider(RAPIER.ColliderDesc.capsule(halfHeight, radius).setSensor(true)) };
   private readonly solid = new Set<number>();
+  // Ground surfaces remain eligible for loot; active obstacle proxies do not.
+  private readonly blockingObstacles = new Set<number>();
+  private readonly isSolid = (collider: RAPIER.Collider): boolean => this.solid.has(collider.handle);
   private nav!: NavMesh;
   private readonly baseSurfaces: Surface[];
   private readonly obstacles = new Map<string, { definition: Obstacle; collider: RAPIER.Collider; felled: boolean }>();
@@ -53,16 +56,21 @@ export class MovementWorld implements Movement {
     }
     for (const obstacle of traversal.obstacles) {
       const collider = this.world.createCollider(RAPIER.ColliderDesc.cuboid(...obstacle.size.map(v => v / 2) as [number, number, number]).setTranslation(...obstacle.position).setRotation({ x: 0, y: Math.sin(obstacle.yaw / 2), z: 0, w: Math.cos(obstacle.yaw / 2) }));
-      this.solid.add(collider.handle); this.obstacles.set(obstacle.id, { definition: obstacle, collider, felled: false });
+      this.solid.add(collider.handle); this.blockingObstacles.add(collider.handle); this.obstacles.set(obstacle.id, { definition: obstacle, collider, felled: false });
     }
     this.rebuildNavigation();
     this.world.step();
     this.generationMs = performance.now() - started;
   }
   private navigationGeometry(): NavigationGeometry {
-    const surfaces = [...this.baseSurfaces, ...[...this.obstacles.values()].filter(o => !o.felled).map(o => box(o.definition))];
     const positions: number[] = [], indices: number[] = [];
-    for (const surface of surfaces) { const offset = positions.length / 3; positions.push(...surface.positions); indices.push(...surface.indices.map(i => i + offset)); }
+    const append = (surface: Surface): void => {
+      const offset = positions.length / 3;
+      for (const position of surface.positions) positions.push(position);
+      for (const index of surface.indices) indices.push(index + offset);
+    };
+    for (const surface of this.baseSurfaces) append(surface);
+    for (const obstacle of this.obstacles.values()) if (!obstacle.felled) append(box(obstacle.definition));
     return { positions, indices };
   }
   private rebuildNavigation(background = false): void {
@@ -96,14 +104,15 @@ export class MovementWorld implements Movement {
     const obstacle = this.obstacles.get(id);
     if (this.disposed || !obstacle?.definition.tree || obstacle.felled === felled) return;
     obstacle.felled = felled; obstacle.collider.setEnabled(!felled);
-    if (felled) this.solid.delete(obstacle.collider.handle); else this.solid.add(obstacle.collider.handle);
+    if (felled) { this.solid.delete(obstacle.collider.handle); this.blockingObstacles.delete(obstacle.collider.handle); }
+    else { this.solid.add(obstacle.collider.handle); this.blockingObstacles.add(obstacle.collider.handle); }
     this.world.step(); this.rebuildNavigation(true);
   }
   move(id: ActorId, actor: ActorState, dx: number, dz: number, dt: number): void {
     if (this.disposed) return;
     const collider = this.actors[id];
     collider.setTranslation({ x: actor.x, y: actor.y + centerHeight, z: actor.z });
-    this.controller.computeColliderMovement(collider, { x: dx, y: -Math.max(.03, 9.81 * dt * dt), z: dz }, undefined, undefined, c => this.solid.has(c.handle));
+    this.controller.computeColliderMovement(collider, { x: dx, y: -Math.max(.03, 9.81 * dt * dt), z: dz }, undefined, undefined, this.isSolid);
     const delta = this.controller.computedMovement();
     [actor.x, actor.z] = constrain(this.boundary, [actor.x + delta.x, actor.z + delta.z]);
     actor.y = Math.max(0, actor.y + delta.y);
@@ -158,8 +167,8 @@ export class MovementWorld implements Movement {
     for (let attempt = 0; attempt < 24; attempt++) {
       const angle = index * 2.4 + attempt * 2.4, distance = .65 + (attempt % 4) * .25;
       const point = constrain(this.boundary, [origin[0] + Math.cos(angle) * distance, origin[1] + Math.sin(angle) * distance]);
-      const hit = this.world.castRay(new RAPIER.Ray({ x: point[0], y: player.y + 12, z: point[1] }, { x: 0, y: -1, z: 0 }), 30, true, undefined, undefined, undefined, undefined, c => this.solid.has(c.handle));
-      if (!hit || [...this.obstacles.values()].some(o => !o.felled && o.collider.handle === hit.collider.handle)) continue;
+      const hit = this.world.castRay(new RAPIER.Ray({ x: point[0], y: player.y + 12, z: point[1] }, { x: 0, y: -1, z: 0 }), 30, true, undefined, undefined, undefined, undefined, this.isSolid);
+      if (!hit || this.blockingObstacles.has(hit.collider.handle)) continue;
       const height = Math.max(0, player.y + 12 - hit.timeOfImpact);
       if (this.pickupPath(player, point, height)) return { position: point, height };
     }
@@ -175,14 +184,14 @@ export class MovementWorld implements Movement {
   lineOfSight(from: ActorState, to: ActorState): boolean {
     const dx = to.x - from.x, dy = to.y - from.y, dz = to.z - from.z, length = Math.hypot(dx, dy, dz);
     if (length < .001) return true;
-    return !this.world.castRay(new RAPIER.Ray({ x: from.x, y: from.y + .9, z: from.z }, { x: dx / length, y: dy / length, z: dz / length }), length, true, undefined, undefined, undefined, undefined, c => this.solid.has(c.handle));
+    return !this.world.castRay(new RAPIER.Ray({ x: from.x, y: from.y + .9, z: from.z }, { x: dx / length, y: dy / length, z: dz / length }), length, true, undefined, undefined, undefined, undefined, this.isSolid);
   }
   /** Earliest solid intersection along the exact projectile segment, expressed as 0–1 travel. */
   segmentHit(from: { x: number; y: number; z: number }, to: { x: number; y: number; z: number }): number | null {
     if (this.disposed) return null;
     const dx = to.x - from.x, dy = to.y - from.y, dz = to.z - from.z, length = Math.hypot(dx, dy, dz);
     if (length < .000001) return null;
-    const hit = this.world.castRay(new RAPIER.Ray(from, { x: dx / length, y: dy / length, z: dz / length }), length, true, undefined, undefined, undefined, undefined, c => this.solid.has(c.handle));
+    const hit = this.world.castRay(new RAPIER.Ray(from, { x: dx / length, y: dy / length, z: dz / length }), length, true, undefined, undefined, undefined, undefined, this.isSolid);
     return hit ? hit.timeOfImpact / length : null;
   }
   get navigationReady(): boolean { return !this.navigationPending && !this.disposed; }
