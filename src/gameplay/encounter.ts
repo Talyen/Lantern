@@ -46,7 +46,7 @@ export function createEncounter(phase: Phase = 'loading', layout: EncounterLayou
         home, engaged: false, returning: false, cooldown: .8 + (layout.enemies ? index * .18 : 0) }];
   }));
   const stats = resolveCombatStats([{ id: 'starter', item: 'axe', quantity: 1, slot: 'main', x: 0, y: 0 }]);
-  return { stats, setStats: [stats, resolveCombatStats([])], weapon: 'axe', shield: false, blocking: false, pending: null, projectiles: [], nextProjectile: 0, phase, layout, player, enemyIds, enemies,
+  return { stats, setStats: [stats, resolveCombatStats([])], weapon: 'axe', shield: false, blocking: false, blockFrameOffset: 0, pending: null, projectiles: [], nextProjectile: 0, phase, layout, player, enemyIds, enemies,
     attackCooldown: 0, invulnerability: 0, playerMana: playerMaxMana,
     weaponSets: [{ main: 'axe', off: null }, { main: null, off: null }], activeSet: 0, abilityCooldowns: {}, potionCooldown: 0, playerAction: null,
     dodgeRemaining: 0, dodgeCooldown: 0, dodgeFrameOffset: 0, invulnerabilityBeforeDodge: 0, dodgeDirection: { x: 0, z: 0 } };
@@ -65,7 +65,7 @@ export function resetEncounter(state: Encounter): EncounterEvent[] {
 /** Contacts compare immunity against their offset before the frame consumes its clock. */
 function finishPlayerFrame(state: Encounter, dt: number, events: EncounterEvent[]): EncounterEvent[] {
   state.invulnerability = Math.max(0, state.invulnerability - dt);
-  state.dodgeFrameOffset = state.invulnerabilityBeforeDodge = 0;
+  state.dodgeFrameOffset = state.invulnerabilityBeforeDodge = state.blockFrameOffset = 0;
   return events;
 }
 

@@ -31,6 +31,9 @@ export class KeybindingsMenu {
     this.status.className = 'bindings-status';
     this.status.setAttribute('role', 'status');
     const footer = document.createElement('footer'), reset = document.createElement('button'), cancel = document.createElement('button');
+    reset.dataset.captureControl = 'true';
+    cancel.dataset.captureControl = 'true';
+    this.dialog.querySelector<HTMLButtonElement>('[data-close]')!.dataset.captureControl = 'true';
     reset.textContent = 'Restore defaults';
     reset.onclick = () => {
       this.capture = null;
@@ -49,6 +52,7 @@ export class KeybindingsMenu {
     bindMenuDismissal(this.dialog, () => this.close());
     window.addEventListener('keydown', event => {
       if (!this.dialog.open || !this.capture) return;
+      if (event.target instanceof Element && event.target.closest('[data-capture-control]') && ['Enter', ' '].includes(event.key)) return;
       event.preventDefault();
       event.stopImmediatePropagation();
       if (event.key === 'Escape') {
@@ -161,6 +165,7 @@ export class KeybindingsMenu {
           button.onclick = () => { this.capture = { action, index }; this.conflict = null; this.render(); };
           const clear = document.createElement('button');
           clear.type = 'button';
+          clear.dataset.captureControl = 'true';
           clear.textContent = '×';
           clear.className = 'clear-binding';
           clear.setAttribute('aria-label', `Clear ${actionNames[action]} ${index === 0 ? 'Primary' : 'Secondary'}`);

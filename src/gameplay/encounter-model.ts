@@ -83,6 +83,7 @@ export type Encounter = {
   weapon: Weapon | null;
   shield: boolean;
   blocking: boolean;
+  blockFrameOffset: number;
   pending: PendingInput | null;
   projectiles: Projectile[];
   nextProjectile: number;

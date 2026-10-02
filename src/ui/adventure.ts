@@ -70,7 +70,7 @@ export class AdventureMenus {
     document.getElementById('split-cancel')!.onclick = () => { this.split.hidden = true; this.splitId = null; };
     document.getElementById('split-confirm')!.onclick = () => {
       const entry = this.entries().find(i => i.id === this.splitId), input = document.getElementById('split-amount') as HTMLInputElement, quantity = Number(input.value);
-      if (!entry || !Number.isSafeInteger(quantity) || quantity < 1 || quantity >= entry.quantity) { input.reportValidity(); return; }
+      if (!entry || !Number.isSafeInteger(quantity) || quantity < 1 || quantity > stackLimit || quantity >= entry.quantity) { input.reportValidity(); return; }
       this.split.hidden = true; this.splitId = null;
       const rect = (this.container(entry.id)==='stash' ? this.stashGrid : this.grid).getBoundingClientRect();
       this.drag = { container:this.container(entry.id), id: entry.id, quantity, startX: rect.left, startY: rect.top, offsetX: 0, offsetY: 0, active: true, carried: true };

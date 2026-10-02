@@ -142,9 +142,9 @@ function advancePlayerClocks(state: Encounter, dt: number): void {
 
 export function movePlayer(state: Encounter, dt: number, input: Input, movementWorld?: Movement): EncounterEvent[] {
   const player = state.player, events: EncounterEvent[] = [];
-  const move = (x: number, z: number) => {
+  const move = (x: number, z: number, elapsed = dt) => {
     if (movementWorld)
-      movementWorld.move('player', player, x, z, dt);
+      movementWorld.move('player', player, x, z, elapsed);
     else {
       player.x += x;
       player.z += z;
@@ -153,10 +153,12 @@ export function movePlayer(state: Encounter, dt: number, input: Input, movementW
   };
   if (state.dodgeRemaining > 0) {
     const elapsed = Math.min(dt, state.dodgeRemaining);
-    move(state.dodgeDirection.x * elapsed * dodgeDistance / dodgeDuration, state.dodgeDirection.z * elapsed * dodgeDistance / dodgeDuration);
+    move(state.dodgeDirection.x * elapsed * dodgeDistance / dodgeDuration, state.dodgeDirection.z * elapsed * dodgeDistance / dodgeDuration, elapsed);
     state.dodgeRemaining = Math.max(0, state.dodgeRemaining - dt);
-    if (state.dodgeRemaining === 0)
+    if (state.dodgeRemaining === 0) {
       events.push({ type: 'animation', actor: 'player', motion: 'idle' }, { type: 'action', actor: 'player', action: 'land', weapon: state.weapon });
+      if (dt - elapsed > 1e-6 && Math.hypot(input.x, input.z) > 0) events.push(...movePlayer(state, dt - elapsed, input, movementWorld));
+    }
     return events;
   }
   const length = Math.hypot(input.x, input.z);
@@ -185,6 +187,8 @@ export function preparePlayer(state: Encounter, dt: number, input: Input, timing
   movementElapsed: number;
 } {
   const pending = state.pending;
+  // A held shield cannot protect contacts that precede recovery in this frame.
+  state.blockFrameOffset = state.blocking ? 0 : Math.min(dt, Math.max(state.player.lock, state.dodgeRemaining));
   const cooldown = () => pending?.kind === 'dodge' ? state.dodgeCooldown : Math.max(state.attackCooldown, pending?.kind === 'ability' ? state.abilityCooldowns[pending.ability] ?? 0 : 0);
   const availableAfter = pending ? Math.max(state.player.lock, state.dodgeRemaining, cooldown()) : 0;
   const manaAtUnlock = Math.min(state.stats.maxMana, state.playerMana + Math.min(dt, availableAfter) * state.stats.manaRegen);

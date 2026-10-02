@@ -13,7 +13,7 @@ export function hit(state: Encounter, actor: ActorId, timing: Timings, events: E
   const target = actor === 'player' ? state.player : state.enemies[actor];
   let damage = actor !== 'player' ? rawDamage : armoredDamage(rawDamage, state.stats.armor);
   let blocked = false;
-  if (actor === 'player' && state.blocking) {
+  if (actor === 'player' && state.blocking && impactOffset >= state.blockFrameOffset) {
     // Projectiles are blocked by their incoming direction, even if the caster has moved.
     const dx = incoming?.x ?? 0, dz = incoming?.z ?? 0, distance = Math.hypot(dx, dz);
     if (distance && (Math.sin(target.yaw) * dx + Math.cos(target.yaw) * dz) / distance >= .5) {

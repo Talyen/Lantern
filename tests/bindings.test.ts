@@ -19,6 +19,11 @@ test('conflicting inputs and missing movement directions cannot replace usable p
   expect(corrupt.value).toEqual(defaultBindings());expect(corrupt.diagnostics().error).toMatch('Invalid bindings');
 });
 
+test('code-less shifted number keys retain their digit bindings', () => {
+  for (const [digit, key] of Array.from(')!@#$%^&*(').entries())
+    expect(keyboardInput({ code: '', key, location: 0 })).toBe(`key:Digit${digit}`);
+});
+
 test('code-less held inputs resolve consistently while physical codes take precedence',()=>{expect(keyboardInput({code:'',key:'r',location:0})).toBe('key:KeyR');expect(keyboardInput({code:'KeyW',key:'z',location:0})).toBe('key:KeyW');expect(keyboardInput({code:'',key:'Shift',location:2})).toBe('key:ShiftRight');});
 
 test('code-less punctuation and numpad inputs retain their remappable physical binding', () => {
