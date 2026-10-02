@@ -1,4 +1,4 @@
-import {expect,test} from 'vitest';
+import {expect,test,vi} from 'vitest';
 import {keyboardInput,InputPreferences,bindingConflict,bindingLabel,bindingKey,defaultBindings,inputFor,validBindings} from '../src/input/bindings';
 
 test('a saved mouse movement binding and secondary keyboard binding both resolve to the same action',()=>{
@@ -15,12 +15,20 @@ test('conflicting inputs and missing movement directions cannot replace usable p
   draft.slot0[0]='key:KeyW';expect(preferences.save(draft)).toBe(false);expect(preferences.value).toEqual(defaultBindings());
   const missing=defaultBindings();missing.moveUp=[null,null];expect(validBindings(missing)).toBe(false);
   const corrupt=new InputPreferences({getItem:key=>key===bindingKey ? JSON.stringify(missing) : null,setItem:()=>{}});
-  expect(corrupt.value).toEqual(defaultBindings());expect(corrupt.error).toMatch('Defaults');
-});
-
-test('failed Apply retains the working input profile instead of changing only its in-memory copy',()=>{
-  const preferences=new InputPreferences({getItem:()=>null,setItem:()=>{throw Error('storage full');}}),draft=defaultBindings();draft.slot0[0]='key:KeyH';
-  expect(preferences.save(draft)).toBe(false);expect(preferences.value.slot0[0]).toBe('key:KeyQ');expect(preferences.error).toMatch('Unable to save');
+  expect(corrupt.value).toEqual(defaultBindings());expect(corrupt.diagnostics().error).toMatch('Invalid bindings');
 });
 
 test('code-less held inputs resolve consistently while physical codes take precedence',()=>{expect(keyboardInput({code:'',key:'r',location:0})).toBe('key:KeyR');expect(keyboardInput({code:'KeyW',key:'z',location:0})).toBe('key:KeyW');expect(keyboardInput({code:'',key:'Shift',location:2})).toBe('key:ShiftRight');});
+
+
+test('keybinding changes apply immediately and retry storage silently without keeping Apply open',async()=>{
+  vi.useFakeTimers();
+  try {
+    let failing=true, saved='';
+    const preferences=new InputPreferences({getItem:()=>null,setItem:(_key,value)=>{if(failing)throw Error('full');saved=value;}});
+    const draft=defaultBindings();draft.moveUp=['mouse:3','key:KeyI'];draft.slot3=['key:KeyW',null];
+    expect(preferences.save(draft)).toBe(true);expect(preferences.value).toEqual(draft);expect(preferences.diagnostics().pending).toBe(true);
+    failing=false;await vi.advanceTimersByTimeAsync(1000);expect(JSON.parse(saved)).toEqual(draft);expect(preferences.diagnostics().pending).toBe(false);
+    preferences.close();expect(vi.getTimerCount()).toBe(0);
+  } finally {vi.useRealTimers();}
+});

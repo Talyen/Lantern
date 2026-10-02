@@ -42,18 +42,39 @@ export function inputFor(bindings: Bindings, binding: string): InputAction | und
 export function bindingConflict(bindings: Bindings, binding: string, action: InputAction, index: number): {action:InputAction;index:number} | undefined {
   for (const other of inputActions) for (const [i,value] of bindings[other].entries()) if (value===binding && (other!==action || i!==index)) return {action:other,index:i};
 }
+type BindingStorage = Pick<Storage,'getItem'|'setItem'>;
 export class InputPreferences {
-  value=defaultBindings(); error='';
-  constructor(private storage?: Pick<Storage,'getItem'|'setItem'>) {
-    if (!storage) return;
-    try { const raw=storage.getItem(bindingKey); if (!raw) return; const saved=JSON.parse(raw); if (!validBindings(saved)) throw new Error('Invalid bindings'); this.value=saved; }
-    catch { this.error='Unable to load keybindings. Defaults are active.'; }
+  value = defaultBindings();
+  private error = '';
+  private pending = false;
+  private timer?: ReturnType<typeof setTimeout>;
+  private failures = 0;
+  constructor(private source?: BindingStorage | (() => BindingStorage)) {
+    if (!source) return;
+    try { const raw=this.storage()!.getItem(bindingKey); if (!raw) return; const saved=JSON.parse(raw); if (!validBindings(saved)) throw new Error('Invalid bindings'); this.value=saved; }
+    catch (error) { this.error=String(error); }
   }
+  private storage(): BindingStorage | undefined { return typeof this.source === 'function' ? this.source() : this.source; }
   save(value: Bindings): boolean {
     if (!validBindings(value)) return false;
-    try { this.storage?.setItem(bindingKey,JSON.stringify(value)); this.value=structuredClone(value); this.error=''; return true; }
-    catch { this.error='Unable to save keybindings. Allow local storage and try again.'; return false; }
+    this.value=structuredClone(value); this.pending=true;
+    if (!this.timer) this.flush();
+    return true;
   }
+  private flush(closing = false): void {
+    if (!this.pending) return;
+    try { this.storage()?.setItem(bindingKey,JSON.stringify(this.value)); this.pending=false; this.error=''; this.failures=0; }
+    catch (error) {
+      this.error=String(error);
+      if (!closing) {
+        const delays=[1000,2000,5000,15000,30000];
+        this.timer=setTimeout(()=>{this.timer=undefined;this.flush();},delays[Math.min(this.failures++,delays.length-1)]);
+        if (typeof this.timer === 'object') this.timer.unref();
+      }
+    }
+  }
+  close(): void { clearTimeout(this.timer); this.timer=undefined; this.flush(true); }
+  diagnostics() { return {pending:this.pending,error:this.error}; }
 }
 
 /** Prefer physical codes, accepting code-less keyboard input from browser automation/accessibility tools. */

@@ -123,7 +123,7 @@ const harvesting = new Harvesting();
 const interactionHighlight=new InteractionHighlight(scene);
 let preparedSets: {equipment:PreparedEquipment;motions:CombatMotions;loadout:Loadout}[]=[];
 let combatUI: CombatUI | undefined;
-const preferences=new InputPreferences(storage);
+const preferences=new InputPreferences(() => localStorage);
 let worldApproach: {key:string;points:Point[];elapsed:number;stalled:number;last:Point} | null=null;
 let hoveredInteraction: WorldInteraction | null=null;
 const audio = new GameAudio();
@@ -343,7 +343,7 @@ function syncAdventure(): void {
   if (adventure.castRemaining<=0) audio.stop('return-cast');
   menus.updateCharacter(adventure.character);
   menus.update(adventure.character.scrolls, currentArea.id !== homeArea && encounter.player.hp > 0 && adventure.character.scrolls > 0 && adventure.castRemaining === 0, prompt, adventure.castRemaining);
-  document.getElementById('save-status')!.textContent = adventure.saveError || preferences.error;combatUI?.update();
+  combatUI?.update();
 }
 function paused(): boolean { return Boolean(hidden() || characterMissing || options?.paused || menus.paused || combatUI?.paused || bindingsMenu.paused || equipmentLoading || inspecting || graphics?.preparingSettings || frozen || transitioning); }
 function timings(): Timings {
@@ -568,7 +568,7 @@ try {
   const menusChanged = new MutationObserver(invalidateFrame);
   document.querySelectorAll('dialog').forEach(dialog => menusChanged.observe(dialog, { attributes: true, attributeFilter: ['open'] }));
   mount.addEventListener('graphicssettingschange', invalidateFrame, true);
-  window.addEventListener('pagehide', () => { ticking = false; cancelAnimationFrame(frameRequest); menusChanged.disconnect(); generation++; adventure.closeSave(); gatheringTools.dispose(); audio.dispose(); graphics?.dispose(); personalLantern?.dispose(); playerEquipment.dispose(); interactionHighlight.dispose(); enemyEquipment.dispose(); casterEquipment.dispose(); projectileVisuals.dispose(); casterVisuals.dispose(); adventureVisuals?.dispose(); lootLabels.dispose(); active?.dispose(); movementWorld?.dispose(); for (const actor of Object.values(actors)) { actor.mixer?.stopAllAction(); actor.mixer?.uncacheRoot(actor.mixer.getRoot()); disposeSceneResources(actor.root); } renderer.dispose(); void disposeAreaCache(); }, { once: true });
+  window.addEventListener('pagehide', () => { ticking = false; cancelAnimationFrame(frameRequest); menusChanged.disconnect(); generation++; adventure.closeSave(); preferences.close(); gatheringTools.dispose(); audio.dispose(); graphics?.dispose(); personalLantern?.dispose(); playerEquipment.dispose(); interactionHighlight.dispose(); enemyEquipment.dispose(); casterEquipment.dispose(); projectileVisuals.dispose(); casterVisuals.dispose(); adventureVisuals?.dispose(); lootLabels.dispose(); active?.dispose(); movementWorld?.dispose(); for (const actor of Object.values(actors)) { actor.mixer?.stopAllAction(); actor.mixer?.uncacheRoot(actor.mixer.getRoot()); disposeSceneResources(actor.root); } renderer.dispose(); void disposeAreaCache(); }, { once: true });
   resize();
   await graphics.initialize();
   ticking = true; requestFrame();

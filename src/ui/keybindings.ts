@@ -90,7 +90,7 @@ export class KeybindingsMenu {
       this.status.textContent=`${bindingLabel(this.conflict.binding)} is assigned to ${actionNames[this.conflict.other.action]}.`;
       for(const [name,callback] of [['Swap',()=>this.resolveConflict(true)],['Replace',()=>this.resolveConflict(false)],['Cancel',()=>{this.conflict=null;this.render();}]] as const){const button=document.createElement('button');button.textContent=name;button.onclick=callback;this.status.append(button);}
     }else if(missing.length)this.status.textContent=`Bind ${missing.map(action=>actionNames[action].toLowerCase()).join(', ')} before applying.`;
-    else this.status.textContent=this.preferences.error;
+    else this.status.textContent='';
   }
   private save():void {if(this.apply.disabled)return;this.clear();if(this.preferences.save(this.draft))this.close();else this.render();}
 }
