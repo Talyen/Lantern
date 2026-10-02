@@ -58,8 +58,25 @@ export function advanceProjectile(state: Encounter, projectile: Projectile, dt: 
 export function stepProjectiles(state: Encounter, dt: number, timing: Timings, events: EncounterEvent[], movementWorld?: Movement): void {
   if (!state.projectiles.length)
     return;
-  state.projectiles = state.projectiles.filter(projectile => advanceProjectile(state, projectile, dt, timing, events, movementWorld));
-  state.projectiles = state.projectiles.filter(projectile => projectile.owner === 'player' || state.enemies[projectile.owner].hp > 0);
+  // Keep the input stable while hit() may replace state.projectiles on a death.
+  // Allocate a survivor list only once the first shot is consumed.
+  const projectiles = state.projectiles;
+  let survivors: Projectile[] | undefined;
+  for (let index = 0; index < projectiles.length; index++) {
+    const projectile = projectiles[index];
+    if (advanceProjectile(state, projectile, dt, timing, events, movementWorld)) survivors?.push(projectile);
+    else survivors ??= projectiles.slice(0, index);
+  }
+  const advanced = survivors ?? projectiles;
+  // A later shot can kill the owner of an earlier surviving bolt. Preserve the
+  // second pass, and copy only when that final owner check removes a shot.
+  let live: Projectile[] | undefined;
+  for (let index = 0; index < advanced.length; index++) {
+    const projectile = advanced[index];
+    if (projectile.owner === 'player' || state.enemies[projectile.owner].hp > 0) live?.push(projectile);
+    else live ??= advanced.slice(0, index);
+  }
+  state.projectiles = live ?? advanced;
   if (state.player.hp <= 0)
     state.projectiles = [];
 }

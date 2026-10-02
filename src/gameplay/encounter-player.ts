@@ -136,8 +136,11 @@ function advancePlayerClocks(state: Encounter, dt: number): void {
   state.dodgeCooldown = Math.max(0, state.dodgeCooldown - dt);
   state.playerMana = Math.min(state.stats.maxMana, state.playerMana + dt * state.stats.manaRegen);
   state.potionCooldown = Math.max(0, state.potionCooldown - dt);
-  for (const id of Object.keys(state.abilityCooldowns) as AbilityId[])
+  for (const key in state.abilityCooldowns) {
+    if (!Object.hasOwn(state.abilityCooldowns, key)) continue;
+    const id = key as AbilityId;
     state.abilityCooldowns[id] = Math.max(0, state.abilityCooldowns[id]! - dt);
+  }
 }
 
 export function movePlayer(state: Encounter, dt: number, input: Input, movementWorld?: Movement): EncounterEvent[] {
