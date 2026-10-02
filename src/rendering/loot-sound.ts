@@ -12,5 +12,5 @@ export class LootSound {
     gain.gain.setValueAtTime(.0001, audio.currentTime); gain.gain.exponentialRampToValueAtTime(collection ? .025 : .015, audio.currentTime + .006); gain.gain.exponentialRampToValueAtTime(.0001, audio.currentTime + .1);
     oscillator.connect(gain); gain.connect(audio.destination); oscillator.start(); oscillator.stop(audio.currentTime + .11); oscillator.onended = () => { oscillator.disconnect(); gain.disconnect(); };
   }
-  dispose(): void { window.removeEventListener('pointerdown', this.unlock); window.removeEventListener('keydown', this.unlock); void this.audio?.close(); }
+  dispose(): void { window.removeEventListener('pointerdown', this.unlock); window.removeEventListener('keydown', this.unlock); void this.audio?.close().catch(error => console.warn('Unable to release pickup audio.', error)); }
 }

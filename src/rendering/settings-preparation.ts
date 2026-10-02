@@ -12,9 +12,9 @@ export class SettingsPreparation<T> {
     if (this.disposed) return;
     this.pending = { value, revision: ++this.revision };
     clearTimeout(this.timer);
-    this.timer = setTimeout(() => { this.timer = undefined; void this.pump(); }, delay);
+    this.timer = setTimeout(() => { this.timer = undefined; void this.pump().catch(this.failed); }, delay);
   }
-  flush(): void { clearTimeout(this.timer); this.timer = undefined; void this.pump(); }
+  flush(): void { clearTimeout(this.timer); this.timer = undefined; void this.pump().catch(this.failed); }
   async ready(): Promise<void> {
     this.flush();
     if (this.running || this.pending) await new Promise<void>(resolve => this.waiters.push(resolve));
@@ -37,7 +37,7 @@ export class SettingsPreparation<T> {
     } finally {
       this.running = false;
       if (this.disposed) this.waiters.splice(0).forEach(resolve => resolve());
-      else void this.pump();
+      else void this.pump().catch(this.failed);
     }
   }
   dispose(): void {

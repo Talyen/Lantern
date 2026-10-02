@@ -45,13 +45,13 @@ export class AdventureMenus {
       bindMenuDismissal(dialog, () => this.close());
     }
     document.getElementById('shelter-repair')!.onclick = async () => { let repaired=false; await this.perform(async()=>{await this.context.repair();repaired=true;});if(repaired)this.close(); };
-    document.getElementById('stash-sort')!.onclick = () => { this.cancelDrag();void this.perform(()=>this.context.changeContainers(this.character!.items,sortedItems(this.character!.stash))); };
-    document.getElementById('inventory-transfer')!.onclick = () => { const entry=this.selectedItem();if(entry)void this.perform(()=>this.context.transfer(entry.id,entry.quantity,this.container(entry.id)==='bag')); };
+    document.getElementById('stash-sort')!.onclick = () => { this.cancelDrag();void this.perform(()=>this.context.changeContainers(this.character!.items,sortedItems(this.character!.stash))).catch(this.failed); };
+    document.getElementById('inventory-transfer')!.onclick = () => { const entry=this.selectedItem();if(entry)void this.perform(()=>this.context.transfer(entry.id,entry.quantity,this.container(entry.id)==='bag')).catch(this.failed); };
     this.use.addEventListener('click', () => { if (this.busy || this.drag || !this.character?.scrolls) return; this.close(); this.cast(); });
-    document.getElementById('inventory-sort')!.onclick = () => { this.cancelDrag(); void this.perform(() => this.context.change(sortedItems(this.character!.items))); };
-    document.getElementById('inventory-equip')!.onclick = () => { const item = this.selectedItem(); if (item) void this.perform(() => this.context.change(equipInstance(this.character!.items, item.id, item.item === 'shield' ? 'off' : 'main',this.viewSet))); };
-    document.getElementById('inventory-remove')!.onclick = () => { const item = this.selectedItem(); if (!item) return; void this.perform(() => { const point = emptyPosition(this.character!.items, item.item); if (!point) throw new Error('Inventory full.'); return this.context.change(moveItem(this.character!.items, item.id, point.x, point.y, item.quantity, this.context.newId)); }); };
-    document.getElementById('inventory-recover')!.onclick = () => { const item = this.selectedItem(); if (item) void this.perform(() => this.context.recover(item.id)); };
+    document.getElementById('inventory-sort')!.onclick = () => { this.cancelDrag(); void this.perform(() => this.context.change(sortedItems(this.character!.items))).catch(this.failed); };
+    document.getElementById('inventory-equip')!.onclick = () => { const item = this.selectedItem(); if (item) void this.perform(() => this.context.change(equipInstance(this.character!.items, item.id, item.item === 'shield' ? 'off' : 'main',this.viewSet))).catch(this.failed); };
+    document.getElementById('inventory-remove')!.onclick = () => { const item = this.selectedItem(); if (!item) return; void this.perform(() => { const point = emptyPosition(this.character!.items, item.item); if (!point) throw new Error('Inventory full.'); return this.context.change(moveItem(this.character!.items, item.id, point.x, point.y, item.quantity, this.context.newId)); }).catch(this.failed); };
+    document.getElementById('inventory-recover')!.onclick = () => { const item = this.selectedItem(); if (item) void this.perform(() => this.context.recover(item.id)).catch(this.failed); };
     document.getElementById('inventory-split')!.onclick = () => { const item = this.selectedItem(); if (item) this.openSplit(item); };
     document.getElementById('split-cancel')!.onclick = () => { this.split.hidden = true; this.splitId = null; };
     document.getElementById('split-confirm')!.onclick = () => {
@@ -64,7 +64,7 @@ export class AdventureMenus {
     };
     this.inventory.addEventListener('pointerdown', event => {
       if (event.button !== 0 || this.busy || !this.split.hidden) return;
-      if (this.drag?.carried) { event.preventDefault(); event.stopPropagation(); void this.release(event.clientX, event.clientY); return; }
+      if (this.drag?.carried) { event.preventDefault(); event.stopPropagation(); void this.release(event.clientX, event.clientY).catch(this.failed); return; }
       const target = (event.target as HTMLElement).closest<HTMLElement>('[data-instance]'); if (!target) return;
       const entry = this.entries().find(i => i.id === target.dataset.instance); if (!entry) return;
       this.selected = entry.id; this.refreshSelection();
@@ -82,7 +82,7 @@ export class AdventureMenus {
       this.ghost.style.left = `${event.clientX - drag.offsetX}px`; this.ghost.style.top = `${event.clientY - drag.offsetY}px`;
       this.previewPlacement(event.clientX, event.clientY);
     });
-    window.addEventListener('pointerup', event => { if (event.button === 0 && this.drag && !this.drag.carried) void this.release(event.clientX, event.clientY); });
+    window.addEventListener('pointerup', event => { if (event.button === 0 && this.drag && !this.drag.carried) void this.release(event.clientX, event.clientY).catch(this.failed); });
     window.addEventListener('pointercancel', () => this.cancelDrag());
     window.addEventListener('blur', () => this.cancelDrag());
     this.inventory.addEventListener('keydown', event => { if (event.key === 'Escape' && (this.drag || !this.split.hidden)) { event.preventDefault(); event.stopPropagation(); this.cancelDrag(); } });
@@ -122,7 +122,7 @@ export class AdventureMenus {
     const definition = lootDefinitions[entry.item]; button.setAttribute('aria-label', `${definition.name}${definition.stackable ? `, ${entry.quantity}` : ''}`);
     button.title = definition.name; button.innerHTML = `${itemIcon(entry.item)}${entry.slot === 'main' || entry.slot === 'off' ? `<span class="equip-name">${definition.name}</span>` : ''}${definition.stackable ? `<span class="stack-count">${entry.quantity}</span>` : ''}`;
     button.onclick = () => { this.selected = entry.id; this.refreshSelection(); };
-    button.ondblclick = () => { if(this.stashMode && ['bag','overflow'].includes(entry.slot)){void this.perform(()=>this.context.transfer(entry.id,entry.quantity,this.container(entry.id)==='bag'));return;} if (!definition.stackable && entry.slot === 'bag') void this.perform(() => this.context.change(equipInstance(this.character!.items, entry.id, entry.item === 'shield' ? 'off' : 'main',this.viewSet))); };
+    button.ondblclick = () => { if(this.stashMode && ['bag','overflow'].includes(entry.slot)){void this.perform(()=>this.context.transfer(entry.id,entry.quantity,this.container(entry.id)==='bag')).catch(this.failed);return;} if (!definition.stackable && entry.slot === 'bag') void this.perform(() => this.context.change(equipInstance(this.character!.items, entry.id, entry.item === 'shield' ? 'off' : 'main',this.viewSet))).catch(this.failed); };
     button.disabled = this.busy; return button;
   }
   private refresh(): void {
@@ -203,10 +203,13 @@ export class AdventureMenus {
     });
   }
   private cancelDrag(): void { this.drag = null; this.ghost.hidden = true; this.marker.hidden = true; this.split.hidden = true; this.splitId = null; }
+  private failed = (error: unknown): void => {
+    (this.repair.open ? document.getElementById('repair-error')! : this.error).textContent = error instanceof Error ? error.message : 'Unable to move item.';
+  };
   private async perform(operation: () => Promise<void> | void): Promise<void> {
     if (this.busy || !this.character) return; this.busy = true; this.error.textContent = ''; this.refresh();
     try { await operation(); }
-    catch (error) { (this.repair.open ? document.getElementById('repair-error')! : this.error).textContent = error instanceof Error ? error.message : 'Unable to move item.'; }
+    catch (error) { this.failed(error); }
     finally { this.busy = false; this.refresh(); }
   }
 }

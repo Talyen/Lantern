@@ -120,7 +120,7 @@ const previews = lanes.map((lane, i) => {
 });
 await Promise.all(previews.map((preview) => preview.pipeline.ready()));
 const resetHistories = () => previews.forEach((preview) => preview.pipeline.resetHistory());
-window.addEventListener('pagehide', () => { disposed = true; controls.dispose(); lanes.forEach(clearLane); void Promise.allSettled(characterCache.values()).then(results => results.forEach(result => { if (result.status === 'fulfilled') disposeSceneResources(result.value); })); void assetLibrary.dispose().catch(error => console.error('Unable to release lab assets.', error)); previews.forEach(({ pipeline, renderer, lighting }) => { pipeline.dispose(); lighting.dispose(); void renderer.dispose().catch(error => console.error('Unable to release graphics.', error)); }); }, { once: true });
+window.addEventListener('pagehide', () => { disposed = true; controls.dispose(); lanes.forEach(clearLane); void Promise.allSettled(characterCache.values()).then(results => results.forEach(result => { if (result.status === 'fulfilled') disposeSceneResources(result.value); })).catch(error => console.error('Unable to release character models.', error)); void assetLibrary.dispose().catch(error => console.error('Unable to release lab assets.', error)); previews.forEach(({ pipeline, renderer, lighting }) => { pipeline.dispose(); lighting.dispose(); void renderer.dispose().catch(error => console.error('Unable to release graphics.', error)); }); }, { once: true });
 const loader = new GLTFLoader();
 const cache = new Map<string, Promise<THREE.AnimationClip>>();
 const characterCache = new Map<string, Promise<THREE.Group>>();
@@ -188,6 +188,7 @@ function applyPose(): void {
   time.textContent = `${seconds.toFixed(2)} s`;
 }
 function resetPlayback(): void { resetHistories(); seconds = 0; progress = 0; applyPose(); }
+function previewFailed(error: unknown): void { console.error('Unable to update animation preview.', error); }
 async function selectClip(lane: Lane): Promise<void> {
   const generation = ++lane.generation;
   lane.favorite.disabled = true; updatePlaybackControls();
@@ -267,21 +268,21 @@ async function selectLoadout(lane: Lane, key: string): Promise<void> {
   await fillClips(lane, preferred);
 }
 for (const lane of lanes) {
-  lane.rigSelect.addEventListener('change', () => { void selectRig(lane, lane.rigSelect.value as RigId); });
-  lane.loadoutSelect.addEventListener('change', () => { void selectLoadout(lane, lane.loadoutSelect.value); });
-  lane.packSelect.addEventListener('change', () => { void fillClips(lane); });
-  lane.search.addEventListener('input', () => { void fillClips(lane); });
-  lane.clipSelect.addEventListener('change', () => { void selectClip(lane); });
+  lane.rigSelect.addEventListener('change', () => { void selectRig(lane, lane.rigSelect.value as RigId).catch(previewFailed); });
+  lane.loadoutSelect.addEventListener('change', () => { void selectLoadout(lane, lane.loadoutSelect.value).catch(previewFailed); });
+  lane.packSelect.addEventListener('change', () => { void fillClips(lane).catch(previewFailed); });
+  lane.search.addEventListener('input', () => { void fillClips(lane).catch(previewFailed); });
+  lane.clipSelect.addEventListener('change', () => { void selectClip(lane).catch(previewFailed); });
   lane.favorite.addEventListener('click', () => {
     if (!lane.pack || !lane.clip) return;
     if (saved(lane)) favorites = favorites.filter((f) => f.pack !== lane.pack!.id || f.clip !== lane.clip!.id);
     else favorites.push({ pack: lane.pack.id, clip: lane.clip.id });
     try { localStorage.setItem('lantern-animation-favorites', JSON.stringify(favorites)); } catch { status.textContent = 'Favorites could not be saved in this browser.'; }
     lanes.forEach(updateFavorite);
-    if (category.value === 'favorites') lanes.forEach(l => { void fillClips(l); });
+    if (category.value === 'favorites') lanes.forEach(l => { void fillClips(l).catch(previewFailed); });
   });
 }
-category.addEventListener('change', () => lanes.forEach(lane => { void fillClips(lane); }));
+category.addEventListener('change', () => lanes.forEach(lane => { void fillClips(lane).catch(previewFailed); }));
 pause.addEventListener('click', () => { playing = !playing; pause.textContent = playing ? 'Pause' : 'Play'; });
 restart.addEventListener('click', resetPlayback);
 step.addEventListener('click', () => { playing = false; pause.textContent = 'Play'; seconds += 1 / 30; progress += 1 / (30 * referenceDuration()); if (loop.checked) progress %= 1; else progress = Math.min(1, progress); applyPose(); });

@@ -112,9 +112,10 @@ function drawList(): void {
     const image = document.createElement('img'); if (row.thumbnail) image.src = row.thumbnail; else image.hidden = true; image.alt = ''; image.loading = 'lazy'; image.onerror = () => { image.hidden = true; };
     const name = document.createElement('span'); name.textContent = `${favorites.has(row.id) ? '★ ' : ''}${row.name}`;
     const pack = document.createElement('small'); pack.textContent = row.family;
-    button.append(image, name, pack); button.addEventListener('click', () => void select(Number(target.value), row.id)); return button;
+    button.append(image, name, pack); button.addEventListener('click', () => void select(Number(target.value), row.id).catch(previewFailed)); return button;
   }));
 }
+function previewFailed(error: unknown): void { console.error('Unable to update character preview.', error); }
 async function applyMotion(index: number, generation: number): Promise<void> {
   const stage = stages[index], row = stage.character, model = stage.model;
   const motionGeneration = ++stage.motionGeneration;
@@ -172,7 +173,7 @@ function resize(): void { for (const stage of stages) {
 const observer = new ResizeObserver(resize); stages.forEach(stage => observer.observe(stage.mount));
 search.addEventListener('input', drawList); family.addEventListener('change', drawList); favoritesOnly.addEventListener('change', drawList);
 el<HTMLSelectElement>('character-view').addEventListener('change', event => setView((event.target as HTMLSelectElement).value));
-motion.addEventListener('change', () => { for (const stage of stages) { stage.error = ''; void applyMotion(stage.index, stage.generation); } });
+motion.addEventListener('change', () => { for (const stage of stages) { stage.error = ''; void applyMotion(stage.index, stage.generation).catch(previewFailed); } });
 pause.addEventListener('click', () => { playing = !playing; pause.textContent = playing ? 'Pause' : 'Play'; });
 el('character-restart').addEventListener('click', () => { stages.forEach(stage => { stage.action?.reset(); stage.mixer?.update(0); stage.pipeline.resetHistory(); }); });
 for (const stage of stages) el(`favorite-${stage.index}`).addEventListener('pointerdown', event => event.stopPropagation());

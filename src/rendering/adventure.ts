@@ -52,7 +52,7 @@ export class AdventureVisuals {
         } else if(drop.item==='potion') {
           const bottle=new THREE.Mesh(this.geometry,this.potionGlass);bottle.scale.set(1.45,.5,1.45);model.add(bottle);
           const stopper=new THREE.Mesh(this.box,this.bark);stopper.scale.set(.08,.05,.08);stopper.position.y=.11;model.add(stopper);
-          void this.loadPotion(drop,visual);
+          void this.loadPotion(drop,visual).catch(error => console.warn('Unable to prepare dropped potion.', error));
         } else {
           // A compact silhouette remains collectible if optional prepared scenery is absent.
           const shaft = new THREE.Mesh(this.box, drop.item === 'sword' || drop.item === 'shield' ? this.metal : this.bark);
@@ -60,7 +60,7 @@ export class AdventureVisuals {
           if (drop.item === 'axe' || drop.item === 'sword') { const head = new THREE.Mesh(this.box, this.metal); head.scale.set(drop.item === 'axe' ? .25 : .2, .05, drop.item === 'axe' ? .2 : .025); head.position.z = drop.item === 'axe' ? -.2 : .18; model.add(head); }
           if (drop.item === 'bow') { const arc = new THREE.Mesh(this.arc, this.bark); arc.rotation.x = -Math.PI / 2; arc.rotation.z = -Math.PI / 2; model.add(arc); shaft.scale.set(.01, .01, .6); }
 
-          void this.loadGear(drop, visual);
+          void this.loadGear(drop, visual).catch(error => console.warn('Unable to prepare dropped equipment.', error));
         }
       }
       const t = Math.min(1, drop.age / dropLandingSeconds), travel = 1 - (1 - t) ** 2;

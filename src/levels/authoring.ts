@@ -44,9 +44,10 @@ export function attachAuthoring(ctx: Context): void {
     if (changed && surfaces === 'showcase' && ctx.area().id === 'clearing') setView('entrance');
     return changed;
   };
-  selects[2].onchange = () => { void setSurfaces(selects[2].value as SurfaceMode); };
+  const appearanceFailed = (error: unknown) => console.error('Unable to update area appearance.', error);
+  selects[2].onchange = () => { void setSurfaces(selects[2].value as SurfaceMode).catch(appearanceFailed); };
   const setLantern = (lantern: boolean) => ctx.setAppearance({ lantern });
-  panel.querySelector<HTMLInputElement>('[data-lantern]')!.onchange = event => { void setLantern((event.target as HTMLInputElement).checked); };
+  panel.querySelector<HTMLInputElement>('[data-lantern]')!.onchange = event => { void setLantern((event.target as HTMLInputElement).checked).catch(appearanceFailed); };
   const bridge = {
     setSurfaces, setLantern, appearance: ctx.appearance, lighting: ctx.lighting, exportLighting: ctx.exportLighting,
     diagnostics, restart: ctx.restart, inspect,

@@ -223,7 +223,7 @@ function selectLoot(id: string): void {
   approach.selectLoot(id, movementWorld);
 }
 
-const hud = createHud(() => { if (!equipmentLoading && !transitioning) void changeArea({ kind: 'travel', area: homeArea, transition: true, spawn: definitions.homestead.layout.player, recover: true }); });
+const hud = createHud(() => { if (!equipmentLoading && !transitioning) void changeArea({ kind: 'travel', area: homeArea, transition: true, spawn: definitions.homestead.layout.player, recover: true }).catch(areaChangeFailed); });
 function inspect(): void {
   if (!currentArea.inspection) return;
   clearInput(); inspecting = !inspecting;
@@ -379,7 +379,7 @@ function interact(target: WorldInteraction): void {
           const allowed = () => adventure.canTravel(encounter, sourceArea, sourceFire, area, fire);
           if (allowed()) void changeArea({ kind: 'travel', area: area.id, transition: true, spawn: fire.arrival, canCommit: allowed }).then(ok => {
             if (ok) audio.play('fireTravel');
-          });
+          }).catch(areaChangeFailed);
         },
       })));
       break;
@@ -392,11 +392,11 @@ function interact(target: WorldInteraction): void {
           if (!ok) return;
           audio.play('portalPass');
           if (adventure.portal === link) { adventure.portal = null; syncAdventure(); audio.play('portalClose'); }
-        });
+        }).catch(areaChangeFailed);
       } else {
         void changeArea({ kind: 'travel', area: homeArea, transition: true, spawn: definitions.homestead.portalArrival }).then(ok => {
           if (ok) audio.play('portalPass');
-        });
+        }).catch(areaChangeFailed);
       }
       break;
     }
@@ -496,7 +496,7 @@ function updateGame(dt: number): void {
   hud.update(encounter, []);
   if (!paused() && encounter.phase !== 'lost' && encounter.phase !== 'loading' && adventure.castRemaining === 0) {
     const gate = travel.check(currentArea.gates, [encounter.player.x, encounter.player.z]);
-    if (gate) void changeArea({ kind: 'travel', area: gate.destination.area, arrivalId: gate.destination.gate, transition: true });
+    if (gate) void changeArea({ kind: 'travel', area: gate.destination.area, arrivalId: gate.destination.gate, transition: true }).catch(areaChangeFailed);
   }
 }
 function resize(): void {
@@ -670,6 +670,7 @@ type AreaAppearance = { lantern?: boolean; surfaces?: SurfaceMode; shelterRestor
 type AreaChange =
   | { kind: 'travel'; area: string; arrivalId?: string; transition?: boolean; spawn?: Spawn; recover?: boolean; canCommit?: () => boolean }
   | { kind: 'refresh'; spawn?: Spawn; appearance?: AreaAppearance; canCommit?:()=>boolean; onCommit?:()=>void };
+function areaChangeFailed(error: unknown): void { console.error('Unable to change area.', error); }
 async function changeArea(change: AreaChange): Promise<boolean> {
   const id = change.kind === 'travel' ? change.area : currentArea.id;
   const { arrivalId, transition = false, recover = false } = change.kind === 'travel' ? change : {};
@@ -810,5 +811,5 @@ if (import.meta.hot) import.meta.hot.accept('../levels/validation', module => {
 });
 
 if (import.meta.hot) window.addEventListener('lightingpresetchanged', () => {
-  void changeArea({ kind: 'refresh' });
+  void changeArea({ kind: 'refresh' }).catch(areaChangeFailed);
 });
