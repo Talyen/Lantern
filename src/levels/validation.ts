@@ -21,7 +21,7 @@ export function validateAreas(input: Record<string, AreaDefinition>): string[] {
         if (source.gold !== undefined && typeof source.gold !== 'boolean') fail('gold eligibility must be boolean');
       };
       reward(area);
-      for (const spawn of [area.layout.enemy, area.layout.caster]) if (spawn) {
+      for (const spawn of [...(area.layout.enemies ?? []), area.layout.enemy, area.layout.caster]) if (spawn) {
         reward(spawn);
         if (spawn.humanoid !== undefined && typeof spawn.humanoid !== 'boolean') fail('humanoid eligibility must be boolean');
         if (spawn.rank !== undefined && !['normal','elite','boss'].includes(spawn.rank)) fail('unknown enemy reward rank');

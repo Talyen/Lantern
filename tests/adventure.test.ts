@@ -663,3 +663,12 @@ test('authored enemy IDs, all chest guards and supplies survive travel and death
   expect(encounter.phase).toBe('won');expect(state.chest(crypt,chest).opened).toBe(true);
   state.closeSave();
 });
+
+test('named skeletons use authored humanoid gold rewards once through return travel', () => {
+  const adventure=new Adventure(memory(),()=>0),encounter=createEncounter('playing');
+  const area:AreaDefinition={...field,id:'named-reward',layout:{...field.layout,enemy:undefined,caster:undefined,enemies:[{id:'skeleton-guard',position:[0,0],yaw:0,kind:'raider',rig:'skeleton',loadout:{main:'sword',off:null},humanoid:true,rank:'normal'}]}};
+  adventure.enter(encounter,area);encounter.enemies['skeleton-guard'].hp=0;adventure.step(encounter,area,.01);
+  expect(adventure.session().drops.filter(drop=>drop.item==='gold').map(drop=>drop.quantity)).toEqual([3]);
+  adventure.enter(encounter,home);adventure.enter(encounter,area);adventure.step(encounter,area,.01);
+  expect(adventure.session().drops.filter(drop=>drop.item==='gold')).toHaveLength(1);adventure.closeSave();
+});
