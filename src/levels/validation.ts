@@ -88,8 +88,11 @@ export function validateAreas(input: Record<string, AreaDefinition>): string[] {
         const u = prop.position[0] * Math.cos(e.yaw) - prop.position[2] * Math.sin(e.yaw), v = prop.position[0] * Math.sin(e.yaw) + prop.position[2] * Math.cos(e.yaw);
         if (Math.abs(u) > e.width / 2 + e.apron || Math.abs(v) > e.depth / 2 + e.apron) fail('position exceeds the decorative apron');
       }
+      const collisionIds = new Set<string>();
       for (const obstacle of area.traversal?.obstacles ?? []) {
         owner = `${key}/collision:${obstacle.id}`;
+        if (collisionIds.has(obstacle.id)) fail('duplicate collision proxy ID');
+        collisionIds.add(obstacle.id);
         if (!finite(obstacle.position, 3) || !finite(obstacle.size, 3) || obstacle.size.some(v => v <= 0) || !Number.isFinite(obstacle.yaw)) fail('invalid collision proxy');
       }
       for (const surface of area.traversal?.surfaces ?? []) {
@@ -118,6 +121,7 @@ export function validateAreas(input: Record<string, AreaDefinition>): string[] {
       for (const scatter of area.scatter) {
         id(scatter.id); if (!Number.isInteger(scatter.count) || scatter.count < 0 || scatter.count > 2000 || !finite(scatter.radius, 2) || scatter.radius[0] < 0 || scatter.radius[1] < scatter.radius[0]) fail('invalid scatter count/radius');
         if (scatter.harvest && (!['tree','stone','iron'].includes(scatter.harvest.kind) || scatter.harvest.radius !== undefined && (!Number.isFinite(scatter.harvest.radius) || scatter.harvest.radius <= 0))) fail('invalid tree harvest metadata');
+        if (scatter.harvest && [scatter.harvest.level,scatter.harvest.baseYield,scatter.harvest.contacts].some(n => n !== undefined && (!Number.isSafeInteger(n) || n < 1))) fail('invalid resource progression metadata');
       }
       for (const patch of area.grass ?? []) {
         id(patch.id);

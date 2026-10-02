@@ -88,7 +88,7 @@ export class Adventure {
   dropItem(id: string, quantity: number, origin: Point): void {
     const entry = this.character.items.find(i => i.id === id);
     if (!entry || !Number.isSafeInteger(quantity) || quantity < 1 || quantity > entry.quantity) throw new Error('Item is no longer available.');
-    if (entry.item === 'scroll' && this.castRemaining > 0 && this.character.scrolls - quantity < 1) throw new Error('Scroll is in use.');
+    if (entry.item === 'scroll' && entry.slot === 'bag' && this.castRemaining > 0 && this.character.scrolls - quantity < 1) throw new Error('Scroll is in use.');
     if (isEquipmentSlot(entry.slot)) throw new Error('Move equipped gear into the bag before dropping it.');
     this.spawnDrop(entry.item, quantity, origin, { blocked: lootDefinitions[entry.item].stackable, instanceId: lootDefinitions[entry.item].stackable ? undefined : entry.id });
     entry.quantity -= quantity; this.replaceItems(this.character.items.filter(i => i.quantity > 0));

@@ -54,16 +54,16 @@ export class ClickApproach {
       return;
     }
     const points = navigation?.pickupPath(this.encounter.player, drop.position, drop.height);
-    if (!points) { this.adventure.message('Can’t reach item'); return; }
+    if (!points && (!navigation || navigation.navigationReady)) { this.adventure.message('Can’t reach item'); return; }
     this.adventure.pickupTarget = id;
-    this.start({ kind: 'loot', id }, points);
+    this.start({ kind: 'loot', id }, points ?? []);
   }
 
   selectWorld(target: WorldInteraction, navigation: MovementWorld | undefined): void {
     this.cancel();
     const points = navigation?.interactionPath(this.encounter.player, target.position, target.height, target.range, target.obstacleId);
-    if (!points) { this.adventure.message('Can’t reach object'); return; }
-    this.start({ kind: 'world', key: target.key }, points);
+    if (!points && (!navigation || navigation.navigationReady)) { this.adventure.message('Can’t reach object'); return; }
+    this.start({ kind: 'world', key: target.key }, points ?? []);
   }
 
   update(dt: number, frame: ApproachFrame): ApproachCommand | undefined {
@@ -72,6 +72,15 @@ export class ClickApproach {
     const { player, dodgeRemaining } = this.encounter;
     const { navigation } = frame;
     if (Math.hypot(frame.movement.x, frame.movement.z) > 0 || frame.block || player.hp <= 0) { this.cancel(); return; }
+    // Tree depletion/regrowth temporarily invalidates routes; retain the click
+    // without walking an old route or consuming the stuck-movement deadline.
+    if (navigation && !navigation.navigationReady) {
+      route.points = [];
+      route.elapsed = .3;
+      route.stalled = 0;
+      route.last = [player.x, player.z];
+      return;
+    }
     const point: Point = [player.x, player.z];
     let refresh: () => Point[] | null | undefined;
     const loot = route.target.kind === 'loot';

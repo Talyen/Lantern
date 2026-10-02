@@ -428,11 +428,11 @@ function stepEnemy(state: Encounter, id: EnemyId, dt: number, timing: Timings, e
   let attackElapsed = dt;
   // Keep the pre-movement distance: the original encounter uses it to start an enemy strike.
   const distance = Math.hypot(dx, dz);
-  if (enemy.lock <= 0 && (distance > 1.45 || movementWorld && !movementWorld.lineOfSight(enemy, player)) && enemy.attackTime < 0) {
+  if (enemy.lock <= 0 && (distance > 1.45 || Math.abs(player.y - enemy.y) >= .8 || movementWorld && !movementWorld.lineOfSight(enemy, player)) && enemy.attackTime < 0) {
     const desired = movementWorld?.direction(enemy, player, dt) ?? { x: dx, z: dz };
     const length = Math.hypot(desired.x, desired.z);
     if (movementWorld) movementWorld.move(id, enemy, length ? desired.x / length * dt * enemy.speed : 0, length ? desired.z / length * dt * enemy.speed : 0, dt);
-    else { enemy.x += dx / distance * dt * enemy.speed; enemy.z += dz / distance * dt * enemy.speed; }
+    else if (length) { enemy.x += desired.x / length * dt * enemy.speed; enemy.z += desired.z / length * dt * enemy.speed; }
     [enemy.x, enemy.z] = constrain(state.layout.boundary, [enemy.x, enemy.z]);
     if (length) enemy.yaw = Math.atan2(desired.x, desired.z);
     animate('run');
@@ -470,7 +470,7 @@ function stepCaster(state: Encounter, id: EnemyId, dt: number, timing: Timings, 
   const dx = player.x - enemy.x, dz = player.z - enemy.z, distance = Math.hypot(dx, dz);
   let attackElapsed = dt;
   const visible = !movementWorld || movementWorld.lineOfSight(enemy, player);
-  if (enemy.attackTime < 0 && enemy.lock <= 0 && (distance > casterAttackRange || !visible)) {
+  if (enemy.attackTime < 0 && enemy.lock <= 0 && (distance > casterAttackRange || Math.abs(player.y - enemy.y) >= .8 || !visible)) {
     const desired = movementWorld?.direction(enemy, player, dt) ?? { x: dx, z: dz };
     const length = Math.hypot(desired.x, desired.z);
     const x = length ? desired.x / length * dt * enemy.speed : 0, z = length ? desired.z / length * dt * enemy.speed : 0;
