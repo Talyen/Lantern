@@ -1,4 +1,4 @@
-import { ownTexture, sceneTextures } from './resource-ownership';
+import { disposeSceneInstances, ownTexture, sceneTextures } from './resource-ownership';
 import * as THREE from 'three';
 import { prepareStandardMaterials, filterMaterialTexture } from '../rendering/surface-detail';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -25,7 +25,7 @@ interface AssemblyNode {
 }
 interface AssemblySpec { nodes: AssemblyNode[]; warnings: string[] }
 
-/** A library owns shared resources. Instances release skeletons; dispose the library after all instances. */
+/** A library owns shared art. Instances release native bindings and skeletons independently. */
 export class AssetLibrary {
   private catalog?: Promise<AssetCatalog>;
   private gltfs = new Map<string, Promise<{ scene: THREE.Group; bindposes?: number[] }>>();
@@ -127,17 +127,16 @@ export class AssetLibrary {
     const asset = await this.entry(id);
     if (!['model', 'assembly', 'mesh'].includes(asset.kind)) throw new Error(`Not a placeable asset: ${id}`);
     const object = asset.kind === 'assembly' ? await this.assembly(id) : new THREE.Group().add(cloneSkeleton((await this.gltf(id)).scene));
-    if (this.disposed) { this.releaseSkeletons(object); throw new Error('Asset library disposed during load'); }
+    if (this.disposed) { disposeSceneInstances(object, { skeletons: true }); throw new Error('Asset library disposed during load'); }
     const variants = options.materialVariant ? await Promise.all(options.materialVariant.map((id) => this.material(id))) : undefined;
-    if (this.disposed) { this.releaseSkeletons(object); throw new Error('Asset library disposed during load'); }
+    if (this.disposed) { disposeSceneInstances(object, { skeletons: true }); throw new Error('Asset library disposed during load'); }
     object.traverse((o) => { if (o instanceof THREE.Mesh) { o.castShadow = o.receiveShadow = options.shadows ?? true; if (variants) o.material = variants.length === 1 ? variants[0] : variants; } });
     prepareStandardMaterials(object);
     object.traverse(node => { if (node instanceof THREE.SkinnedMesh) object.userData.lodSkinned = true; });
     let released = false;
-    const release = () => { if (released) return; released = true; object.removeFromParent(); this.releaseSkeletons(object); this.instances.delete(release); };
+    const release = () => { if (released) return; released = true; object.removeFromParent(); disposeSceneInstances(object, { skeletons: true }); this.instances.delete(release); };
     this.instances.add(release); return { object, asset, release };
   }
-  private releaseSkeletons(root: THREE.Object3D): void { root.traverse((o) => { if (o instanceof THREE.SkinnedMesh) o.skeleton.dispose(); }); }
   async dispose(): Promise<void> {
     this.disposed = true; await Promise.allSettled([...this.pending]); this.instances.forEach((release) => release());
     const geometries = new Set<THREE.BufferGeometry>();

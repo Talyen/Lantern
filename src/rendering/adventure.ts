@@ -6,6 +6,7 @@ import type { GroundDrop } from '../gameplay/adventure';
 import { itemDefinitions, type ItemId } from '../gameplay/equipment';
 import { assetLibrary, type AssetInstance } from '../assets/asset-library';
 import { LootSound } from './loot-sound';
+import { disposeSceneInstances } from '../assets/resource-ownership';
 
 type DropVisual = { root: THREE.Group; model: THREE.Group; instance?: AssetInstance; quantity: number; landed: boolean };
 /** Area-owned presentation; object motion follows simulation-owned landing clocks. */
@@ -34,7 +35,7 @@ export class AdventureVisuals {
   sync(drops: GroundDrop[], portal: Point | null, hovered: string | null): void {
     const key = portal?.join(',') ?? '';
     if (key !== this.portalKey) { this.portal?.dispose(); this.portal = portal ? new Portal({ id: 'return-portal', position: [portal[0], .02, portal[1]], yaw: Math.PI / 4, width: 1.4, height: 2.3 }, this.parent) : null; this.portalKey = key; }
-    for (const [id, visual] of this.drops) if (!drops.some(drop => drop.id === id)) { if (visual.landed) this.sound.play(true); visual.instance?.release(); visual.root.removeFromParent(); this.drops.delete(id); }
+    for (const [id, visual] of this.drops) if (!drops.some(drop => drop.id === id)) { if (visual.landed) this.sound.play(true); visual.instance?.release(); disposeSceneInstances(visual.root); visual.root.removeFromParent(); this.drops.delete(id); }
     for (const drop of drops) {
       let visual = this.drops.get(drop.id);
       if (!visual) {
@@ -75,7 +76,7 @@ export class AdventureVisuals {
   private async loadPotion(drop: GroundDrop, visual: DropVisual): Promise<void> {
     let instance: AssetInstance | undefined;
     try { instance=await assetLibrary.loadAsset('generic:model:sm-gen-prop-potion-01'); if(this.disposed || this.drops.get(drop.id)!==visual){instance.release();return;}
-      const object=instance.object;object.updateMatrixWorld(true);const size=new THREE.Box3().setFromObject(object).getSize(new THREE.Vector3());object.scale.multiplyScalar(.28/Math.max(size.x,size.y,size.z));object.updateMatrixWorld(true);const bounds=new THREE.Box3().setFromObject(object),center=bounds.getCenter(new THREE.Vector3());object.position.sub(new THREE.Vector3(center.x,bounds.min.y,center.z));visual.model.clear();visual.model.add(object);visual.instance=instance;
+      const object=instance.object;object.updateMatrixWorld(true);const size=new THREE.Box3().setFromObject(object).getSize(new THREE.Vector3());object.scale.multiplyScalar(.28/Math.max(size.x,size.y,size.z));object.updateMatrixWorld(true);const bounds=new THREE.Box3().setFromObject(object),center=bounds.getCenter(new THREE.Vector3());object.position.sub(new THREE.Vector3(center.x,bounds.min.y,center.z));disposeSceneInstances(visual.model);visual.model.clear();visual.model.add(object);visual.instance=instance;
     } catch { instance?.release(); }
   }
   private async loadGear(drop: GroundDrop, visual: DropVisual): Promise<void> {
@@ -87,7 +88,7 @@ export class AdventureVisuals {
       object.scale.multiplyScalar(itemDefinitions[drop.item as ItemId].length / Math.max(size.x, size.y, size.z));
       object.rotation.x = Math.PI / 2; object.updateMatrixWorld(true);
       bounds.setFromObject(object); const center = bounds.getCenter(new THREE.Vector3()); object.position.add(new THREE.Vector3(-center.x, .03 - bounds.min.y, -center.z));
-      visual.model.clear(); visual.model.add(object); visual.instance = instance;
+      disposeSceneInstances(visual.model); visual.model.clear(); visual.model.add(object); visual.instance = instance;
     } catch { instance?.release(); /* The name and category silhouette remain available. */ }
   }
   pick(ray: THREE.Raycaster): string | null {
@@ -110,7 +111,7 @@ export class AdventureVisuals {
   update(dt: number): void { this.portal?.update(dt); }
   dispose(): void {
     this.disposed = true; this.portal?.dispose(); this.sound.dispose(); this.highlight.removeFromParent();
-    this.drops.forEach(v => { v.instance?.release(); v.root.removeFromParent(); }); this.drops.clear();
+    this.drops.forEach(v => { v.instance?.release(); disposeSceneInstances(v.root); v.root.removeFromParent(); }); this.drops.clear();
     for (const resource of [this.oreGeometry, this.stone, this.iron, this.geometry, this.box, this.arc, this.paper, this.ribbon, this.bark, this.metal, this.potionGlass, this.markerGeometry, this.markerMaterial]) resource.dispose();
   }
 }

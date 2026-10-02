@@ -29,15 +29,23 @@ export function sceneTextures(root: THREE.Object3D): Set<THREE.Texture> {
   });
   return textures;
 }
+/** Release native bindings; plain scene clones borrow skeletons as well as art. */
+export function disposeSceneInstances(root: THREE.Object3D, { skeletons = false }: { skeletons?: boolean } = {}): void {
+  root.traverse(object => {
+    if (!(object instanceof THREE.Mesh)) return;
+    object.dispose();
+    if (skeletons && object instanceof THREE.SkinnedMesh) object.skeleton.dispose();
+  });
+}
 export function disposeSceneResources(root: THREE.Object3D): void {
   const geometries = new Set<THREE.BufferGeometry>(), materials = new Set<THREE.Material>();
   const textures = sceneTextures(root);
   root.traverse(object => {
     if (!(object instanceof THREE.Mesh)) return;
     geometries.add(object.geometry);
-    if (object instanceof THREE.SkinnedMesh) object.skeleton.dispose();
     for (const material of Array.isArray(object.material) ? object.material : [object.material]) materials.add(material);
   });
+  disposeSceneInstances(root, { skeletons: true });
   geometries.forEach(geometry => geometry.dispose()); materials.forEach(material => material.dispose()); textures.forEach(texture => texture.dispose());
 }
 export function sceneResourceBytes(root: THREE.Object3D): number {

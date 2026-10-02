@@ -31,7 +31,9 @@ async function loadClip(loader: GLTFLoader, clip: MotionClip): Promise<THREE.Ani
     if (gltf.animations.length !== 1) throw new Error(`Invalid motion: ${clip.name}`);
     return gltf.animations[0];
   }).catch((error: unknown) => { cache.delete(url); throw error; }));
-  return (await cache.get(url)!).clone();
+  const source = await cache.get(url)!;
+  // Playback state belongs to each clip/action; keyframe buffers stay read-only.
+  return new THREE.AnimationClip(source.name, source.duration, source.tracks.slice(), source.blendMode);
 }
 export async function loadEquipmentMotions(loader: GLTFLoader, who: RigId, loadout: Loadout): Promise<CombatMotions> {
   const catalog = await getMotionCatalog(who);
@@ -75,12 +77,15 @@ export async function loadEquipmentMotions(loader: GLTFLoader, who: RigId, loado
 
 /** A Mixamo carrying arm keeps the staff steady while the free arm casts. */
 export function holdStaffArm(clip: THREE.AnimationClip, carrying: THREE.AnimationClip, gripPose = carrying): void {
-  for (const track of clip.tracks) {
+  for (let index = 0; index < clip.tracks.length; index++) {
+    const track = clip.tracks[index];
     const finger=/^(Thumb|IndexFinger|Finger).*_L\.|^mixamorigLeftHand(Ring|Pinky)/.test(track.name);
     if (!finger && !/^(Clavicle|Shoulder|Elbow|Hand).*_L\./.test(track.name)) continue;
     const pose=(finger ? gripPose : carrying).tracks.find(item=>item.name===track.name); if (!pose) continue;
+    // Only the authored carrying-arm edits need independent keyframe storage.
+    const held = track.clone(); clip.tracks[index] = held;
     const size=track.getValueSize();
-    for (let i=0;i<track.values.length;i++) track.values[i]=pose.values[i%size];
+    for (let i=0;i<held.values.length;i++) held.values[i]=pose.values[i%size];
   }
 }
 

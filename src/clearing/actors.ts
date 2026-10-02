@@ -54,8 +54,13 @@ function installActions(actor: Actor, clips: Partial<Record<AnimationRole, THREE
   actor.actions = {}; actor.current = null; actor.previous = null; actor.velocity.set(0, 0);
   const playback: Partial<Record<PlaybackRole, THREE.AnimationClip>> = {...clips};
   if (clips.block) {
-    const upper=clips.block.clone(); upper.name='blockUpper'; upper.tracks=upper.tracks.filter(track=>/^(Spine|Neck|Head|Clavicle|Shoulder|Elbow|Hand|Thumb|Finger|Index|mixamorigLeftHand|mixamorigRightHand)/.test(track.name)); playback.blockUpper=upper;
-    for (const [i,role] of directions.entries()) if (clips[role]) { const lower=(clips[blockDirections[i]] ?? clips[role])!.clone(); lower.name=`lower_${role}`; lower.tracks=lower.tracks.filter(track=>/^(Hips|UpperLeg|LowerLeg|Ankle|Ball)/.test(track.name)); playback[`lower_${role}`]=lower; }
+    // Masked actions only select tracks; mixers never mutate their keyframes.
+    const block = clips.block;
+    playback.blockUpper = new THREE.AnimationClip('blockUpper', block.duration, block.tracks.filter(track=>/^(Spine|Neck|Head|Clavicle|Shoulder|Elbow|Hand|Thumb|Finger|Index|mixamorigLeftHand|mixamorigRightHand)/.test(track.name)), block.blendMode);
+    for (const [i,role] of directions.entries()) if (clips[role]) {
+      const source = (clips[blockDirections[i]] ?? clips[role])!;
+      playback[`lower_${role}`] = new THREE.AnimationClip(`lower_${role}`, source.duration, source.tracks.filter(track=>/^(Hips|UpperLeg|LowerLeg|Ankle|Ball)/.test(track.name)), source.blendMode);
+    }
   }
   for (const [role, clip] of Object.entries(playback)) {
     const action = mixer.clipAction(clip);

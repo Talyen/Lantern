@@ -155,3 +155,24 @@ test('early area construction failure releases allocated geometry and material',
     expect(geometry).toHaveBeenCalled(); expect(material).toHaveBeenCalled();
   } finally { geometry.mockRestore(); material.mockRestore(); }
 });
+
+test('released mesh instances free native bindings while retaining shared art', async () => {
+  const THREE = await import('three');
+  const { disposeSceneInstances } = await import('../src/assets/resource-ownership');
+  const geometry = new THREE.BoxGeometry(), texture = new THREE.Texture();
+  const material = new THREE.MeshBasicMaterial({ map: texture });
+  const root = new THREE.Group(), mesh = new THREE.Mesh(geometry, material);
+  const survivor = new THREE.Mesh(geometry, material);
+  const skin = new THREE.SkinnedMesh(geometry, material); skin.skeleton = new THREE.Skeleton();
+  const skeleton = vi.spyOn(skin.skeleton, 'dispose');
+  const nativeBinding = vi.fn(), sharedArt = vi.fn();
+  mesh.addEventListener('dispose', nativeBinding);
+  geometry.addEventListener('dispose', sharedArt); material.addEventListener('dispose', sharedArt); texture.addEventListener('dispose', sharedArt);
+  root.add(mesh, skin); disposeSceneInstances(root);
+  expect(nativeBinding).toHaveBeenCalledTimes(1);
+  expect(sharedArt).not.toHaveBeenCalled();
+  expect(skeleton).not.toHaveBeenCalled();
+  expect(survivor.geometry).toBe(geometry); expect(survivor.material.map).toBe(texture);
+  disposeSceneInstances(skin, { skeletons: true }); expect(skeleton).toHaveBeenCalledTimes(1);
+  geometry.dispose(); material.dispose(); texture.dispose();
+});

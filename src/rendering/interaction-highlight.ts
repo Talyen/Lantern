@@ -6,6 +6,7 @@ import { positionLocal, normalLocal, uniform, vec3 } from 'three/tsl';
 export class InteractionHighlight {
   private root=new THREE.Group();
   private target:THREE.Object3D | null=null;
+  private scale=new THREE.Vector3();
   private parts:{source:THREE.Mesh;mesh:THREE.Mesh;material:MeshBasicNodeMaterial;width:ReturnType<typeof uniform>}[]=[];
   constructor(parent:THREE.Object3D){this.root.userData.transient=true;parent.add(this.root);}
   select(target:THREE.Object3D | null):void{
@@ -22,7 +23,7 @@ export class InteractionHighlight {
     });
   }
   update(worldWidth:number):void{
-    const scale=new THREE.Vector3();
+    const scale=this.scale;
     for(const part of this.parts){
       let visible=true;for(let object:THREE.Object3D | null=part.source;object;object=object.parent)if(!object.visible)visible=false;
       part.mesh.visible=visible;part.source.updateWorldMatrix(true,false);part.mesh.matrix.copy(part.source.matrixWorld);

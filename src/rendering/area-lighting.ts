@@ -6,6 +6,7 @@ import type { ResolvedAreaDefinition, AreaLighting, ProbeLighting } from '../lev
 import { LightingCache } from './lighting-cache';
 import { decodeProbeBake, exportProbeBake, lightingBakeSignature, type PreparedProbeBake } from './lighting-bake';
 import bakeIndex from '../../assets/lighting-bakes.json';
+import { disposeSceneInstances } from '../assets/resource-ownership';
 
 type ProbeResource = { grid: LightProbeGrid; imported?: THREE.Texture; prepared?: PreparedProbeBake; source: 'live' | 'prepared' };
 export type PreparedLighting = { environment: THREE.Texture | null; grid: LightProbeGrid | null; signature: string; probes?: ProbeLighting; release(): void; resource?: ProbeResource };
@@ -119,7 +120,7 @@ export class AreaLightingResources {
       }
       grid.removeFromParent(); return { grid, source: 'live' };
     } catch (error) { grid.dispose(); throw error; }
-    finally { sun.dispose(); scenery.traverse(object => { if (object instanceof THREE.InstancedMesh || object instanceof THREE.Light) object.dispose(); }); }
+    finally { sun.dispose(); disposeSceneInstances(scenery); scenery.traverse(object => { if (object instanceof THREE.Light) object.dispose(); }); }
   }
   commit(scene: THREE.Scene, prepared: PreparedLighting): void {
     this.active?.grid?.removeFromParent(); this.active?.release(); this.active = prepared;

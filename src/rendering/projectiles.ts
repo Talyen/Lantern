@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { MeshBasicNodeMaterial } from 'three/webgpu';
 import { assetLibrary, type AssetInstance } from '../assets/asset-library';
+import { disposeSceneInstances } from '../assets/resource-ownership';
 import { arrowAsset } from '../gameplay/equipment';
 import type { Projectile, Encounter } from '../gameplay/encounter';
 
@@ -22,7 +23,7 @@ export class ProjectileVisuals {
     }).catch(error => { this.loading = undefined; throw error; });
   }
   sync(projectiles: Projectile[]): void {
-    for (const [id, object] of this.objects) if (!projectiles.some(projectile=>projectile.id===id)) { object.removeFromParent(); this.objects.delete(id); }
+    for (const [id, object] of this.objects) if (!projectiles.some(projectile=>projectile.id===id)) { disposeSceneInstances(object); object.removeFromParent(); this.objects.delete(id); }
     for (const projectile of projectiles) {
       let object = this.objects.get(projectile.id);
       if (!object) {
@@ -34,7 +35,7 @@ export class ProjectileVisuals {
       object.position.set(projectile.x,projectile.y,projectile.z); object.rotation.y=Math.atan2(projectile.dx,projectile.dz);
     }
   }
-  clear(): void { this.root.clear(); this.objects.clear(); }
+  clear(): void { disposeSceneInstances(this.root); this.root.clear(); this.objects.clear(); }
   dispose(): void { this.disposed=true; this.clear(); this.root.removeFromParent(); this.arrows?.release(); this.boltGeometry.dispose(); this.boltMaterial.dispose(); this.enemyBoltMaterial.dispose(); }
 }
 

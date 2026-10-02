@@ -1,4 +1,5 @@
 import { SceneCache } from '../assets/scene-cache';
+import { disposeSceneInstances } from '../assets/resource-ownership';
 import { MeshStandardNodeMaterial } from 'three/webgpu';
 import { texture, mix, vec2, vec3, positionWorld, color, sin, smoothstep } from 'three/tsl';
 import environmentManifest from '../../assets/textures/environment/manifest.json';
@@ -284,8 +285,10 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
     disposed = true;
     shelter?.dispose(); portals.forEach(p => p.dispose()); grass?.dispose();
     root.removeFromParent();
-    root.traverse(o => { if (o instanceof THREE.InstancedMesh || o instanceof THREE.Light) o.dispose(); });
-    instances.forEach(i => i.release()); sceneLeases.forEach(release => release()); ownedGeometry.forEach(g => g.dispose());
+    instances.forEach(i => i.release());
+    disposeSceneInstances(root);
+    root.traverse(o => { if (o instanceof THREE.Light) o.dispose(); });
+    sceneLeases.forEach(release => release()); ownedGeometry.forEach(g => g.dispose());
     ownedMaterial.forEach(m => m.dispose()); ownedTextures.forEach(t => t.dispose());
   }
 }

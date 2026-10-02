@@ -6,16 +6,26 @@ import type { GroundDrop } from '../gameplay/adventure';
 export class LootLabels {
   private root = document.createElement('div');
   private labels = new Map<string, HTMLButtonElement>();
+  private drops = new Map<string, GroundDrop>();
+  private order: string[] = [];
+  private placements = new WeakMap<HTMLButtonElement, { x: number; y: number }>();
   hovered: string | null = null;
   private position = new THREE.Vector3();
   constructor(private host: HTMLElement, private select: (id: string) => void) { this.root.id = 'loot-labels'; host.append(this.root); }
   sync(drops: GroundDrop[], camera: THREE.Camera, point: [number, number], hidden: boolean): void {
-    this.root.hidden = hidden;
-    for (const [id, label] of this.labels) if (!drops.some(d => d.id === id)) { label.remove(); this.labels.delete(id); if (this.hovered === id) this.hovered = null; }
+    if (this.root.hidden !== hidden) this.root.hidden = hidden;
+    let changed = drops.length !== this.drops.size;
+    // Rebuild membership in linear time; only changed membership needs sorting.
+    for (const drop of drops) { if (!this.drops.has(drop.id)) changed = true; }
+    this.drops.clear(); for (const drop of drops) this.drops.set(drop.id, drop);
+    for (const [id, label] of this.labels) if (!this.drops.has(id)) { label.remove(); this.labels.delete(id); if (this.hovered === id) this.hovered = null; }
+    if (changed) this.order = [...this.drops.keys()].sort((a, b) => a.localeCompare(b));
+    if (!this.order.length) return;
     const rows: { left: number; right: number; top: number; bottom: number }[] = [];
     const width = this.host.clientWidth, height = this.host.clientHeight;
     const visible: { label: HTMLButtonElement; x: number; y: number }[] = [];
-    for (const drop of [...drops].sort((a, b) => a.id.localeCompare(b.id))) {
+    for (const id of this.order) {
+      const drop = this.drops.get(id)!;
       let label = this.labels.get(drop.id);
       if (!label) {
         label = document.createElement('button'); label.type = 'button'; label.className = 'loot-label'; label.dataset.drop = drop.id; label.textContent = lootDefinitions[drop.item].name;
@@ -24,9 +34,11 @@ export class LootLabels {
         label.onpointerenter = () => { this.hovered = drop.id; }; label.onpointerleave = () => { if (this.hovered === drop.id) this.hovered = null; };
         this.root.append(label); this.labels.set(drop.id, label);
       }
+      if (hidden) { if (!label.hidden) label.hidden = true; continue; }
       this.position.set(drop.position[0], drop.height + .4, drop.position[1]).project(camera);
       const onScreen = this.position.z >= -1 && this.position.z <= 1 && Math.abs(this.position.x) <= 1 && Math.abs(this.position.y) <= 1;
-      label.hidden = hidden || !onScreen || Math.hypot(point[0] - drop.position[0], point[1] - drop.position[1]) > 12;
+      const invisible = !onScreen || Math.hypot(point[0] - drop.position[0], point[1] - drop.position[1]) > 12;
+      if (label.hidden !== invisible) label.hidden = invisible;
       if (label.hidden) continue;
       visible.push({ label, x: (this.position.x + 1) * width / 2, y: (1 - this.position.y) * height / 2 });
     }
@@ -49,8 +61,12 @@ export class LootLabels {
       placements.push({ label, x, y });
     }
     for (const { label, x, y } of placements) {
-      label.style.left = `${x}px`; label.style.top = `${y}px`; label.classList.toggle('hovered', this.hovered === label.dataset.drop);
+      const previous = this.placements.get(label), hovered = this.hovered === label.dataset.drop;
+      if (previous?.x !== x) label.style.left = `${x}px`;
+      if (previous?.y !== y) label.style.top = `${y}px`;
+      if (previous?.x !== x || previous?.y !== y) this.placements.set(label, { x, y });
+      if (label.classList.contains('hovered') !== hovered) label.classList.toggle('hovered', hovered);
     }
   }
-  dispose(): void { this.root.remove(); this.labels.clear(); }
+  dispose(): void { this.root.remove(); this.labels.clear(); this.drops.clear(); this.order.length = 0; }
 }
