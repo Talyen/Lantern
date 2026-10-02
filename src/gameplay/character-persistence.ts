@@ -1,3 +1,4 @@
+import { RetryTimer, storageRetryDelays } from '../data/retry';
 import {
   character,
   characterBackupKey,
@@ -8,14 +9,12 @@ import {
 
 export type Storage = Pick<globalThis.Storage, 'getItem' | 'setItem'>;
 export type StorageSource = Storage | (() => Storage);
-const retryDelays = [1000, 2000, 5000, 15000, 30000];
 
 /** One latest snapshot, one retry timer. Persistence never owns an active character. */
 export class CharacterPersistence {
   private loaded = false;
   private pending: string | null = null;
-  private timer?: ReturnType<typeof setTimeout>;
-  private failures = 0;
+  private readonly retry = new RetryTimer();
   private error = '';
   private blockedByExisting = false;
   private closed = false;
@@ -70,7 +69,7 @@ export class CharacterPersistence {
   /** Startup gets two further read attempts before falling back to in-memory play. */
   async initialize(): Promise<CharacterSave | null> {
     if (!this.source || this.loaded || this.pending !== null) return null;
-    for (const delay of retryDelays.slice(0, 2)) {
+    for (const delay of storageRetryDelays.slice(0, 2)) {
       await new Promise<void>((resolve) => setTimeout(resolve, delay));
       const value = this.load();
       if (value) return value;
@@ -80,7 +79,7 @@ export class CharacterPersistence {
   request(value: CharacterSave): void {
     if (!this.source || this.closed) return;
     this.pending = JSON.stringify(value);
-    if (!this.timer) this.flush();
+    if (!this.retry.scheduled) this.flush();
   }
   private flush(): void {
     if (this.pending === null) return;
@@ -110,25 +109,18 @@ export class CharacterPersistence {
         storage.setItem(characterSaveKey, this.pending);
       }
       this.pending = null;
-      this.failures = 0;
+      this.retry.reset();
       this.error = '';
     } catch (error) {
       this.error = String(error);
       if (!this.closed && !this.blockedByExisting) {
-        const delay = retryDelays[Math.min(this.failures++, retryDelays.length - 1)];
-        this.timer = setTimeout(() => {
-          this.timer = undefined;
-          this.flush();
-        }, delay);
-        // Timers must not keep command-line consumers alive.
-        if (typeof this.timer === 'object') this.timer.unref();
+        this.retry.schedule(() => this.flush());
       }
     }
   }
   close(value: CharacterSave): void {
     if (this.closed) return;
-    clearTimeout(this.timer);
-    this.timer = undefined;
+    this.retry.cancel();
     this.closed = true;
     if (this.source) {
       this.pending = JSON.stringify(value);
@@ -139,7 +131,7 @@ export class CharacterPersistence {
     return {
       pending: this.pending !== null,
       loaded: this.loaded,
-      failures: this.failures,
+      failures: this.retry.attempts,
       blockedByExisting: this.blockedByExisting,
       error: this.error,
     };

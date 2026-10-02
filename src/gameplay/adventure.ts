@@ -1,3 +1,4 @@
+import { enterAreaEncounter } from './area-encounter';
 import { chestRewards, enemyRewards } from './adventure-rewards';
 import {
   advanceGroundDrops, collectGroundDrop, lootEvent,
@@ -6,7 +7,7 @@ import {
 import { purchase, sale, repurchase } from './shop-transactions';
 import { canRepairShelter, restoredShelter, validatedContainers } from './homestead-transactions';
 import { validBar, type ActionBar, type WeaponSet } from './abilities';
-import { applyEquipment, createEncounter, type Encounter, type EnemyId } from './encounter';
+import { createEncounter, type Encounter, type EnemyId } from './encounter';
 import { near, type Point, type Spawn } from './area';
 import type { AreaDefinition, Campfire, Chest } from '../levels/types';
 import { isEquipmentSlot } from './equipment';
@@ -257,49 +258,11 @@ export class Adventure {
   /** Call only after destination resources are ready; failed loads cannot change these states. */
   enter(encounter: Encounter, area: AreaDefinition, arrival: ReturnSpawn = area.layout.player, recover = false): void {
     const health = this.currentArea ? encounter.player.hp : null;
-    const resources = {
-      weapon: encounter.weapon,
-      shield: encounter.shield,
-      playerMana: encounter.playerMana,
-      abilityCooldowns: { ...encounter.abilityCooldowns },
-      potionCooldown: encounter.potionCooldown,
-      dodgeCooldown: encounter.dodgeCooldown,
-      weaponSets: encounter.weaponSets,
-      activeSet: encounter.activeSet,
-    };
     if (this.currentArea) this.session().encounter = structuredClone(encounter);
     this.currentArea = area.id;
-    const previous = this.session().encounter;
-    const next = createEncounter('playing', area.layout);
-    if (previous && area.kind !== 'safe') {
-      for (const id of next.enemyIds) {
-        const authored = next.enemies[id];
-        const saved = previous.enemies[id];
-        if (authored.home && saved?.home) {
-          next.enemies[id] = {
-            ...saved,
-            kind: authored.kind,
-            rig: authored.rig,
-            loadout: authored.loadout,
-            home: authored.home,
-            lock: 0,
-            attackTime: -1,
-            contactIndex: 0,
-          };
-        }
-      }
-
-      next.phase = next.enemyIds.every(id => next.enemies[id].hp <= 0) ? 'won' : 'playing';
-    }
-
-    next.player.x = arrival.position[0];
-    next.player.z = arrival.position[1];
-    next.player.yaw = arrival.yaw;
-    next.player.y = arrival.height ?? 0;
-    Object.assign(encounter, next, resources);
-    applyEquipment(encounter, this.character.items, this.character.activeSet);
-    encounter.player.hp = recover || health === null ? encounter.stats.maxHealth : Math.min(health, encounter.stats.maxHealth);
-    if (health === null) encounter.playerMana = encounter.stats.maxMana;
+    enterAreaEncounter(encounter, area, {
+      previous: this.session().encounter, character: this.character, arrival, recover, health,
+    });
     this.castRemaining = 0;
     this.cancelPickup();
     this.healing = false;
