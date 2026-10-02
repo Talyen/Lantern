@@ -20,6 +20,7 @@ import type { CoreEffects } from '../rendering/effects';
 import { generateDecoration } from './decoration';
 import { createShelter } from '../rendering/shelter';
 import { resourceDefinitions } from './resources';
+import { gathering } from '../gameplay/skills';
 import { treeDefinitions } from './trees';
 import type { AreaDefinition, AssetRef, Placement, Primitive, GroundPatch } from './types';
 const cache = new SceneCache();
@@ -290,7 +291,7 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
     function setResourceState(id: string, depleted: boolean): void {
       if(treeIds.has(id)){setTreeState(id,depleted);return;}
       const model=mineralModels.get(id);if(!model)return;
-      model.userData.depleted=depleted; model.scale.y=model.userData.resourceScaleY*(depleted ? .42 : 1);
+      model.userData.depleted=depleted; model.scale.y=model.userData.resourceScaleY*(depleted ? gathering.mineralDepletedScale : 1);
     }
     function setTreeState(id: string, felled: boolean): void {
       const tree = treeModels.get(id); if (!tree) return;

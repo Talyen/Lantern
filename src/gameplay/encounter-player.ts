@@ -8,6 +8,7 @@ import {
   type Timings,
 } from './encounter-model';
 import { hit } from './encounter-damage';
+import { projectileLaunchClear } from './encounter-projectiles';
 
 const aimDeadZone = .15;
 function faceAim(player: ActorState, aim: AimPoint): void {
@@ -206,10 +207,13 @@ export function preparePlayer(state: Encounter, dt: number, input: Input, timing
   }
   advancePlayerClocks(state, dt);
   state.blocking = !!(input.block && state.shield && state.player.lock <= 0 && state.dodgeRemaining === 0);
+  // Held facing applies to projectile contacts as well as later melee contacts.
+  if (state.blocking && input.aim) faceAim(state.player, input.aim);
   if (!pending)
     return prepared;
   if (validAtUnlock && state.player.lock === 0 && state.dodgeRemaining === 0 && cooldown() === 0) {
     const previousImmunity = state.invulnerability;
+    const alreadyBlocking = state.blocking;
     state.pending = null;
     if (pending.kind === 'swap')
       prepared.events.push(...swapWeaponSet(state, false));
@@ -217,6 +221,8 @@ export function preparePlayer(state: Encounter, dt: number, input: Input, timing
       prepared.events.push(...useAbility(state, pending.ability, timing, false, pending.aim));
     else
       prepared.events.push(...(pending.kind === 'attack' ? attack(state, timing, false, pending.aim) : dodge(state, pending.direction, false, pending.aim)));
+    if (!alreadyBlocking && state.blocking)
+      state.blockFrameOffset = Math.max(state.blockFrameOffset, Math.min(dt, availableAfter));
     if (state.dodgeRemaining > 0 && pending.kind === 'dodge') {
       // Recovery time belongs to the previous action, not the new roll.
       state.dodgeFrameOffset = Math.min(dt, availableAfter);
@@ -261,7 +267,8 @@ export function stepPlayerAttack(state: Encounter, dt: number, timing: Timings, 
     events.push({ type: 'action', actor: 'player', action: 'contact', weapon: action.weapon });
     if (action.weapon === 'bow' || action.weapon === 'staff') {
       const dx = Math.sin(player.yaw), dz = Math.cos(player.yaw);
-      state.projectiles.push({ id: ++state.nextProjectile, owner: 'player', kind: action.weapon === 'bow' ? 'arrow' : 'bolt', x: player.x + dx * .35, y: player.y + 1.22, z: player.z + dz * .35, dx, dz, remaining: action.reach, damage: action.damage, pierced: action.ability === 'piercing-shot' ? [] : undefined, firstStep: Math.min(dt, player.attackTime - contacts[player.contactIndex - 1]) });
+      const projectile = { id: ++state.nextProjectile, owner: 'player', kind: action.weapon === 'bow' ? 'arrow' as const : 'bolt' as const, x: player.x + dx * .35, y: player.y + 1.22, z: player.z + dz * .35, dx, dz, remaining: action.reach, damage: action.damage, pierced: action.ability === 'piercing-shot' ? [] : undefined, firstStep: Math.min(dt, player.attackTime - contacts[player.contactIndex - 1]) };
+      if (projectileLaunchClear(projectile, player, events, movementWorld)) state.projectiles.push(projectile);
     }
     else
       for (const id of state.enemyIds) {

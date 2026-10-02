@@ -1,6 +1,7 @@
 import { generateDecoration } from './decoration.ts';
 import type { AreaDefinition, AssetRef, Placement } from './types.ts';
 import type { Traversal } from '../gameplay/movement.ts';
+import { gathering } from '../gameplay/skills.ts';
 
 export type TreeDefinition = { id: string; position: [number, number, number]; radius: number };
 
@@ -28,7 +29,8 @@ export function treeDefinitions(area: AreaDefinition): TreeDefinition[] {
 /** Every standing tree blocks movement, even when its optional model could not load. */
 export function traversalWithTrees(area: AreaDefinition): Traversal {
   const trees = treeDefinitions(area), ids = new Set(trees.map(t => t.id));
-  const obstacles = (area.traversal?.obstacles ?? []).map(o => ({ ...o, tree: ids.has(o.id) || undefined }));
+  const minerals = new Set([...area.props, ...generateDecoration(area)].filter(p => p.harvest && p.harvest.kind !== 'tree').map(p => p.id));
+  const obstacles: Traversal['obstacles'] = (area.traversal?.obstacles ?? []).map(o => ({ ...o, tree: ids.has(o.id) || undefined, depletedScale: minerals.has(o.id) ? gathering.mineralDepletedScale : undefined }));
   const existing = new Set(obstacles.map(o => o.id));
   for (const tree of trees) if (!existing.has(tree.id)) obstacles.push({ id: tree.id, position: [tree.position[0], tree.position[1] + 1, tree.position[2]], size: [tree.radius * 2, 2, tree.radius * 2], yaw: 0, tree: true });
   return { obstacles, surfaces: area.traversal?.surfaces };

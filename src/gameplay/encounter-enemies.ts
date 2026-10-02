@@ -5,7 +5,7 @@ import {
   type EncounterEvent, type EnemyId, type Motion, type Movement, type Projectile, type Timings,
 } from './encounter-model';
 import { hit } from './encounter-damage';
-import { advanceProjectile } from './encounter-projectiles';
+import { advanceProjectile, projectileLaunchClear } from './encounter-projectiles';
 
 /** Keep authored packs legible without moving planted attacks or changing legacy solo fights. */
 export function separateEnemies(state: Encounter, dt: number, movementWorld?: Movement): void {
@@ -179,7 +179,7 @@ function stepCaster(state: Encounter, id: EnemyId, dt: number, timing: Timings, 
     events.push({ type: 'action', actor: id, action: 'contact', weapon: 'staff' });
     const dx = Math.sin(enemy.yaw), dz = Math.cos(enemy.yaw);
     const projectile: Projectile = { id: ++state.nextProjectile, owner: id, kind: 'bolt', x: enemy.x + dx * .35, y: enemy.y + 1.08, z: enemy.z + dz * .35, dx, dz, remaining: 12, firstStep: Math.min(dt, enemy.attackTime - release) };
-    if (advanceProjectile(state, projectile, dt, timing, events, movementWorld))
+    if (projectileLaunchClear(projectile, enemy, events, movementWorld) && advanceProjectile(state, projectile, dt, timing, events, movementWorld))
       state.projectiles.push(projectile);
   }
   if (enemy.attackTime >= timing[id].attack) {

@@ -5,7 +5,7 @@ import { constrain, type Boundary } from './area';
 import type { ActorId, ActorState, Movement } from './encounter';
 
 export type Surface = { positions: number[]; indices: number[] };
-export type Obstacle = { id: string; position: [number, number, number]; size: [number, number, number]; yaw: number; tree?: boolean };
+export type Obstacle = { id: string; position: [number, number, number]; size: [number, number, number]; yaw: number; tree?: boolean; depletedScale?: number };
 export type Traversal = { obstacles: Obstacle[]; surfaces?: Surface[] };
 const radius = .3, halfHeight = .55, centerHeight = radius + halfHeight + .02;
 let initialization: Promise<void> | undefined;
@@ -38,7 +38,7 @@ export class MovementWorld implements Movement {
   private readonly desiredMovement = { x: 0, y: 0, z: 0 };
   private nav!: NavMesh;
   private readonly baseSurfaces: Surface[];
-  private readonly obstacles = new Map<string, { definition: Obstacle; collider: RAPIER.Collider; felled: boolean }>();
+  private readonly obstacles = new Map<string, { definition: Obstacle; current: Obstacle; collider: RAPIER.Collider; felled: boolean }>();
   private navigationWorker?: Worker;
   private navigationRevision = 0;
   private navigationPending = false;
@@ -61,7 +61,7 @@ export class MovementWorld implements Movement {
     }
     for (const obstacle of traversal.obstacles) {
       const collider = this.world.createCollider(RAPIER.ColliderDesc.cuboid(...obstacle.size.map(v => v / 2) as [number, number, number]).setTranslation(...obstacle.position).setRotation({ x: 0, y: Math.sin(obstacle.yaw / 2), z: 0, w: Math.cos(obstacle.yaw / 2) }));
-      this.solid.add(collider.handle); this.blockingObstacles.add(collider.handle); this.obstacles.set(obstacle.id, { definition: obstacle, collider, felled: false });
+      this.solid.add(collider.handle); this.blockingObstacles.add(collider.handle); this.obstacles.set(obstacle.id, { definition: obstacle, current: obstacle, collider, felled: false });
     }
     this.rebuildNavigation();
     this.world.step();
@@ -75,7 +75,7 @@ export class MovementWorld implements Movement {
       for (const index of surface.indices) indices.push(index + offset);
     };
     for (const surface of this.baseSurfaces) append(surface);
-    for (const obstacle of this.obstacles.values()) if (!obstacle.felled) append(box(obstacle.definition));
+    for (const obstacle of this.obstacles.values()) if (!obstacle.felled || !obstacle.definition.tree) append(box(obstacle.current));
     return { positions, indices };
   }
   private rebuildNavigation(background = false): void {
@@ -107,10 +107,18 @@ export class MovementWorld implements Movement {
   /** Collision commits immediately; expensive routes refresh off the gameplay thread. */
   setTreeFelled(id: string, felled: boolean): void {
     const obstacle = this.obstacles.get(id);
-    if (this.disposed || !obstacle?.definition.tree || obstacle.felled === felled) return;
-    obstacle.felled = felled; obstacle.collider.setEnabled(!felled);
-    if (felled) { this.solid.delete(obstacle.collider.handle); this.blockingObstacles.delete(obstacle.collider.handle); }
-    else { this.solid.add(obstacle.collider.handle); this.blockingObstacles.add(obstacle.collider.handle); }
+    if (this.disposed || !obstacle || (!obstacle.definition.tree && obstacle.definition.depletedScale === undefined) || obstacle.felled === felled) return;
+    obstacle.felled = felled;
+    if (obstacle.definition.tree) {
+      obstacle.collider.setEnabled(!felled);
+      if (felled) { this.solid.delete(obstacle.collider.handle); this.blockingObstacles.delete(obstacle.collider.handle); }
+      else { this.solid.add(obstacle.collider.handle); this.blockingObstacles.add(obstacle.collider.handle); }
+    } else {
+      const definition = obstacle.definition, height = definition.size[1] * (felled ? definition.depletedScale! : 1);
+      obstacle.current = { ...definition, size: [definition.size[0], height, definition.size[2]], position: [definition.position[0], definition.position[1] - (definition.size[1] - height) / 2, definition.position[2]] };
+      obstacle.collider.setShape(new RAPIER.Cuboid(definition.size[0] / 2, height / 2, definition.size[2] / 2));
+      obstacle.collider.setTranslation({ x: obstacle.current.position[0], y: obstacle.current.position[1], z: obstacle.current.position[2] });
+    }
     this.world.step(); this.rebuildNavigation(true);
   }
   move(id: ActorId, actor: ActorState, dx: number, dz: number, dt: number): void {
@@ -174,7 +182,9 @@ export class MovementWorld implements Movement {
       const target={...from,x:endpoint[0],z:endpoint[1],y:height};
       if (!this.interactionVisible(target,point,height,obstacleId)) continue;
       const path=this.pickupPath(from,endpoint,height);
-      if(path) return path;
+      const end = path?.at(-1);
+      if (end && Math.hypot(end[0]-point[0],end[1]-point[1])<=reach &&
+        this.interactionVisible({...target,x:end[0],z:end[1]},point,height,obstacleId)) return path;
     }
     return null;
   }

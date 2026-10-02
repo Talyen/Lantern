@@ -6,6 +6,18 @@ import { hit } from './encounter-damage';
 
 const playerTarget = ['player'] as const;
 
+/** The visual muzzle offset must not skip a nearby wall or a blocking corner. */
+export function projectileLaunchClear(projectile: Projectile, actor: { x: number; z: number }, events: EncounterEvent[], movementWorld?: Movement): boolean {
+  const origin = { x: actor.x, y: projectile.y, z: actor.z };
+  const wall = movementWorld?.segmentHit?.(origin, projectile) ?? null;
+  if (wall === null) return true;
+  events.push({ type: 'projectileImpact', kind: projectile.kind, position: {
+    x: origin.x + (projectile.x - origin.x) * wall,
+    z: origin.z + (projectile.z - origin.z) * wall,
+  } });
+  return false;
+}
+
 /** Numeric swept projectiles share terrain collision with movement, never apply damage twice. */
 export function advanceProjectile(state: Encounter, projectile: Projectile, dt: number, timing: Timings, events: EncounterEvent[], movementWorld?: Movement): boolean {
   if (state.phase === 'lost' || projectile.owner !== 'player' && state.enemies[projectile.owner].hp <= 0)

@@ -691,3 +691,47 @@ test('held movement continues for the remainder of the frame after a dodge lands
   expect(state.player.x).toBeCloseTo(dodgeDistance / .45 * .01 + state.player.speed * .03);
   expect(state.dodgeRemaining).toBe(0);
 });
+
+test('an alternate shield buffered behind attack cooldown protects only after activation', () => {
+  const state = createEncounter('playing');
+  sets(state, [{ main: 'bow', off: null }, { main: 'axe', off: 'shield' }]);
+  state.player.x = state.player.z = 0;
+  state.attackCooldown = .03;
+  useAbility(state, 'shield-basic', timing.player, false);
+  state.projectiles.push({ id: 1, owner: 'enemy', kind: 'bolt', x: 0, y: 1, z: .5, dx: 0, dz: -1, remaining: 12 });
+  stepExploration(state, .04, { ...idle, block: true }, undefined, timing);
+  expect(state.activeSet).toBe(1);
+  expect(state.player.hp).toBe(80);
+});
+
+test('turning a held shield toward a bolt uses the current aim at contact', () => {
+  const state = createEncounter('playing');
+  sets(state, [{ main: 'axe', off: 'shield' }, { main: null, off: null }]);
+  state.player.x = state.player.z = 0;
+  state.player.yaw = Math.PI;
+  state.blocking = true;
+  state.projectiles.push({ id: 1, owner: 'enemy', kind: 'bolt', x: 0, y: 1, z: .5, dx: 0, dz: -1, remaining: 12 });
+  stepExploration(state, .04, { ...idle, block: true, aim: { x: 0, z: 5 } }, undefined, timing);
+  expect(state.player.hp).toBe(90);
+  expect(state.blocking).toBe(true);
+});
+
+test('ranged launches collide with terrain between the actor and the muzzle', async () => {
+  const { MovementWorld } = await import('../src/gameplay/movement');
+  const world = await MovementWorld.create({ kind: 'circle', center: [0, 0], radius: 10 }, {
+    obstacles: [{ id: 'wall', position: [0, 1, .33], size: [3, 2, .02], yaw: 0 }],
+  });
+  try {
+    for (const weapon of ['bow', 'staff'] as const) {
+      const state = createEncounter('playing');
+      equip(state, weapon);
+      state.player.x = state.player.z = 0;
+      state.enemies.enemy.x = 0; state.enemies.enemy.z = 2;
+      attack(state, timing.player, false, { x: 0, z: 3 });
+      const events = stepExploration(state, .55, idle, world, timing);
+      expect(state.enemies.enemy.hp).toBe(200);
+      expect(state.projectiles).toHaveLength(0);
+      expect(events.some(event => event.type === 'projectileImpact')).toBe(true);
+    }
+  } finally { world.dispose(); }
+});

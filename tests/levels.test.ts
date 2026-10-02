@@ -413,3 +413,38 @@ test('missing destination skeleton art retains the committed actors and reports 
   expect(scene.children).toEqual([player.root]);expect(Object.keys(actors)).toEqual(['player']);
   roster.dispose();vi.restoreAllMocks();
 });
+
+test('depleted mineral collision retains the low core and restores on renewal', async () => {
+  const { MovementWorld } = await import('../src/gameplay/movement');
+  const area = clearing as unknown as AreaDefinition;
+  const obstacle = traversalWithTrees(area).obstacles.find(entry => entry.id === 'stone-outcrop-1')!;
+  const world = await MovementWorld.create(area.layout.boundary, { obstacles: [obstacle] });
+  const [x, , z] = obstacle.position;
+  const segment = (height: number) => world.segmentHit({ x: x - 2, y: height, z }, { x: x + 2, y: height, z });
+  try {
+    expect(segment(.5)).not.toBeNull();
+    world.setTreeFelled(obstacle.id, true);
+    expect(segment(.5)).toBeNull();
+    expect(segment(.15)).not.toBeNull();
+    world.setTreeFelled(obstacle.id, false);
+    expect(segment(.5)).not.toBeNull();
+  } finally { world.dispose(); }
+});
+
+test('tree approach retries when navigation snaps the first endpoint outside working range', async () => {
+  const { MovementWorld } = await import('../src/gameplay/movement');
+  const { createEncounter } = await import('../src/gameplay/encounter');
+  const area = clearing as unknown as AreaDefinition;
+  const tree = treeDefinitions(area).find(entry => entry.id === 'pine-0')!;
+  const world = await MovementWorld.create(area.layout.boundary, traversalWithTrees(area));
+  const player = createEncounter('playing').player;
+  player.x = -12.488691611356915; player.z = 9.107135005388542;
+  const point: [number, number] = [tree.position[0], tree.position[2]], reach = tree.radius + .85;
+  try {
+    const path = world.interactionPath(player, point, tree.position[1], reach, tree.id);
+    expect(path).not.toBeNull();
+    const end = path!.at(-1)!;
+    expect(Math.hypot(end[0] - point[0], end[1] - point[1])).toBeLessThanOrEqual(reach);
+    expect(world.interactionVisible({ ...player, x: end[0], z: end[1] }, point, tree.position[1], tree.id)).toBe(true);
+  } finally { world.dispose(); }
+});
