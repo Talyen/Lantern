@@ -185,7 +185,7 @@ export class Adventure {
   /** Call only after destination resources are ready; failed loads cannot change these states. */
   enter(encounter: Encounter, area: AreaDefinition, arrival: ReturnSpawn = area.layout.player, recover = false): void {
     const health = this.currentArea ? encounter.player.hp : null;
-    const resources={weapon:encounter.weapon,shield:encounter.shield,playerMana:encounter.playerMana,abilityCooldowns:{...encounter.abilityCooldowns},potionCooldown:encounter.potionCooldown,weaponSets:encounter.weaponSets,activeSet:encounter.activeSet};
+    const resources={weapon:encounter.weapon,shield:encounter.shield,playerMana:encounter.playerMana,abilityCooldowns:{...encounter.abilityCooldowns},potionCooldown:encounter.potionCooldown,dodgeCooldown:encounter.dodgeCooldown,weaponSets:encounter.weaponSets,activeSet:encounter.activeSet};
     if (this.currentArea) this.session().encounter = structuredClone(encounter);
     this.currentArea = area.id;
     const previous = this.session().encounter;

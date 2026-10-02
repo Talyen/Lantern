@@ -254,7 +254,6 @@ test('adventure sound facts describe successful changes once and do not replay a
   expect(adventure.takeEvents()).toEqual([]);
 });
 
-
 test('harvest XP is collected once, including partial stacks; transfers and re-drops cannot award it', () => {
   const state=new Adventure(memory()); const encounter=createEncounter('playing',field.layout);state.enter(encounter,field);
   state.character.items=[{id:'wood-stack',item:'wood',quantity:98,slot:'bag',x:0,y:0}];
@@ -294,7 +293,6 @@ test('revision 3 migration retains IDs, claims, discoveries and XP while initial
   const old={...state.character,items:state.character.items.filter(i=>i.item!=='potion'),version:3};storage.setItem(characterSaveKey,JSON.stringify(old));
   const restored=new Adventure(storage);expect(restored.character.items.filter(i=>i.item!=='potion')).toEqual(old.items);expect(restored.character.campClaims).toEqual(['bow']);expect(restored.character.xp.woodcutting).toBe(327);expect(restored.character.xp.mining).toBe(0);expect(restored.character.stash).toEqual([]);expect(restored.character.shelterRestored).toBe(false);
 });
-
 
 test('stash stack transfers retain partial quantities and rejected equipped transfers change neither container',()=>{
   const source:InventoryItem[]=[{id:'s',item:'iron',quantity:3,slot:'bag',x:0,y:0}],destination:InventoryItem[]=[{id:'d',item:'iron',quantity:98,slot:'bag',x:0,y:0}];
@@ -474,7 +472,6 @@ test('Restart refreshes chest rewards, drops and portals while retaining collect
   expect(state.session().drops.map(d=>d.item)).toEqual(['scroll','potion','shield','bow','staff','guard-helm','weathered-mail','duelist-gloves']);
 });
 
-
 test('shared equipment stays across swaps, accepts only its slots, and full-bag removal is atomic', () => {
   const items:InventoryItem[]=[{id:'sword',item:'sword',quantity:1,slot:'main',weaponSet:0,x:0,y:0},{id:'bow',item:'bow',quantity:1,slot:'main',weaponSet:1,x:0,y:0},{id:'helm',item:'guard-helm',quantity:1,slot:'bag',x:0,y:0},{id:'ring',item:'hearth-ring',quantity:1,slot:'bag',x:2,y:0}];
   const worn=equipInstance(equipInstance(items,'helm','helmet',1),'ring','ring-right',1);
@@ -634,4 +631,14 @@ test('integrated menu and interaction owners keep Shop modal and dispatch its re
   actions.execute(target);expect(openShop).toHaveBeenCalledOnce();
   shop.paused=true;actions.execute(target);expect(openShop).toHaveBeenCalledOnce();
   state.closeSave();
+});
+
+test('area travel preserves the dodge cooldown without carrying the roll', () => {
+  const adventure = new Adventure(memory()), encounter = createEncounter('playing');
+  adventure.enter(encounter, home);
+  encounter.dodgeCooldown = .7;
+  encounter.dodgeRemaining = .2;
+  adventure.enter(encounter, field);
+  expect(encounter.dodgeCooldown).toBeCloseTo(.7);
+  expect(encounter.dodgeRemaining).toBe(0);
 });

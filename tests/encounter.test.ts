@@ -101,7 +101,6 @@ test('authored collision blocks strikes, routes the raider around a wall, and gr
   } finally { world.dispose(); }
 });
 
-
 test('dodge evades a contact, completes its distance, cools down and resets', () => {
   const state = closeEncounter(); state.enemies.enemy.engaged = true;
   state.enemies.enemy.attackTime = .35; state.enemies.enemy.cooldown = 999;
@@ -548,4 +547,79 @@ test('weapon rate scales contacts and recovery, and a launched arrow keeps its p
   expect(shot.projectiles[0].damage).toBe(60);expect(shot.projectiles[0].remaining).toBeCloseTo(16-(.12-.1/.85)*24);
   stepExploration(shot,.24,idle,undefined,clocks);expect(swapWeaponSet(shot,false)).toContainEqual({type:'weaponSet',set:1});expect(shot.stats.damage).toBe(50);
   stepExploration(shot,.3,idle,undefined,clocks);expect(shot.enemies.enemy.hp).toBe(140);
+});
+
+test('buffered skills retain equipped mana capacity and recovery', () => {
+  const state = createEncounter('won');
+  applyEquipment(state, [
+    { id: 'sword', item: 'sword', quantity: 1, slot: 'main', x: 0, y: 0 },
+    { id: 'coat', item: 'quilted-coat', quantity: 1, slot: 'body', x: 0, y: 0 },
+    { id: 'amulet', item: 'amber-amulet', quantity: 1, slot: 'amulet', x: 0, y: 0 },
+  ], 0);
+  state.playerMana = 130;
+  state.player.lock = state.attackCooldown = .04;
+  const clocks = { ...timing, player: { ...timing.player, abilities: { sweep: { attack: .2, contacts: [.1] } } } };
+  useAbility(state, 'sweep', clocks.player, false);
+  stepExploration(state, .05, idle, undefined, clocks);
+  expect(state.playerMana).toBeCloseTo(105.5);
+});
+
+test('buffered dodges begin movement and immunity at recovery unlock', () => {
+  const state = createEncounter('won');
+  state.player.x = state.player.z = 0;
+  state.player.lock = .04;
+  dodge(state, { x: 1, z: 0 }, false);
+  // This bolt reaches the player before recovery unlocks, so the queued dodge cannot evade it.
+  state.enemies.caster.hp = 200;
+  state.projectiles.push(
+    { id: 1, owner: 'caster', kind: 'bolt', x: 0, y: 1, z: .5, dx: 0, dz: -1, remaining: 12 },
+    { id: 2, owner: 'caster', kind: 'bolt', x: 0, y: 1, z: .58, dx: 0, dz: -1, remaining: 12 },
+  );
+  stepExploration(state, .05, idle, undefined, timing);
+  expect(state.player.hp).toBe(80);
+  expect(state.dodgeRemaining).toBe(0);
+
+  const clear = createEncounter('won');
+  clear.player.x = clear.player.z = 0;
+  clear.player.lock = .04;
+  dodge(clear, { x: 1, z: 0 }, false);
+  stepExploration(clear, .05, idle, undefined, timing);
+  expect(clear.player.x).toBeCloseTo(dodgeDistance * .01 / .45);
+  expect(clear.dodgeRemaining).toBeCloseTo(.44);
+  expect(clear.dodgeCooldown).toBeCloseTo(.99);
+  expect(clear.invulnerability).toBeCloseTo(.24);
+
+  const later = createEncounter('won');
+  later.player.x = later.player.z = 0;
+  later.player.lock = .04;
+  later.enemies.caster.hp = 200;
+  later.projectiles.push({ id: 1, owner: 'caster', kind: 'bolt', x: 0, y: 1, z: .78, dx: 0, dz: -1, remaining: 12 });
+  dodge(later, { x: 1, z: 0 }, false);
+  stepExploration(later, .05, idle, undefined, timing);
+  expect(later.player.hp).toBe(100);
+});
+
+test('raider windup begins after its cooldown unlocks within a frame', () => {
+  const state = closeEncounter();
+  state.enemies.enemy.cooldown = .04;
+  const clocks = { ...timing, enemy: { ...timing.enemy, contacts: [.03] } };
+  stepEncounter(state, .05, idle, clocks);
+  expect(state.player.hp).toBe(100);
+  expect(state.enemies.enemy.attackTime).toBeCloseTo(.01);
+  stepEncounter(state, .021, idle, clocks);
+  expect(state.player.hp).toBe(80);
+});
+
+test('caster windup begins after its cooldown unlocks within a frame', () => {
+  const state = createEncounter('playing', {
+    boundary: { kind: 'circle', center: [0, 0], radius: 20 },
+    player: { position: [0, 0], yaw: 0 }, caster: { position: [0, 4], yaw: Math.PI },
+  });
+  state.enemies.caster.cooldown = .04;
+  const clocks = { ...timing, caster: { ...timing.caster, contacts: [.03] } };
+  stepEncounter(state, .05, idle, clocks);
+  expect(state.projectiles).toHaveLength(0);
+  expect(state.enemies.caster.attackTime).toBeCloseTo(.01);
+  stepEncounter(state, .021, idle, clocks);
+  expect(state.projectiles).toHaveLength(1);
 });
