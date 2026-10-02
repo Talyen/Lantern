@@ -106,6 +106,10 @@ Environment palette, material treatment, the fixed Golden woodland baseline and 
 
 Shadow and particle presets are owned by `src/rendering/quality-presets.ts`. Shadow map changes release old targets; quality never changes authored light count, coverage, bias or softness. Particle presets affect active capacity, continuous emission and weather rate, retaining combat burst timing/counts. Volumetric rendering and bounded mist regions are retired.
 
+`CoreEffects` tracks live particle slots separately from each preset's capacity. Empty pools stay invisible and skip simulation/buffer uploads; spawning reactivates them, while expiration, clearing and quality reductions retire slots. Live particle formulas and emission order remain unchanged. Water and foam share their identical wave-position attribute and release their geometries together. Actor locomotion retains its own displacement/weight scratch storage rather than allocating it each frame.
+
+The action bar keeps references to its fixed elements and mutates text, attributes and disabled states only when their displayed values change. Inventory and repair menus retain the latest character reference while closed and refresh on opening; bag/stash comparison and Rested presentation run only while their menu is open. Audio reads only position coordinates and iterates its owned voice set directly; its scheduling, voice limits and oldest-voice eviction remain unchanged.
+
 Graphics settings arrive as immutable snapshots. Ordinary values update once per presentation frame without resizing or clearing temporal history. Structural changes settle for 150 ms; closing Options flushes the latest request. The shared pipeline serializes candidate preparation, holds the last image while compiling, commits only the newest successful request and retains the working graph on failure. Resolution Quality resizes existing scene buffers; two recently used effect graphs are retained at most. Retired graphs release r186 render bindings for their own pass targets as well as node resources. Options remains HTML on the browser main thread; worker isolation is not implemented.
 
 ## Action bar and input ownership

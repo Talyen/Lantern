@@ -4,10 +4,13 @@ import type { Encounter } from '../gameplay/encounter';
 import { bindingLabel, type InputAction, type InputPreferences } from '../input/bindings';
 import { abilityIcon } from './ability-icons';
 import { itemIcon } from './item-icons';
+import { setText, setAttribute, setDisabled } from './dom';
 import './combat.css';
 
 type Context={character():CharacterSave;encounter():Encounter;preferences:InputPreferences;activate(id:AbilityId):void;potion():void;portal():void;swap():void;canEdit():boolean;portalReady():boolean;assign(bar:ActionBar):void;clear():void;focus():void};
 type Drag={id:AbilityId;slot?:number;x:number;y:number;active:boolean};
+type SlotElements={button:HTMLButtonElement;icon:HTMLElement;cooldown:HTMLElement;key:HTMLElement};
+type UtilityElements={button:HTMLButtonElement;count:Element;key:Element};
 export class CombatUI {
   readonly bar=document.createElement('nav');
   private dialog=document.createElement('dialog');
@@ -15,6 +18,8 @@ export class CombatUI {
   private ghost=document.createElement('div');
   private status=document.createElement('p');
   private buttons:HTMLButtonElement[]=[];
+  private slots:SlotElements[]=[];
+  private utilities:UtilityElements[]=[];
   private potion=document.createElement('button');
   private portal=document.createElement('button');
   private swap=document.createElement('button');
@@ -26,10 +31,12 @@ export class CombatUI {
   constructor(private ctx:Context){
     this.bar.id='action-bar';this.bar.setAttribute('aria-label','Action bar');
     this.potion.className=this.portal.className='utility-slot';this.potion.innerHTML=itemIcon('potion')+'<span class="supply-count"></span><kbd></kbd>';this.portal.innerHTML=itemIcon('scroll')+'<span class="supply-count"></span><kbd></kbd>';
+    this.utilities=[this.potion,this.portal].map(button=>({button,count:button.querySelector('.supply-count')!,key:button.querySelector('kbd')!}));
     this.potion.onclick=()=>{if(!this.paused){this.ctx.potion();this.ctx.focus();}};this.portal.onclick=()=>{if(!this.paused){this.ctx.portal();this.ctx.focus();}};this.bar.append(this.potion);
     const slots=document.createElement('div');slots.className='action-slots';
     for(let i=0;i<6;i++){
       const button=document.createElement('button');button.type='button';button.className='action-slot';button.dataset.slot=String(i);button.innerHTML='<span class="ability-icon"></span><span class="cooldown-value"></span><kbd></kbd>';
+      this.slots.push({button,icon:button.querySelector<HTMLElement>('.ability-icon')!,cooldown:button.querySelector<HTMLElement>('.cooldown-value')!,key:button.querySelector('kbd')!});
       button.onclick=()=>{if(performance.now()<this.ignoreClickUntil)return;if(this.paused && !this.drag?.active && this.selected && this.ctx.canEdit()){const bar=[...this.ctx.character().actionBar];bar[i]=this.selected;this.ctx.assign(bar);this.update();}};
       button.onpointerdown=event=>{
         if(event.button!==0)return;
@@ -86,21 +93,25 @@ export class CombatUI {
   update():void{
     const character=this.ctx.character(),state=this.ctx.encounter(),preferences=this.ctx.preferences.value;
     this.bar.classList.toggle('editing',this.paused);
-    this.buttons.forEach((button,index)=>{
-      const id=character.actionBar[index],icon=button.querySelector<HTMLElement>('.ability-icon')!;
+    this.slots.forEach(({button,icon,cooldown:cooldownValue,key},index)=>{
+      const id=character.actionBar[index];
       if(icon.dataset.ability!==(id ?? '')){icon.dataset.ability=id ?? '';icon.innerHTML=id ? abilityIcon(id) : '';}
       const cooldown=id ? state.abilityCooldowns[id] ?? 0 : 0, unavailable=!!id && (abilitySet(state.weaponSets,state.activeSet,id)===undefined || state.playerMana<abilities[id].mana || cooldown>0 || state.player.hp<=0);
-      button.classList.toggle('unavailable',!this.paused && unavailable);button.classList.toggle('empty',!id);button.style.setProperty('--cooldown',String(id && abilities[id].cooldown ? cooldown/abilities[id].cooldown : 0));
-      button.querySelector<HTMLElement>('.cooldown-value')!.textContent=cooldown>0 ? String(Math.ceil(cooldown)) : '';
-      button.querySelector('kbd')!.textContent=bindingLabel(preferences[`slot${index}` as InputAction].find(Boolean) ?? null);
-      button.title=id ? this.tooltip(id) : 'Empty';button.setAttribute('aria-label',id ? this.tooltip(id) : `Empty slot ${index+1}`);button.disabled=this.paused && !this.ctx.canEdit();
+      button.classList.toggle('unavailable',!this.paused && unavailable);button.classList.toggle('empty',!id);
+      const fill=String(id && abilities[id].cooldown ? cooldown/abilities[id].cooldown : 0);
+      if(button.style.getPropertyValue('--cooldown')!==fill)button.style.setProperty('--cooldown',fill);
+      setText(cooldownValue,cooldown>0 ? String(Math.ceil(cooldown)) : '');
+      setText(key,bindingLabel(preferences[`slot${index}` as InputAction].find(Boolean) ?? null));
+      const tooltip=id ? this.tooltip(id) : 'Empty';
+      setAttribute(button,'title',tooltip);setAttribute(button,'aria-label',id ? tooltip : `Empty slot ${index+1}`);setDisabled(button,this.paused && !this.ctx.canEdit());
     });
-    this.utility(this.potion,'potion',character.potions,state.potionCooldown,character.potions===0 || state.player.hp<=0 || state.player.hp>=100 || state.potionCooldown>0,'Health Potion');
-    this.utility(this.portal,'portal',character.scrolls,0,!this.ctx.portalReady(),'Scroll of Return');
-    this.swap.textContent=`${state.activeSet===0 ? 'I' : 'II'} · ${state.weapon ? state.weapon[0].toUpperCase()+state.weapon.slice(1) : 'Empty'} · ${bindingLabel(preferences.swap.find(Boolean) ?? null)}`;
-    this.swap.title='Swap weapons';this.swap.disabled=this.paused || !state.weaponSets[(1-state.activeSet) as 0|1].main;
+    this.utility(this.utilities[0],'potion',character.potions,state.potionCooldown,character.potions===0 || state.player.hp<=0 || state.player.hp>=100 || state.potionCooldown>0,'Health Potion');
+    this.utility(this.utilities[1],'portal',character.scrolls,0,!this.ctx.portalReady(),'Scroll of Return');
+    setText(this.swap,`${state.activeSet===0 ? 'I' : 'II'} · ${state.weapon ? state.weapon[0].toUpperCase()+state.weapon.slice(1) : 'Empty'} · ${bindingLabel(preferences.swap.find(Boolean) ?? null)}`);
+    setAttribute(this.swap,'title','Swap weapons');setDisabled(this.swap,this.paused || !state.weaponSets[(1-state.activeSet) as 0|1].main);
   }
-  private utility(button:HTMLButtonElement,action:'potion'|'portal',count:number,cooldown:number,unavailable:boolean,name:string):void{
-    button.querySelector('.supply-count')!.textContent=cooldown>0 ? `${Math.ceil(cooldown)}s` : String(count);button.querySelector('kbd')!.textContent=bindingLabel(this.ctx.preferences.value[action].find(Boolean) ?? null);button.title=`${name} · ${count}`;button.setAttribute('aria-label',button.title);button.disabled=this.paused || unavailable;
+  private utility(elements:UtilityElements,action:'potion'|'portal',count:number,cooldown:number,unavailable:boolean,name:string):void{
+    const title=`${name} · ${count}`;
+    setText(elements.count,cooldown>0 ? `${Math.ceil(cooldown)}s` : String(count));setText(elements.key,bindingLabel(this.ctx.preferences.value[action].find(Boolean) ?? null));setAttribute(elements.button,'title',title);setAttribute(elements.button,'aria-label',title);setDisabled(elements.button,this.paused || unavailable);
   }
 }

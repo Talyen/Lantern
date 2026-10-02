@@ -6,6 +6,7 @@ import { countItem } from '../gameplay/inventory';
 import type { WeaponSet } from '../gameplay/abilities';
 import { supportsShield } from '../gameplay/equipment';
 import { itemIcon } from './item-icons';
+import { setText, setDisabled } from './dom';
 
 export type TravelChoice = { name: string; available: boolean; travel(): void };
 export type InventoryMenuContext = { change(items: InventoryItem[]): Promise<void>; drop(id: string, quantity: number): Promise<void>; recover(id: string): void; newId(): string; changeContainers(items:InventoryItem[],stash:InventoryItem[]):void; transfer(id:string,quantity:number,toStash:boolean,point?:{x:number;y:number}):void; repair():Promise<void> };
@@ -28,6 +29,8 @@ export class AdventureMenus {
   private marker = document.getElementById('inventory-placement')!;
   private character: CharacterSave | null = null;
   private characterKey = '';
+  private rested = document.getElementById('rested-status')!;
+  private scrollCount = document.getElementById('scroll-count')!;
   private busy = false;
   private viewSet: WeaponSet = 0;
   private selected: string | null = null;
@@ -86,7 +89,7 @@ export class AdventureMenus {
   }
   get paused(): boolean { return this.inventory.open || this.travel.open || this.repair.open; }
   close(): void { if (this.busy) return; if (this.paused) this.sound?.('menuClose'); this.cancelDrag(); this.inventory.close(); this.travel.close(); this.repair.close(); this.stashMode=false; this.clearInput(); this.focus(); }
-  openInventory(stash = false): void { this.clearInput(); this.stashMode=stash; this.refresh(); this.error.textContent = ''; this.inventory.showModal(); this.sound?.('menuOpen'); }
+  openInventory(stash = false): void { this.clearInput(); this.stashMode=stash; this.refresh(); this.updateRested(); this.error.textContent = ''; this.inventory.showModal(); this.sound?.('menuOpen'); }
   openRepair(): void { this.clearInput();this.refresh();document.getElementById('repair-error')!.textContent='';this.repair.showModal();this.sound?.('menuOpen'); }
   openTravel(choices: TravelChoice[]): void {
     this.clearInput(); const list = document.getElementById('travel-destinations')!;
@@ -94,15 +97,22 @@ export class AdventureMenus {
     if (!choices.length) list.textContent = 'No destinations available.'; this.travel.showModal(); this.sound?.('menuOpen');
   }
   update(scrolls: number, canUse: boolean, prompt: string, casting: number): void {
-    document.getElementById('scroll-count')!.textContent = String(scrolls); this.use.disabled = !canUse || this.busy;
-    this.prompt.textContent = casting > 0 ? `Scroll of Return · ${casting.toFixed(1)}s` : prompt;
+    setText(this.scrollCount, String(scrolls)); setDisabled(this.use, !canUse || this.busy);
+    setText(this.prompt, casting > 0 ? `Scroll of Return · ${casting.toFixed(1)}s` : prompt);
   }
   updateCharacter(character: CharacterSave): void {
     this.character=character;
-    const seconds=Math.ceil(character.restedSeconds),rested=document.getElementById('rested-status')!;
-    rested.hidden=seconds<=0;rested.textContent=`Rested · ${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')} · +${progression.restedBonus*100}% skill XP`;
+    // Closed menus read the latest character when opened. Avoid serializing the
+    // whole bag/stash and rebuilding hidden grids during active gameplay.
+    if (!this.inventory.open && !this.repair.open) return;
+    if (this.inventory.open) this.updateRested();
     const key = JSON.stringify({...character,restedSeconds:undefined}); if (key === this.characterKey) return;
-    this.characterKey = key; this.character = character; this.refresh();
+    this.refresh();
+  }
+  private updateRested(): void {
+    const seconds=Math.ceil(this.character?.restedSeconds ?? 0);
+    if (this.rested.hidden !== (seconds<=0)) this.rested.hidden=seconds<=0;
+    setText(this.rested, `Rested · ${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')} · +${progression.restedBonus*100}% skill XP`);
   }
   private entries():InventoryItem[] { return this.character ? [...this.character.items,...(this.stashMode ? this.character.stash : [])] : []; }
   private container(id:string):Container { return this.character?.stash.some(i=>i.id===id) ? 'stash' : 'bag'; }
@@ -117,6 +127,7 @@ export class AdventureMenus {
   }
   private refresh(): void {
     const character = this.character; if (!character) return;
+    this.characterKey = JSON.stringify({...character,restedSeconds:undefined});
     document.getElementById('stash-section')!.hidden=!this.stashMode;this.inventory.classList.toggle('with-stash',this.stashMode);
     this.stashGrid.querySelectorAll('[data-instance]').forEach(el=>el.remove());
     for(const entry of character.stash){const button=this.button(entry),definition=lootDefinitions[entry.item];Object.assign(button.style,{gridColumn:`${entry.x+1} / span ${definition.width}`,gridRow:`${entry.y+1} / span ${definition.height}`});this.stashGrid.append(button);}

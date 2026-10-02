@@ -9,7 +9,7 @@ export type ParticleKind = 'fire' | 'smoke' | 'sparks' | 'hit' | 'rain' | 'snow'
 interface Emitter { position: THREE.Vector3; kind: ParticleKind; rate: number; carry: number; space: THREE.Object3D; }
 interface Pool {
   object: THREE.Points; positions: Float32Array; velocities: Float32Array; age: Float32Array;
-  life: Float32Array; colors: Float32Array; cursor: number; capacity: number;
+  life: Float32Array; colors: Float32Array; cursor: number; capacity: number; active: number; limit: number;
 }
 interface WaterOptions { width?: number; length?: number; flow?: number; shorelineMask?: THREE.Texture; }
 interface Water { mesh: THREE.Mesh; original: Float32Array; options: WaterOptions; normal: THREE.Texture; shoreline: THREE.Texture; }
@@ -53,16 +53,17 @@ export class CoreEffects {
       const vertexColors = new Float32Array(capacity * 3); geometry.setAttribute('color', new THREE.BufferAttribute(vertexColors, 3).setUsage(THREE.DynamicDrawUsage));
       const material = new THREE.PointsMaterial({ map: particleTextures[kind] ?? this.texture, vertexColors: true, transparent: true, depthWrite: false,
         size: sizes[kind], opacity: kind === 'smoke' ? 0.25 : kind === 'dust' ? 0.32 : 0.8, blending: ['fire', 'sparks', 'hit'].includes(kind) ? THREE.AdditiveBlending : THREE.NormalBlending });
-      const object = new THREE.Points(geometry, material); object.frustumCulled = false; object.name = kind; this.root.add(object);
-      this.pools.set(kind, { object, positions, colors: vertexColors, velocities: new Float32Array(capacity * 3), age: new Float32Array(capacity), life: new Float32Array(capacity), cursor: 0, capacity });
+      const object = new THREE.Points(geometry, material); object.frustumCulled = false; object.visible = false; object.name = kind; this.root.add(object);
+      this.pools.set(kind, { object, positions, colors: vertexColors, velocities: new Float32Array(capacity * 3), age: new Float32Array(capacity), life: new Float32Array(capacity), cursor: 0, capacity, active: 0, limit: capacity });
     }
   }
   setQuality(quality: QualityLevel): void {
     this.quality = quality;
     for (const pool of this.pools.values()) {
-      const limit = Math.max(1, Math.floor(pool.capacity * particlePresets[quality].capacity));
-      pool.object.geometry.setDrawRange(0, limit);
-      for (let i = limit; i < pool.capacity; i++) { pool.life[i] = 0; pool.positions[i * 3 + 1] = 1e6; }
+      pool.limit = Math.max(1, Math.floor(pool.capacity * particlePresets[quality].capacity));
+      pool.object.geometry.setDrawRange(0, pool.limit);
+      for (let i = pool.limit; i < pool.capacity; i++) { if (pool.life[i] > 0) pool.active--; pool.life[i] = 0; pool.positions[i * 3 + 1] = 1e6; }
+      if (!pool.active) pool.object.visible = false;
       pool.object.geometry.attributes.position.needsUpdate = true;
     }
   }
@@ -70,8 +71,8 @@ export class CoreEffects {
     if (this.atmosphericParticles === enabled) return;
     this.atmosphericParticles = enabled;
     for (const [kind, pool] of this.pools) if (atmosphericKinds.has(kind)) {
-      pool.object.visible = enabled;
-      if (!enabled) { pool.life.fill(0); pool.positions.fill(1e6); pool.object.geometry.attributes.position.needsUpdate = true; }
+      pool.object.visible = enabled && pool.active > 0;
+      if (!enabled) { pool.active = 0; pool.life.fill(0); pool.positions.fill(1e6); pool.object.geometry.attributes.position.needsUpdate = true; }
     }
     for (const emitter of this.emitters) if (atmosphericKinds.has(emitter.kind)) emitter.carry = 0;
     this.weatherCarry = 0;
@@ -88,8 +89,10 @@ export class CoreEffects {
     for (let i = 0; i < count; i++) this.spawn(kind, position.x, position.y + 0.9, position.z);
   }
   private spawn(kind: ParticleKind, x: number, y: number, z: number): void {
-    const p = this.pools.get(kind)!; const limit = Math.max(1, Math.floor(p.capacity * particlePresets[this.quality].capacity));
-    const i = p.cursor++ % limit, k = i * 3; const spread = kind === 'rain' || kind === 'snow' ? 0 : kind === 'dust' ? 1.8 : 0.1;
+    const p = this.pools.get(kind)!;
+    const i = p.cursor++ % p.limit, k = i * 3; const spread = kind === 'rain' || kind === 'snow' ? 0 : kind === 'dust' ? 1.8 : 0.1;
+    if (p.life[i] === 0) p.active++;
+    p.object.visible = true;
     p.positions[k] = x + (Math.random() - 0.5) * spread; p.positions[k + 1] = y + (kind === 'dust' ? (Math.random() - 0.5) * 1.2 : 0); p.positions[k + 2] = z + (Math.random() - 0.5) * spread;
     p.age[i] = 0; p.life[i] = kind === 'rain' ? 1.4 : kind === 'snow' ? 5 : kind === 'dust' ? 4 + Math.random() * 3 : kind === 'smoke' ? 2.2 : kind === 'fire' ? 0.65 : kind === 'hit' ? .22 : 0.5;
     const speed = kind === 'hit' ? 2 : kind === 'sparks' ? 1.2 : kind === 'dust' ? 0.06 : 0.2;
@@ -117,7 +120,10 @@ export class CoreEffects {
     const material = new THREE.MeshStandardMaterial({ map: options.shorelineMask ?? shoreTexture, alphaTest: 0.1, color: '#335b65', roughness: 0.32, metalness: 0, normalMap: normal, normalScale: new THREE.Vector2(0.3, 0.3), side: THREE.DoubleSide });
     const mesh = new THREE.Mesh(geometry, material); mesh.position.set(x, 0.04, z); mesh.receiveShadow = true; mesh.name = 'water'; parent.add(mesh);
     // A separate shallow foam rim avoids scene-depth/refraction passes; callers can supply an authored shoreline mask.
-    const foamGeometry = geometry.clone(); const uv = foamGeometry.getAttribute('uv'); const foamColors = new Float32Array(uv.count * 3);
+    // Both layers have exactly the same wave vertices. Share the dynamic buffer
+    // while retaining the foam's own colors, material and local height offset.
+    const foamGeometry = geometry.clone(); foamGeometry.setAttribute('position', geometry.getAttribute('position'));
+    const uv = foamGeometry.getAttribute('uv'); const foamColors = new Float32Array(uv.count * 3);
     for (let i = 0; i < uv.count; i++) { const edge = Math.min(uv.getX(i), 1 - uv.getX(i), uv.getY(i), 1 - uv.getY(i)); const foam = Math.max(0, 1 - edge * 28) * 0.55;
       foamColors[i * 3] = foam; foamColors[i * 3 + 1] = foam * 1.1; foamColors[i * 3 + 2] = foam * 1.15; }
     foamGeometry.setAttribute('color', new THREE.BufferAttribute(foamColors, 3));
@@ -165,16 +171,20 @@ export class CoreEffects {
     }
     for (const [kind, p] of this.pools) {
       if (!this.atmosphericParticles && atmosphericKinds.has(kind)) continue;
-      const limit = Math.max(1, Math.floor(p.capacity * particlePresets[this.quality].capacity)); p.object.geometry.setDrawRange(0, limit);
-      for (let i = 0; i < p.capacity; i++) {
+      // Empty pools contribute no pixels. Leave their buffers alone until the
+      // next spawn, rather than scanning/uploading clipped vertices every frame.
+      if (!p.active) continue;
+      for (let i = 0; i < p.limit; i++) {
+        if (p.life[i] === 0) continue;
         const k = i * 3; p.age[i] += dt;
-        if (p.age[i] >= p.life[i] || i >= limit) { p.positions[k + 1] = 1e6; p.life[i] = 0; continue; }
+        if (p.age[i] >= p.life[i]) { p.positions[k + 1] = 1e6; p.life[i] = 0; p.active--; continue; }
         p.positions[k] += (p.velocities[k] + this.wind.value.x) * dt; p.positions[k + 1] += p.velocities[k + 1] * dt; p.positions[k + 2] += (p.velocities[k + 2] + this.wind.value.z) * dt;
         if (kind === 'hit' || kind === 'sparks') p.velocities[k + 1] -= dt * 4;
         const fade = kind === 'dust' ? Math.sin(Math.PI * p.age[i] / p.life[i]) : 1 - p.age[i] / p.life[i]; const color = colors[kind];
         p.colors[k] = color.r * fade; p.colors[k + 1] = color.g * fade; p.colors[k + 2] = color.b * fade;
       }
       p.object.geometry.attributes.position.needsUpdate = true; p.object.geometry.attributes.color.needsUpdate = true;
+      p.object.visible = p.active > 0;
     }
     for (const water of this.waters) {
       if (!this.visible(water.mesh)) continue;
@@ -184,13 +194,11 @@ export class CoreEffects {
         const x = water.original[i * 3], z = water.original[i * 3 + 2]; const a = x * 2 + this.time, b = z * 3 - this.time * 0.8;
         const y = Math.sin(a) * 0.018 + Math.cos(b) * 0.012; position.setY(i, y);
         this.scratch.set(-Math.cos(a) * 0.036, 1, Math.sin(b) * 0.036).normalize(); normal.setXYZ(i, this.scratch.x, this.scratch.y, this.scratch.z);
-        (water.mesh.children[0] as THREE.Mesh).geometry.getAttribute('position').setY(i, y);
       }
       position.needsUpdate = normal.needsUpdate = true;
-      (water.mesh.children[0] as THREE.Mesh).geometry.attributes.position.needsUpdate = true;
     }
   }
-  clear(): void { for (const p of this.pools.values()) { p.life.fill(0); p.positions.fill(1e6); p.object.geometry.attributes.position.needsUpdate = true; } }
+  clear(): void { for (const p of this.pools.values()) { p.active = 0; p.object.visible = false; p.life.fill(0); p.positions.fill(1e6); p.object.geometry.attributes.position.needsUpdate = true; } }
   clearArea(): void {
     for (const f of this.foliage) { f.mesh.material = f.original; f.mesh.customDepthMaterial = f.depth; f.mesh.customDistanceMaterial = f.distance; f.owned.forEach((m) => m.dispose()); }
     for (const w of this.waters) { w.mesh.removeFromParent(); w.mesh.traverse((o) => { if (o instanceof THREE.Mesh) { o.geometry.dispose(); (o.material as THREE.Material).dispose(); } }); w.normal.dispose(); w.shoreline.dispose(); }

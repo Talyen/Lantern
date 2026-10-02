@@ -90,7 +90,7 @@ export class GameAudio {
     this.buses.get('ambience')!.gain.setTargetAtTime(this.paused ? 0 : this.settings.ambience, now, .06);
   }
   update(listener: SoundPosition, paused: boolean): void {
-    this.listener = { ...listener };
+    this.listener.x = listener.x; this.listener.z = listener.z;
     if (paused !== this.paused) { this.paused = paused; if (paused) this.clearTransient(); this.updateGains(); }
     for (const voice of this.voices) this.position(voice);
   }
@@ -105,29 +105,36 @@ export class GameAudio {
   play(cue: SoundCue, position?: SoundPosition, options: { key?: string; loop?: boolean; rate?: number; gain?: number } = {}): void {
     const context = this.context, definition = cues[cue];
     if (!context || this.disposed || !this.unlocked || context.state !== 'running' || this.hidden || this.paused && definition.bus !== 'ui') return;
-    if (options.key && [...this.voices].some(voice => voice.key === options.key)) return;
+    if (options.key && this.keyedVoice(options.key)) return;
     let index = Math.floor(Math.random() * definition.clips.length);
     if (definition.clips.length > 1 && index === this.last.get(cue)) index = (index + 1) % definition.clips.length;
     const id = definition.clips[index], buffer = this.buffers.get(id);
     if (!buffer) return; // Never queue a stale attack or reward for later playback.
     this.last.set(cue, index);
-    const same = [...this.voices].filter(voice => voice.bus === definition.bus && !voice.loop);
-    if (same.length >= (definition.bus === 'ui' ? 4 : 20)) this.stopVoice(same[0]);
+    let count = 0, oldest: Voice | undefined;
+    for (const voice of this.voices) if (voice.bus === definition.bus && !voice.loop) { count++; oldest ??= voice; }
+    if (count >= (definition.bus === 'ui' ? 4 : 20) && oldest) this.stopVoice(oldest);
     const source = context.createBufferSource(), gain = context.createGain(), pan = context.createStereoPanner();
     gain.gain.value = 0;
     source.buffer = buffer; source.loop = options.loop ?? false;
     if (source.loop) { source.loopStart = clips[id].loopStart ?? 0; source.loopEnd = Math.min(buffer.duration,clips[id].loopEnd ?? buffer.duration); } source.playbackRate.value = options.rate ?? definition.rate;
     source.connect(gain); gain.connect(pan); pan.connect(this.buses.get(definition.bus)!);
-    const voice: Voice = { source, gain, pan, bus: definition.bus, position: position ? { ...position } : undefined, level: definition.gain * (options.gain ?? 1), key: options.key, loop: source.loop };
+    const voice: Voice = { source, gain, pan, bus: definition.bus, position: position ? { x: position.x, z: position.z } : undefined, level: definition.gain * (options.gain ?? 1), key: options.key, loop: source.loop };
     this.voices.add(voice); this.position(voice, !voice.loop);
     source.onended = () => { this.voices.delete(voice); source.disconnect(); gain.disconnect(); pan.disconnect(); };
     source.start(); this.counts.set(cue, (this.counts.get(cue) ?? 0) + 1);
   }
   loop(key: string, cue: SoundCue, position?: SoundPosition, gain = 1): void {
-    const voice = [...this.voices].find(voice => voice.key === key);
-    if (voice) { voice.position = position ? { ...position } : undefined; voice.level = cues[cue].gain * gain; return; }
-    if ([...this.voices].filter(voice => voice.loop).length < 12) this.play(cue, position, { key, loop: true, gain });
+    const voice = this.keyedVoice(key);
+    if (voice) {
+      if (position) { voice.position ??= { x: 0, z: 0 }; voice.position.x = position.x; voice.position.z = position.z; }
+      else voice.position = undefined;
+      voice.level = cues[cue].gain * gain; return;
+    }
+    let count = 0; for (const active of this.voices) if (active.loop) count++;
+    if (count < 12) this.play(cue, position, { key, loop: true, gain });
   }
+  private keyedVoice(key: string): Voice | undefined { for (const voice of this.voices) if (voice.key === key) return voice; }
   keepLoops(keys: Set<string>): void { for (const voice of this.voices) if (voice.loop && voice.key && !keys.has(voice.key)) this.stopVoice(voice); }
   stop(key: string): void { for (const voice of this.voices) if (voice.key === key) this.stopVoice(voice); }
   private stopVoice(voice: Voice): void {

@@ -6,13 +6,13 @@ import { dodgeDuration, type ActorState, type Motion } from '../gameplay/encount
 import { markOutline } from '../rendering/outlines';
 
 type PlaybackRole = AnimationRole | 'blockUpper' | 'lower_run' | 'lower_left' | 'lower_right' | 'lower_backward';
-export type Actor = { root: THREE.Group; mixer: THREE.AnimationMixer | null; actions: Partial<Record<PlaybackRole, THREE.AnimationAction>>; current: Motion | null; moveSpeed: number; rigScale: number; blockBlend: number; runSpeed: number; speeds: Partial<Record<AnimationRole, number>>; contacts: number[]; commitLead: number; chopContact: number; mineContact: number; skillContacts: CombatMotions['skillContacts']; phases: Partial<Record<AnimationRole, number>>; gait: number; velocity: THREE.Vector2; previous: THREE.Vector2 | null };
+export type Actor = { root: THREE.Group; mixer: THREE.AnimationMixer | null; actions: Partial<Record<PlaybackRole, THREE.AnimationAction>>; current: Motion | null; moveSpeed: number; rigScale: number; blockBlend: number; runSpeed: number; speeds: Partial<Record<AnimationRole, number>>; contacts: number[]; commitLead: number; chopContact: number; mineContact: number; skillContacts: CombatMotions['skillContacts']; phases: Partial<Record<AnimationRole, number>>; gait: number; velocity: THREE.Vector2; previous: THREE.Vector2 | null; displacement: THREE.Vector2; weights: number[] };
 // Mixamo faces +Z here: its anatomical left travels +X, and right travels -X.
 const directions = ['run', 'left', 'backward', 'right'] as const;
 const blockDirections = ['blockForward', 'blockLeft', 'blockBackward', 'blockRight'] as const;
 export function makeActor(scene: THREE.Scene, state: ActorState): Actor {
   const root = new THREE.Group(); root.position.set(state.x, .04, state.z); scene.add(root);
-  return { root, mixer: null, actions: {}, current: null, moveSpeed: state.speed, rigScale: 1, blockBlend: 0, runSpeed: 4, speeds: {}, contacts: [], commitLead: 0, chopContact: .32, mineContact: .36, skillContacts: {}, phases: {}, gait: 0, velocity: new THREE.Vector2(), previous: null };
+  return { root, mixer: null, actions: {}, current: null, moveSpeed: state.speed, rigScale: 1, blockBlend: 0, runSpeed: 4, speeds: {}, contacts: [], commitLead: 0, chopContact: .32, mineContact: .36, skillContacts: {}, phases: {}, gait: 0, velocity: new THREE.Vector2(), previous: null, displacement: new THREE.Vector2(), weights: [0, 0, 0, 0] };
 }
 export function play(actor: Actor, name: Motion): void {
   if (actor.current === name && ['idle', 'run', 'block', 'chop', 'mine'].includes(name)) return;
@@ -68,9 +68,8 @@ export function installMotions(actor: Actor, motions: CombatMotions): void {
 }
 /** Locomotion follows actual displacement, with a shared normalized foot cycle across directions. */
 export function updateActor(actor: Actor, state: ActorState, dt: number, paused: boolean, blocking = false): void {
-  const now = new THREE.Vector2(state.x, state.z);
-  if (paused || !actor.previous || dt <= 0) { actor.previous = now; actor.velocity.set(0, 0); actor.mixer?.update(0); return; }
-  const actual = now.clone().sub(actor.previous).divideScalar(dt); actor.previous = now;
+  if (paused || !actor.previous || dt <= 0) { (actor.previous ??= new THREE.Vector2()).set(state.x, state.z); actor.velocity.set(0, 0); actor.mixer?.update(0); return; }
+  const actual = actor.displacement.set(state.x, state.z).sub(actor.previous).divideScalar(dt); actor.previous.set(state.x, state.z);
   actor.velocity.lerp(actual, 1 - Math.exp(-24 * dt));
   actor.blockBlend=THREE.MathUtils.damp(actor.blockBlend,blocking ? 1 : 0,24,dt);
   if (actor.current === 'run') {
@@ -79,7 +78,8 @@ export function updateActor(actor: Actor, state: ActorState, dt: number, paused:
     else {
       const angle = Math.atan2(actor.velocity.x, actor.velocity.y) - state.yaw;
       const sector = ((angle / (Math.PI / 2)) % 4 + 4) % 4, first = Math.floor(sector), fraction = sector - first;
-      const weights = directions.map((_, i) => i === first ? 1 - fraction : i === (first + 1) % 4 ? fraction : 0);
+      const weights = actor.weights;
+      for (let i = 0; i < directions.length; i++) weights[i] = i === first ? 1 - fraction : i === (first + 1) % 4 ? fraction : 0;
       if (!actor.actions.left) { weights.fill(0); weights[0]=1; }
       let stride = 0;
       directions.forEach((role, i) => { const action = actor.actions[role], lower=actor.actions[`lower_${role}`]; if (action) stride += weights[i] * ((1-actor.blockBlend)*(actor.speeds[role] ?? actor.runSpeed)*action.getClip().duration + actor.blockBlend*(actor.speeds[blockDirections[i]] ?? actor.runSpeed)*(lower?.getClip().duration ?? action.getClip().duration)); });
