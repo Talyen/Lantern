@@ -1,6 +1,8 @@
 import type { TreeDefinition } from '../levels/trees';
 import { resourceItem, resourceSkill, type ResourceDefinition } from '../levels/resources';
 import type { Point } from './area';
+import { enemyIds, type Encounter } from './encounter';
+import type { AreaDefinition } from '../levels/types';
 import { gathering, harvestQuantity, progression, skillLevel, type GatheringSkill } from './skills';
 export const chopReach = gathering.reach;
 export const treeChops = gathering.contacts;
@@ -9,6 +11,14 @@ export type TreeState = { hits: number; felled: boolean };
 export type TreeChange = { areaId: string; id: string; felled: boolean };
 export type HarvestReward = { item: 'wood' | 'stone' | 'iron'; quantity: number; skill: GatheringSkill; xpPerUnit: number; felled: boolean };
 type SessionResource = { definition: ResourceDefinition; hits: number; regrowAt?: number };
+/** Gathering shares one threat rule across starting, continuing and interaction prompts. */
+export function gatheringSafe(encounter: Encounter, kind: AreaDefinition['kind']): boolean {
+  return kind === 'safe' || !enemyIds.some(id => {
+    const enemy = encounter.enemies[id];
+    return enemy.home && enemy.hp > 0 && ((enemy.engaged && !enemy.returning) || Math.hypot(enemy.x - encounter.player.x, enemy.z - encounter.player.z) <= gathering.threatRadius);
+  });
+}
+
 /** Session-only depletion clock. Character resources and XP belong to Adventure. */
 export class Harvesting {
   private elapsed = 0;

@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { MeshBasicNodeMaterial, MeshStandardNodeMaterial } from 'three/webgpu';
 import { Portal } from './portal';
 import type { Point } from '../gameplay/area';
-import type { GroundDrop } from '../gameplay/adventure';
+import { dropLandingSeconds, type GroundDrop } from '../gameplay/adventure';
 import { itemDefinitions, type ItemId } from '../gameplay/equipment';
 import { assetLibrary, type AssetInstance } from '../assets/asset-library';
 import { LootSound } from './loot-sound';
@@ -40,7 +40,7 @@ export class AdventureVisuals {
       let visual = this.drops.get(drop.id);
       if (!visual) {
         const root = new THREE.Group(), model = new THREE.Group(); root.add(model); root.userData.dropId = drop.id; this.parent.add(root);
-        visual = { root, model, quantity: drop.quantity, landed: drop.age >= .55 }; this.drops.set(drop.id, visual);
+        visual = { root, model, quantity: drop.quantity, landed: drop.age >= dropLandingSeconds }; this.drops.set(drop.id, visual);
         if (drop.item === 'scroll') {
           const scroll = new THREE.Mesh(this.geometry, this.paper), band = new THREE.Mesh(this.geometry, this.ribbon);
           scroll.rotation.z = band.rotation.z = Math.PI / 2; band.scale.set(1.03, .15, 1.03); model.add(scroll, band); model.position.y = .08;
@@ -63,7 +63,7 @@ export class AdventureVisuals {
           void this.loadGear(drop, visual);
         }
       }
-      const t = Math.min(1, drop.age / .55), travel = 1 - (1 - t) ** 2;
+      const t = Math.min(1, drop.age / dropLandingSeconds), travel = 1 - (1 - t) ** 2;
       visual.root.position.set(THREE.MathUtils.lerp(drop.origin[0], drop.position[0], travel), drop.height + Math.sin(t * Math.PI) * .65 + .02, THREE.MathUtils.lerp(drop.origin[1], drop.position[1], travel));
       const seed = Number(drop.id.match(/\d+/)?.[0] ?? 0);
       visual.root.rotation.set((1 - t) * Math.PI * 1.3, seed * 2.4 + (1 - t) * 1.5, (1 - t) * .7);

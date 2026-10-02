@@ -13,6 +13,7 @@ import { progression, progressMultiplier, shelterRecipe, type Skill, type Gather
 
 export const scrollLimit = stackLimit;
 export const homeArea = 'homestead';
+export const dropLandingSeconds = .55, pickupRadius = 1.5;
 export type GroundDrop = { id: string; item: LootItem; quantity: number; position: Point; origin: Point; height: number; age: number; claim?: ItemId; instanceId?: string; blocked?: boolean; harvestXp?: { skill: GatheringSkill; perUnit: number } };
 export type PortalLink = { area: string; departure: Spawn };
 type AreaSession = { encounter?: Encounter; drops: GroundDrop[]; dropRolled: Partial<Record<EnemyId, boolean>>; chests: Record<string, { opened: boolean; remaining: number }> };
@@ -93,7 +94,7 @@ export class Adventure {
   }
   pickup(id: string, point: Point, manual = false): boolean {
     const drop = this.session().drops.find(d => d.id === id);
-    if (!drop || drop.age < .55 || !near(point, drop.position, 1.5)) return false;
+    if (!drop || drop.age < dropLandingSeconds || !near(point, drop.position, pickupRadius)) return false;
     if (!this.canCollectGround(drop)) { if (manual) this.message('Can’t reach item'); return false; }
     if (drop.blocked && !manual) return false;
     const amount = receive(this.character.items, drop.item, drop.quantity, this.newId, drop.instanceId);
@@ -215,9 +216,9 @@ export class Adventure {
       }
     }
     for (const drop of [...session.drops]) {
-      if (drop.age < .55 && drop.age + dt >= .55) this.events.push({type:'lootLand',item:drop.item,position:{x:drop.position[0],z:drop.position[1]}});
+      if (drop.age < dropLandingSeconds && drop.age + dt >= dropLandingSeconds) this.events.push({type:'lootLand',item:drop.item,position:{x:drop.position[0],z:drop.position[1]}});
       drop.age += dt;
-      if (drop.blocked && !near(point, drop.position, 1.5)) drop.blocked = false;
+      if (drop.blocked && !near(point, drop.position, pickupRadius)) drop.blocked = false;
       if (lootDefinitions[drop.item].stackable) this.pickup(drop.id, point);
     }
     if (this.castRemaining > 0) {
