@@ -25,6 +25,7 @@ const explorationTiming: ActorTiming = { attack: .7, hit: .3, contacts: [.28] };
 const enemyReadiness = new WeakMap<Encounter, {
   ids: EnemyId[];
   values: Record<EnemyId, number>;
+  locks: Record<EnemyId, number>;
 }>();
 const explorationTimings: Timings = { player: explorationTiming, enemy: explorationTiming, caster: explorationTiming };
 export const inCombat = (state: Encounter): boolean => state.enemyIds.some(id => state.enemies[id].hp > 0 && (state.enemies[id].engaged || state.enemies[id].returning)) || state.projectiles.some(p => p.owner !== 'player');
@@ -88,12 +89,13 @@ export function stepEncounter(state: Encounter, dt: number, input: Input, timing
   // New windups consume only the part of the frame after recovery/cooldown.
   let readiness = enemyReadiness.get(state);
   if (!readiness || readiness.ids !== state.enemyIds) {
-    readiness = { ids: state.enemyIds, values: {} };
+    readiness = { ids: state.enemyIds, values: {}, locks: {} };
     enemyReadiness.set(state, readiness);
   }
   for (const id of state.enemyIds) {
     const enemy = state.enemies[id];
     readiness.values[id] = Math.max(enemy.lock, enemy.cooldown);
+    readiness.locks[id] = enemy.lock;
     enemy.lock = Math.max(0, enemy.lock - dt);
     enemy.cooldown = Math.max(0, enemy.cooldown - dt);
   }
@@ -106,8 +108,8 @@ export function stepEncounter(state: Encounter, dt: number, input: Input, timing
     if (state.phase !== 'playing')
       break;
     if (state.enemies[id].home && state.enemies[id].hp > 0)
-      stepEnemy(state, id, dt, timing, events, movementWorld, readiness.values[id]);
+      stepEnemy(state, id, dt, timing, events, movementWorld, readiness.values[id], readiness.locks[id]);
   }
-  separateEnemies(state, dt, movementWorld);
+  separateEnemies(state, dt, movementWorld, readiness.locks);
   return finishPlayerFrame(state, dt, events);
 }

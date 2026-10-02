@@ -158,6 +158,9 @@ export class MovementWorld implements Movement {
     const result = findPath(this.nav, [from.x, from.y, from.z], [point[0], height, point[1]], [.6, 1, .6], DEFAULT_QUERY_FILTER);
     const end = result.path.at(-1)?.position;
     if (!result.success || !end || Math.hypot(end[0] - point[0], end[2] - point[1]) > .65) return null;
+    // Nearest-poly snapping can end on the opposite side of a thin obstacle.
+    if (!this.visible({ ...from, x: end[0], y: end[1], z: end[2] },
+      { x: point[0], y: height, z: point[1] }, .15)) return null;
     return result.path.map(p => [p.position[0], p.position[2]]);
   }
   /** Include the final ground segment, even when navigation ends beside the drop. */

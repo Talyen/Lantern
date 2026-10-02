@@ -8,7 +8,7 @@ import { hit } from './encounter-damage';
 import { advanceProjectile, projectileLaunchClear } from './encounter-projectiles';
 
 /** Keep authored packs legible without moving planted attacks or changing legacy solo fights. */
-export function separateEnemies(state: Encounter, dt: number, movementWorld?: Movement): void {
+export function separateEnemies(state: Encounter, dt: number, movementWorld?: Movement, locks?: Readonly<Record<EnemyId, number>>): void {
   if (!state.layout.enemies)
     return;
   state.enemyIds.forEach((id, index) => {
@@ -22,7 +22,7 @@ export function separateEnemies(state: Encounter, dt: number, movementWorld?: Mo
       const distance = Math.hypot(dx, dz);
       if (distance >= .75)
         continue;
-      const angle = index * 2.4, amount = Math.min((.75 - distance) * .5, dt * enemy.speed * .5);
+      const angle = index * 2.4, amount = Math.min((.75 - distance) * .5, Math.max(0, dt - (locks?.[id] ?? 0)) * enemy.speed * .5);
       const x = (distance > .001 ? dx / distance : Math.sin(angle)) * amount;
       const z = (distance > .001 ? dz / distance : Math.cos(angle)) * amount;
       if (movementWorld)
@@ -33,7 +33,8 @@ export function separateEnemies(state: Encounter, dt: number, movementWorld?: Mo
   });
 }
 
-export function stepEnemy(state: Encounter, id: EnemyId, dt: number, timing: Timings, events: EncounterEvent[], movementWorld: Movement | undefined, readyAfter: number): void {
+export function stepEnemy(state: Encounter, id: EnemyId, dt: number, timing: Timings, events: EncounterEvent[], movementWorld: Movement | undefined, readyAfter: number, lockedFor = 0): void {
+  const movementElapsed = Math.max(0, dt - lockedFor);
   const player = state.player, enemy = state.enemies[id];
   const animate = (motion: Motion) => events.push({ type: 'animation', actor: id, motion });
   const spawn = enemy.home!;
@@ -62,7 +63,7 @@ export function stepEnemy(state: Encounter, id: EnemyId, dt: number, timing: Tim
     else if (enemy.lock <= 0) {
       const home = { ...enemy, x: spawn.position[0], z: spawn.position[1] };
       const desired = movementWorld?.direction(enemy, home, dt) ?? { x: home.x - enemy.x, z: home.z - enemy.z };
-      const length = Math.hypot(desired.x, desired.z), distance = Math.min(homeDistance, dt * enemy.speed);
+      const length = Math.hypot(desired.x, desired.z), distance = Math.min(homeDistance, movementElapsed * enemy.speed);
       const x = length ? desired.x / length * distance : 0, z = length ? desired.z / length * distance : 0;
       if (movementWorld)
         movementWorld.move(id, enemy, x, z, dt);
@@ -81,7 +82,7 @@ export function stepEnemy(state: Encounter, id: EnemyId, dt: number, timing: Tim
     return;
   }
   if (enemy.kind === 'caster') {
-    stepCaster(state, id, dt, timing, events, movementWorld, readyAfter);
+    stepCaster(state, id, dt, timing, events, movementWorld, readyAfter, movementElapsed);
     return;
   }
   let attackElapsed = dt;
@@ -91,10 +92,10 @@ export function stepEnemy(state: Encounter, id: EnemyId, dt: number, timing: Tim
     const desired = movementWorld?.direction(enemy, player, dt) ?? { x: dx, z: dz };
     const length = Math.hypot(desired.x, desired.z);
     if (movementWorld)
-      movementWorld.move(id, enemy, length ? desired.x / length * dt * enemy.speed : 0, length ? desired.z / length * dt * enemy.speed : 0, dt);
+      movementWorld.move(id, enemy, length ? desired.x / length * movementElapsed * enemy.speed : 0, length ? desired.z / length * movementElapsed * enemy.speed : 0, dt);
     else if (length) {
-      enemy.x += desired.x / length * dt * enemy.speed;
-      enemy.z += desired.z / length * dt * enemy.speed;
+      enemy.x += desired.x / length * movementElapsed * enemy.speed;
+      enemy.z += desired.z / length * movementElapsed * enemy.speed;
     }
     [enemy.x, enemy.z] = constrain(state.layout.boundary, [enemy.x, enemy.z]);
     if (length)
@@ -137,7 +138,7 @@ export function stepEnemy(state: Encounter, id: EnemyId, dt: number, timing: Tim
 }
 
 /** Caster aim commits at windup; damage interrupts it through the same hit owner as melee. */
-function stepCaster(state: Encounter, id: EnemyId, dt: number, timing: Timings, events: EncounterEvent[], movementWorld: Movement | undefined, readyAfter: number): void {
+function stepCaster(state: Encounter, id: EnemyId, dt: number, timing: Timings, events: EncounterEvent[], movementWorld: Movement | undefined, readyAfter: number, movementElapsed: number): void {
   const player = state.player, enemy = state.enemies[id];
   const dx = player.x - enemy.x, dz = player.z - enemy.z, distance = Math.hypot(dx, dz);
   let attackElapsed = dt;
@@ -145,7 +146,7 @@ function stepCaster(state: Encounter, id: EnemyId, dt: number, timing: Timings, 
   if (enemy.attackTime < 0 && enemy.lock <= 0 && (distance > casterAttackRange || Math.abs(player.y - enemy.y) >= .8 || !visible)) {
     const desired = movementWorld?.direction(enemy, player, dt) ?? { x: dx, z: dz };
     const length = Math.hypot(desired.x, desired.z);
-    const x = length ? desired.x / length * dt * enemy.speed : 0, z = length ? desired.z / length * dt * enemy.speed : 0;
+    const x = length ? desired.x / length * movementElapsed * enemy.speed : 0, z = length ? desired.z / length * movementElapsed * enemy.speed : 0;
     if (movementWorld)
       movementWorld.move(id, enemy, x, z, dt);
     else {

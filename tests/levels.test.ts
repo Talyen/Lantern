@@ -139,6 +139,13 @@ test('felling removes trunk collision and enemy detours, and regrowth restores b
     expect(world.interactionVisible(state.player, [0, 0], 0, 'other')).toBe(false);
     expect(world.pickupReachable(state.player, [-1, 0], 0, 1.65)).toBe(true);
     expect(world.pickupReachable(state.player, [2, 0], 0, 1.65)).toBe(false);
+    const divider = await MovementWorld.create(boundary, { obstacles: [{ id: 'wall', position: [0,.8,0], size: [.1,1.6,8], yaw: 0 }] });
+    try {
+      const from = { ...state.player, x: -.5, z: 0 };
+      expect(divider.pickupReachable(from, [-.6, 0], 0, 1.65)).toBe(true);
+      expect(divider.pickupPath(from, [.1, 0], 0)).toBeNull();
+      expect(divider.pickupReachable(from, [.1, 0], 0, 1.65)).toBe(false);
+    } finally { divider.dispose(); }
     expect(world.segmentHit({ x: -2, y: .9, z: 0 }, { x: 2, y: .9, z: 0 })).toBeCloseTo(.375);
     expect(world.segmentHit({ x: -2, y: 3, z: 0 }, { x: 2, y: 3, z: 0 })).toBeNull();
     expect(Math.abs(world.direction(state.player,state.enemies.enemy,.05).z)).toBeGreaterThan(.3);

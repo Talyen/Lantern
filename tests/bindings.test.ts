@@ -31,6 +31,9 @@ test('code-less punctuation and numpad inputs retain their remappable physical b
   expect(keyboardInput({code:'',key:'?',location:0})).toBe('key:Slash');
   expect(keyboardInput({code:'',key:'1',location:3})).toBe('key:Numpad1');
   expect(keyboardInput({code:'',key:'Enter',location:3})).toBe('key:NumpadEnter');
+  for (const [key, digit] of [['End','1'],['ArrowDown','2'],['PageDown','3'],['ArrowLeft','4'],['Clear','5'],['ArrowRight','6'],['Home','7'],['ArrowUp','8'],['PageUp','9'],['Insert','0'],['Delete','Decimal']])
+    expect(keyboardInput({code:'',key,location:3})).toBe(`key:Numpad${digit}`);
+  expect(keyboardInput({code:'',key:'End',location:0})).toBe('key:End');
 });
 
 

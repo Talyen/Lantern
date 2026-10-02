@@ -14,6 +14,7 @@ export class KeybindingsMenu {
   private dialog = document.createElement('dialog');
   private draft: Bindings = defaultBindings();
   private capture: Cell | null = null;
+  private capturedClick: AbortController | null = null;
   private conflict: {
     cell: Cell;
     other: Cell;
@@ -51,6 +52,7 @@ export class KeybindingsMenu {
     this.dialog.querySelector<HTMLButtonElement>('[data-close]')!.onclick = () => this.close();
     bindMenuDismissal(this.dialog, () => this.close());
     window.addEventListener('keydown', event => {
+      this.capturedClick?.abort();
       if (!this.dialog.open || !this.capture) return;
       if (event.target instanceof Element && event.target.closest('[data-capture-control]') && ['Enter', ' '].includes(event.key)) return;
       event.preventDefault();
@@ -64,17 +66,23 @@ export class KeybindingsMenu {
         this.choose(keyboardInput(event));
     }, true);
     window.addEventListener('pointerdown', event => {
+      this.capturedClick?.abort();
       if (!this.dialog.open || !this.capture || (event.target as Element).closest('[data-capture-control]')) return;
       event.preventDefault();
       event.stopImmediatePropagation();
       this.choose(`mouse:${event.button}`);
       // Consume the matching click too: it must not open another binding cell.
-      if (event.button === 0)
-        window.addEventListener('click', click => { click.preventDefault(); click.stopImmediatePropagation(); }, { capture: true, once: true });
+      if (event.button === 0) {
+        this.capturedClick = new AbortController();
+        window.addEventListener('click', click => { click.preventDefault(); click.stopImmediatePropagation(); },
+          { capture: true, once: true, signal: this.capturedClick.signal });
+      }
     }, true);
     this.dialog.addEventListener('auxclick', event => event.preventDefault());
     this.dialog.addEventListener('contextmenu', event => event.preventDefault());
+    window.addEventListener('pointercancel', () => this.capturedClick?.abort());
     window.addEventListener('blur', () => {
+      this.capturedClick?.abort();
       if (this.capture) {
         this.capture = null;
         this.render();
@@ -93,6 +101,7 @@ export class KeybindingsMenu {
   }
 
   close(): void {
+    this.capturedClick?.abort();
     this.capture = null;
     this.conflict = null;
     this.dialog.close();
@@ -170,7 +179,7 @@ export class KeybindingsMenu {
           clear.className = 'clear-binding';
           clear.setAttribute('aria-label', `Clear ${actionNames[action]} ${index === 0 ? 'Primary' : 'Secondary'}`);
           clear.disabled = !binding;
-          clear.onclick = () => { this.draft[action][index] = null; this.capture = null; this.render(); };
+          clear.onclick = () => { this.draft[action][index] = null; this.capture = null; this.conflict = null; this.render(); };
           cell.append(button, clear);
           row.append(cell);
         }

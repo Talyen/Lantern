@@ -133,6 +133,14 @@ test('the guard notices only nearby visible players, pursues, then returns and r
   stepEncounter(state, .05, idle, timing); expect(state.enemies.enemy.returning).toBe(true); expect(state.enemies.enemy.engaged).toBe(false);
   for (let i = 0; i < 80; i++) stepEncounter(state, .05, idle, timing);
   expect([state.enemies.enemy.returning, state.enemies.enemy.hp, state.enemies.enemy.x, state.enemies.enemy.z]).toEqual([false, 200, 0, 0]);
+  // Both archetypes consume only the portion of a pursuit frame after stagger.
+  for (const kind of ['raider','caster'] as const) {
+    state.enemies.enemy.kind = kind;
+    Object.assign(state.enemies.enemy, { x: 0, z: 0, lock: .04, cooldown: 100, engaged: true });
+    state.player.x = 8;
+    stepEncounter(state, .05, idle, timing);
+    expect(state.enemies.enemy.x).toBeCloseTo(.01 * state.enemies.enemy.speed, 6);
+  }
 });
 
 test('pointer facing is independent of travel, preserves a committed swing, and resumes after locks', () => {

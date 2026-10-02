@@ -7,6 +7,8 @@ const punctuation: Record<string, string> = {
 };
 const shiftedDigits = ')!@#$%^&*(';
 const numpad: Record<string, string> = {
+  End: '1', ArrowDown: '2', PageDown: '3', ArrowLeft: '4', Clear: '5',
+  ArrowRight: '6', Home: '7', ArrowUp: '8', PageUp: '9', Insert: '0', Delete: 'Decimal',
   Enter: 'Enter', '.': 'Decimal', ',': 'Decimal', '+': 'Add', '-': 'Subtract', '*': 'Multiply', '/': 'Divide',
 };
 
