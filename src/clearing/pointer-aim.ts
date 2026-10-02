@@ -10,6 +10,7 @@ export class PointerAim {
   private readonly plane = new THREE.Plane(new THREE.Vector3(0, 1, 0));
   private readonly point = new THREE.Vector3();
   private readonly pointer = new THREE.Vector2();
+  private readonly hits: THREE.Intersection[] = [];
 
   constructor(private readonly canvas: HTMLCanvasElement, camera: THREE.OrthographicCamera) {
     this.camera = camera.clone();
@@ -36,8 +37,10 @@ export class PointerAim {
     if (ground && !safe) for (const id of enemyIds) {
       const state = encounter.enemies[id];
       if (!state.home || state.hp <= 0) continue;
-      const hit = this.ray.intersectObject(actors[id].root, true)[0];
+      const hit = this.ray.intersectObject(actors[id].root, true, this.hits)[0];
       if (hit && (!picked || hit.distance < picked.distance)) picked = { x: state.x, z: state.z, distance: hit.distance };
+      // Keep scratch capacity without retaining removed actors or their art.
+      this.hits.length = 0;
     }
     return picked ? { x: picked.x, z: picked.z } : ground;
   }

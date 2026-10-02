@@ -33,6 +33,9 @@ export type Encounter = {
 };
 export type ActorTiming = { attack: number; hit: number; contacts: readonly number[]; commitLead?: number; abilities?: Partial<Record<AbilityId,{attack:number;contacts:readonly number[]}>> };
 export type Timings = Record<ActorId, ActorTiming>;
+// Read-only simulation defaults; prepared gameplay timings still win each frame.
+const explorationTiming: ActorTiming = { attack: .7, hit: .3, contacts: [.28] };
+const explorationTimings: Timings = { player: explorationTiming, enemy: explorationTiming, caster: explorationTiming };
 export type Movement = { move(id: ActorId, actor: ActorState, dx: number, dz: number, dt: number): void; direction(from: ActorState, to: ActorState, dt: number): { x: number; z: number }; lineOfSight(from: ActorState, to: ActorState): boolean; segmentHit?(from: {x:number;y:number;z:number}, to: {x:number;y:number;z:number}): number | null };
 export type AimPoint = { x: number; z: number };
 export type Input = { x: number; z: number; paused: boolean; aim?: AimPoint; block?: boolean };
@@ -312,6 +315,7 @@ function advanceProjectile(state: Encounter, projectile: Projectile, dt: number,
   return projectile.remaining > 0;
 }
 function stepProjectiles(state: Encounter, dt: number, timing: Timings, events: EncounterEvent[], movementWorld?: Movement): void {
+  if (!state.projectiles.length) return;
   state.projectiles = state.projectiles.filter(projectile => advanceProjectile(state, projectile, dt, timing, events, movementWorld));
   state.projectiles = state.projectiles.filter(projectile => projectile.owner === 'player' || state.enemies[projectile.owner].hp > 0);
   if (state.player.hp <= 0) state.projectiles = [];
@@ -324,8 +328,7 @@ function finishPlayerFrame(state: Encounter, dt: number, events: EncounterEvent[
 /** Safe and cleared areas retain attacks and projectile presentation without enemy AI. */
 export function stepExploration(state: Encounter, dt: number, input: Input, movementWorld?: Movement, timing?: Timings): EncounterEvent[] {
   if (input.paused || state.player.hp <= 0 || !['playing','won'].includes(state.phase)) return [];
-  const fallback: ActorTiming = {attack:.7,hit:.3,contacts:[.28]};
-  const clocks = timing ?? {player:fallback,enemy:fallback,caster:fallback};
+  const clocks = timing ?? explorationTimings;
   const { events, attackElapsed, attackOffset } = preparePlayer(state,dt,input,clocks.player);
   stepPlayerAttack(state,attackElapsed,clocks,events,movementWorld,attackOffset); stepProjectiles(state,dt,clocks,events,movementWorld);
   events.push(...movePlayer(state,dt,input,movementWorld)); return finishPlayerFrame(state,dt,events);
