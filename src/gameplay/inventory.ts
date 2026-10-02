@@ -1,7 +1,7 @@
 import { itemDefinitions, type ItemId, type Loadout } from './equipment';
 
 export const bagWidth = 12, bagHeight = 8, stackLimit = 99;
-export type LootItem = ItemId | 'scroll' | 'wood';
+export type LootItem = ItemId | 'scroll' | 'wood' | 'stone' | 'iron';
 export type InventoryItem = { id: string; item: LootItem; quantity: number; slot: 'bag' | 'main' | 'off' | 'overflow'; x: number; y: number };
 export const lootDefinitions: Record<LootItem, { name: string; width: number; height: number; stackable: boolean }> = {
   axe: { name: 'Axe', width: 2, height: 3, stackable: false },
@@ -11,6 +11,8 @@ export const lootDefinitions: Record<LootItem, { name: string; width: number; he
   staff: { name: 'Staff', width: 2, height: 4, stackable: false },
   scroll: { name: 'Scroll of Return', width: 1, height: 1, stackable: true },
   wood: { name: 'Wood', width: 1, height: 1, stackable: true },
+  stone: { name: 'Stone', width: 1, height: 1, stackable: true },
+  iron: { name: 'Iron', width: 1, height: 1, stackable: true },
 };
 export const lootIds = Object.keys(lootDefinitions) as LootItem[];
 export const countItem = (items: InventoryItem[], item: LootItem) => items.reduce((sum, entry) => sum + (entry.item === item ? entry.quantity : 0), 0);
@@ -117,4 +119,24 @@ export function validItems(value: unknown): value is InventoryItem[] {
   if (value.some(i => i.slot === 'bag' && !fits(value, i.item, i.x, i.y, i.id))) return false;
   const loadout = itemLoadout(value);
   return !loadout.off || loadout.main === 'axe' || loadout.main === 'sword';
+}
+
+/** Both containers commit together. Partial transfers preserve the source remainder. */
+export function transferItem(source: InventoryItem[], destination: InventoryItem[], id: string, quantity: number, makeId: () => string, point?: {x:number;y:number}): { source: InventoryItem[]; destination: InventoryItem[] } {
+  const nextSource = structuredClone(source), nextDestination = structuredClone(destination), entry = nextSource.find(i => i.id === id);
+  if (!entry || !['bag','overflow'].includes(entry.slot) || !Number.isSafeInteger(quantity) || quantity < 1 || quantity > entry.quantity) throw new Error('Move equipped gear into the bag first.');
+  let amount: number;
+  if (point) {
+    const stack = nextDestination.find(i => i.slot === 'bag' && i.x === point.x && i.y === point.y);
+    if (stack && stack.item === entry.item && lootDefinitions[entry.item].stackable) {
+      amount = Math.min(quantity, stackLimit - stack.quantity); stack.quantity += amount;
+    } else {
+      if (!fits(nextDestination,entry.item,point.x,point.y)) throw new Error('Item does not fit.');
+      amount = quantity;
+      nextDestination.push({...entry,id: quantity === entry.quantity ? entry.id : makeId(),quantity:amount,slot:'bag',...point});
+    }
+  } else amount = receive(nextDestination,entry.item,quantity,makeId,lootDefinitions[entry.item].stackable ? undefined : entry.id);
+  if (!amount) throw new Error('No space available.');
+  entry.quantity -= amount;
+  return { source: nextSource.filter(i => i.quantity > 0), destination: nextDestination };
 }

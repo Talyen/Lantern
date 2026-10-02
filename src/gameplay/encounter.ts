@@ -5,7 +5,7 @@ export const enemyIds = ['enemy', 'caster'] as const;
 export type EnemyId = typeof enemyIds[number];
 export type ActorId = 'player' | EnemyId;
 export type EnemyKind = 'raider' | 'caster';
-export type Motion = 'idle' | 'run' | 'attack' | 'hit' | 'death' | 'dodge' | 'block' | 'chop';
+export type Motion = 'idle' | 'run' | 'attack' | 'hit' | 'death' | 'dodge' | 'block' | 'chop' | 'mine';
 export type Phase = 'loading' | 'playing' | 'won' | 'lost';
 export type ActorState = {
   x: number; y: number; z: number; yaw: number; hp: number; speed: number;

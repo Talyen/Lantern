@@ -1,14 +1,20 @@
 import { bindMenuDismissal } from './menu';
 import type { CharacterSave } from '../gameplay/adventure';
-import { emptyPosition, equipInstance, lootDefinitions, moveItem, sortedItems, type InventoryItem } from '../gameplay/inventory';
+import { emptyPosition, equipInstance, lootDefinitions, moveItem, sortedItems, transferItem, type InventoryItem } from '../gameplay/inventory';
+import { progression, shelterRecipe, skillProgress } from '../gameplay/skills';
+import { countItem } from '../gameplay/inventory';
 import { itemIcon } from './item-icons';
 
 export type TravelChoice = { name: string; available: boolean; travel(): void };
-export type InventoryMenuContext = { change(items: InventoryItem[]): Promise<void>; drop(id: string, quantity: number): Promise<void>; recover(id: string): void; newId(): string };
-type Drag = { id: string; quantity: number; startX: number; startY: number; offsetX: number; offsetY: number; active: boolean; carried: boolean };
+export type InventoryMenuContext = { change(items: InventoryItem[]): Promise<void>; drop(id: string, quantity: number): Promise<void>; recover(id: string): void; newId(): string; changeContainers(items:InventoryItem[],stash:InventoryItem[]):void; transfer(id:string,quantity:number,toStash:boolean,point?:{x:number;y:number}):void; repair():Promise<void> };
+type Container = 'bag' | 'stash';
+type Drag = { container:Container; id: string; quantity: number; startX: number; startY: number; offsetX: number; offsetY: number; active: boolean; carried: boolean };
 /** Menus submit complete inventory operations; simulation remains the owner of transfers. */
 export class AdventureMenus {
   private inventory = document.getElementById('inventory-dialog') as HTMLDialogElement;
+  private repair = document.getElementById('repair-dialog') as HTMLDialogElement;
+  private stashGrid = document.getElementById('stash-grid')!;
+  private stashMode = false;
   private travel = document.getElementById('travel-dialog') as HTMLDialogElement;
   private grid = document.getElementById('inventory-grid')!;
   private use = document.getElementById('scroll-use') as HTMLButtonElement;
@@ -25,10 +31,13 @@ export class AdventureMenus {
   private drag: Drag | null = null;
   private splitId: string | null = null;
   constructor(private clearInput: () => void, private focus: () => void, private cast: () => void, private context: InventoryMenuContext, private sound?: (cue: 'menuOpen' | 'menuClose') => void) {
-    for (const dialog of [this.inventory, this.travel]) {
+    for (const dialog of [this.inventory, this.travel, this.repair]) {
       dialog.querySelector('button[data-close]')!.addEventListener('click', () => this.close());
       bindMenuDismissal(dialog, () => this.close());
     }
+    document.getElementById('shelter-repair')!.onclick = async () => { let repaired=false; await this.perform(async()=>{await this.context.repair();repaired=true;});if(repaired)this.close(); };
+    document.getElementById('stash-sort')!.onclick = () => { this.cancelDrag();void this.perform(()=>this.context.changeContainers(this.character!.items,sortedItems(this.character!.stash))); };
+    document.getElementById('inventory-transfer')!.onclick = () => { const entry=this.selectedItem();if(entry)void this.perform(()=>this.context.transfer(entry.id,entry.quantity,this.container(entry.id)==='bag')); };
     this.use.addEventListener('click', () => { if (this.busy || this.drag || !this.character?.scrolls) return; this.close(); this.cast(); });
     document.getElementById('inventory-sort')!.onclick = () => { this.cancelDrag(); void this.perform(() => this.context.change(sortedItems(this.character!.items))); };
     document.getElementById('inventory-equip')!.onclick = () => { const item = this.selectedItem(); if (item) void this.perform(() => this.context.change(equipInstance(this.character!.items, item.id, item.item === 'shield' ? 'off' : 'main'))); };
@@ -37,28 +46,28 @@ export class AdventureMenus {
     document.getElementById('inventory-split')!.onclick = () => { const item = this.selectedItem(); if (item) this.openSplit(item); };
     document.getElementById('split-cancel')!.onclick = () => { this.split.hidden = true; this.splitId = null; };
     document.getElementById('split-confirm')!.onclick = () => {
-      const entry = this.character?.items.find(i => i.id === this.splitId), input = document.getElementById('split-amount') as HTMLInputElement, quantity = Number(input.value);
+      const entry = this.entries().find(i => i.id === this.splitId), input = document.getElementById('split-amount') as HTMLInputElement, quantity = Number(input.value);
       if (!entry || !Number.isSafeInteger(quantity) || quantity < 1 || quantity >= entry.quantity) { input.reportValidity(); return; }
       this.split.hidden = true; this.splitId = null;
-      const rect = this.grid.getBoundingClientRect();
-      this.drag = { id: entry.id, quantity, startX: rect.left, startY: rect.top, offsetX: 0, offsetY: 0, active: true, carried: true };
+      const rect = (this.container(entry.id)==='stash' ? this.stashGrid : this.grid).getBoundingClientRect();
+      this.drag = { container:this.container(entry.id), id: entry.id, quantity, startX: rect.left, startY: rect.top, offsetX: 0, offsetY: 0, active: true, carried: true };
       this.showGhost(entry); this.ghost.style.left = `${rect.left}px`; this.ghost.style.top = `${rect.top}px`;
     };
     this.inventory.addEventListener('pointerdown', event => {
       if (event.button !== 0 || this.busy || !this.split.hidden) return;
       if (this.drag?.carried) { event.preventDefault(); event.stopPropagation(); void this.release(event.clientX, event.clientY); return; }
       const target = (event.target as HTMLElement).closest<HTMLElement>('[data-instance]'); if (!target) return;
-      const entry = this.character?.items.find(i => i.id === target.dataset.instance); if (!entry) return;
+      const entry = this.entries().find(i => i.id === target.dataset.instance); if (!entry) return;
       this.selected = entry.id; this.refreshSelection();
       if (event.shiftKey && entry.quantity > 1) { event.preventDefault(); this.openSplit(entry); return; }
       const rect = target.getBoundingClientRect();
       target.setPointerCapture(event.pointerId);
-      this.drag = { id: entry.id, quantity: entry.quantity, startX: event.clientX, startY: event.clientY, offsetX: event.clientX - rect.left, offsetY: event.clientY - rect.top, active: false, carried: false };
+      this.drag = { container:this.container(entry.id), id: entry.id, quantity: entry.quantity, startX: event.clientX, startY: event.clientY, offsetX: event.clientX - rect.left, offsetY: event.clientY - rect.top, active: false, carried: false };
     });
     window.addEventListener('pointermove', event => {
       const drag = this.drag; if (!drag) return;
       if (!drag.active && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) > 5) {
-        drag.active = true; const entry = this.character?.items.find(i => i.id === drag.id); if (entry) this.showGhost(entry);
+        drag.active = true; const entry = this.entries().find(i => i.id === drag.id); if (entry) this.showGhost(entry);
       }
       if (!drag.active) return;
       this.ghost.style.left = `${event.clientX - drag.offsetX}px`; this.ghost.style.top = `${event.clientY - drag.offsetY}px`;
@@ -69,9 +78,10 @@ export class AdventureMenus {
     window.addEventListener('blur', () => this.cancelDrag());
     this.inventory.addEventListener('keydown', event => { if (event.key === 'Escape' && (this.drag || !this.split.hidden)) { event.preventDefault(); event.stopPropagation(); this.cancelDrag(); } });
   }
-  get paused(): boolean { return this.inventory.open || this.travel.open; }
-  close(): void { if (this.busy) return; if (this.paused) this.sound?.('menuClose'); this.cancelDrag(); this.inventory.close(); this.travel.close(); this.clearInput(); this.focus(); }
-  openInventory(): void { this.clearInput(); this.error.textContent = ''; this.inventory.showModal(); this.sound?.('menuOpen'); }
+  get paused(): boolean { return this.inventory.open || this.travel.open || this.repair.open; }
+  close(): void { if (this.busy) return; if (this.paused) this.sound?.('menuClose'); this.cancelDrag(); this.inventory.close(); this.travel.close(); this.repair.close(); this.stashMode=false; this.clearInput(); this.focus(); }
+  openInventory(stash = false): void { this.clearInput(); this.stashMode=stash; this.refresh(); this.error.textContent = ''; this.inventory.showModal(); this.sound?.('menuOpen'); }
+  openRepair(): void { this.clearInput();this.refresh();document.getElementById('repair-error')!.textContent='';this.repair.showModal();this.sound?.('menuOpen'); }
   openTravel(choices: TravelChoice[]): void {
     this.clearInput(); const list = document.getElementById('travel-destinations')!;
     list.replaceChildren(...choices.map(choice => { const button = document.createElement('button'); button.textContent = choice.available ? choice.name : `${choice.name} · Enemies nearby`; button.disabled = !choice.available; button.onclick = () => { this.close(); choice.travel(); }; return button; }));
@@ -82,19 +92,28 @@ export class AdventureMenus {
     this.prompt.textContent = casting > 0 ? `Scroll of Return · ${casting.toFixed(1)}s` : prompt;
   }
   updateCharacter(character: CharacterSave): void {
-    const key = JSON.stringify(character); if (key === this.characterKey) return;
+    this.character=character;
+    const seconds=Math.ceil(character.restedSeconds),rested=document.getElementById('rested-status')!;
+    rested.hidden=seconds<=0;rested.textContent=`Rested · ${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')} · +${progression.restedBonus*100}% skill XP`;
+    const key = JSON.stringify({...character,restedSeconds:undefined}); if (key === this.characterKey) return;
     this.characterKey = key; this.character = character; this.refresh();
   }
+  private entries():InventoryItem[] { return this.character ? [...this.character.items,...(this.stashMode ? this.character.stash : [])] : []; }
+  private container(id:string):Container { return this.character?.stash.some(i=>i.id===id) ? 'stash' : 'bag'; }
+  private contents(container:Container):InventoryItem[] { return container==='stash' ? this.character!.stash : this.character!.items; }
   private button(entry: InventoryItem): HTMLButtonElement {
     const button = document.createElement('button'); button.type = 'button'; button.className = 'bag-item'; button.dataset.instance = entry.id;
     const definition = lootDefinitions[entry.item]; button.setAttribute('aria-label', `${definition.name}${definition.stackable ? `, ${entry.quantity}` : ''}`);
     button.title = definition.name; button.innerHTML = `${itemIcon(entry.item)}${entry.slot === 'main' || entry.slot === 'off' ? `<span class="equip-name">${definition.name}</span>` : ''}${definition.stackable ? `<span class="stack-count">${entry.quantity}</span>` : ''}`;
     button.onclick = () => { this.selected = entry.id; this.refreshSelection(); };
-    button.ondblclick = () => { if (!definition.stackable && entry.slot === 'bag') void this.perform(() => this.context.change(equipInstance(this.character!.items, entry.id, entry.item === 'shield' ? 'off' : 'main'))); };
+    button.ondblclick = () => { if(this.stashMode && ['bag','overflow'].includes(entry.slot)){void this.perform(()=>this.context.transfer(entry.id,entry.quantity,this.container(entry.id)==='bag'));return;} if (!definition.stackable && entry.slot === 'bag') void this.perform(() => this.context.change(equipInstance(this.character!.items, entry.id, entry.item === 'shield' ? 'off' : 'main'))); };
     button.disabled = this.busy; return button;
   }
   private refresh(): void {
     const character = this.character; if (!character) return;
+    document.getElementById('stash-section')!.hidden=!this.stashMode;this.inventory.classList.toggle('with-stash',this.stashMode);
+    this.stashGrid.querySelectorAll('[data-instance]').forEach(el=>el.remove());
+    for(const entry of character.stash){const button=this.button(entry),definition=lootDefinitions[entry.item];Object.assign(button.style,{gridColumn:`${entry.x+1} / span ${definition.width}`,gridRow:`${entry.y+1} / span ${definition.height}`});this.stashGrid.append(button);}
     this.grid.querySelectorAll('[data-instance]').forEach(el => el.remove());
     for (const entry of character.items.filter(i => i.slot === 'bag')) {
       const button = this.button(entry), definition = lootDefinitions[entry.item];
@@ -109,17 +128,22 @@ export class AdventureMenus {
     const overflow = document.getElementById('inventory-overflow')!; overflow.replaceChildren();
     const pending = character.items.filter(i => i.slot === 'overflow'); overflow.hidden = !pending.length;
     if (pending.length) { const title = document.createElement('span'); title.textContent = 'Unpacked items'; overflow.append(title); for (const entry of pending) overflow.append(this.button(entry)); }
-    document.getElementById('woodcutting-xp')!.textContent = `${character.xp.woodcutting} XP`;
-    document.getElementById('axe-combat-xp')!.textContent = `${character.xp.axeCombat} XP`;
+    document.getElementById('woodcutting-xp')!.textContent = skillProgress(character.xp.woodcutting);
+    document.getElementById('axe-combat-xp')!.textContent = `${Math.floor(character.xp.axeCombat)} XP`;
+    document.getElementById('mining-xp')!.textContent=skillProgress(character.xp.mining);
+    const materials=document.getElementById('repair-materials')!; materials.replaceChildren(...Object.entries(shelterRecipe).map(([item,cost])=>{const row=document.createElement('div'),name=document.createElement('span'),amount=document.createElement('strong');name.textContent=lootDefinitions[item as 'wood'|'stone'|'iron'].name;const held=countItem(character.items.filter(i=>i.slot==='bag'),item as 'wood'|'stone'|'iron');amount.textContent=`${held} / ${cost}`;row.dataset.ready=String(held>=cost);row.append(name,amount);return row;}));
+    (document.getElementById('shelter-repair') as HTMLButtonElement).disabled=this.busy || character.shelterRestored || !Object.entries(shelterRecipe).every(([item,cost])=>countItem(character.items.filter(i=>i.slot==='bag'),item as 'wood'|'stone'|'iron')>=cost);
+    (document.getElementById('stash-sort') as HTMLButtonElement).disabled=this.busy;
     (document.getElementById('inventory-sort') as HTMLButtonElement).disabled = this.busy;
     this.inventory.setAttribute('aria-busy', String(this.busy)); this.refreshSelection();
   }
-  private selectedItem(): InventoryItem | undefined { return this.character?.items.find(i => i.id === this.selected); }
+  private selectedItem(): InventoryItem | undefined { return this.entries().find(i => i.id === this.selected); }
   private refreshSelection(): void {
     const entry = this.selectedItem(); this.detail.textContent = entry ? `${lootDefinitions[entry.item].name}${lootDefinitions[entry.item].stackable ? ` · ${entry.quantity}` : ''}` : '';
-    for (const [id, visible] of [['inventory-equip', entry?.slot === 'bag' && !lootDefinitions[entry.item].stackable], ['inventory-remove', entry?.slot === 'main' || entry?.slot === 'off'], ['inventory-recover', entry?.slot === 'overflow'], ['inventory-split', entry && entry.quantity > 1]] as const) {
+    for (const [id, visible] of [['inventory-equip', entry && this.container(entry.id)==='bag' && entry.slot === 'bag' && !lootDefinitions[entry.item].stackable], ['inventory-remove', entry?.slot === 'main' || entry?.slot === 'off'], ['inventory-recover', entry?.slot === 'overflow'], ['inventory-transfer', this.stashMode && entry && ['bag','overflow'].includes(entry.slot)], ['inventory-split', entry && entry.quantity > 1]] as const) {
       const button = document.getElementById(id) as HTMLButtonElement; button.hidden = !visible; button.disabled = this.busy;
     }
+    document.getElementById('inventory-transfer')!.textContent=entry && this.container(entry.id)==='stash' ? 'Take' : 'Store';
     this.inventory.querySelectorAll<HTMLElement>('[data-instance]').forEach(el => el.classList.toggle('selected', el.dataset.instance === this.selected));
   }
   private openSplit(entry: InventoryItem): void {
@@ -127,39 +151,44 @@ export class AdventureMenus {
     const input = document.getElementById('split-amount') as HTMLInputElement; input.max = String(Math.min(99, entry.quantity - 1)); input.value = String(Math.min(99, Math.floor(entry.quantity / 2))); input.focus(); input.select();
   }
   private showGhost(entry: InventoryItem): void {
-    const cell = this.grid.getBoundingClientRect().width / 12, definition = lootDefinitions[entry.item];
+    const cell = (this.drag?.container==='stash' ? this.stashGrid : this.grid).getBoundingClientRect().width / 12, definition = lootDefinitions[entry.item];
     this.ghost.innerHTML = `${itemIcon(entry.item)}<span class="stack-count">${this.drag!.quantity > 1 ? this.drag!.quantity : ''}</span>`;
     this.ghost.style.width = `${cell * definition.width}px`; this.ghost.style.height = `${cell * definition.height}px`; this.ghost.hidden = false;
   }
-  private destination(x: number, y: number): { x: number; y: number } {
-    const rect = this.grid.getBoundingClientRect(), cell = rect.width / 12;
-    return { x: Math.floor((x - (this.drag?.offsetX ?? 0) - rect.left + cell * .3) / cell), y: Math.floor((y - (this.drag?.offsetY ?? 0) - rect.top + cell * .3) / cell) };
+  private targetGrid(x:number,y:number):{grid:HTMLElement;container:Container}|null {
+    for(const [grid,container] of [[this.grid,'bag'],[this.stashGrid,'stash']] as const){if(container==='stash' && !this.stashMode)continue;const r=grid.getBoundingClientRect();if(x>=r.left && x<=r.right && y>=r.top && y<=r.bottom)return {grid,container};}return null;
   }
-  private previewPlacement(x: number, y: number): void {
-    const entry = this.character?.items.find(i => i.id === this.drag?.id); if (!entry) return;
-    const point = this.destination(x, y), definition = lootDefinitions[entry.item];
-    Object.assign(this.marker.style, { gridColumn: `${Math.max(0, point.x) + 1} / span ${definition.width}`, gridRow: `${Math.max(0, point.y) + 1} / span ${definition.height}` });
-    const rect = this.grid.getBoundingClientRect(); this.marker.hidden = x < rect.left || x > rect.right || y < rect.top || y > rect.bottom || point.x < 0 || point.y < 0 || point.x + definition.width > 12 || point.y + definition.height > 8;
-    try { moveItem(this.character!.items, entry.id, point.x, point.y, this.drag!.quantity, () => 'preview'); this.marker.dataset.valid = 'true'; } catch { this.marker.dataset.valid = 'false'; }
+  private destination(grid:HTMLElement,x:number,y:number):{x:number;y:number} {
+    const rect=grid.getBoundingClientRect(),cell=rect.width/12;
+    return {x:Math.floor((x-(this.drag?.offsetX??0)-rect.left+cell*.3)/cell),y:Math.floor((y-(this.drag?.offsetY??0)-rect.top+cell*.3)/cell)};
   }
-  private async release(x: number, y: number): Promise<void> {
-    const drag = this.drag; if (!drag) return;
-    const point = this.destination(x, y), entry = this.character?.items.find(i => i.id === drag.id), active = drag.active;
-    this.cancelDrag(); if (!active || !entry) return;
-    const panel = this.inventory.getBoundingClientRect();
-    await this.perform(() => {
-      if (x < panel.left || x > panel.right || y < panel.top || y > panel.bottom) return this.context.drop(entry.id, drag.quantity);
-      const slot = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-equipment-slot]')?.dataset.equipmentSlot;
-      if (slot === 'main' || slot === 'off') return this.context.change(equipInstance(this.character!.items, entry.id, slot));
-      const rect = this.grid.getBoundingClientRect(); if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) throw new Error('Item does not fit.');
-      return this.context.change(moveItem(this.character!.items, entry.id, point.x, point.y, drag.quantity, this.context.newId));
+  private previewPlacement(x:number,y:number):void {
+    const entry=this.entries().find(i=>i.id===this.drag?.id),target=this.targetGrid(x,y);this.marker.hidden=!target;if(!entry || !target)return;
+    const point=this.destination(target.grid,x,y),definition=lootDefinitions[entry.item];target.grid.append(this.marker);
+    Object.assign(this.marker.style,{gridColumn:`${Math.max(0,point.x)+1} / span ${definition.width}`,gridRow:`${Math.max(0,point.y)+1} / span ${definition.height}`});
+    this.marker.hidden=point.x<0 || point.y<0 || point.x+definition.width>12 || point.y+definition.height>8;
+    try {if(target.container===this.drag!.container)moveItem(this.contents(target.container),entry.id,point.x,point.y,this.drag!.quantity,()=> 'preview');else transferItem(this.contents(this.drag!.container),this.contents(target.container),entry.id,this.drag!.quantity,()=> 'preview',point);this.marker.dataset.valid='true';}catch{this.marker.dataset.valid='false';}
+  }
+  private async release(x:number,y:number):Promise<void> {
+    const drag=this.drag;if(!drag)return;const entry=this.entries().find(i=>i.id===drag.id),active=drag.active,target=this.targetGrid(x,y),point=target ? this.destination(target.grid,x,y) : null;
+    this.cancelDrag();if(!active || !entry)return;
+    const panel=this.inventory.getBoundingClientRect();
+    await this.perform(()=>{
+      if(x<panel.left || x>panel.right || y<panel.top || y>panel.bottom){if(drag.container==='stash')throw new Error('Take the item into your bag first.');return this.context.drop(entry.id,drag.quantity);}
+      const slot=document.elementFromPoint(x,y)?.closest<HTMLElement>('[data-equipment-slot]')?.dataset.equipmentSlot;
+      if(slot==='main' || slot==='off'){if(drag.container==='stash')throw new Error('Take the item into your bag first.');return this.context.change(equipInstance(this.character!.items,entry.id,slot));}
+      if(!target || !point)throw new Error('Item does not fit.');
+      if(target.container!==drag.container)return this.context.transfer(entry.id,drag.quantity,target.container==='stash',point);
+      const next=moveItem(this.contents(drag.container),entry.id,point.x,point.y,drag.quantity,this.context.newId);
+      if(drag.container==='stash')return this.context.changeContainers(this.character!.items,next);
+      return this.context.change(next);
     });
   }
   private cancelDrag(): void { this.drag = null; this.ghost.hidden = true; this.marker.hidden = true; this.split.hidden = true; this.splitId = null; }
   private async perform(operation: () => Promise<void> | void): Promise<void> {
     if (this.busy || !this.character) return; this.busy = true; this.error.textContent = ''; this.refresh();
     try { await operation(); }
-    catch (error) { this.error.textContent = error instanceof Error ? error.message : 'Unable to move item.'; }
+    catch (error) { (this.repair.open ? document.getElementById('repair-error')! : this.error).textContent = error instanceof Error ? error.message : 'Unable to move item.'; }
     finally { this.busy = false; this.refresh(); }
   }
 }

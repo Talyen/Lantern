@@ -20,6 +20,9 @@ export class AdventureVisuals {
   private ribbon = new MeshStandardNodeMaterial({ color: '#a75830', roughness: .7 });
   private bark = new MeshStandardNodeMaterial({ color: '#866446', roughness: 1 });
   private metal = new MeshStandardNodeMaterial({ color: '#b5aca0', roughness: .6, metalness: .4 });
+  private oreGeometry = new THREE.DodecahedronGeometry(1,0);
+  private stone = new MeshStandardNodeMaterial({color:'#898478',roughness:1});
+  private iron = new MeshStandardNodeMaterial({color:'#756356',roughness:.8,metalness:.2});
   private markerGeometry = new THREE.RingGeometry(.24, .29, 24);
   private markerMaterial = new MeshBasicNodeMaterial({ color: '#bda474', transparent: true, opacity: .5, side: THREE.DoubleSide });
   private highlight = new THREE.Mesh(this.markerGeometry, this.markerMaterial);
@@ -40,6 +43,9 @@ export class AdventureVisuals {
           scroll.rotation.z = band.rotation.z = Math.PI / 2; band.scale.set(1.03, .15, 1.03); model.add(scroll, band); model.position.y = .08;
         } else if (drop.item === 'wood') {
           for (let i = 0; i < 3; i++) { const log = new THREE.Mesh(this.geometry, this.bark); log.rotation.z = Math.PI / 2; log.scale.set(.8, 1.2, .8); log.position.set(0, i === 2 ? .14 : .06, i === 2 ? 0 : (i - .5) * .12); model.add(log); }
+        } else if (drop.item === 'stone' || drop.item === 'iron') {
+          const rock = new THREE.Mesh(this.oreGeometry,drop.item === 'stone' ? this.stone : this.iron);
+          rock.scale.set(.21,.14,.18); rock.position.y=.10; model.add(rock);
         } else {
           // A compact silhouette remains collectible if optional prepared scenery is absent.
           const shaft = new THREE.Mesh(this.box, drop.item === 'sword' || drop.item === 'shield' ? this.metal : this.bark);
@@ -93,6 +99,6 @@ export class AdventureVisuals {
   dispose(): void {
     this.disposed = true; this.portal?.dispose(); this.sound.dispose(); this.highlight.removeFromParent();
     this.drops.forEach(v => { v.instance?.release(); v.root.removeFromParent(); }); this.drops.clear();
-    for (const resource of [this.geometry, this.box, this.arc, this.paper, this.ribbon, this.bark, this.metal, this.markerGeometry, this.markerMaterial]) resource.dispose();
+    for (const resource of [this.oreGeometry, this.stone, this.iron, this.geometry, this.box, this.arc, this.paper, this.ribbon, this.bark, this.metal, this.markerGeometry, this.markerMaterial]) resource.dispose();
   }
 }

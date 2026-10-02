@@ -3,7 +3,7 @@ import { resolveLocalLight } from './local-lighting.ts';
 import { inReserved } from './decoration.ts';
 import { boundaryDistance, insideGate } from '../gameplay/area.ts';
 import type { AreaDefinition, AssetRef } from './types.ts';
-export function assetReferences(area: AreaDefinition): AssetRef[] { return [...area.props.flatMap(p => [p.asset, p.fallback].filter((a): a is AssetRef => !!a)), ...area.effects.fires.map(f => f.asset)]; }
+export function assetReferences(area: AreaDefinition): AssetRef[] { return [...area.props.flatMap(p => [p.asset, p.fallback].filter((a): a is AssetRef => !!a)), ...area.effects.fires.map(f => f.asset), ...(area.shelter ? [{libraryId:'generic:model:sm-gen-prop-chest-01'}] : [])]; }
 export { inReserved, generateDecoration } from './decoration.ts';
 /** Validation is shared by live preview and Node tooling. Errors identify the area/object. */
 export function validateAreas(input: Record<string, AreaDefinition>): string[] {
@@ -33,6 +33,7 @@ export function validateAreas(input: Record<string, AreaDefinition>): string[] {
         if (!area.effects.fires.some(effect => effect.id === fire.id)) fail('interactive campfire needs a fire effect');
         if (fire.heals !== undefined && typeof fire.heals !== 'boolean') fail('heals must be boolean');
       }
+      if (area.shelter && (!finite(area.shelter.position,2) || !finite(area.shelter.stash,2) || !Number.isFinite(area.shelter.yaw) || boundaryDistance(boundary,area.shelter.position)<0 || boundaryDistance(boundary,area.shelter.stash)<0)) fail('invalid shelter position');
       if (area.portalArrival && (!finite(area.portalArrival.position, 2) || !Number.isFinite(area.portalArrival.yaw) || boundaryDistance(boundary, area.portalArrival.position) < 0)) fail('invalid portal arrival');
       for (const region of area.reserved) { id(region.id); if (!finite(region.center, 2) || !Number.isFinite(region.radius) || region.radius <= 0) fail('invalid reserved region'); }
       for (const prop of area.props) {
@@ -41,7 +42,8 @@ export function validateAreas(input: Record<string, AreaDefinition>): string[] {
         if (typeof prop.castShadow !== 'boolean' || typeof prop.receiveShadow !== 'boolean') fail('shadow flags must be explicit booleans');
         if (!!prop.asset === !!prop.primitive) fail('choose exactly one asset or primitive');
         if (prop.primitive?.surface !== undefined && prop.primitive.surface !== 'woodland') fail('unknown ground surface');
-        if (prop.harvest && (prop.harvest.kind !== 'tree' || prop.harvest.radius !== undefined && (!Number.isFinite(prop.harvest.radius) || prop.harvest.radius <= 0))) fail('invalid tree harvest metadata');
+        if (prop.harvest && (!['tree','stone','iron'].includes(prop.harvest.kind) || prop.harvest.radius !== undefined && (!Number.isFinite(prop.harvest.radius) || prop.harvest.radius <= 0))) fail('invalid tree harvest metadata');
+        if (prop.harvest && [prop.harvest.level,prop.harvest.baseYield,prop.harvest.contacts].some(n => n !== undefined && (!Number.isSafeInteger(n) || n < 1))) fail('invalid resource progression metadata');
         if (prop.primitive?.patches !== undefined) {
           if (prop.primitive.surface !== 'woodland' || !Array.isArray(prop.primitive.patches)) fail('patches require a woodland surface and a list');
           else for (const patch of prop.primitive.patches) {
@@ -75,7 +77,7 @@ export function validateAreas(input: Record<string, AreaDefinition>): string[] {
       }
       for (const scatter of area.scatter) {
         id(scatter.id); if (!Number.isInteger(scatter.count) || scatter.count < 0 || scatter.count > 2000 || !finite(scatter.radius, 2) || scatter.radius[0] < 0 || scatter.radius[1] < scatter.radius[0]) fail('invalid scatter count/radius');
-        if (scatter.harvest && (scatter.harvest.kind !== 'tree' || scatter.harvest.radius !== undefined && (!Number.isFinite(scatter.harvest.radius) || scatter.harvest.radius <= 0))) fail('invalid tree harvest metadata');
+        if (scatter.harvest && (!['tree','stone','iron'].includes(scatter.harvest.kind) || scatter.harvest.radius !== undefined && (!Number.isFinite(scatter.harvest.radius) || scatter.harvest.radius <= 0))) fail('invalid tree harvest metadata');
       }
       for (const patch of area.grass ?? []) {
         id(patch.id);

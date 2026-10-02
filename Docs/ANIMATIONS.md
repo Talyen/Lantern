@@ -49,6 +49,7 @@ The five base roles remain `idle`, `run`, `attack`, `hit` and `death`. Profiles 
 | Player Bow Attack | 0.80 s | Arrow release 0.53 s |
 | Player Staff Attack | 0.75 s | Bolt release 0.32 s |
 | Player Axe Chop | 0.80 s | Tree contact 0.32 s |
+| Player Pickaxe Mine | 0.90 s | Mineral contact 0.36 s |
 | Player Hit / Death | 0.30 / 1.35 s | — |
 | Player Dodge | 0.45 s simulation | — |
 | Goblin Axe Attack | 1.05 s | Contact 0.46 s |
@@ -71,9 +72,9 @@ New and migrated characters own and equip an Axe. The defeated clearing camp che
 
 **Hold right mouse** with a Shield to block toward the cursor. Blocking halves movement speed and incoming damage in the frontal 120-degree arc, prevents attacks, and ends on release or dodge. Rear hits retain the normal reaction. **Shift** dodges in held movement direction or, while stationary, the latest aim direction.
 
-**Hold E** within 1.8 m of a standing tree's trunk surface with an Axe to step into striking distance and repeat the distinct Axe Chop action. Rewards occur at contact: one Wood and 10 Woodcutting XP. Three contacts fell the tree and show a stump; movement, attacks, dodge, damage, menus or leaving reach interrupt chopping. Tree identities survive scenery batching, and felling updates collision/navigation. Regrowth follows 120 active gameplay seconds across areas, pauses with play and waits if an actor overlaps the trunk. Tree depletion is session state; Wood and XP persist. Chopping does not rebake lighting.
+Contextual left-click gathering repeats Axe Chop or Pickaxe Mine with temporary tool attachments, regardless of combat equipment. Pickaxe Mine uses the retained downward Axe strike source baked to Paladin with its own cooked duration and contact marker. Gathering profiles bypass the Staff carrying-arm modification. Each valid contact drops a resource; collected quantities award XP once. Three starting contacts deplete a node. See [gathering and shelter](GATHERING.md) for selection, cancellation, renewal and progression.
 
-A damaging Axe combat contact grants 10 Axe Combat XP independently of Woodcutting. Levels, skill bonuses, combos, stamina, ammunition consumption, mana costs, skills and ultimates remain deferred. The initial weapon comparison uses the existing 50-point player damage and a 12 m projectile range.
+A damaging Axe combat contact grants 10 Axe Combat XP independently of Woodcutting. Gathering levels and Rested are implemented; weapon levels, combos, stamina, ammunition consumption, mana costs, abilities and ultimates remain deferred. The initial weapon comparison uses the existing 50-point player damage and a 12 m projectile range.
 
 ## Solo caster
 

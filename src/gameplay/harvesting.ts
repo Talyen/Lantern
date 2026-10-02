@@ -1,50 +1,52 @@
 import type { TreeDefinition } from '../levels/trees';
+import { resourceItem, resourceSkill, type ResourceDefinition } from '../levels/resources';
 import type { Point } from './area';
-
-export const chopReach = 1.8;
-export const treeChops = 3;
-export const treeRegrowthSeconds = 120;
+import { gathering, harvestQuantity, progression, skillLevel, type GatheringSkill } from './skills';
+export const chopReach = gathering.reach;
+export const treeChops = gathering.contacts;
+export const treeRegrowthSeconds = gathering.renewalSeconds;
 export type TreeState = { hits: number; felled: boolean };
 export type TreeChange = { areaId: string; id: string; felled: boolean };
-export type HarvestReward = { wood: number; xp: number; felled: boolean };
-type SessionTree = { definition: TreeDefinition; hits: number; regrowAt?: number };
-
-/** Session-only depletion clock; character Wood/XP and contact timing belong to their owners. */
+export type HarvestReward = { item: 'wood' | 'stone' | 'iron'; quantity: number; skill: GatheringSkill; xpPerUnit: number; felled: boolean };
+type SessionResource = { definition: ResourceDefinition; hits: number; regrowAt?: number };
+/** Session-only depletion clock. Character resources and XP belong to Adventure. */
 export class Harvesting {
   private elapsed = 0;
-  private readonly areas = new Map<string, Map<string, SessionTree>>();
-  register(areaId: string, trees: TreeDefinition[]): void {
+  private readonly areas = new Map<string, Map<string, SessionResource>>();
+  register(areaId: string, resources: (ResourceDefinition | TreeDefinition)[]): void {
     const previous = this.areas.get(areaId);
-    this.areas.set(areaId, new Map(trees.map(definition => [definition.id, { ...previous?.get(definition.id), definition, hits: previous?.get(definition.id)?.hits ?? 0 }])));
+    this.areas.set(areaId, new Map(resources.map(node => {
+      const definition: ResourceDefinition = { kind: 'tree', level: gathering.resourceLevel, baseYield: gathering.baseYield, contacts: gathering.contacts, ...node };
+      return [node.id, { ...previous?.get(node.id), definition, hits: previous?.get(node.id)?.hits ?? 0 }];
+    })));
   }
   state(areaId: string, id: string): TreeState | undefined {
-    const tree = this.areas.get(areaId)?.get(id);
-    return tree && { hits: tree.hits, felled: tree.regrowAt !== undefined };
+    const node = this.areas.get(areaId)?.get(id);
+    return node && { hits: node.hits, felled: node.regrowAt !== undefined };
   }
-  nearest(areaId: string, point: Point, reach = chopReach): TreeDefinition | undefined {
-    let closest: TreeDefinition | undefined, distance = reach;
-    for (const tree of this.areas.get(areaId)?.values() ?? []) {
-      if (tree.regrowAt !== undefined) continue;
-      const d = this.distance(tree.definition, point);
-      if (d <= distance) { distance = d; closest = tree.definition; }
-    }
-    return closest;
+  available(areaId: string): ResourceDefinition[] { return [...(this.areas.get(areaId)?.values() ?? [])].filter(n => n.regrowAt === undefined).map(n => n.definition); }
+  nearest(areaId: string, point: Point, reach = chopReach): ResourceDefinition | undefined {
+    return this.available(areaId).filter(n => this.distance(n, point) <= reach).sort((a,b) => this.distance(a,point) - this.distance(b,point))[0];
   }
-  contact(areaId: string, id: string, point: Point): HarvestReward | undefined {
-    const tree = this.areas.get(areaId)?.get(id);
-    if (!tree || tree.regrowAt !== undefined || this.distance(tree.definition, point) > chopReach) return;
-    if (++tree.hits === treeChops) tree.regrowAt = this.elapsed + treeRegrowthSeconds;
-    return { wood: 1, xp: 10, felled: tree.regrowAt !== undefined };
+  facing(areaId: string, point: Point, yaw: number): ResourceDefinition | undefined {
+    return this.available(areaId).filter(n => this.distance(n,point) <= gathering.reach && Math.cos(Math.atan2(n.position[0]-point[0],n.position[2]-point[1])-yaw) >= Math.cos(gathering.facingCone))
+      .sort((a,b) => this.distance(a,point)-this.distance(b,point))[0];
+  }
+  contact(areaId: string, id: string, point: Point, xp = 0): HarvestReward | undefined {
+    const node = this.areas.get(areaId)?.get(id);
+    if (!node || node.regrowAt !== undefined || this.distance(node.definition, point) > chopReach) return;
+    if (++node.hits >= node.definition.contacts) node.regrowAt = this.elapsed + gathering.renewalSeconds;
+    return { item: resourceItem(node.definition.kind), quantity: harvestQuantity(skillLevel(xp),node.definition.level,node.definition.baseYield), skill: resourceSkill(node.definition.kind), xpPerUnit: progression.gatheringXp * node.definition.level, felled: node.regrowAt !== undefined };
   }
   advance(dt: number, occupants: { areaId: string; position: Point; radius?: number }[] = []): TreeChange[] {
     this.elapsed += Math.max(0, dt);
     const changes: TreeChange[] = [];
-    for (const [areaId, trees] of this.areas) for (const [id, tree] of trees) {
-      if (tree.regrowAt === undefined || tree.regrowAt > this.elapsed) continue;
-      if (occupants.some(actor => actor.areaId === areaId && this.distance(tree.definition, actor.position) < (actor.radius ?? .3) + .05)) continue;
-      tree.hits = 0; tree.regrowAt = undefined; changes.push({ areaId, id, felled: false });
+    for (const [areaId, nodes] of this.areas) for (const [id, node] of nodes) {
+      if (node.regrowAt === undefined || node.regrowAt > this.elapsed) continue;
+      if (occupants.some(actor => actor.areaId === areaId && this.distance(node.definition, actor.position) < (actor.radius ?? .3) + .05)) continue;
+      node.hits = 0; node.regrowAt = undefined; changes.push({ areaId, id, felled: false });
     }
     return changes;
   }
-  private distance(tree: TreeDefinition, point: Point): number { return Math.max(0, Math.hypot(point[0] - tree.position[0], point[1] - tree.position[2]) - tree.radius); }
+  distance(node: TreeDefinition, point: Point): number { return Math.max(0, Math.hypot(point[0] - node.position[0], point[1] - node.position[2]) - node.radius); }
 }

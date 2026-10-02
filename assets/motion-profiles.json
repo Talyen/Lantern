@@ -369,6 +369,17 @@
         1.815
       ],
       "contact": 0.8
+    },
+    "pickaxe-mine": {
+      "sourceId": "50032fca84ef",
+      "name": "Pickaxe Mine",
+      "category": "mine",
+      "duration": 0.9,
+      "trim": [
+        0.15,
+        2.05
+      ],
+      "contact": 0.36
     }
   },
   "player": {
@@ -405,7 +416,8 @@
         "blockForward": "block-forward",
         "blockBackward": "block-backward",
         "blockLeft": "block-left",
-        "blockRight": "block-right"
+        "blockRight": "block-right",
+        "mine": "pickaxe-mine"
       },
       "axe-shield": {
         "idle": "shield-idle",
@@ -422,7 +434,8 @@
         "blockForward": "block-forward",
         "blockBackward": "block-backward",
         "blockLeft": "block-left",
-        "blockRight": "block-right"
+        "blockRight": "block-right",
+        "mine": "pickaxe-mine"
       },
       "sword": {
         "idle": "axe-idle",
@@ -439,7 +452,8 @@
         "blockForward": "block-forward",
         "blockBackward": "block-backward",
         "blockLeft": "block-left",
-        "blockRight": "block-right"
+        "blockRight": "block-right",
+        "mine": "pickaxe-mine"
       },
       "sword-shield": {
         "idle": "shield-idle",
@@ -456,7 +470,8 @@
         "blockForward": "block-forward",
         "blockBackward": "block-backward",
         "blockLeft": "block-left",
-        "blockRight": "block-right"
+        "blockRight": "block-right",
+        "mine": "pickaxe-mine"
       },
       "bow": {
         "idle": "bow-idle",
@@ -473,7 +488,8 @@
         "blockForward": "block-forward",
         "blockBackward": "block-backward",
         "blockLeft": "block-left",
-        "blockRight": "block-right"
+        "blockRight": "block-right",
+        "mine": "pickaxe-mine"
       },
       "staff": {
         "idle": "staff-idle",
@@ -491,7 +507,8 @@
         "blockBackward": "block-backward",
         "blockLeft": "block-left",
         "blockRight": "block-right",
-        "grip": "bow-idle"
+        "grip": "bow-idle",
+        "mine": "pickaxe-mine"
       },
       "unarmed": {
         "idle": "axe-idle",
@@ -508,7 +525,8 @@
         "blockForward": "block-forward",
         "blockBackward": "block-backward",
         "blockLeft": "block-left",
-        "blockRight": "block-right"
+        "blockRight": "block-right",
+        "mine": "pickaxe-mine"
       }
     },
     "audit": [

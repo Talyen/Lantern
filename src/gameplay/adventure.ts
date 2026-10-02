@@ -2,17 +2,19 @@ import { createEncounter, playerMaxHealth, enemyIds, type Encounter, type EnemyI
 import type { Point, Spawn } from './area';
 import type { AreaDefinition, Campfire, Chest } from '../levels/types';
 import { itemIds, normalizeLoadout, type ItemId, type Loadout } from './equipment';
-import { countItem, itemLoadout, lootDefinitions, receive, validItems, type InventoryItem, type LootItem } from './inventory';
+import { countItem, itemLoadout, lootDefinitions, receive, validItems, transferItem, type InventoryItem, type LootItem } from './inventory';
+
+import { progression, progressMultiplier, shelterRecipe, type Skill, type GatheringSkill } from './skills';
 
 export const characterSaveKey = 'lantern.character.v1';
 export const scrollLimit = 99;
 export const homeArea = 'homestead';
-export type CharacterSave = { version: 3; items: InventoryItem[]; campfires: string[]; xp: { woodcutting: number; axeCombat: number }; campClaims: ItemId[]; readonly scrolls: number; readonly wood: number; readonly equipment: ItemId[]; readonly loadout: Loadout };
-export type GroundDrop = { id: string; item: LootItem; quantity: number; position: Point; origin: Point; height: number; age: number; claim?: ItemId; instanceId?: string; blocked?: boolean };
+export type CharacterSave = { version: 4; items: InventoryItem[]; stash: InventoryItem[]; shelterRestored: boolean; restedSeconds: number; campfires: string[]; xp: { woodcutting: number; mining: number; axeCombat: number }; campClaims: ItemId[]; readonly scrolls: number; readonly wood: number; readonly equipment: ItemId[]; readonly loadout: Loadout };
+export type GroundDrop = { id: string; item: LootItem; quantity: number; position: Point; origin: Point; height: number; age: number; claim?: ItemId; instanceId?: string; blocked?: boolean; harvestXp?: { skill: GatheringSkill; perUnit: number } };
 export type PortalLink = { area: string; departure: Spawn };
 type AreaSession = { encounter?: Encounter; drops: GroundDrop[]; dropRolled: Partial<Record<EnemyId, boolean>>; chests: Record<string, { opened: boolean; remaining: number }> };
 function character(items: InventoryItem[] = [{ id: 'item-1', item: 'axe', quantity: 1, slot: 'main', x: 0, y: 0 }, { id: 'item-2', item: 'scroll', quantity: 3, slot: 'bag', x: 0, y: 0 }]): CharacterSave {
-  const value = { version: 3 as const, items, campfires: ['homestead/camp'], xp: { woodcutting: 0, axeCombat: 0 }, campClaims: [] as ItemId[] };
+  const value = { version: 4 as const, items, stash: [] as InventoryItem[], shelterRestored: false, restedSeconds: 0, campfires: ['homestead/camp'], xp: { woodcutting: 0, mining: 0, axeCombat: 0 }, campClaims: [] as ItemId[] };
   return Object.defineProperties(value, {
     scrolls: { get: () => countItem(value.items.filter(i => i.slot !== 'overflow'), 'scroll') },
     wood: { get: () => countItem(value.items, 'wood') },
@@ -37,6 +39,8 @@ export class Adventure {
   saveError = '';
   notice = '';
   private noticeTime = 0;
+  private atShelter = false;
+  private checkpoint = 0;
   currentArea: string | null = null;
   pickupTarget: string | null = null;
   placeGround: (origin: Point, index: number) => { position: Point; height: number } = origin => ({ position: [...origin], height: 0 });
@@ -48,16 +52,18 @@ export class Adventure {
     if (!storage) return;
     try {
       const raw = storage.getItem(characterSaveKey); if (!raw) return;
-      const value = JSON.parse(raw), counter = (n: unknown) => typeof n === 'number' && Number.isSafeInteger(n) && n >= 0;
-      if (![1, 2, 3].includes(value?.version) || !Array.isArray(value.campfires) || !value.campfires.every((id: unknown) => typeof id === 'string')) throw new Error('Invalid character save');
-      if (value.version === 3) {
+      const value = JSON.parse(raw), counter = (n: unknown) => typeof n === 'number' && Number.isFinite(n) && n >= 0 && n <= Number.MAX_SAFE_INTEGER;
+      if (![1, 2, 3, 4].includes(value?.version) || !Array.isArray(value.campfires) || !value.campfires.every((id: unknown) => typeof id === 'string')) throw new Error('Invalid character save');
+      if (value.version >= 3) {
         if (!validItems(value.items) || !counter(value.xp?.woodcutting) || !counter(value.xp?.axeCombat) || !Array.isArray(value.campClaims) || !value.campClaims.every((id: ItemId) => itemIds.includes(id))) throw new Error('Invalid inventory save');
+        if (value.version === 4 && (!validItems(value.stash) || value.stash.some((i: InventoryItem) => i.slot !== 'bag') || new Set([...value.items,...value.stash].map((i: InventoryItem) => i.id)).size !== value.items.length + value.stash.length || typeof value.shelterRestored !== 'boolean' || !counter(value.restedSeconds) || value.restedSeconds > progression.restedSeconds || !counter(value.xp.mining) || !value.shelterRestored && (value.stash.length || value.restedSeconds))) throw new Error('Invalid Homestead save');
         this.character = character(value.items);
-        this.character.xp = value.xp; this.character.campClaims = [...new Set<ItemId>(value.campClaims)];
-        for (const entry of value.items) this.sequence = Math.max(this.sequence, Number(entry.id.match(/^item-(\d+)$/)?.[1] ?? 0));
+        this.character.xp = { woodcutting: value.xp.woodcutting, axeCombat: value.xp.axeCombat, mining: value.version === 4 ? value.xp.mining : 0 }; this.character.campClaims = [...new Set<ItemId>(value.campClaims)];
+        if (value.version === 4) { this.character.stash = value.stash; this.character.shelterRestored = value.shelterRestored; this.character.restedSeconds = value.restedSeconds; }
+        for (const entry of [...value.items,...this.character.stash]) this.sequence = Math.max(this.sequence, Number(entry.id.match(/^item-(\d+)$/)?.[1] ?? 0));
       } else {
-        if (!counter(value.scrolls) || value.scrolls > scrollLimit) throw new Error('Invalid scroll save');
-        if (value.version === 2 && (!Array.isArray(value.equipment) || !value.equipment.every((id: ItemId) => itemIds.includes(id)) || !counter(value.wood) || !counter(value.xp?.woodcutting) || !counter(value.xp?.axeCombat) || typeof value.campEquipmentClaimed !== 'boolean'
+        if (!Number.isSafeInteger(value.scrolls) || !counter(value.scrolls) || value.scrolls > scrollLimit) throw new Error('Invalid scroll save');
+        if (value.version === 2 && (!Array.isArray(value.equipment) || !value.equipment.every((id: ItemId) => itemIds.includes(id)) || !Number.isSafeInteger(value.wood) || !counter(value.wood) || !counter(value.xp?.woodcutting) || !counter(value.xp?.axeCombat) || typeof value.campEquipmentClaimed !== 'boolean'
           || !value.loadout || !(value.loadout.main === null || itemIds.includes(value.loadout.main) && value.loadout.main !== 'shield') || ![null, 'shield'].includes(value.loadout.off)
           || value.loadout.main && !value.equipment.includes(value.loadout.main) || value.loadout.off && !value.equipment.includes(value.loadout.off))) throw new Error('Invalid equipment save');
         const items: InventoryItem[] = [], loadout = value.version === 2 ? normalizeLoadout(value.loadout) : { main: 'axe', off: null };
@@ -72,10 +78,10 @@ export class Adventure {
           if (remainder) items.push({ id: this.newId(), item, quantity: remainder, slot: 'overflow', x: 0, y: 0 });
         }
         this.character = character(items);
-        if (value.version === 2) { this.character.xp = value.xp; if (value.campEquipmentClaimed) this.character.campClaims = ['sword', 'shield', 'bow', 'staff']; }
+        if (value.version === 2) { this.character.xp = { woodcutting: value.xp.woodcutting, axeCombat: value.xp.axeCombat, mining: 0 }; if (value.campEquipmentClaimed) this.character.campClaims = ['sword', 'shield', 'bow', 'staff']; }
       }
       this.character.campfires = [...new Set<string>(['homestead/camp', ...value.campfires])];
-      if (value.version !== 3) this.save();
+      if (value.version !== 4) this.save();
     } catch { this.saveError = 'Unable to load progress. Check local storage before restarting.'; }
   }
   save(): void {
@@ -86,7 +92,7 @@ export class Adventure {
   replaceItems(items: InventoryItem[]): void { this.character.items = items; this.save(); }
   message(text: string): void { this.notice = text; this.noticeTime = 2; }
   cancelPickup(): void { this.pickupTarget = null; }
-  spawnDrop(item: LootItem, quantity: number, origin: Point, options: Partial<Pick<GroundDrop, 'claim' | 'instanceId' | 'blocked'>> = {}): GroundDrop {
+  spawnDrop(item: LootItem, quantity: number, origin: Point, options: Partial<Pick<GroundDrop, 'claim' | 'instanceId' | 'blocked' | 'harvestXp'>> = {}): GroundDrop {
     const point = this.placeGround(origin, this.session().drops.length);
     const drop: GroundDrop = { id: this.newId(), item, quantity, origin: [...origin], ...point, age: 0, ...options };
     this.session().drops.push(drop); this.events.push({type:'lootDrop',item,position:{x:drop.position[0],z:drop.position[1]}}); return drop;
@@ -115,15 +121,37 @@ export class Adventure {
     const amount = receive(this.character.items, drop.item, drop.quantity, this.newId, drop.instanceId);
     if (!amount) { if (manual) this.message('Inventory full'); return false; }
     this.events.push({type:'lootPickup',item:drop.item,position:{x:drop.position[0],z:drop.position[1]}});
+    if (drop.harvestXp) this.awardXp(drop.harvestXp.skill, amount * drop.harvestXp.perUnit);
     drop.quantity -= amount;
     if (drop.claim) this.character.campClaims = [...new Set([...this.character.campClaims, drop.claim])];
     if (!drop.quantity) this.session().drops.splice(this.session().drops.indexOf(drop), 1);
     this.save(); return true;
   }
-  grantHarvest(wood = 1, xp = 10, position: Point = [0, 0]): void {
-    this.spawnDrop('wood', wood, position); this.character.xp.woodcutting += xp; this.save();
+  grantHarvest(item: 'wood' | 'stone' | 'iron', quantity: number, skill: GatheringSkill, xpPerUnit: number, position: Point): void {
+    this.spawnDrop(item,quantity,position,{harvestXp:{skill,perUnit:xpPerUnit}});
   }
-  grantAxeCombatXp(amount = 10): void { this.character.xp.axeCombat += amount; this.save(); }
+  awardXp(skill: Skill, amount: number): void { this.character.xp[skill] = Math.round((this.character.xp[skill] + amount * progressMultiplier(this.character.restedSeconds)) * 1e6) / 1e6; }
+  grantAxeCombatXp(amount = 10): void { this.awardXp('axeCombat',amount); this.save(); }
+  canRepair(): boolean { return !this.character.shelterRestored && Object.entries(shelterRecipe).every(([item,cost]) => countItem(this.character.items.filter(i => i.slot === 'bag'),item as LootItem) >= cost); }
+  repairShelter(): void {
+    if (this.currentArea !== homeArea || !this.canRepair()) throw new Error('Not enough materials.');
+    const next = structuredClone(this.character.items);
+    for (const [item,cost] of Object.entries(shelterRecipe)) {
+      let remaining = cost;
+      for (const entry of next.filter(i => i.slot === 'bag' && i.item === item)) { const amount = Math.min(remaining,entry.quantity); entry.quantity -= amount; remaining -= amount; }
+    }
+    this.character.items = next.filter(i => i.quantity > 0); this.character.shelterRestored = true; this.character.restedSeconds = progression.restedSeconds;
+    this.save();
+  }
+  replaceContainers(items: InventoryItem[], stash: InventoryItem[]): void {
+    if (!this.character.shelterRestored || this.currentArea !== homeArea || !validItems(items) || !validItems(stash) || stash.some(i => i.slot !== 'bag') || new Set([...items,...stash].map(i=>i.id)).size !== items.length + stash.length) throw new Error('Item does not fit.');
+    this.character.items = items; this.character.stash = stash; this.save();
+  }
+  transferStash(id: string, quantity: number, toStash: boolean, point?: {x:number;y:number}): void {
+    const {items,stash} = this.character;
+    const next = transferItem(toStash ? items : stash,toStash ? stash : items,id,quantity,this.newId,point);
+    this.replaceContainers(toStash ? next.source : next.destination,toStash ? next.destination : next.source);
+  }
   session(id = this.currentArea!): AreaSession {
     let session = this.sessions.get(id);
     if (!session) { session = { drops: [], dropRolled: {}, chests: {} }; this.sessions.set(id, session); }
@@ -145,7 +173,7 @@ export class Adventure {
     next.player.x = arrival.position[0]; next.player.z = arrival.position[1]; next.player.yaw = arrival.yaw;
     next.player.hp = recover ? playerMaxHealth : health;
     Object.assign(encounter, next);
-    this.castRemaining = 0; this.cancelPickup(); this.healing = false; this.events = [];
+    this.castRemaining = 0; this.cancelPickup(); this.healing = false; this.atShelter = false; this.events = [];
     if (recover) this.portal = null;
   }
   discover(area: AreaDefinition, point: Point): void {
@@ -187,6 +215,12 @@ export class Adventure {
     if (encounter.player.hp <= 0) { if (this.portal) this.events.push({type:'portalClose'}); this.castRemaining = 0; this.portal = null; this.cancelPickup(); this.healing = false; return; }
     this.noticeTime = Math.max(0, this.noticeTime - dt); if (!this.noticeTime) this.notice = '';
     const point: Point = [encounter.player.x, encounter.player.z];
+    this.character.restedSeconds = Math.max(0,this.character.restedSeconds - dt);
+    const atShelter = !!area.shelter && this.character.shelterRestored && near(point,area.shelter.position,progression.restedRadius);
+    if (atShelter && !this.atShelter) { this.character.restedSeconds = progression.restedSeconds; this.save(); }
+    this.atShelter = atShelter;
+    this.checkpoint += dt;
+    if (this.checkpoint >= progression.checkpointSeconds) { this.checkpoint = 0; if (this.character.shelterRestored) this.save(); }
     this.discover(area, point);
     const healing = encounter.player.hp < playerMaxHealth && !!area.campfires?.some(fire => fire.heals && near(point, fire.position, 3) && this.fireSafe(area, fire, encounter));
     if (healing && !this.healing) this.events.push({type:'healing'});

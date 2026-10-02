@@ -13,7 +13,7 @@ export function standingTreeAsset(asset: AssetRef | undefined): boolean {
 }
 
 export function harvestableTree(placement: Placement): boolean {
-  return placement.harvest?.kind === 'tree' || standingTreeAsset(placement.asset);
+  return placement.harvest ? placement.harvest.kind === 'tree' : standingTreeAsset(placement.asset);
 }
 
 /** IDs remain placement-local; the session owner scopes them by area. No asset loading is needed. */

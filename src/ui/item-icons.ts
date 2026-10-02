@@ -6,6 +6,8 @@ const icons: Record<LootItem, { view: string; shape: string }> = {
   bow: { view: '0 0 40 80', shape: '<path class="icon-wood" d="M8 4c34 17 34 55 0 72l4-7c23-17 23-42 0-58z"/><path d="M8 5v70M10 35h5v10h-5M12 13c26 19 26 36 0 54"/>' },
   staff: { view: '0 0 40 80', shape: '<path class="icon-wood" d="m16 75 4-54h5l-4 54z"/><path class="icon-metal" d="m20 23-8-11L23 3l11 10-10 10z"/><path d="m23 8 5 5-5 6-5-6zM19 28h6M17 67h5"/>' },
   scroll: { view: '0 0 40 40', shape: '<path class="icon-paper" d="M11 10h19v22H12M11 10c-5-1-5-7 0-7h16c5 0 5 7 0 7M12 32c-5 0-5 6 0 6h17"/><path d="M16 16h10M16 21h8M16 26h10"/>' },
+  stone: { view: '0 0 40 40', shape: '<path class="icon-metal" d="m5 25 6-15 17-5 9 14-6 14-17 3z"/><path d="m11 10 10 10 16-1M21 20l-7 16M21 20l10 13"/>' },
+  iron: { view: '0 0 40 40', shape: '<path class="icon-metal" d="m4 27 7-15 13-7 12 17-8 13-16-2z"/><path d="m11 12 9 13 16-3M20 25l-8 8M24 5l-4 20"/><path class="icon-wood" d="m12 18 7-4 3 5-7 4z"/>' },
   wood: { view: '0 0 40 40', shape: '<path class="icon-wood" d="m7 25 20-16c6-5 14 3 8 8L15 33c-6 5-14-3-8-8z"/><path d="M7 25c6-4 14 3 8 8M16 18l7 7M21 14l7 7"/>' },
 };
 export const itemIcon = (item: LootItem) => `<svg viewBox="${icons[item].view}" aria-hidden="true">${icons[item].shape}</svg>`;

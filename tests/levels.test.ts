@@ -53,9 +53,9 @@ test('all standing trees retain harvest identity and three chop contacts regrow 
   harvesting.register('clearing', clearingTrees); harvesting.register('homestead', home);
   expect(harvesting.nearest('clearing', point)?.id).toBe(tree.id);
   expect(harvesting.contact('clearing', tree.id, [100,100])).toBeUndefined();
-  expect(harvesting.contact('clearing', tree.id, point)).toEqual({ wood: 1, xp: 10, felled: false });
+  expect(harvesting.contact('clearing', tree.id, point)).toEqual({ item: 'wood', quantity: 1, skill: 'woodcutting', xpPerUnit: 10, felled: false });
   harvesting.contact('clearing', tree.id, point);
-  expect(harvesting.contact('clearing', tree.id, point)).toEqual({ wood: 1, xp: 10, felled: true });
+  expect(harvesting.contact('clearing', tree.id, point)).toEqual({ item: 'wood', quantity: 1, skill: 'woodcutting', xpPerUnit: 10, felled: true });
   expect(harvesting.contact('clearing', tree.id, point)).toBeUndefined();
   harvesting.register('clearing', clearingTrees); // Reloading geometry keeps session depletion.
   expect(harvesting.advance(0)).toEqual([]); // Menus submit no gameplay time.
@@ -89,4 +89,14 @@ test('felling removes trunk collision and enemy detours, and regrowth restores b
     expect(world.lineOfSight(state.player,state.enemies.enemy)).toBe(false);
     expect(Math.abs(world.direction(state.player,state.enemies.enemy,.05).z)).toBeGreaterThan(.3);
   } finally { world.dispose(); }
+});
+
+
+test('resource level and skill XP drive contact yields without changing depletion or facing selection',async()=>{
+  const {resourceDefinitions}=await import('../src/levels/resources');const {levelXp,skillLevel}=await import('../src/gameplay/skills');
+  const resources=resourceDefinitions(areas.clearing),node=resources.find(n=>n.kind==='stone')!,harvest=new Harvesting();harvest.register('clearing',resources);
+  const point:[number,number]=[node.position[0],node.position[2]+node.radius+1];
+  expect(harvest.facing('clearing',point,Math.PI)?.id).toBe(node.id);expect(harvest.facing('clearing',point,0)?.id).not.toBe(node.id);
+  expect(skillLevel(levelXp(5))).toBe(5);expect(harvest.contact('clearing',node.id,point,levelXp(5))?.quantity).toBe(2);
+  expect(harvest.contact('clearing',node.id,point,levelXp(9))?.quantity).toBe(3);harvest.contact('clearing',node.id,point);expect(harvest.contact('clearing',node.id,point)).toBeUndefined();
 });

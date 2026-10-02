@@ -12,7 +12,7 @@ export type AnimationRole = Motion | 'backward' | 'left' | 'right' | 'blockForwa
 export type MotionClip = { id: string; name: string; description?: string; category: string; url: string; duration: number; contact?: number; speed?: number; sourceId?: string; audit?: boolean; phaseOffset?: number };
 export type MotionPack = { id: string; label: string; clips: MotionClip[] };
 export type MotionCatalog = { version: number; packs: MotionPack[]; defaults: Record<AnimationRole, string>; profiles: Record<string, Partial<Record<AnimationRole, string>>> };
-export type CombatMotions = { clips: Record<MotionState, THREE.AnimationClip> & Partial<Record<AnimationRole, THREE.AnimationClip>>; contacts: number[]; commitLead?: number; runSpeed: number; speeds: Partial<Record<AnimationRole, number>>; chopContact: number; phases: Partial<Record<AnimationRole, number>> };
+export type CombatMotions = { clips: Record<MotionState, THREE.AnimationClip> & Partial<Record<AnimationRole, THREE.AnimationClip>>; contacts: number[]; commitLead?: number; runSpeed: number; speeds: Partial<Record<AnimationRole, number>>; chopContact: number; mineContact: number; phases: Partial<Record<AnimationRole, number>> };
 const cache = new Map<string, Promise<THREE.AnimationClip>>();
 const catalogs = new Map<string, Promise<MotionCatalog>>();
 export function getMotionCatalog(who: RigId): Promise<MotionCatalog> {
@@ -44,23 +44,27 @@ export async function loadEquipmentMotions(loader: GLTFLoader, who: RigId, loado
     return [role, clip];
   })) as Record<MotionState, MotionClip>;
   const all: Partial<Record<AnimationRole, MotionClip>> = { ...base };
-  for (const role of ['dodge', 'block', 'chop', 'backward', 'left', 'right', 'blockForward', 'blockBackward', 'blockLeft', 'blockRight', 'grip'] as const) {
+  for (const role of ['dodge', 'block', 'chop', 'mine', 'backward', 'left', 'right', 'blockForward', 'blockBackward', 'blockLeft', 'blockRight', 'grip'] as const) {
     const clip = pack.clips.find(item => item.id === profile[role]);
     if (clip) all[role] = clip;
   }
   const clips = Object.fromEntries(await Promise.all(Object.entries(all).map(async ([role, source]) => {
     const clip = await loadClip(loader, source); clip.name = role; return [role, clip];
   }))) as CombatMotions['clips'];
+  if (who === 'player') for (const role of ['chop','mine'] as const) {
+    const marker=all[role]?.contact, clip=clips[role];
+    if (!clip || marker === undefined || !Number.isFinite(marker) || marker <= 0 || marker >= clip.duration) throw new Error('Gathering motions need reviewed contact markers. Prepare the curated motion profiles with npm run assets:export-character.');
+  }
   const contact = base.attack.contact;
   if (contact === undefined || contact <= 0 || contact >= clips.attack.duration) throw new Error('Attack has no reviewed contact marker. Prepare the curated motion profiles.');
   const motions: CombatMotions = { clips, contacts: [contact], commitLead: (motionProfiles.clips as Record<string,{commitLead?:number}>)[base.attack.id]?.commitLead ?? 0, runSpeed: base.run.speed ?? 4,
     speeds: Object.fromEntries(Object.entries(all).map(([role, source]) => [role, source.speed ?? 4])),
-    chopContact: all.chop?.contact ?? .32,
+    chopContact: all.chop?.contact ?? 0, mineContact: all.mine?.contact ?? 0,
     phases: Object.fromEntries(Object.entries(all).map(([role, source]) => [role, source.phaseOffset ?? 0])) };
   if (loadout.main==='staff') {
     const gripPose = motions.clips.grip;
     if (!gripPose) throw new Error('Compatible staff grip is unavailable. Prepare the curated motion profiles.');
-    for (const [role,clip] of Object.entries(motions.clips)) if (!['death','dodge','grip'].includes(role)) holdStaffArm(clip,motions.clips.idle,gripPose);
+    for (const [role,clip] of Object.entries(motions.clips)) if (!['death','dodge','grip','chop','mine'].includes(role)) holdStaffArm(clip,motions.clips.idle,gripPose);
   }
   return motions;
 }

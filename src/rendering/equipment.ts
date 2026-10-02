@@ -56,6 +56,7 @@ export class Equipment {
     if (!this.candidates.delete(candidate)) return;
     candidate.attachments.forEach(({ instance, grip }) => { grip.removeFromParent(); instance.release(); });
   }
+  setVisible(visible: boolean): void { this.current?.attachments.forEach(({grip}) => { grip.visible = visible; }); }
   diagnostics() {
     return { loadout: this.current?.loadout ?? null, attachments: this.current?.attachments.map(({ item, socket, grip }) => ({ item, hand: socket.name, position: grip.getWorldPosition(new THREE.Vector3()).toArray() })) ?? [] };
   }

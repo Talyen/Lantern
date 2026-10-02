@@ -13,7 +13,7 @@ export type Primitive = { kind: 'box' | 'cylinder' | 'pebble' | 'tent'; size: nu
 export type Placement = {
   id: string; position: [number, number, number]; yaw: number; scale: [number, number, number];
   asset?: AssetRef; primitive?: Primitive; height?: number; foliage?: boolean; decoration?: boolean; terrain?: boolean;
-  harvest?: { kind: 'tree'; radius?: number };
+  harvest?: { kind: 'tree' | 'stone' | 'iron'; radius?: number; level?: number; baseYield?: number; contacts?: number };
   castShadow: boolean; receiveShadow: boolean; fallback?: AssetRef;
 };
 export type Region = { id: string; center: Point; radius: number; role: 'combat' | 'arrival' | 'route' };
@@ -23,6 +23,7 @@ export type Chest = { id: string; prop: string; position: Point; scrolls: number
 export type Campfire = { id: string; name: string; position: Point; arrival: Spawn; heals?: boolean };
 export type AreaDefinition = {
   version: 1; id: string; name: string; legacy?: boolean; terminal?: boolean; chests?: Chest[]; kind?: 'safe' | 'encounter'; campfires?: Campfire[]; portalArrival?: Spawn;
+  shelter?: { position: Point; yaw: number; stash: Point };
   envelope: { width: number; depth: number; apron: number; yaw: number; reference: { width: number; height: number; zoom: number }; screen: [number, number] };
   layout: EncounterLayout; traversal?: Traversal; seed: number; props: Placement[];
   scatter: { id: string; count: number; radius: [number, number]; primitive: Primitive; harvest?: Placement['harvest']; excludedIds: string[] }[];

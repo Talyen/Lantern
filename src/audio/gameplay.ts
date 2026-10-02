@@ -39,7 +39,7 @@ export class GameplayAudio {
     for (const event of events) {
       if (event.type === 'lootDrop' || event.type === 'lootLand' || event.type === 'lootPickup') {
         const cue: SoundCue = event.item === 'scroll' ? event.type === 'lootPickup' ? 'scrollPickup' : 'scrollDrop'
-          : event.item === 'wood' ? event.type === 'lootPickup' ? 'reward' : event.type === 'lootLand' ? 'woodLand' : 'woodDrop'
+          : ['wood','stone','iron'].includes(event.item) ? event.type === 'lootPickup' ? 'reward' : event.type === 'lootLand' ? 'woodLand' : 'woodDrop'
           : event.type === 'lootPickup' ? 'equipmentReward' : event.type === 'lootLand' ? 'equipmentLand' : 'equipmentDrop';
         // Paper appearance is enough; avoid a second near-identical sound on landing.
         if (event.item !== 'scroll' || event.type !== 'lootLand') this.audio.play(cue,event.position);

@@ -40,11 +40,13 @@ export function generateGrass(area: AreaDefinition, patches: GrassPatch[]): Gras
   const extent = patches.map(p => Math.max(...p.radii) * 1.15);
   const minX = Math.min(...patches.map((p, i) => p.center[0] - extent[i])), maxX = Math.max(...patches.map((p, i) => p.center[0] + extent[i]));
   const minZ = Math.min(...patches.map((p, i) => p.center[1] - extent[i])), maxZ = Math.max(...patches.map((p, i) => p.center[1] + extent[i]));
+  // Only ground patches can clear grass; skip unrelated scenery for every sampled root.
+  const coverageArea = { ...area, props: area.props.filter(p => p.primitive?.patches?.some(patch => patch.strength >= .25)) };
   const result: GrassBlade[] = [];
   let accepted = 0;
   for (let z = minZ; z < maxZ; z += step) for (let x = minX; x < maxX; x += step) {
     const px = x + random() * step, pz = z + random() * step, chance = random();
-    if (chance > grassCoverage(area, patches, px, pz) / density) continue;
+    if (chance > grassCoverage(coverageArea, patches, px, pz) / density) continue;
     const broad = (Math.sin(px * .38 + pz * .24) + Math.sin(pz * .47 - px * .13)) * .125 + .5;
     const blade = { x: px, z: pz, height: .1 + random() * .1, width: .018 + random() * .014, yaw: random() * Math.PI * 2, shade: broad * .8 + random() * .2, phase: random() * Math.PI * 2 };
     // Reservoir sampling keeps the hard budget uniform over the entire carpet.

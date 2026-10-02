@@ -31,15 +31,20 @@
           <div class="equipment-slot" data-equipment-slot="main"><span>Main hand</span><div id="equipment-main"></div></div>
           <div class="equipment-slot" data-equipment-slot="off"><span>Off hand</span><div id="equipment-off"></div></div>
         </div>
-        <div class="bag-toolbar"><span>Bag</span><button id="inventory-sort" type="button">Sort</button></div>
-        <div id="inventory-grid" aria-label="Bag"><div id="inventory-placement" hidden></div></div>
+        <div class="inventory-containers"><section><div class="bag-toolbar"><span>Bag</span><button id="inventory-sort" type="button">Sort</button></div>
+        <div id="inventory-grid" aria-label="Bag"><div id="inventory-placement" hidden></div></div></section><section id="stash-section" hidden><div class="bag-toolbar"><span>Stash</span><button id="stash-sort" type="button">Sort</button></div><div id="stash-grid" aria-label="Stash"></div></section></div>
         <div id="inventory-overflow" hidden></div>
-        <div class="item-selection"><span id="inventory-selection"></span><button id="inventory-equip" type="button" hidden>Equip</button><button id="inventory-remove" type="button" hidden>Unequip</button><button id="inventory-recover" type="button" hidden>Collect</button><button id="inventory-split" type="button" hidden>Split</button></div>
+        <div class="item-selection"><span id="inventory-selection"></span><button id="inventory-equip" type="button" hidden>Equip</button><button id="inventory-remove" type="button" hidden>Unequip</button><button id="inventory-recover" type="button" hidden>Collect</button><button id="inventory-transfer" type="button" hidden>Store</button><button id="inventory-split" type="button" hidden>Split</button></div>
         <p id="equipment-error" role="status"></p>
-        <div class="inventory-resources"><div><span>Woodcutting</span><strong id="woodcutting-xp">0 XP</strong></div><div><span>Axe Combat</span><strong id="axe-combat-xp">0 XP</strong></div></div>
+        <div class="inventory-resources"><div><span>Woodcutting</span><strong id="woodcutting-xp">0 XP</strong></div><div><span>Mining</span><strong id="mining-xp">Lv 1</strong></div><div><span>Axe Combat</span><strong id="axe-combat-xp">0 XP</strong></div></div>
+        <p id="rested-status" hidden></p>
         <div class="inventory-item"><span>Scroll of Return</span><span id="scroll-count"></span><button id="scroll-use" type="button">Use</button></div>
         <div id="stack-split" hidden><label>Split stack<input id="split-amount" type="number" min="1" step="1"></label><button id="split-confirm" type="button">Split</button><button id="split-cancel" type="button">Cancel</button></div>
         <div id="inventory-ghost" class="bag-item" hidden></div>
+      </dialog>
+      <dialog id="repair-dialog" class="game-menu" aria-labelledby="repair-title">
+        <header><h2 id="repair-title">Repair shelter</h2><button type="button" data-close>Close</button></header>
+        <div id="repair-materials"></div><p id="repair-error" role="status"></p><button id="shelter-repair" type="button">Repair</button>
       </dialog>
       <dialog id="travel-dialog" class="game-menu" aria-labelledby="travel-title">
         <header><h2 id="travel-title">Travel</h2><button type="button" data-close>Close</button></header>

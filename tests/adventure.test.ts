@@ -4,7 +4,7 @@ import { createEncounter } from '../src/gameplay/encounter';
 import homestead from '../src/levels/areas/homestead.json';
 import clearing from '../src/levels/areas/clearing.json';
 import type { AreaDefinition } from '../src/levels/types';
-import { equipInstance, receive, removeQuantity, sortedItems, validItems, type InventoryItem } from '../src/gameplay/inventory';
+import { equipInstance, receive, removeQuantity, sortedItems, validItems, transferItem, type InventoryItem } from '../src/gameplay/inventory';
 const home = homestead as unknown as AreaDefinition, field = clearing as unknown as AreaDefinition;
 const memory = () => { const data = new Map<string, string>(); return { data, getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => { data.set(key, value); } }; };
 
@@ -102,7 +102,7 @@ test('the chest scatters rewards once per session and only collected gear is per
 test('legacy characters migrate equipped copies, resources and claimed rewards without loss', () => {
   const storage = memory(); storage.setItem(characterSaveKey, JSON.stringify({ version: 2, scrolls: 7, campfires: ['clearing/camp'], equipment: ['axe', 'sword', 'shield', 'bow', 'staff'], loadout: { main: 'bow', off: null }, wood: 12000, xp: { woodcutting: 20, axeCombat: 30 }, campEquipmentClaimed: true }));
   const state = new Adventure(storage, () => 1), encounter = createEncounter('playing');
-  expect([state.character.version, state.character.scrolls, state.character.loadout.main]).toEqual([3, 7, 'bow']);
+  expect([state.character.version, state.character.scrolls, state.character.loadout.main]).toEqual([4, 7, 'bow']);
   expect(state.character.equipment).toEqual(['bow', 'axe', 'sword', 'shield', 'staff']);
   expect(state.character.wood).toBe(12000); expect(state.character.items.some(i => i.slot === 'overflow')).toBe(true);
   expect(validItems(state.character.items)).toBe(true);
@@ -195,4 +195,53 @@ test('adventure sound facts describe successful changes once and do not replay a
   expect(adventure.takeEvents().filter(e=>e.type==='portalOpen')).toHaveLength(0);
   adventure.enter(encounter,home);
   expect(adventure.takeEvents()).toEqual([]);
+});
+
+
+test('harvest XP is collected once, including partial stacks; transfers and re-drops cannot award it', () => {
+  const state=new Adventure(memory()); const encounter=createEncounter('playing',field.layout);state.enter(encounter,field);
+  state.character.items=[{id:'wood-stack',item:'wood',quantity:98,slot:'bag',x:0,y:0}];
+  for(let y=0;y<8;y++)for(let x=0;x<12;x++)if(x || y)state.character.items.push({id:`filled-${x}-${y}`,item:'scroll',quantity:99,slot:'bag',x,y});
+  state.grantHarvest('wood',3,'woodcutting',10,[0,0]);const drop=state.session().drops[0];drop.age=.6;
+  expect(state.character.xp.woodcutting).toBe(0);expect(state.pickup(drop.id,[0,0])).toBe(true);
+  expect([drop.quantity,state.character.xp.woodcutting]).toEqual([2,10]);
+  state.character.items=state.character.items.filter(i=>i.id!=='filled-1-0');expect(state.pickup(drop.id,[0,0])).toBe(true);expect(state.character.xp.woodcutting).toBe(30);
+  state.dropItem('wood-stack',1,[0,0]);const tossed=state.session().drops[0];tossed.age=.6;
+  state.pickup(tossed.id,tossed.position,true);expect(state.character.xp.woodcutting).toBe(30);
+});
+
+test('shelter repair consumes its exact recipe once and stash transfers retain overflow without changing equipment',()=>{
+  const storage=memory(),state=new Adventure(storage),encounter=createEncounter('playing',home.layout);state.enter(encounter,home);
+  for(const [item,quantity,x] of [['wood',15,1],['stone',8,2],['iron',4,3]] as const)state.character.items.push({id:item,item,quantity,slot:'bag',x,y:0});
+  expect(state.canRepair()).toBe(true);state.repairShelter();expect(state.character.items.filter(i=>['wood','stone','iron'].includes(i.item)).map(i=>i.quantity)).toEqual([3,2,1]);
+  expect(()=>state.repairShelter()).toThrow();state.transferStash('wood',3,true);
+  expect(state.character.stash[0].quantity).toBe(3);expect(state.character.loadout.main).toBe('axe');
+  state.transferStash(state.character.stash[0].id,3,false);expect(state.character.stash).toHaveLength(0);
+  const restored=new Adventure(storage);expect(restored.character).toEqual(state.character);expect(restored.character.restedSeconds).toBe(1800);
+});
+
+test('Rested uses active time, refreshes on shelter entry, saves fractional XP and survives restart',()=>{
+  const storage=memory(),state=new Adventure(storage),encounter=createEncounter('playing',home.layout);state.enter(encounter,home);
+  state.character.shelterRestored=true;state.character.restedSeconds=120;
+  encounter.player.x=10;encounter.player.z=0;state.step(encounter,home,5);
+  expect(state.character.restedSeconds).toBe(115);state.awardXp('mining',.5);state.save();
+  const restored=new Adventure(storage);expect(restored.character.restedSeconds).toBe(115);expect(restored.character.xp.mining).toBeCloseTo(.55);
+  const withShelter={...home,shelter:{position:[0,0] as [number,number],yaw:0,stash:[0,0] as [number,number]}};
+  encounter.player.x=0;state.step(encounter,withShelter,1);expect(state.character.restedSeconds).toBe(1800);
+  state.step(encounter,withShelter,1);expect(state.character.restedSeconds).toBe(1799);
+  state.grantAxeCombatXp();expect(state.character.xp.axeCombat).toBe(11);
+});
+
+test('revision 3 migration retains IDs, claims, discoveries and XP while initializing Homestead progress',()=>{
+  const storage=memory(),state=new Adventure(storage);state.character.campClaims=['bow'];state.character.xp.woodcutting=327;
+  const old={...state.character,version:3};storage.setItem(characterSaveKey,JSON.stringify(old));
+  const restored=new Adventure(storage);expect(restored.character.items).toEqual(old.items);expect(restored.character.campClaims).toEqual(['bow']);expect(restored.character.xp.woodcutting).toBe(327);expect(restored.character.xp.mining).toBe(0);expect(restored.character.stash).toEqual([]);expect(restored.character.shelterRestored).toBe(false);
+});
+
+
+test('stash stack transfers retain partial quantities and rejected equipped transfers change neither container',()=>{
+  const source:InventoryItem[]=[{id:'s',item:'iron',quantity:3,slot:'bag',x:0,y:0}],destination:InventoryItem[]=[{id:'d',item:'iron',quantity:98,slot:'bag',x:0,y:0}];
+  const result=transferItem(source,destination,'s',3,()=> 'split',{x:0,y:0});
+  expect(result.source[0].quantity).toBe(2);expect(result.destination[0].quantity).toBe(99);expect(source[0].quantity).toBe(3);expect(destination[0].quantity).toBe(98);
+  const equipped:InventoryItem[]=[{id:'axe',item:'axe',quantity:1,slot:'main',x:0,y:0}];expect(()=>transferItem(equipped,destination,'axe',1,()=> 'next')).toThrow('bag first');expect(equipped[0].slot).toBe('main');
 });

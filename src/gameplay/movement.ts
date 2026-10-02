@@ -142,6 +142,12 @@ export class MovementWorld implements Movement {
     // The actor's collision-resolved ground is the safe final placement.
     return { position: [player.x, player.z], height: player.y };
   }
+  /** Resource contacts may intersect their own proxy, but never another blocking prop. */
+  resourceVisible(from: ActorState, id: string, point: {x:number;y:number;z:number}): boolean {
+    const dx=point.x-from.x,dy=point.y-from.y,dz=point.z-from.z,length=Math.hypot(dx,dy,dz),own=this.obstacles.get(id)?.collider.handle;
+    if(length<.001)return true;
+    return !this.world.castRay(new RAPIER.Ray({x:from.x,y:from.y+.7,z:from.z},{x:dx/length,y:dy/length,z:dz/length}),length,true,undefined,undefined,undefined,undefined,c=>this.solid.has(c.handle) && c.handle!==own);
+  }
   lineOfSight(from: ActorState, to: ActorState): boolean {
     const dx = to.x - from.x, dy = to.y - from.y, dz = to.z - from.z, length = Math.hypot(dx, dy, dz);
     if (length < .001) return true;
