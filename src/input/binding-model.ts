@@ -68,7 +68,7 @@ export function bindingLabel(binding: string | null): string {
   const code = binding.slice(4);
   return code
     .replace(/^Key|^Digit/, '')
-    .replace('Arrow', '↑↓←→'[['Up', 'Down', 'Left', 'Right'].indexOf(code.slice(5))] ?? 'Arrow')
+    .replace(/^Arrow(Up|Down|Left|Right)$/, (_, direction: string) => '↑↓←→'[['Up', 'Down', 'Left', 'Right'].indexOf(direction)])
     .replace(/(Shift|Control|Alt|Meta)(Left|Right)/, (_, key: string, side: string) =>
       `${side === 'Left' ? 'L' : 'R'} ${key === 'Control' ? 'Ctrl' : key}`)
     .replace('Numpad', 'Num ');

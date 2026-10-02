@@ -197,6 +197,20 @@ test('WASD commits dodge travel and facing; a stationary dodge uses the latest p
 
 test('safe and cleared attacks accept buffered input within recovery, keep committed aim and disable empty hands', () => {
   const safe = { boundary: { kind: 'circle' as const, center: [0,0] as [number,number], radius: 20 }, player: { position: [0,0] as [number,number], yaw: 0 } };
+  const recovering = createEncounter('playing', safe);
+  recovering.player.lock = .02;
+  stepExploration(recovering, .05, { ...idle, x: 1 }, undefined, timing);
+  expect(recovering.player.x).toBeCloseTo(.03 * recovering.player.speed);
+  const rolling = createEncounter('playing', safe);
+  dodge(rolling, { x: 0, z: 1 }, false);
+  for (let i = 0; i < 8; i++) stepExploration(rolling, .05, idle, undefined, timing);
+  stepExploration(rolling, .01, idle, undefined, timing);
+  attack(rolling, timing.player, false);
+  expect(stepExploration(rolling, .05, idle, undefined, timing)).toContainEqual({ type: 'animation', actor: 'player', motion: 'attack' });
+  expect(rolling.player.z).toBeCloseTo(dodgeDistance);
+  expect(rolling.player.attackTime).toBeCloseTo(.01);
+  expect(rolling.player.lock).toBeCloseTo(.99);
+  expect(rolling.pending).toBeNull();
   const state = createEncounter('playing',safe);
   state.player.lock = state.attackCooldown = .14;
   expect(attack(state,timing.player,false,{x:10,z:0})).toEqual([]);

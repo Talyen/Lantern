@@ -178,7 +178,7 @@ export function movePlayer(state: Encounter, dt: number, input: Input, movementW
   return events;
 }
 
-export function preparePlayer(state: Encounter, dt: number, input: Input, timing: ActorTiming): {
+export function preparePlayer(state: Encounter, dt: number, input: Input, timing: ActorTiming, movementWorld?: Movement): {
   events: EncounterEvent[];
   attackElapsed: number;
   attackOffset: number;
@@ -188,22 +188,29 @@ export function preparePlayer(state: Encounter, dt: number, input: Input, timing
   const cooldown = () => pending?.kind === 'dodge' ? state.dodgeCooldown : Math.max(state.attackCooldown, pending?.kind === 'ability' ? state.abilityCooldowns[pending.ability] ?? 0 : 0);
   const availableAfter = pending ? Math.max(state.player.lock, state.dodgeRemaining, cooldown()) : 0;
   const manaAtUnlock = Math.min(state.stats.maxMana, state.playerMana + Math.min(dt, availableAfter) * state.stats.manaRegen);
-  const prepared = { events: [] as EncounterEvent[], attackElapsed: dt, attackOffset: 0, movementElapsed: dt };
+  const prepared = { events: [] as EncounterEvent[], attackElapsed: dt, attackOffset: 0,
+    movementElapsed: state.dodgeRemaining > 0 ? dt : Math.max(0, dt - state.player.lock) };
+  const validAtUnlock = availableAfter <= (pending?.remaining ?? 0) + 1e-6;
+  // Finish an existing roll before accepting an input at its within-frame unlock.
+  // Its remaining travel belongs to the roll, not the newly accepted action.
+  if (pending && validAtUnlock && availableAfter <= dt && state.dodgeRemaining > 0) {
+    prepared.events.push(...movePlayer(state, state.dodgeRemaining, input, movementWorld));
+    prepared.movementElapsed = Math.max(0, dt - availableAfter);
+  }
   advancePlayerClocks(state, dt);
   state.blocking = !!(input.block && state.shield && state.player.lock <= 0 && state.dodgeRemaining === 0);
   if (!pending)
     return prepared;
-  const validAtUnlock = availableAfter <= pending.remaining + 1e-6;
   if (validAtUnlock && state.player.lock === 0 && state.dodgeRemaining === 0 && cooldown() === 0) {
     const previousImmunity = state.invulnerability;
     state.pending = null;
     if (pending.kind === 'swap')
-      prepared.events = swapWeaponSet(state, false);
+      prepared.events.push(...swapWeaponSet(state, false));
     else if (pending.kind === 'ability')
-      prepared.events = useAbility(state, pending.ability, timing, false, pending.aim);
+      prepared.events.push(...useAbility(state, pending.ability, timing, false, pending.aim));
     else
-      prepared.events = pending.kind === 'attack' ? attack(state, timing, false, pending.aim) : dodge(state, pending.direction, false, pending.aim);
-    if (prepared.events.length && pending.kind === 'dodge') {
+      prepared.events.push(...(pending.kind === 'attack' ? attack(state, timing, false, pending.aim) : dodge(state, pending.direction, false, pending.aim)));
+    if (state.dodgeRemaining > 0 && pending.kind === 'dodge') {
       // Recovery time belongs to the previous action, not the new roll.
       state.dodgeFrameOffset = Math.min(dt, availableAfter);
       state.invulnerabilityBeforeDodge = previousImmunity;

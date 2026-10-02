@@ -7,6 +7,7 @@ test('a saved mouse movement binding and secondary keyboard binding both resolve
   expect(preferences.save(draft)).toBe(true);const restored=new InputPreferences(storage);
   expect(inputFor(restored.value,'mouse:3')).toBe('moveUp');expect(inputFor(restored.value,'key:KeyI')).toBe('moveUp');
   expect([inputFor(restored.value,'key:KeyF'),inputFor(restored.value,'key:KeyT'),bindingLabel(restored.value.slot3[0])]).toEqual(['potion','portal','W']);
+  expect(['Up', 'Down', 'Left', 'Right'].map(direction => bindingLabel(`key:Arrow${direction}`))).toEqual(['↑', '↓', '←', '→']);
 });
 
 test('conflicting inputs and missing movement directions cannot replace usable preferences',()=>{

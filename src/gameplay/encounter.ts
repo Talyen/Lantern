@@ -74,7 +74,7 @@ export function stepExploration(state: Encounter, dt: number, input: Input, move
   if (input.paused || state.player.hp <= 0 || !['playing', 'won'].includes(state.phase))
     return [];
   const clocks = timing ?? (state.layout.enemies ? Object.fromEntries(['player', ...state.enemyIds].map(id => [id, explorationTimings.player])) : explorationTimings);
-  const { events, attackElapsed, attackOffset, movementElapsed } = preparePlayer(state, dt, input, clocks.player);
+  const { events, attackElapsed, attackOffset, movementElapsed } = preparePlayer(state, dt, input, clocks.player, movementWorld);
   stepPlayerAttack(state, attackElapsed, clocks, events, movementWorld, attackOffset);
   stepProjectiles(state, dt, clocks, events, movementWorld);
   events.push(...movePlayer(state, movementElapsed, input, movementWorld));
@@ -84,7 +84,7 @@ export function stepExploration(state: Encounter, dt: number, input: Input, move
 export function stepEncounter(state: Encounter, dt: number, input: Input, timing: Timings, movementWorld?: Movement): EncounterEvent[] {
   if (input.paused || state.phase !== 'playing')
     return [];
-  const { events, attackElapsed, attackOffset, movementElapsed } = preparePlayer(state, dt, input, timing.player);
+  const { events, attackElapsed, attackOffset, movementElapsed } = preparePlayer(state, dt, input, timing.player, movementWorld);
   // New windups consume only the part of the frame after recovery/cooldown.
   let readiness = enemyReadiness.get(state);
   if (!readiness || readiness.ids !== state.enemyIds) {

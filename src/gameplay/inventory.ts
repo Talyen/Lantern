@@ -119,6 +119,11 @@ export function equipInstance(
   entry.slot = slot;
   if (slot === 'main' || slot === 'off') entry.weaponSet = set;
   else delete entry.weaponSet;
+  // Place bulky displaced gear before narrow pieces can fragment its free space.
+  displace.sort((a, b) => {
+    const first = lootDefinitions[a.item], second = lootDefinitions[b.item];
+    return second.width * second.height - first.width * first.height;
+  });
   for (const old of displace) {
     returnToBag(next, old);
   }

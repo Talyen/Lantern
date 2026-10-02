@@ -11,7 +11,7 @@ export function createHud(onRetry: () => void) {
   const healthBars: Record<EnemyId, HTMLDivElement> = {};
   enemyHealth.hidden = true;
   function bars(encounter: Encounter): void {
-    for (const id of Object.keys(healthBars)) if (!encounter.enemyIds.includes(id)) { healthBars[id].remove(); delete healthBars[id]; delete enemyValues[id]; delete damagedFor[id]; }
+    for (const id of Object.keys(healthBars)) if (!encounter.enemyIds.includes(id)) { healthBars[id].remove(); delete healthBars[id]; delete enemyValues[id]; delete damagedFor[id]; delete enemyTransforms[id]; }
     for (const id of encounter.enemyIds) if (!healthBars[id]) {
       const bar = enemyHealth.cloneNode(true) as HTMLDivElement; bar.id = `health-${id}`;
       const enemy = encounter.enemies[id];

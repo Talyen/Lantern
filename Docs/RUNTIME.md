@@ -120,7 +120,7 @@ Encounter owns timed 12 m player arrows/bolts and swept damage/terrain obstructi
 
 ## Input buffering
 
-Input buffering holds one attack, ability, dodge or weapon-swap request for 150 ms and clears with menus, travel, death and reset. A buffered attack starts at its recovery unlock; only the remaining portion of that frame advances its contacts and new cooldown. Safe and cleared areas retain basic attacks.
+Input buffering holds one attack, ability, dodge or weapon-swap request for 150 ms and clears with menus, travel, death and reset. A buffered attack starts at its recovery unlock; only the remaining portion of that frame advances its contacts and new cooldown. When an existing dodge ends within that frame, its remaining travel completes before the buffered action starts. Ordinary movement after an attack or hit lock uses only the frame time after recovery. Safe and cleared areas retain basic attacks.
 
 ## Gathering ownership
 

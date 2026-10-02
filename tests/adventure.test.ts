@@ -170,6 +170,19 @@ test('partial collection preserves ground quantities and player-dropped supplies
 });
 
 test('a full bag rejects displacement atomically and packing retains every item', () => {
+  const tight: InventoryItem[] = [
+    { id: 'sword', item: 'sword', quantity: 1, slot: 'main', x: 0, y: 0 },
+    { id: 'shield', item: 'shield', quantity: 1, slot: 'off', x: 0, y: 0 },
+    { id: 'bow', item: 'bow', quantity: 1, slot: 'bag', x: 0, y: 0 },
+  ];
+  for (let y = 0; y < 8; y++) for (let x = 0; x < 12; x++)
+    if (!(x < 2 && y < 4) && !(x === 3 && y < 3))
+      tight.push({ id: `wood-${x}-${y}`, item: 'wood', quantity: 99, slot: 'bag', x, y });
+  const switched = equipInstance(tight, 'bow', 'main');
+  expect(validItems(switched)).toBe(true);
+  expect(itemLoadout(switched)).toEqual({ main: 'bow', off: null });
+  expect(switched).toHaveLength(tight.length);
+  expect(tight.find(item => item.id === 'sword')?.slot).toBe('main');
   const state = new Adventure();
   state.character.items = Array.from({ length: 96 }, (_, n): InventoryItem => ({ id: `full-${n}`, item: 'wood', quantity: 99, slot: 'bag', x: n % 12, y: Math.floor(n / 12) }));
   state.character.items.push({ id: 'axe', item: 'axe', quantity: 1, slot: 'main', x: 0, y: 0 }, { id: 'shield', item: 'shield', quantity: 1, slot: 'off', x: 0, y: 0 }, { id: 'bow', item: 'bow', quantity: 1, slot: 'overflow', x: 0, y: 0 });
