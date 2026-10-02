@@ -54,6 +54,30 @@ test('arrival gate cannot immediately send the player back until its trigger is 
   expect(travel.check([gate],gate.position)?.id).toBe(gate.id);
 });
 
+test('click approach finishes the last step into interaction range before discarding its route', async () => {
+  const { ClickApproach } = await import('../src/clearing/click-approach');
+  const { Adventure } = await import('../src/gameplay/adventure');
+  const { createEncounter } = await import('../src/gameplay/encounter');
+  const encounter = createEncounter('playing', { ...grassArea.layout, player: { position: [0, -1.085], yaw: 0 } });
+  const resource = { id: 'tree', kind: 'tree' as const, position: [0, 0, 0] as [number, number, number], radius: .225, level: 1, baseYield: 1, contacts: 3 };
+  const target: import('../src/clearing/world-interactions').WorldInteraction = {
+    key: 'resource/tree', name: 'Chop', type: 'resource', resource, position: [0, 0],
+    range: 1.075, height: 0, obstacleId: 'tree', object: {} as import('three').Object3D,
+  };
+  const navigation = {
+    navigationReady: true, interactionPath: () => [[0, -.914]], interactionVisible: () => true,
+  } as unknown as import('../src/gameplay/movement').MovementWorld;
+  const approach = new ClickApproach(new Adventure(), encounter), interact = vi.fn();
+  const frame = { movement: { x: 0, z: 0 }, block: false, navigation, targets: () => [target], error: () => '', interact };
+  approach.selectWorld(target, navigation);
+  expect(approach.update(.05, frame)?.movement.z).toBeGreaterThan(.1);
+  expect(interact).not.toHaveBeenCalled();
+  encounter.player.z = -1.06;
+  approach.update(.05, frame);
+  expect(interact).toHaveBeenCalledExactlyOnceWith(target);
+  expect(approach.worldKey).toBeNull();
+});
+
 test('all standing trees retain harvest identity and three chop contacts regrow across travel with safe occupancy', () => {
   const home = treeDefinitions(areas.homestead), clearingTrees = treeDefinitions(areas.clearing);
   expect(home.length).toBeGreaterThan(0); expect(clearingTrees.length).toBeGreaterThan(0);

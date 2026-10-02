@@ -105,7 +105,9 @@ export class ClickApproach {
       else if (navigation?.navigationReady) { fail(); return; }
       route.elapsed = 0;
     }
-    while (route.points.length && near(point, route.points[0], loot ? .2 : .18)) route.points.shift();
+    // Keep the endpoint until the target's range/visibility checks above accept arrival.
+    // Waypoint tolerance alone can stop short of a small object's working range.
+    while (route.points.length > 1 && near(point, route.points[0], loot ? .2 : .18)) route.points.shift();
     const next = route.points[0];
     const command = next ? { movement: { x: next[0] - point[0], z: next[1] - point[1] }, aim: { x: next[0], z: next[1] } } : undefined;
     // Object routes retain their existing lock rule; loot also waits out a dodge.

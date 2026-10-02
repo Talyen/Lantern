@@ -11,7 +11,7 @@ import { Adventure, homeArea, near } from '../gameplay/adventure';
 import { AdventureMenus } from '../ui/adventure';
 import { AdventureVisuals } from '../rendering/adventure';
 import { LootLabels } from '../ui/loot';
-import { itemLoadout, lootDefinitions, removeQuantity, validItems, type InventoryItem } from '../gameplay/inventory';
+import { itemLoadout, lootDefinitions, removeQuantity, sameEquipment, validItems, type InventoryItem } from '../gameplay/inventory';
 import type { Spawn, Point } from '../gameplay/area';
 import { MovementWorld } from '../gameplay/movement';
 import { prepareAreaCandidate } from './area-candidate';
@@ -20,7 +20,6 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { createEncounter, resetEncounter, useAbility, swapWeaponSet, inCombat, dodge, stepExploration, stepEncounter, type EncounterEvent, type ActorId, type Timings, type AimPoint, enemyIds } from '../gameplay/encounter';
 import { readSettings } from '../rendering/graphics-settings';
-import { FramePacer } from '../rendering/frame-pacer';
 import { createRenderer } from '../rendering/renderer';
 import { PlayerLantern } from '../rendering/player-lantern';
 import { Graphics } from '../rendering/graphics';
@@ -42,9 +41,10 @@ import { ProjectileVisuals, CasterVisuals } from '../rendering/projectiles';
 import { GameAudio } from '../audio/audio';
 import { GameplayAudio } from '../audio/gameplay';
 import { GatheringTools } from '../rendering/gathering-tools';
-import { gathering, progression } from '../gameplay/skills';
-import { resourceSkill, type ResourceDefinition } from '../levels/resources';
-import { Harvesting, gatheringSafe } from '../gameplay/harvesting';
+import { progression } from '../gameplay/skills';
+import { Harvesting } from '../gameplay/harvesting';
+import { GatheringController } from './gathering';
+import { FrameLoop } from './frame-loop';
 import { EquipmentSets } from './equipment-sets';
 import { ClickApproach } from './click-approach';
 import { PointerAim } from './pointer-aim';
@@ -66,20 +66,22 @@ let graphics: Graphics | undefined;
 let options: Options | undefined;
 // Explicit hidden rendering checks opt in; ordinary hidden gameplay never advances.
 const renderingInspection = renderQuery.get('inspection') === 'render';
-let ticking = false, frameRequest = 0, settleFrames = 64, lastTick: number | undefined;
-let previouslyPaused = true;
+const frameLoop = new FrameLoop({
+  hidden, paused, fpsLimit: () => options?.settings.fpsLimit ?? initialFpsLimit,
+  onPause: clearInput, render: renderFrame,
+});
 function hidden(): boolean { return !renderingInspection && (document.hidden || document.documentElement.hasAttribute('data-window-hidden')); }
-function requestFrame(): void { if (ticking && !frameRequest && !hidden()) frameRequest = requestAnimationFrame(tick); }
-function invalidateFrame(): void { settleFrames = 64; requestFrame(); }
+function invalidateFrame(): void { frameLoop.invalidate(); }
 function visibilityChanged(): void {
-  if (!ticking) return;
-  clearInput(); lastTick = undefined; cameraOwner.suspendFollow();
-  if (hidden()) { cancelAnimationFrame(frameRequest); frameRequest = 0; audio.update(encounter.player, true); }
-  else { graphics?.resetMeasurements(); invalidateFrame(); }
+  if (!frameLoop.running) return;
+  clearInput(); cameraOwner.suspendFollow();
+  if (hidden()) audio.update(encounter.player, true);
+  else graphics?.resetMeasurements();
+  frameLoop.visibilityChanged();
 }
 document.addEventListener('visibilitychange', visibilityChanged);
 window.addEventListener('lanternvisibilitychange', visibilityChanged);
-for (const event of ['pointerdown', 'pointerup', 'pointermove', 'keydown', 'keyup', 'wheel', 'input', 'change']) window.addEventListener(event, () => { if (ticking && paused()) invalidateFrame(); });
+for (const event of ['pointerdown', 'pointerup', 'pointermove', 'keydown', 'keyup', 'wheel', 'input', 'change']) window.addEventListener(event, () => { if (frameLoop.running && paused()) invalidateFrame(); });
 
 
 const fade = document.createElement('div');
@@ -105,8 +107,7 @@ const enemyLoadout: Loadout = { main: 'axe', off: null };
 const adventure = new Adventure(() => localStorage);
 await adventure.prepareSave();
 let adventureVisuals: AdventureVisuals | undefined;
-const frames: { left: number; resolve: () => void }[] = [];
-const waitFrames = (count = 16) => new Promise<void>(resolve => { frames.push({ left: count, resolve }); invalidateFrame(); });
+const waitFrames = (count = 16) => frameLoop.waitFrames(count);
 const renderer = await createRenderer(mount);
 renderer.domElement.setAttribute('aria-label', 'Lantern. Move and use abilities with your configured controls. Click objects to interact.');
 renderer.info.autoReset = false;
@@ -140,14 +141,9 @@ document.addEventListener('click', event => {
   if (button && !button.disabled && button.closest('dialog, #result-panel')) audio.play('uiClick');
 });
 let equipmentLoading = false;
-let chopping: { tree: ResourceDefinition; time: number; contacted: boolean } | null = null;
-let gatheringTarget: ResourceDefinition | null = null;
-function cancelChop(releaseLock = true): void {
-  gatheringTarget=null; gatheringTools.show(null);
-  if (!chopping) return;
-  chopping = null; if (releaseLock) encounter.player.lock = 0;
-  if (player.current === 'chop' || player.current === 'mine') play(player,'idle');
-}
+const gathering = new GatheringController(encounter, adventure, harvesting, player, gatheringTools, audio, {
+  area: () => currentArea, instance: () => active, navigation: () => movementWorld, paused,
+});
 function clearInput(): void {
   input.clear();
   combatUI?.clearHold();
@@ -181,10 +177,15 @@ const input = createInput(renderer.domElement, preferences, dispatchInput, world
   interruptApproach();
 });
 async function changeInventory(items: InventoryItem[]): Promise<void> {
-  if(!validItems(items))throw new Error('Item does not fit.');
-  const equipment=(entries:InventoryItem[])=>entries.filter(i=>i.slot==='main' || i.slot==='off').map(i=>[i.id,i.slot,i.weaponSet ?? 0]).sort();
-  if(JSON.stringify(equipment(items))!==JSON.stringify(equipment(adventure.character.items))){if(!canEditAbilities())throw new Error('Equipment cannot change during combat or an action.');await changeEquipment(items,true);}
-  else{adventure.replaceItems(items);menus.updateCharacter(adventure.character);audio.play('inventoryMove');}
+  if (!validItems(items)) throw new Error('Item does not fit.');
+  if (!sameEquipment(items, adventure.character.items)) {
+    if (!canEditAbilities()) throw new Error('Equipment cannot change during combat or an action.');
+    await changeEquipment(items, true);
+  } else {
+    adventure.replaceItems(items);
+    menus.updateCharacter(adventure.character);
+    audio.play('inventoryMove');
+  }
 }
 
 const menus = new AdventureMenus(clearInput, () => renderer.domElement.focus(), () => { if (!paused()) adventure.beginCast(encounter.player.hp > 0); }, {
@@ -217,7 +218,7 @@ function selectLoot(id: string): void {
   if (paused() || encounter.player.hp <= 0) return;
   renderer.domElement.focus();
   if (!adventure.session().drops.some(drop => drop.id === id)) return;
-  cancelChop();
+  gathering.cancel();
   encounter.pending = null;
   approach.selectLoot(id, movementWorld);
 }
@@ -284,17 +285,50 @@ function resetPresentation(): void {
 }
 function reset(): void { clearInput(); resetEncounter(encounter); applyLoadoutState(); resetPresentation(); }
 const bindingsMenu=new KeybindingsMenu(preferences,()=>adventure.character.actionBar,clearInput,()=>renderer.domElement.focus());
-function closeMenus(): void {if(bindingsMenu.paused)bindingsMenu.close();if(combatUI?.paused)combatUI.close();if(menus.paused)menus.close();if(options?.paused)options.close();}
-function toggleOptions(): void {if(bindingsMenu.paused || combatUI?.paused || menus.paused || options?.paused)closeMenus();else options?.open();}
-function openInventory(): void {if(menus.paused){menus.close();return;}closeMenus();if(!paused() && encounter.player.hp>0)menus.openInventory();}
-function openSkills(): void {if(combatUI?.paused){combatUI.close();return;}closeMenus();if(!paused() && encounter.player.hp>0)combatUI?.open();}
-function canEditAbilities(): boolean {return encounter.phase!=='loading' && encounter.player.hp>0 && !inCombat(encounter) && encounter.player.lock===0 && encounter.dodgeRemaining===0 && !equipmentLoading && !transitioning && !gatheringTarget;}
-function dispatchInput(action:InputAction):void {
-  if(action==='inventory'){openInventory();return;}if(action==='skills'){openSkills();return;}if(action==='options'){toggleOptions();return;}
-  if(paused())return;
-  if(action.startsWith('slot')){const id=adventure.character.actionBar[Number(action.slice(4))];if(id)startAbility(id);}
-  else if(action==='dodge')startDodge();else if(action==='swap')startSwap();else if(action==='potion')usePotion();else if(action==='portal')castReturn();
-  else if(action==='zoomIn' || action==='zoomOut')cameraOwner.zoom(action==='zoomIn' ? 1 : -1);
+function closeMenus(): void {
+  if (bindingsMenu.paused) bindingsMenu.close();
+  if (combatUI?.paused) combatUI.close();
+  if (menus.paused) menus.close();
+  if (options?.paused) options.close();
+}
+function toggleOptions(): void {
+  if (bindingsMenu.paused || combatUI?.paused || menus.paused || options?.paused) closeMenus();
+  else options?.open();
+}
+function openInventory(): void {
+  if (menus.paused) { menus.close(); return; }
+  closeMenus();
+  if (!paused() && encounter.player.hp > 0) menus.openInventory();
+}
+function openSkills(): void {
+  if (combatUI?.paused) { combatUI.close(); return; }
+  closeMenus();
+  if (!paused() && encounter.player.hp > 0) combatUI?.open();
+}
+function canEditAbilities(): boolean {
+  return encounter.phase !== 'loading' && encounter.player.hp > 0 && !inCombat(encounter) &&
+    encounter.player.lock === 0 && encounter.dodgeRemaining === 0 &&
+    !equipmentLoading && !transitioning && !gathering.target;
+}
+function dispatchInput(action: InputAction): void {
+  if (action === 'inventory') { openInventory(); return; }
+  if (action === 'skills') { openSkills(); return; }
+  if (action === 'options') { toggleOptions(); return; }
+  if (paused()) return;
+
+  if (action.startsWith('slot')) {
+    const id = adventure.character.actionBar[Number(action.slice(4))];
+    if (id) startAbility(id);
+    return;
+  }
+  switch (action) {
+    case 'dodge': startDodge(); break;
+    case 'swap': startSwap(); break;
+    case 'potion': usePotion(); break;
+    case 'portal': castReturn(); break;
+    case 'zoomIn': cameraOwner.zoom(1); break;
+    case 'zoomOut': cameraOwner.zoom(-1); break;
+  }
 }
 function usePotion():void {if(!paused()){adventure.usePotion(encounter);syncAdventure();}}
 function castReturn():void {if(!paused()){interruptApproach();adventure.beginCast(encounter.player.hp>0);syncAdventure();}}
@@ -320,7 +354,7 @@ function worldClick(clientX: number, clientY: number): boolean {
   if (loot) { selectLoot(loot); return true; }
   const target = pickInteraction();
   if (!target) return false;
-  if (target.type === 'resource' && gatheringTarget?.id === target.resource.id) return true;
+  if (target.type === 'resource' && gathering.target?.id === target.resource.id) return true;
   clearInput();
   const error = interactionError(target);
   if (error) { adventure.message(error); return true; }
@@ -332,7 +366,7 @@ function interact(target: WorldInteraction): void {
   const error = interactionError(target);
   if (error) { adventure.message(error); return; }
   switch (target.type) {
-    case 'resource': gatheringTarget = target.resource; beginChop(target.resource); break;
+    case 'resource': gathering.select(target.resource); break;
     case 'shelter': menus.openRepair(); break;
     case 'stash': menus.openInventory(true); break;
     case 'chest': adventure.openChest(encounter, currentArea, target.chest); break;
@@ -379,7 +413,10 @@ function syncAdventure(): void {
   menus.update(adventure.character.scrolls, currentArea.id !== homeArea && encounter.player.hp > 0 && adventure.character.scrolls > 0 && adventure.castRemaining === 0, prompt, adventure.castRemaining);
   combatUI?.update();
 }
-function paused(): boolean { return Boolean(hidden() || characterMissing || options?.paused || menus.paused || combatUI?.paused || bindingsMenu.paused || equipmentLoading || inspecting || graphics?.preparingSettings || frozen || transitioning); }
+function paused(): boolean {
+  return Boolean(hidden() || characterMissing || options?.paused || menus.paused || combatUI?.paused ||
+    bindingsMenu.paused || equipmentLoading || inspecting || graphics?.preparingSettings || frozen || transitioning);
+}
 function timings(): Timings {
   const timing = (actor: Actor) => ({ attack: duration(actor, 'attack'), hit: duration(actor, 'hit'), contacts: actor.contacts, commitLead: actor.commitLead });
   return { player: { ...timing(player), abilities: equipmentSets.abilityTimings() }, enemy: timing(enemy), caster: timing(caster) };
@@ -387,10 +424,9 @@ function timings(): Timings {
 function resolveAim(pointer = input.pointer()): AimPoint | undefined {
   return pointerAim.resolve(pointer, encounter.player.y);
 }
-function canGather(): boolean { return gatheringSafe(encounter, currentArea.kind); }
 function interruptApproach(releaseLock = true): void {
   approach.cancel();
-  cancelChop(releaseLock);
+  gathering.cancel(releaseLock);
 }
 function releaseShieldInput(): void {
   combatUI?.clearHold();
@@ -399,7 +435,10 @@ function releaseShieldInput(): void {
   });
 }
 
-function holdingShield():boolean {return !!combatUI?.blocking || adventure.character.actionBar.some((id,index)=>id==='shield-basic' && input.held(`slot${index}` as InputAction));}
+function holdingShield(): boolean {
+  return !!combatUI?.blocking || adventure.character.actionBar.some((id, index) =>
+    id === 'shield-basic' && input.held(`slot${index}` as InputAction));
+}
 function startAbility(id: AbilityId): void {
   if (paused()) return;
   interruptApproach();
@@ -431,23 +470,12 @@ function startDodge(): void {
   present(dodge(encounter, input.movement(), false, resolveAim()));
 }
 
-function resourceVisible(node:ResourceDefinition):boolean { return !!movementWorld?.resourceVisible(encounter.player,node.id,{x:node.position[0],y:node.position[1],z:node.position[2]}); }
-function beginChop(tree: ResourceDefinition): void {
-  const motion=tree.kind==='tree' ? 'chop' : 'mine';
-  if(paused() || chopping || !canGather() || encounter.player.lock>0 || encounter.attackCooldown>0 || encounter.dodgeRemaining>0 || !player.actions[motion])return;
-  if(harvesting.distance(tree,[encounter.player.x,encounter.player.z])>gathering.reach || !resourceVisible(tree))return;
-  encounter.pending=null; encounter.player.attackTime=-1; encounter.blocking=false;
-  encounter.player.yaw=Math.atan2(tree.position[0]-encounter.player.x,tree.position[2]-encounter.player.z);
-  encounter.player.lock=duration(player,motion); chopping={tree,time:0,contacted:false};gatheringTarget=tree;
-  gatheringTools.show(tree.kind);player.current=null;play(player,motion);audio.play('chopSwing',encounter.player);
-}
-
 function updateGame(dt: number): void {
   const isPaused = paused();
   let movement = input.movement();
   const block=holdingShield();
   if(encounter.pending?.kind==='ability' && encounter.pending.ability==='shield-basic' && !block)encounter.pending=null;
-  if(gatheringTarget && (block || Math.hypot(movement.x,movement.z)>0 || encounter.player.hp<=0 || !canGather()))cancelChop();
+  gathering.cancelIfInterrupted(movement, block);
   const approachCommand = isPaused ? undefined : approach.update(dt, {
     movement, block, navigation: movementWorld, targets: worldTargets, error: interactionError, interact,
   });
@@ -458,30 +486,7 @@ function updateGame(dt: number): void {
     present(stepExploration(encounter, dt, commands, movementWorld, timings()));
   } else present(stepEncounter(encounter, dt, commands, timings(), movementWorld));
   if (!paused() && encounter.phase !== 'loading' && adventure.currentArea) adventure.step(encounter, currentArea, dt);
-  if (!isPaused && encounter.player.hp>0) {
-    for (const change of harvesting.advance(dt,[{areaId:currentArea.id,position:[encounter.player.x,encounter.player.z]}, ...enemyIds.filter(id=>currentArea.kind!=='safe' && encounter.enemies[id].hp>0).map(id=>({areaId:currentArea.id,position:[encounter.enemies[id].x,encounter.enemies[id].z] as Point}))])) {
-      if (change.areaId===currentArea.id) { active?.setResourceState(change.id,false); movementWorld?.setTreeFelled(change.id,false); }
-    }
-    if (chopping) {
-      chopping.time+=dt;
-      const node=chopping.tree, motion=node.kind==='tree' ? 'chop' : 'mine';
-      if(!chopping.contacted && chopping.time >= (motion==='chop' ? player.chopContact : player.mineContact)) {
-        chopping.contacted=true;
-        if(!resourceVisible(node)){cancelChop();return;}
-        const reward=harvesting.contact(currentArea.id,node.id,[encounter.player.x,encounter.player.z],adventure.character.xp[resourceSkill(node.kind)]);
-        if(reward) {
-          audio.play(node.kind==='tree' ? 'chopHit' : 'equipmentLand',{x:node.position[0],z:node.position[2]});
-          adventure.grantHarvest(reward.item,reward.quantity,reward.skill,reward.xpPerUnit,[node.position[0],node.position[2]]);
-          active?.treeHit(node.id);
-          if(reward.felled){active?.setResourceState(node.id,true);movementWorld?.setTreeFelled(node.id,true);if(node.kind==='tree'){audio.play('woodCrack',{x:node.position[0],z:node.position[2]});audio.play('treeFall',{x:node.position[0],z:node.position[2]});}}
-        } else cancelChop();
-      }
-      if(chopping && chopping.time>=duration(player,motion)) {
-        chopping=null;encounter.player.lock=0;
-        if(harvesting.state(currentArea.id,node.id)?.felled)cancelChop();else beginChop(node);
-      }
-    }
-  }
+  if (!isPaused && encounter.player.hp > 0) gathering.advance(dt);
   projectileVisuals.sync(encounter.projectiles);
   casterVisuals.sync(encounter, caster.contacts[0] ?? .8, isPaused ? 0 : dt, currentArea.kind !== 'safe');
   if(!paused() && input.pointer()){resolveAim();hoveredInteraction=pickInteraction();}else hoveredInteraction=null;
@@ -500,17 +505,8 @@ function resize(): void {
 }
 window.addEventListener('resize', resize);
 resize();
-const framePacer = new FramePacer();
 const initialFpsLimit = readSettings().fpsLimit;
-function tick(now: number): void {
-  frameRequest = 0;
-  if (hidden()) { lastTick = undefined; return; }
-  if (!framePacer.shouldRender(now, options?.settings.fpsLimit ?? initialFpsLimit)) { requestFrame(); return; }
-  const isPaused = paused();
-  if (isPaused && !previouslyPaused) { clearInput(); settleFrames = 64; }
-  const dt = !isPaused && !previouslyPaused && lastTick !== undefined ? Math.min((now - lastTick) / 1000, .05) : 0;
-  lastTick = now; previouslyPaused = isPaused;
-  if (isPaused && settleFrames === 0 && !frames.length) { lastTick = undefined; return; }
+function renderFrame(dt: number): boolean {
   audio.update(encounter.player,paused() || encounter.phase==='loading');
   updateGame(dt);
   if (!inspecting && !paused() && !fixedCamera && encounter.player.hp > 0) {
@@ -535,10 +531,9 @@ function tick(now: number): void {
   active?.update(camera, paused() ? 0 : dt);
   renderer.info.reset();
   const rendered = graphics?.render(dt, paused()) ?? false;
-  if (rendered) { renderedFrames++; if (isPaused) settleFrames = Math.max(0, settleFrames - 1); else settleFrames = 64; }
+  if (rendered) renderedFrames++;
   if (rendered && active && !transitioning) renderedRevision = revision;
-  if (rendered) for (const frame of [...frames]) if (--frame.left <= 0) { frames.splice(frames.indexOf(frame), 1); frame.resolve(); }
-  if (!paused() || settleFrames || frames.length) requestFrame();
+  return rendered;
 }
 try {
   const [paladin, goblin] = await Promise.all([loader.loadAsync(characters.player.model), loader.loadAsync(characters.enemy.model)]);
@@ -576,7 +571,7 @@ try {
   window.addEventListener('pagehide', () => { menusChanged.disconnect(); dispose(); }, { once: true });
   resize();
   await graphics.initialize();
-  ticking = true; requestFrame();
+  frameLoop.start();
   await changeArea({ kind: 'travel', area: currentArea.id });
   if (import.meta.env.DEV && renderQuery.get('author') === 'levels') {
     const { attachAuthoring } = await import('../levels/authoring');
@@ -592,8 +587,8 @@ try {
 }
 
 function dispose(): void {
-  ticking = false;
-  cancelAnimationFrame(frameRequest);
+  frameLoop.dispose();
+  input.dispose();
   generation++;
   adventure.closeSave();
   preferences.close();
@@ -631,7 +626,7 @@ function diagnostics() {
     equipment: playerEquipment.diagnostics(),
     controls: { bindings: preferences.value, actionBar: adventure.character.actionBar },
     interaction: { hover: hoveredInteraction?.key ?? null, approach: approach.worldKey },
-    harvest: { chopping: chopping?.tree.id ?? null, trees: active?.resources.map(tree => ({ ...tree, ...harvesting.state(currentArea.id, tree.id) })) },
+    harvest: { chopping: gathering.choppingId, trees: active?.resources.map(tree => ({ ...tree, ...harvesting.state(currentArea.id, tree.id) })) },
     adventure: {
       persistence: adventure.saveDiagnostics(), character: adventure.character, portal: adventure.portal, castRemaining: adventure.castRemaining,
       drops: adventure.session(currentArea.id).drops, chests: adventure.session(currentArea.id).chests,
@@ -678,59 +673,120 @@ type AreaChange =
 async function changeArea(change: AreaChange): Promise<boolean> {
   const id = change.kind === 'travel' ? change.area : currentArea.id;
   const { arrivalId, transition = false, recover = false } = change.kind === 'travel' ? change : {};
-  const canCommit=change.canCommit;
+  const { canCommit, spawn } = change;
   const appearance = change.kind === 'refresh' ? change.appearance : undefined;
-  const spawn = change.spawn;
   const started = performance.now(), request = ++generation, next = definitions[id];
   const errors = validateDefinitions(definitions);
-  if (!next || errors.length) { transitioning = false; fade.style.opacity = '0'; areaErrors = errors.length ? errors : [`Unknown area: ${id}`]; return false; }
+  if (!next || errors.length) {
+    transitioning = false;
+    fade.style.opacity = '0';
+    areaErrors = errors.length ? errors : [`Unknown area: ${id}`];
+    return false;
+  }
   const nextSurfaces = appearance?.surfaces ?? surfaceMode;
   const resolved = { ...next, lighting: resolveLightingFor(next) };
-  const savedView = frozen && active?.area.id === id ? { target: controls.target.clone(), zoom: camera.zoom } : null;
-  transitioning = true; clearInput();
+  const savedView = frozen && active?.area.id === id
+    ? { target: controls.target.clone(), zoom: camera.zoom }
+    : null;
+  transitioning = true;
+  clearInput();
   let candidateOwner: Awaited<ReturnType<typeof prepareAreaCandidate>> | undefined;
   try {
-    if (transition) { fade.style.opacity = '1'; await new Promise(resolve => setTimeout(resolve, 160)); }
-    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify({ ...resolved, surfaces: nextSurfaces })));
+    if (transition) {
+      fade.style.opacity = '1';
+      await new Promise(resolve => setTimeout(resolve, 160));
+    }
+    const digest = await crypto.subtle.digest('SHA-256',
+      new TextEncoder().encode(JSON.stringify({ ...resolved, surfaces: nextSurfaces })));
     const hash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
     candidateOwner = await prepareAreaCandidate(
       () => buildArea(next, nextSurfaces, appearance?.shelterRestored ?? adventure.character.shelterRestored),
       () => MovementWorld.create(next.layout.boundary, traversalWithTrees(next)),
       candidate => {
-        if (renderQuery.get('portal') === 'off') candidate.portals.forEach(p => p.root.visible = false);
+        if (renderQuery.get('portal') === 'off') candidate.portals.forEach(p => { p.root.visible = false; });
         return graphics!.prepareLighting(resolved, candidate.root);
       },
     );
+    const accepted = candidateOwner.accept(
+      () => request === generation && (!canCommit || canCommit()),
+      () => { if (change.kind === 'refresh') change.onCommit?.(); },
+    );
+    if (!accepted) return false;
+
     const { area: candidate, movement: candidateMovement, lighting: preparedLighting } = candidateOwner;
-    if (!candidateOwner.accept(() => request === generation && (!canCommit || canCommit()), () => {
-      if (change.kind === 'refresh') change.onCommit?.();
-    })) return false;
-    graphics!.effects.clearArea(); adventureVisuals?.dispose(); active?.dispose(); movementWorld?.dispose(); movementWorld = candidateMovement; active = candidate; currentArea = next; committedLighting = resolved.lighting; lanternEnabled = appearance?.lantern ?? lanternEnabled; personalLantern?.setEnabled(lanternEnabled); surfaceMode = nextSurfaces; graphics!.commitLighting(preparedLighting); scene.add(candidate.root); candidate.activate(graphics!.effects);
-    const arrival = next.gates.find(g => g.id === arrivalId);
-    harvesting.register(next.id,candidate.resources);
-    for (const tree of candidate.resources) { const felled=harvesting.state(next.id,tree.id)?.felled ?? false; candidate.setResourceState(tree.id,felled); candidateMovement.setTreeFelled(tree.id,felled); }
+    graphics!.effects.clearArea();
+    adventureVisuals?.dispose();
+    active?.dispose();
+    movementWorld?.dispose();
+    movementWorld = candidateMovement;
+    active = candidate;
+    currentArea = next;
+    committedLighting = resolved.lighting;
+    lanternEnabled = appearance?.lantern ?? lanternEnabled;
+    personalLantern?.setEnabled(lanternEnabled);
+    surfaceMode = nextSurfaces;
+    graphics!.commitLighting(preparedLighting);
+    scene.add(candidate.root);
+    candidate.activate(graphics!.effects);
+
+    const arrival = next.gates.find(gate => gate.id === arrivalId);
+    gathering.register(candidate, candidateMovement);
     adventure.enter(encounter, next, spawn ?? arrival?.arrival ?? next.layout.player, recover);
     adventureVisuals = new AdventureVisuals(candidate.root);
     adventure.placeGround = (origin, index) => movementWorld!.lootGround(origin, index, encounter.player);
     adventure.canCollectGround = drop => {
-      const path = movementWorld!.pickupPath(encounter.player, drop.position, drop.height); if (!path) return false;
+      const path = movementWorld!.pickupPath(encounter.player, drop.position, drop.height);
+      if (!path) return false;
       let length = 0, previous: Point = [encounter.player.x, encounter.player.z];
-      for (const point of [...path, drop.position]) { length += Math.hypot(point[0] - previous[0], point[1] - previous[1]); previous = point; }
+      for (const point of [...path, drop.position]) {
+        length += Math.hypot(point[0] - previous[0], point[1] - previous[1]);
+        previous = point;
+      }
       return length <= 1.65;
     };
     if (arrival) travel.arrive(arrival.id);
-    inspecting = false; resetPresentation();
-    syncAdventure(); cameraOwner.inspect(false, { x: 0, z: 0 });
+    inspecting = false;
+    resetPresentation();
+    syncAdventure();
+    cameraOwner.inspect(false, { x: 0, z: 0 });
     cameraOwner.resetFollow(player.root.position);
-    graphics!.apply(options!.settings); graphics!.resetSceneTime(); revision++; contentHash = hash; areaErrors = [];
+    graphics!.apply(options!.settings);
+    graphics!.resetSceneTime();
+    revision++;
+    contentHash = hash;
+    areaErrors = [];
     hud.environmentLoaded(candidate.missing.length ? 0 : 3);
-    if (characterMissing) hud.characterUnavailable(); else hud.setAssetStatus(candidate.missing.length ? `Missing art: ${candidate.missing.join(', ')}.` : '');
+    if (characterMissing) hud.characterUnavailable();
+    else hud.setAssetStatus(candidate.missing.length ? `Missing art: ${candidate.missing.join(', ')}.` : '');
     if (frozen) freezePreview(true);
-    if (savedView) { controls.target.copy(savedView.target); camera.position.copy(controls.target).add(new THREE.Vector3(...cameraOffset)); camera.zoom = savedView.zoom; camera.updateProjectionMatrix(); controls.update(); }
-    transitioning = false; audio.update(encounter.player,paused()); await waitFrames(2); updateMs = performance.now() - started;
-    renderer.domElement.focus(); return true;
-  } catch (error) { if (request === generation) { areaErrors = [error instanceof Error ? error.message : String(error)]; hud.setAssetStatus(`Unable to travel. ${areaErrors[0]}`); } return false; }
-  finally { candidateOwner?.dispose(); if (request === generation) { transitioning = false; fade.style.opacity = '0'; clearInput(); } }
+    if (savedView) {
+      controls.target.copy(savedView.target);
+      camera.position.copy(controls.target).add(new THREE.Vector3(...cameraOffset));
+      camera.zoom = savedView.zoom;
+      camera.updateProjectionMatrix();
+      controls.update();
+    }
+    transitioning = false;
+    audio.update(encounter.player, paused());
+    await waitFrames(2);
+    if (request !== generation) return false;
+    updateMs = performance.now() - started;
+    renderer.domElement.focus();
+    return true;
+  } catch (error) {
+    if (request === generation) {
+      areaErrors = [error instanceof Error ? error.message : String(error)];
+      hud.setAssetStatus(`Unable to travel. ${areaErrors[0]}`);
+    }
+    return false;
+  } finally {
+    candidateOwner?.dispose();
+    if (request === generation) {
+      transitioning = false;
+      fade.style.opacity = '0';
+      clearInput();
+    }
+  }
 }
 if (import.meta.hot) import.meta.hot.accept('../levels/registry', module => {
   if (!module) return;

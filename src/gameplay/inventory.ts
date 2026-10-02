@@ -32,6 +32,15 @@ export const lootDefinitions: Record<
 export const lootIds = Object.keys(lootDefinitions) as LootItem[];
 export const countItem = (items: InventoryItem[], item: LootItem) =>
   items.reduce((sum, entry) => sum + (entry.item === item ? entry.quantity : 0), 0);
+/** Bag arrangement does not require preparing equipment again. */
+export function sameEquipment(a: readonly InventoryItem[], b: readonly InventoryItem[]): boolean {
+  const equipped = (items: readonly InventoryItem[]) =>
+    items.filter(item => item.slot === 'main' || item.slot === 'off');
+  const first = equipped(a), second = equipped(b);
+  return first.length === second.length && first.every(item => second.some(other =>
+    item.id === other.id && item.item === other.item && item.slot === other.slot &&
+    (item.weaponSet ?? 0) === (other.weaponSet ?? 0)));
+}
 export function itemLoadout(items: InventoryItem[], set: WeaponSet = 0): Loadout {
   return {
     main:

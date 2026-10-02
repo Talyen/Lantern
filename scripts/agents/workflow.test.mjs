@@ -8,7 +8,7 @@ import { promisify } from 'node:util';
 import { once } from 'node:events';
 import { join } from 'node:path';
 import { git, context, writeJSON, readJSON, taskPath, spaceRequirement } from './state.mjs';
-import { startTask, finishTask, cleanupTask, recover } from './workflow.mjs';
+import { startTask, finishTask, cleanupTask, recover, installedDependenciesMatch } from './workflow.mjs';
 import { acquire, childEnvironment, withResource } from './resources.mjs';
 
 import { checkStages } from '../check.mjs';
@@ -29,6 +29,24 @@ async function fixture() {
   return { ...await context(directory), dispose: () => rm(directory, { recursive: true, force: true }) };
 }
 async function edit(task, name, value) { await writeFile(join(task.path, name), value); }
+
+test('dependency clones with missing or stale required packages are not ready', async () => {
+  const ctx = await fixture();
+  try {
+    await writeJSON(join(ctx.main, 'package.json'), {
+      dependencies: { three: '0.186.1' }, devDependencies: { '@eslint/js': '^10.0.1' },
+    });
+    await writeJSON(join(ctx.main, 'package-lock.json'), { packages: {
+      'node_modules/three': { version: '0.186.1' }, 'node_modules/@eslint/js': { version: '10.0.1' },
+    } });
+    await writeJSON(join(ctx.main, 'node_modules/three/package.json'), { version: '0.186.1' });
+    assert.equal(await installedDependenciesMatch(ctx.main), false);
+    await writeJSON(join(ctx.main, 'node_modules/@eslint/js/package.json'), { version: '9.0.0' });
+    assert.equal(await installedDependenciesMatch(ctx.main), false);
+    await writeJSON(join(ctx.main, 'node_modules/@eslint/js/package.json'), { version: '10.0.1' });
+    assert.equal(await installedDependenciesMatch(ctx.main), true);
+  } finally { await ctx.dispose(); }
+});
 
 test('four concurrent tasks land without lost work and completed cleanup preserves source archives', async () => {
   const ctx = await fixture();

@@ -83,10 +83,23 @@ export async function dependencyIdentity(cwd) {
   hash.update(await readFile(join(cwd, 'package-lock.json')));
   return hash.digest('hex');
 }
+/** A source signature alone cannot establish that main's cloned install is current. */
+export async function installedDependenciesMatch(cwd) {
+  if (!existsSync(join(cwd, 'node_modules'))) return false;
+  const manifest = await readJSON(join(cwd, 'package.json'));
+  const lock = await readJSON(join(cwd, 'package-lock.json'));
+  const names = Object.keys({ ...manifest.dependencies, ...manifest.devDependencies });
+  const matches = await Promise.all(names.map(async name => {
+    const expected = lock.packages?.[`node_modules/${name}`]?.version;
+    const installed = await readJSON(join(cwd, 'node_modules', name, 'package.json'), null);
+    return typeof expected === 'string' && installed?.version === expected;
+  }));
+  return matches.every(Boolean);
+}
 export async function ensureDependencies(task) {
   const path = join(task.path, '.local/agents/dependencies.json');
   const signature = await dependencyIdentity(task.path);
-  if ((await readJSON(path, null))?.signature === signature && existsSync(join(task.path, 'node_modules'))) return;
+  if ((await readJSON(path, null))?.signature === signature && await installedDependenciesMatch(task.path)) return;
   await withResource('heavy', () => run('npm', ['ci'], { cwd: task.path }), { cwd: task.path });
   await writeJSON(path, { signature });
 }
