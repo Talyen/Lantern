@@ -145,6 +145,21 @@ test('a full bag rejects displacement atomically and packing retains every item'
   expect(new Adventure({ getItem: () => JSON.stringify(state.character), setItem: () => {} }).character).toEqual(state.character);
 });
 
+test('inventory validation rejects malformed entries and conflicting placement', () => {
+  const item: InventoryItem = { id: 'wood', item: 'wood', quantity: 1, slot: 'bag', x: 0, y: 0 };
+  expect(validItems([item])).toBe(true);
+  for (const invalid of [null, 'wood', { ...item, item: 'unknown' }, { ...item, quantity: 0 }, { ...item, x: .5 }]) {
+    expect(validItems([invalid])).toBe(false);
+  }
+  expect(validItems(new Array(1))).toBe(false);
+  expect(validItems([item, { ...item, x: 1 }])).toBe(false);
+  expect(validItems([item, { ...item, id: 'overlap' }])).toBe(false);
+  const weapon: InventoryItem = { id: 'axe', item: 'axe', quantity: 1, slot: 'main', x: 0, y: 0 };
+  expect(validItems([weapon, { ...weapon, id: 'other' }])).toBe(false);
+  expect(validItems([weapon, { ...weapon, id: 'other', weaponSet: 1 }])).toBe(true);
+  expect(validItems([{ ...weapon, item: 'shield', slot: 'off' }])).toBe(false);
+});
+
 test('the separate caster and camp guard retain independent defeat and reward state through travel', () => {
   const state=new Adventure(memory(),()=>0), encounter=createEncounter('playing');
   state.enter(encounter,field);
