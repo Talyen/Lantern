@@ -21,13 +21,13 @@ Archived studies and initial authoring measurements include evidence from before
 
 ## Current measurement protocol
 
-Run a fresh production build before measuring. Use hidden `npm run desktop:check -- --debug-port=9231` and attach CDP, or use a real browser. Keep GPU acceleration enabled. Record hardware, OS, browser/Electron and three.js versions, renderer backend, AA, content viewport, actual scene dimensions, DPR/render scale, graphics settings, camera, and asset set.
+Run a fresh production build before measuring. Use hidden `npm run desktop:check -- --debug-port=9231` and attach CDP, or use a real browser. Keep GPU acceleration enabled. Record hardware, OS, browser/Electron and three.js versions, native WebGPU adapter, content viewport, scene/output dimensions, fixed output pixel ratio, FSR Resolution Quality and sharpening, graphics settings, camera, and asset set. Use [current graphics settings](GRAPHICS.md) for controls and temporary overrides.
 
-Warm the chosen scene for five seconds, then sample at least 180 frames under the same motion/pause conditions. Read the renderer canvas `data-graphics` JSON (median/p95 and settings) in the current Options implementation. Save raw samples and private captures under `.local/`; never publish licensed-art captures as part of a source update.
+Warm the chosen scene for five seconds, then sample at least 180 frames under the same motion/pause conditions. Read the renderer canvas `data-graphics` JSON for frame intervals, settings, dimensions and FSR compute timings. FSR timings exclude scene rendering, the reactive opaque pass and later effects; they do not measure whole-frame GPU cost. Save raw samples and private captures under `.local/`; never publish licensed-art captures as part of a source update.
 
 Compare the same machine, runtime, scene and settings. Repeat only the affected case when noise makes the result inconclusive; report variation. Frame intervals measure presentation cadence, not isolated GPU execution or headroom beyond vsync. Do not compare virtual CI rendering with desktop GPU measurements.
 
-The current clearing has Graphics Options and a custom r186 temporal-AA adapter. The older art/renderer comparison URLs now lead to this same clearing. The animation comparison remains separate. Settings defaults live in the source owner, not in historical tables below.
+The current clearing has Graphics and Sound Options and a version-pinned r186 FSR Temporal adapter. The older art/renderer comparison URLs now lead to this same clearing. The animation comparison remains separate. Settings defaults live in the source owner, not in historical tables below.
 
 ## Archived renderer studies
 
@@ -37,7 +37,7 @@ The [September 30 renderer studies](archive/RENDERER_STUDIES_2026-09-30.md) pres
 
 See [level design](LEVEL_DESIGN.md) for the persistent visual loop. `npm run levels:measure -- --area=clearing` records a moving-gameplay sample after five seconds of warmup and at least 180 frames under ignored `.local/level-design/`. It uses the development authoring browser: treat it as iteration evidence and repeat release measurements with a fresh production build and GPU acceleration confirmed. The report records revision/hash, area definition, runtime, viewport/DPR, backend/settings, machine CPU/OS/memory and cadence samples. Browser GPU/driver identification and hardware acceleration need explicit inspection; CPU metadata alone does not establish the GPU.
 
-Targets remain 60 fps on a named integrated-GPU baseline and scalable 120 fps on stronger hardware. Baseline hardware and cross-machine validation are outstanding. Use Unlimited for comparisons, report fallback and actual internal resolution, and do not infer 120 fps headroom from a 60 Hz presentation cadence. Warm authoring targets are <2 s edit-to-ready and <5 s per clean view; report cold startup separately.
+Targets remain 60 fps on a named integrated-GPU baseline and scalable 120 fps on stronger hardware. Baseline hardware and cross-machine validation are outstanding. Use Unlimited for comparisons, report adapter identity and actual internal resolution, and do not infer 120 fps headroom from a 60 Hz presentation cadence. Warm authoring targets are <2 s edit-to-ready and <5 s per clean view; report cold startup separately.
 
 ### Initial authoring validation — September 30, 2026
 

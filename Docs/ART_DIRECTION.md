@@ -47,13 +47,13 @@ The opt-in recipes, selected placement IDs and bounded ground patches belong to 
 
 ## Golden woodland and amber refuge
 
-Homestead and Forest Clearing use the approved A (Balanced honey-gold) direction as one fixed Golden appearance from `src/levels/lighting-preset.ts`. Honey-gold sunlight brings out copper, rust and ochre, while restrained cool sky fill and local bounce keep shaded ground readable without flattening the light. Preserve deep tree/prop shadows and material color. Use full material saturation and lighter grading than the earlier muted Golden look; do not compensate with higher player exposure or a global orange filter.
+Homestead and Forest Clearing use the approved Golden appearance with balanced honey-gold sunlight from `src/levels/lighting-preset.ts`. Honey-gold sunlight brings out copper, rust and ochre, while restrained cool sky fill and local bounce keep shaded ground readable without flattening the light. Preserve deep tree/prop shadows and material color. Use full material saturation and lighter grading than the earlier muted Golden look; do not compensate with higher player exposure or a global orange filter.
 
 The sun and local flames both have a strong presence. Sunlight is honey-gold; campfires and lanterns are deeper amber, so their nearby pools remain distinct even during daylight.
 
 Campfires, torches and lanterns share amber `#ffad55` illumination. Distinguish them through intensity, reach, emitter height and subtle flicker. Campfires have broad pools with world shadows; the personal lantern follows the rig and uses an elevated effective emitter plus short-range warm owner bounce to reach torso and face while turning. Native point-light falloff feathers warmth into the dark surroundings. Keep bright centers controlled rather than whitening every nearby surface with bloom.
 
-Travel, Return Home and restart use the same Golden baseline; there is no random gameplay mood or day/night clock. Area overrides may adjust light direction or coverage without changing this identity. Future enclosed areas should retain strong local warmth and readable shadow contrast while adapting their environment and probe volumes to the space.
+Travel, Return Home and restart use the same Golden baseline; there is no random gameplay mood or day/night clock. Area overrides may adjust light direction or coverage without changing this identity. Future enclosed areas should retain strong local warmth and readable shadow contrast. Adapt sun coverage and probe volumes through area overrides; a different environment or palette requires a deliberate change to the shared lighting design.
 
 This is the sole lighting preset, including the character gallery, animation lab, authoring and blockout areas. Alternative looks, random entry moods and preset selection controls are removed. Small area overrides adapt placement and coverage without defining a second aesthetic.
 
@@ -112,6 +112,8 @@ Native WebGPU browser flows pass movement/dodge, inspection, contact-timed attac
 The missing-variant check confirms original scenery loads when all sixteen prepared files are absent. Warmed travel keeps texture, geometry and render-target counts constant; small native uniform-buffer growth during repeated replacement is recorded for the separate lighting/cache follow-up, rather than described as fully stable GPU memory.
 
 ## Autumn woodland review — October 1, 2026
+
+This historical review predates the sole shared Golden preset. Its alternate moods and studio comparisons are no longer runtime choices.
 
 The five foliage variants now use weathered copper, burnt orange, ochre and rust with olive or burgundy shadows. Gameplay-scale review reduced their baked values to keep mustard from reading as pale yellow, and quieted Homestead's dry grass. Warm-brown soil and subdued edge staining preserve the paths and fighting space. Lighting profiles, flame recipes, geometry, hierarchy, alpha handling, scene transforms, collision and navigation retain their existing behavior. All six original texture hashes and prompt records remain intact.
 

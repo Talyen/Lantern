@@ -13,9 +13,11 @@ Character save revision 3 retains the existing key, migrates previous equipment/
 
 ## Drops and collection
 
-Enemies, chests, Woodcutting and inventory dropping use one shared ground-drop system. Future world supplies and Mining must use this same owner. Chests scatter their rewards onto the ground rather than depositing them directly into inventory. Woodcutting yields Wood; Mining yields Stone and Iron; Hide remains planned for enemies, chests, and supplies. Keep the first equipment rewards authored with useful tradeoffs; random affixes and rarity systems remain deferred.
+Enemies, chests, Woodcutting and inventory dropping use one shared ground-drop system. Future world supplies and Mining must use this same owner. Chests scatter their rewards onto the ground rather than depositing them directly into inventory. Woodcutting yields Wood; planned Mining will yield Stone and Iron; Hide remains planned for enemies, chests, and supplies. Keep the first equipment rewards authored with useful tradeoffs; random affixes and rarity systems remain deferred.
 
 Each drop has a small recognizable 3D object. Start with representative category models: equipment silhouettes, coins, material bundles, potions, and scrolls. A brief toss and slight tumble end in a settled resting pose, with restrained landing and collection sounds. Avoid persistent beams, glow, or constant idle animation. Resolve placement on reachable ground using the existing navigation and collision boundaries.
+
+The table defines the shared collection contract. Equipment, Wood and scrolls are implemented; gold, potions, armor and other supply categories remain planned.
 
 | Loot | Collection | Destination |
 | --- | --- | --- |
@@ -48,7 +50,7 @@ Every nearby on-screen drop has a persistent item-name-only label. Do not add qu
 
 Separate crowded labels into compact non-overlapping rows near their objects. Hovering a label subtly highlights its matching ground object; hovering the object highlights its label. Keep the association clear as the camera moves and items are collected.
 
-Labels remain readable over scenery, including props hiding the object. Visibility does not grant remote collection: a reachable route and physical proximity remain required. Keep text at a stable screen size across zoom, with no off-screen indicators. Distance, font size, and spacing are initial visual tuning values; validate them at gameplay scale. Bundle the font locally with its license when implementing this presentation.
+Labels remain readable over scenery, including props hiding the object. Visibility does not grant remote collection: a reachable route and physical proximity remain required. Keep text at a stable screen size across zoom, with no off-screen indicators. Distance, font size, and spacing are initial visual tuning values; validate them at gameplay scale. The font and its license are bundled locally under `public/fonts/`.
 
 See [Art Direction](ART_DIRECTION.md#loot-presentation) for its place in Lantern's visual hierarchy.
 

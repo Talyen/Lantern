@@ -18,9 +18,9 @@ Laptop quality capped pixel ratio at 1, reduced bloom luminance/blur resolution 
 
 #### Original surfaces and local export
 
-The original text-generated surfaces, still retained, are `assets/textures/stone-painterly.png`, `soil-painterly.png`, and `wood-painterly.png`. They share broad painted shapes and restrained variation, with no baked directional lighting. No Synty source, texture, or render was submitted to ImageGen. The bake projects each surface locally and exports 1024px color textures; characters and foliage retain their palette materials.
+At the time of this study, the original text-generated surfaces were `assets/textures/stone-painterly.png`, `soil-painterly.png`, and `wood-painterly.png`. They share broad painted shapes and restrained variation, with no baked directional lighting. No Synty source, texture, or render was submitted to ImageGen. The bake projects each surface locally and exports 1024px color textures; characters and foliage retain their palette materials.
 
-The retained exporter is documented in the current [optional scenery and surface workflow](../DEVELOPMENT.md#optional-scenery-and-surface-studies).
+Current retained scenery preparation is documented in the [optional scenery and surface workflow](../DEVELOPMENT.md#optional-scenery-and-surface-studies).
 
 The exporter reads seven Synty models (including the existing rock) from the private local library and creates original/painterly variants under ignored `public/vendor/synty/art-lab/`. Ground is baked to ignored `public/vendor/terrain/ground-painterly.glb`. UV previews stay in ignored `.local/art-lab/`. Missing experiments are reported and available original meshes remain visible. Licensed models, bakes, and comparison captures remain local; the existing deployment packaging boundary still applies.
 

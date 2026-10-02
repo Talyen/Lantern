@@ -4,7 +4,7 @@ Lighting is shared game infrastructure. Every route inherits the single approved
 
 ## One preset and area overrides
 
-`src/levels/lighting-preset.ts` owns the sole approved A (Balanced honey-gold) look. Gameplay, authoring, the character gallery and animation lab use it through `src/levels/lighting.ts`. There are no alternate profiles, moods, entry randomization, lighting URL switches or authoring preset controls. Resolution is **shared preset → intentional area overrides**; resolving never modifies the shared preset.
+`src/levels/lighting-preset.ts` owns the sole approved Golden (balanced honey-gold) look. Gameplay, authoring, the character gallery and animation lab use it through `src/levels/lighting.ts`. There are no alternate profiles, moods, entry randomization, lighting URL switches or authoring preset controls. Resolution is **shared preset → intentional area overrides**; resolving never modifies the shared preset.
 
 ```json
 "lighting": {
@@ -37,7 +37,7 @@ The shared resolver derives the initial probe volume from the playable boundary,
 }
 ```
 
-Explicit `position`, `size` and `resolution` overrides are available for deliberate volume placement. The resolver fills unspecified grid fields from the preset's automatic coverage. Static scenery is baked under the resolved sun/environment. Characters, portals, particles, animated local lights, camera-side fill and hemisphere readability fill are excluded.
+Explicit `position`, `size` and `resolution` overrides are available for deliberate volume placement. The resolver fills unspecified grid fields from the preset's automatic coverage. Static scenery is baked under the resolved sun/environment. Characters, portals, particles, animated local lights and hemisphere readability fill are excluded.
 
 ## Prepared bakes and resource ownership
 
@@ -48,6 +48,7 @@ After an area stabilizes:
 ```sh
 npm run levels:dev -- --area=homestead
 npm run lighting:bake -- --area=homestead --surfaces=projected
+npm run levels:stop
 ```
 
 The command uses the existing owned native WebGPU preview, exports half-float irradiance atlases under ignored `public/vendor/lighting/`, and updates `assets/lighting-bakes.json` with metadata references. `--area=all` prepares every registered area with probes under the one Golden preset. There are no lighting/profile selection flags. Surface comparison uses `--surfaces=authored`. Never run preparation concurrently with another preview owner or final build gate.
@@ -60,11 +61,11 @@ Each renderer has a global least-recently-used budget: **8 sky environments / 32
 
 ## Visual reference and handoff
 
-Maintain a small reference set: a normal gameplay view containing Golden sunlight, shaded scenery, the player lantern and a campfire, plus the character gallery and animation lab under the same preset. Earlier captures remain private historical evidence. When the first interior and enclosed dark area exist, add their fixed views to this set with their corresponding profiles. Do not create production areas solely to fill a lighting checklist.
+Maintain a small reference set: a normal gameplay view containing Golden sunlight, shaded scenery, the player lantern and a campfire, plus the character gallery and animation lab under the same preset. Earlier captures remain private historical evidence. When the first interior and enclosed dark area exist, add their fixed views to this set with deliberate area overrides of the same shared preset. Do not create production areas solely to fill a lighting checklist.
 
-Review the Paladin and Goblin under matched camera, pose, exposure and graphics settings. Require readable faces/material detail, grounded shadows, preserved highlights and useful warm/cool separation. Check movement, zoom extremes, narrow windows, travel, failed preparation and stable repeated visits. Compare prepared loading with live baking. For content changes, use the existing level capture tools and keep licensed-art images private under `.local/`.
+Review the Paladin and Goblin under matched camera, pose, exposure and graphics settings. Require readable faces/material detail, grounded shadows, preserved highlights and useful warm/cool separation. For ordinary lighting content changes, inspect one representative view and affected movement under normal settings. Zoom extremes, narrow windows, travel, failed preparation, repeated visits and prepared/live comparisons are targeted checks for changed loading/cache/bake behavior or a specific visual concern. Keep licensed-art captures private under `.local/`.
 
-Finish with playable asset validation and `npm run check`, after closing the owned rendering session. Avoid adding per-area tests or a large screenshot matrix: shared preset/resolver/cache/bake regressions and a small representative browser pass protect the system.
+Finish with `npm run check` after closing the owned rendering session. Validate playable assets when their preparation changed. Extend existing shared lighting regressions only for important established behavior; do not add per-area tests or a screenshot matrix by default.
 
 ## Player lantern
 

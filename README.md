@@ -13,12 +13,30 @@ npm run dev
 
 Lantern requires native WebGPU with hardware acceleration on a supported browser/OS/GPU. Unsupported systems receive a startup error. Gameplay, authoring and animation comparison share one visual pipeline; FSR Temporal is the sole reconstruction method, with fixed 1× output density and independent resolution, shadow and particle quality controls.
 
-Open Vite's printed local URL to begin halfway along Forest Clearing’s approach. WASD or arrows move, left click attacks toward the pointer, Shift dodges, E interacts, B toggles Inventory, Esc opens Options or closes a menu, and the mouse wheel zooms. Walk home or approach the goblin camp, defeat its guard and open the chest for two return scrolls. Discover campfires on foot, then travel between safe fires; use Scrolls of Return to open a round-trip portal home. Safe campfires heal 3% maximum health per second nearby; enemies within 10 m or pursuing/returning in the area block healing and travel. Both actors have 100 health; player hits deal 50 and goblin hits deal 20. Defeat offers Return Home without losing collected scrolls. Scroll inventory and discovered campfires save locally; encounters and chest rewards refresh after restarting at the clearing midpoint. Options pauses play and contains graphics controls and rock inspection where available. Use `/?area=clearing` for direct encounter testing.
+Open Vite's printed local URL to begin halfway along Forest Clearing’s approach.
+
+| Control | Action |
+| --- | --- |
+| WASD / arrows | Move |
+| Left click | Attack toward the pointer; select ground loot when clicked |
+| Right mouse, held | Block with an equipped Shield |
+| Shift | Dodge |
+| E | Interact; hold near a tree with an Axe to chop |
+| B | Toggle Inventory |
+| Escape | Close a menu or open Options |
+| Mouse wheel | Zoom |
+
+Walk home or approach the goblin camp, defeat its guard and open the chest for two return scrolls and unclaimed Sword, Shield, Bow and Staff rewards. A separate staff-wielding caster waits off the left side of the woodland approach. Pick up equipment by clicking its object or name label, then equip it in Inventory; Wood and scrolls collect automatically nearby after landing.
+
+Discover campfires on foot, then travel between safe fires, or cast a Scroll of Return to open a round-trip portal home. Safe campfires heal 3% maximum health per second within 3 m; enemies within 10 m of the fire or pursuing/returning anywhere in the area block healing and travel. Player and enemies have 100 health; current basic player hits deal 50 and enemy hits deal 20 before shield blocking. Defeat offers Return Home with collected items retained.
+
+Inventory, equipment, Wood, Woodcutting/Axe Combat XP, collected chest weapon claims and discovered fires save locally. Ground drops, enemies and open chests retain session state through travel/death; restarting refreshes the world at the clearing midpoint with full health. Options pauses play and contains Graphics and Sound controls. Rock inspection and Restart belong to development level authoring. See [level design](Docs/LEVEL_DESIGN.md#fast-iteration) for that workflow.
 
 The public repository contains source and original generated surface studies. Playable Mixamo Paladin/Goblin character art and compatible animations must be prepared privately; missing character art produces an actionable import message. Optional scenery can be absent. See the [asset workflow](Docs/DEVELOPMENT.md#private-asset-workflow).
 
 ```sh
-npm run check       # local handoff and asset-free CI checks
+npm run check       # change-aware local sanity gate
+npm run check:full  # full production/build gate used by CI
 npm run desktop     # build and open Electron for manual play
 npm run desktop:check -- --debug-port=9231  # hidden Electron; attach CDP
 ```
@@ -27,6 +45,12 @@ npm run desktop:check -- --debug-port=9231  # hidden Electron; attach CDP
 
 - [Architecture](Docs/ARCHITECTURE.md): runtime owners and simulation boundaries.
 - [Development](Docs/DEVELOPMENT.md): commands, private assets, validation, and smoke flows.
+- [Art direction](Docs/ART_DIRECTION.md): visual identity and review criteria.
+- [Graphics settings](Docs/GRAPHICS.md): current controls, defaults and comparison URLs.
+- [Lighting](Docs/LIGHTING.md): shared Golden preset, local lights and explicit bake preparation.
+- [Gameplay sound](Docs/AUDIO.md): event timing, sound controls and private preparation.
+- [Loot](Docs/LOOT.md): inventory, physical drops, labels and pickup rules.
+- [Animations](Docs/ANIMATIONS.md): compatible profiles, action clocks and review evidence.
 - [Level design](Docs/LEVEL_DESIGN.md): area definitions, travel, and rapid visual authoring.
 - [Character preview](Docs/CHARACTERS.md): private roster preparation and model/motion comparison.
 - [Library trials](Docs/LIBRARY_TRIALS.md): retained gameplay integrations and deferred alternatives.

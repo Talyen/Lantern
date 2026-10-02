@@ -12,12 +12,12 @@ Lantern targets deliberate combat in compact handcrafted areas, grounded Synty a
 
 Optional `traversal` in an area definition contains explicit `obstacles` (stable ID, world position, full box size, yaw) and optional `surfaces` (world-space positions and triangle indices, upward-facing winding). The numeric floor comes from the walkable boundary. Visual props do not automatically become obstacles; missing art never changes the collision layout. Surface triangles are also drawn by the builder, so a trial slope and its collision agree.
 
-The clearing contains proxies for its two rocks, chest, braziers and gate posts. The blockout contains its box obstacles. `?area=movement-trial` supplies an isolated wall, small step and slope without additional licensed assets. Use development `?author=levels&area=movement-trial` for stable camera views and diagnostics. No debug panels are added to ordinary gameplay.
+The clearing contains explicit proxies for its rocks, chest, tent, supplies, barrel and logs, plus harvestable trunk proxies that update when trees are felled or regrow. The blockout contains its box obstacles. `?area=movement-trial` supplies an isolated wall, small step and slope without additional licensed assets. Use development `?author=levels&area=movement-trial` for stable camera views and diagnostics. No debug panels are added to ordinary gameplay.
 
 ## Deferred projects
 
 Recast remains the navigation alternative if navcat fails a demonstrated requirement. Yuka, runtime IK, InstancedMesh2 and Quarks are deferred. Use native instancing and baked motion cleanup first. BVH is conditional on a query need Rapier cannot satisfy. Water shaders wait for an authored water area. glTF Transform is available for measured loading, memory or rendering problems; file compression alone does not improve FPS. EZ-Tree and studying example-game source are excluded; vegetation remains Synty.
 
-See [architecture](ARCHITECTURE.md), [level authoring](LEVEL_DESIGN.md) and [performance evidence](PERFORMANCE.md). The normal [development handoff](DEVELOPMENT.md) and prepared-art gameplay smoke flows still apply.
+See [architecture](ARCHITECTURE.md), [level authoring](LEVEL_DESIGN.md) and [performance evidence](PERFORMANCE.md). Use the normal [development handoff](DEVELOPMENT.md#commands-and-handoff) and one relevant gameplay flow when behavior changes. Prepared-art validation is targeted to affected outputs.
 
 Weapon trails were removed from runtime presentation; hit-impact sparks remain. Historical matched timing measurements in Performance retain their original cases.

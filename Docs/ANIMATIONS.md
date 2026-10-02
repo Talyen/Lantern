@@ -83,6 +83,8 @@ The native WebGPU placement review on macOS used normal graphics settings in one
 
 ## Comparison and acceptance evidence
 
+The observations below record the original equipment/motion review. Its studio/silver lighting choices and menu-based Restart/inspection controls have since been retired or moved to development authoring; current gameplay uses the shared Golden preset.
+
 Open the [animation comparison route](../src/labs/animations/animation-lab.ts) on the development server with `/?lab=animations`. Each lane selects its own Player/Goblin rig and weapon model, browses that rig's compatible clips, and retains independent temporal history in the shared native WebGPU pipeline. Use normal/half/quarter speed, frame steps, linked cycle lengths, scrub, and the contact/release marker to inspect hand placement and timing. Goblin has Axe and Staff gameplay profiles; Staff supplies the separate caster fight in the normal clearing. Other lab equipment models do not imply weapon-specific Goblin gameplay motions.
 
 The representative automated flows cover v1 save migration, unique equipment rewards, two-hand Shield return, separate saved progression, contact/release timing, buffered aim and recovery boundaries, frontal/rear block damage, swept terrain obstruction and exactly-once ranged damage. A presented-pose regression verifies that contact actions fully replace manually phased locomotion. Level flows cover systematic tree identity, depletion/regrowth, occupancy and removed/restored collision/navigation.

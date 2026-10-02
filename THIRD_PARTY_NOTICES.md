@@ -10,7 +10,7 @@ three.js is MIT licensed; preserve its package license and the [full notice](src
 
 `@pmndrs/upscaler` 0.2.0 is an independent MIT-licensed FSR-style WebGPU implementation and includes AMD FidelityFX EASU/RCAS attribution. Preserve its package LICENSE and AMD notice in any distributed application. Lantern’s `src/rendering/fsr-temporal.ts` adapts its integration callbacks for three.js r186. `src/rendering/fsr-accumulate.wgsl` adapts its MIT-licensed accumulation shader to preserve converged stationary history; retain the [full notice](src/rendering/LICENSE-upscaler.txt). The other FSR passes remain package-owned. No official AMD FSR4 binaries or frame-generation SDK are included.
 
-navcat 0.4.1 and its mathcat dependency are MIT licensed. `@dimforge/rapier3d-compat` 0.21.0 is Apache-2.0 licensed and includes its WebAssembly physics runtime. Preserve their distributed licenses/notices in packaged builds. The weapon ribbon and portal composition are original Lantern code; no drei-vanilla/meshline code is copied or shipped. The portal rune is drawn locally, without third-party artwork.
+navcat 0.4.1 and its mathcat dependency are MIT licensed. `@dimforge/rapier3d-compat` 0.21.0 is Apache-2.0 licensed and includes its WebAssembly physics runtime. Preserve their distributed licenses/notices in packaged builds. The portal composition and retired weapon-ribbon experiment are original Lantern code; no drei-vanilla/meshline code is copied or shipped. The portal rune is drawn locally, without third-party artwork.
 
 ## Fonts
 
@@ -20,7 +20,7 @@ Pirata One by Rodrigo Fuenzalida is bundled locally for loot labels and Inventor
 
 | Group | Source | Handling |
 | --- | --- | --- |
-| Original Lantern surface studies | Text-prompted ImageGen rock, forest floor, stone, soil, wood and Paladin armor studies | Tracked under `assets/textures/`; project license applies to original project material. No Synty input was supplied to generation. |
+| Original Lantern surface studies | Text-prompted ImageGen rock, soil and environment materials; original HUD orb frames | Active sources are tracked under `assets/textures/` and `assets/ui/orbs/`; retired wood/Paladin palette studies are privately archived. Project license applies to original project material. No Synty input was supplied to generation. |
 | Synty scenery and warrior | Owner-supplied Synty packs, including Polygon Viking Realm | Licensed third-party sources and exports remain private; project license does not grant redistribution rights. |
 | Gameplay audio | Owner-supplied Sonniss GameAudioGDC recordings from the shared sound library | Selection metadata and preparation code are tracked; masters/intermediates and optimized OGGs remain private. Source terms apply to modified recordings; see [gameplay sound](Docs/AUDIO.md). |
 | Mixamo motions and acquisition characters | Signed-in Mixamo catalog export | Sources/catalog/receipts remain private; gameplay animations retargeted locally to separate Paladin and Goblin rigs; gallery samples target each displayed character. No standalone redistribution through this repository. |
