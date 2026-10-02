@@ -198,3 +198,14 @@ Particle pools retain a fixed `Uint16Array` of live slot indices. Updates visit 
 Enemy pursuit advances a cursor through reached waypoints rather than shifting the remaining path array. Route refresh reuses its two-coordinate target record and resets the cursor. Navigation queries, refresh cadence, waypoint reach distances and movement decisions remain unchanged.
 
 A private comparison matched all particle buffers byte for byte across 650 updates, including ring overwrites, expiry, quality/atmosphere/weather changes, pauses, hidden emitters and area resets. Another 300 queries through real navcat/Rapier adapters returned identical pursuit directions across movement, target changes and route resets. Evidence lives under `.local/resource-parity/` and is retained in the task archive after cleanup. These are correctness checks, not timing or hardware benchmarks; no measured frame-time or process-memory improvement is claimed.
+
+
+## October 2 particle uploads and bounded ambience selection
+
+Particle pools retain one merged update range per dynamic position/color attribute. Each update covers the smallest contiguous span containing its live and newly expired slots; resets and quality/atmosphere changes include all modified positions. Pending ranges merge until native WebGPU consumes them, including skipped renders and hidden pools. Particle buffers, slot order, emission, colors and motion formulas are unchanged. The pinned three.js native attribute uploader supports these ranges, including padded attribute layouts.
+
+Flame ambience inserts into a reusable selection of at most six entries instead of sorting every authored flame. Distances are still computed once per flame, equal distances retain authored order, and loop identity/order, gains and scheduling are unchanged.
+
+Private comparisons matched particle arrays and emulated native GPU uploads across 650 updates and audio calls across 560 cases. Cases included ring overwrites, expiry, quality/atmosphere/weather changes, pauses, area resets, hidden pools, skipped renders, tied distances, listener movement and audio reset. The particle fixture transferred 955,956 bytes instead of 9,404,928 bytes for its post-creation uploads. This is an operation-count observation, not a measured GPU-speed or process-memory improvement. Evidence lives under `.local/resource-parity/`, retained in the task archive after cleanup.
+
+One owned normal-settings native WebGPU preview rendered Forest Clearing and accepted a canvas click and dodge input with no browser errors. The short inspection does not establish pixel parity or cross-platform performance. No benchmark or full local suite was run.

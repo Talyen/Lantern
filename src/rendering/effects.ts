@@ -9,8 +9,10 @@ import { createWaterWaves } from './water-waves';
 import { particlePresets, type QualityLevel } from './quality-presets';
 export type ParticleKind = 'fire' | 'smoke' | 'sparks' | 'hit' | 'rain' | 'snow' | 'dust';
 interface Emitter { position: THREE.Vector3; kind: ParticleKind; rate: number; carry: number; space: THREE.Object3D; }
+type UploadRange = { start: number; count: number };
 interface Pool {
   object: THREE.Points; positions: Float32Array; velocities: Float32Array; age: Float32Array;
+  positionRange: UploadRange; colorRange: UploadRange;
   life: Float32Array; live: Uint16Array; colors: Float32Array; cursor: number; capacity: number; active: number; limit: number;
 }
 interface WaterOptions { width?: number; length?: number; flow?: number; shorelineMask?: THREE.Texture; }
@@ -19,6 +21,21 @@ interface Foliage { mesh: THREE.Mesh; original: THREE.Material | THREE.Material[
 const colors: Record<ParticleKind, THREE.Color> = { fire: new THREE.Color(2.8, 0.65, 0.08), smoke: new THREE.Color('#626d75'), sparks: new THREE.Color(3, 1.1, 0.2), hit: new THREE.Color(2.3, 1.2, 0.3), rain: new THREE.Color('#aec5d4'), snow: new THREE.Color('#dbe6ee'), dust: new THREE.Color('#a79879') };
 const sizes: Record<ParticleKind, number> = { fire: 0.22, smoke: 0.45, sparks: 0.035, hit: 0.075, rain: 0.04, snow: 0.065, dust: 0.025 };
 const atmosphericKinds = new Set<ParticleKind>(['dust', 'smoke', 'sparks', 'rain', 'snow']);
+
+/** Merge pending writes until the renderer consumes them, including hidden pools.
+ * One retained range per attribute avoids per-frame range records/queue writes. */
+function uploadRange(attribute: THREE.BufferAttribute, range: UploadRange, first: number, last: number): void {
+  const start = first * attribute.itemSize, end = (last + 1) * attribute.itemSize;
+  if (attribute.updateRanges.length) {
+    const previousEnd = range.start + range.count;
+    range.start = Math.min(range.start, start);
+    range.count = Math.max(previousEnd, end) - range.start;
+  } else {
+    range.start = start; range.count = end - start;
+    attribute.updateRanges.push(range);
+  }
+  attribute.needsUpdate = true;
+}
 
 /** Fixed particle pools, shared wind clock and lightweight water; no per-frame object allocation. */
 export class CoreEffects {
@@ -56,7 +73,7 @@ export class CoreEffects {
       const material = new THREE.PointsMaterial({ map: particleTextures[kind] ?? this.texture, vertexColors: true, transparent: true, depthWrite: false,
         size: sizes[kind], opacity: kind === 'smoke' ? 0.25 : kind === 'dust' ? 0.32 : 0.8, blending: ['fire', 'sparks', 'hit'].includes(kind) ? THREE.AdditiveBlending : THREE.NormalBlending });
       const object = new THREE.Points(geometry, material); object.frustumCulled = false; object.visible = false; object.name = kind; this.root.add(object);
-      this.pools.set(kind, { object, positions, colors: vertexColors, velocities: new Float32Array(capacity * 3), age: new Float32Array(capacity), life: new Float32Array(capacity), live: new Uint16Array(capacity), cursor: 0, capacity, active: 0, limit: capacity });
+      this.pools.set(kind, { object, positions, colors: vertexColors, velocities: new Float32Array(capacity * 3), age: new Float32Array(capacity), life: new Float32Array(capacity), live: new Uint16Array(capacity), positionRange: { start: 0, count: 0 }, colorRange: { start: 0, count: 0 }, cursor: 0, capacity, active: 0, limit: capacity });
     }
   }
   setQuality(quality: QualityLevel): void {
@@ -71,7 +88,7 @@ export class CoreEffects {
       for (let i = 0; i < pool.active; i++) if (pool.life[pool.live[i]] > 0) pool.live[active++] = pool.live[i];
       pool.active = active;
       if (!pool.active) pool.object.visible = false;
-      pool.object.geometry.attributes.position.needsUpdate = true;
+      uploadRange(pool.object.geometry.getAttribute('position') as THREE.BufferAttribute, pool.positionRange, 0, pool.capacity - 1);
     }
   }
   setAtmosphericParticles(enabled: boolean): void {
@@ -79,7 +96,7 @@ export class CoreEffects {
     this.atmosphericParticles = enabled;
     for (const [kind, pool] of this.pools) if (atmosphericKinds.has(kind)) {
       pool.object.visible = enabled && pool.active > 0;
-      if (!enabled) { pool.active = 0; pool.life.fill(0); pool.positions.fill(1e6); pool.object.geometry.attributes.position.needsUpdate = true; }
+      if (!enabled) { pool.active = 0; pool.life.fill(0); pool.positions.fill(1e6); uploadRange(pool.object.geometry.getAttribute('position') as THREE.BufferAttribute, pool.positionRange, 0, pool.capacity - 1); }
     }
     for (const emitter of this.emitters) if (atmosphericKinds.has(emitter.kind)) emitter.carry = 0;
     this.weatherCarry = 0;
@@ -186,8 +203,10 @@ export class CoreEffects {
       if (!p.active) continue;
       // Each slot evolves independently. Swap-remove expired entries without
       // changing GPU slot order or visiting the unused portion of the pool.
+      let first = p.capacity, last = -1;
       for (let live = 0; live < p.active;) {
         const i = p.live[live], k = i * 3; p.age[i] += dt;
+        first = Math.min(first, i); last = Math.max(last, i);
         if (p.age[i] >= p.life[i]) { p.positions[k + 1] = 1e6; p.life[i] = 0; p.live[live] = p.live[--p.active]; continue; }
         p.positions[k] += (p.velocities[k] + this.wind.value.x) * dt; p.positions[k + 1] += p.velocities[k + 1] * dt; p.positions[k + 2] += (p.velocities[k + 2] + this.wind.value.z) * dt;
         if (kind === 'hit' || kind === 'sparks') p.velocities[k + 1] -= dt * 4;
@@ -195,7 +214,8 @@ export class CoreEffects {
         p.colors[k] = color.r * fade; p.colors[k + 1] = color.g * fade; p.colors[k + 2] = color.b * fade;
         live++;
       }
-      p.object.geometry.attributes.position.needsUpdate = true; p.object.geometry.attributes.color.needsUpdate = true;
+      uploadRange(p.object.geometry.getAttribute('position') as THREE.BufferAttribute, p.positionRange, first, last);
+      uploadRange(p.object.geometry.getAttribute('color') as THREE.BufferAttribute, p.colorRange, first, last);
       p.object.visible = p.active > 0;
     }
     for (const water of this.waters) {
@@ -204,7 +224,7 @@ export class CoreEffects {
       water.waves.update(this.time, water.mesh.geometry.getAttribute('position'), water.mesh.geometry.getAttribute('normal'));
     }
   }
-  clear(): void { for (const p of this.pools.values()) { p.active = 0; p.object.visible = false; p.life.fill(0); p.positions.fill(1e6); p.object.geometry.attributes.position.needsUpdate = true; } }
+  clear(): void { for (const p of this.pools.values()) { p.active = 0; p.object.visible = false; p.life.fill(0); p.positions.fill(1e6); uploadRange(p.object.geometry.getAttribute('position') as THREE.BufferAttribute, p.positionRange, 0, p.capacity - 1); } }
   clearArea(): void {
     for (const f of this.foliage) { f.mesh.material = f.original; f.mesh.customDepthMaterial = f.depth; f.mesh.customDistanceMaterial = f.distance; f.owned.forEach((m) => m.dispose()); }
     for (const w of this.waters) { w.mesh.removeFromParent(); w.mesh.traverse((o) => { if (isMesh(o)) { o.geometry.dispose(); (o.material as THREE.Material).dispose(); } }); w.normal.dispose(); w.shoreline.dispose(); }

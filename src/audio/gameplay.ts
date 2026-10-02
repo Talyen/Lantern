@@ -5,7 +5,6 @@ import { type GameAudio, type SoundCue, type SoundPosition } from './audio';
 
 type AuthoredFire = Pick<AreaDefinition['effects']['fires'][number], 'id' | 'position' | 'role'>;
 type AmbientFlame = { key: string; position: SoundPosition; camp: boolean; distance: number };
-const nearestFlame = (a: AmbientFlame, b: AmbientFlame) => a.distance - b.distance;
 
 /** Maps numeric action/results to the authored mix; animation replays stay silent. */
 export class GameplayAudio {
@@ -77,13 +76,18 @@ export class GameplayAudio {
     }
     // Refill in authored order so equal-distance flames retain the same stable
     // priority, even after the listener has moved between previous frames.
-    this.nearestFlames.length = this.authoredFlames.length;
-    for (let i = 0; i < this.authoredFlames.length; i++) {
-      const flame = this.authoredFlames[i];
+    this.nearestFlames.length = 0;
+    for (const flame of this.authoredFlames) {
       flame.distance = Math.hypot(flame.position.x-listener.x,flame.position.z-listener.z);
-      this.nearestFlames[i] = flame;
+      // Insert after equal distances, matching stable sorting of authored order.
+      // Only the six selected flames need ordering; distant flames stay outside the array.
+      let index = 0;
+      while (index < this.nearestFlames.length && flame.distance >= this.nearestFlames[index].distance) index++;
+      if (index >= 6) continue;
+      const length = Math.min(6, this.nearestFlames.length + 1);
+      for (let i = length - 1; i > index; i--) this.nearestFlames[i] = this.nearestFlames[i - 1];
+      this.nearestFlames[index] = flame;
     }
-    this.nearestFlames.sort(nearestFlame); this.nearestFlames.length = Math.min(6, this.nearestFlames.length);
     this.loopKeys.clear(); if (ambience === 'woodland') this.loopKeys.add('woodland');
     for (const fire of this.nearestFlames) this.loopKeys.add(fire.key);
     if (portal) this.loopKeys.add('portal-hum');
