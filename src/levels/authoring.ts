@@ -1,10 +1,11 @@
+import type { ClearingSnapshot } from '../clearing/diagnostics';
 import { isLine } from '../assets/resource-ownership';
 import * as THREE from 'three';
 import type { Encounter } from '../gameplay/encounter';
 import type { PreparedProbeBake } from '../rendering/lighting-bake';
 import type { SurfaceMode } from '../assets/environment-surfaces';
 import type { AreaDefinition } from './types';
-type Diagnostics = { area: string; revision: number; renderedRevision: number; ready: boolean; errors: string[]; missing: string[]; contentHash: string; camera: unknown; renderedFrames: number; phase: string; updateMs: number; objects: number; resources: unknown; graphics: unknown };
+type Diagnostics = Pick<ClearingSnapshot, 'area' | 'revision' | 'renderedRevision' | 'ready' | 'errors' | 'missing' | 'contentHash' | 'camera' | 'renderedFrames' | 'phase' | 'updateMs' | 'objects' | 'resources' | 'graphics'>;
 type Appearance = { lantern: boolean; surfaces: SurfaceMode };
 type Context = { invalidate(): void; exportLighting(this: void): Promise<PreparedProbeBake>; lighting(this: void): unknown; appearance(this: void): Appearance; setAppearance(appearance: { surfaces?: SurfaceMode; lantern?: boolean }): Promise<boolean>; scene: THREE.Scene; camera: THREE.OrthographicCamera; renderer: { domElement: HTMLCanvasElement }; definitions(): Record<string, AreaDefinition>; area(): AreaDefinition; encounter: Encounter; changeArea(id: string): Promise<boolean>; restart(this: void): void; inspect(): boolean; waitFrames(count?: number): Promise<void>; setFrozen(value: boolean): void; setView(id: string): void; diagnostics(): Diagnostics };
 export function attachAuthoring(ctx: Context): void {

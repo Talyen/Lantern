@@ -3,7 +3,7 @@ import { bindMenuDismissal } from './menu';
 import { itemIcon } from './item-icons';
 import { renderEquipmentDetails } from './equipment-details';
 import { shopStock, sellPrices } from '../gameplay/economy';
-import { equipmentCatalog, itemIds, type ItemId } from '../gameplay/equipment';
+import { equipmentCatalog, isItemId } from '../gameplay/equipment';
 import { lootDefinitions, type InventoryItem, type LootItem } from '../gameplay/inventory';
 import type { CharacterSave } from '../gameplay/character-save';
 
@@ -99,11 +99,11 @@ export class ShopMenu {
       if (sold) { entry = { ...sold, quantity: 1, slot: 'bag', x: 0, y: 0 }; price = sold.price; }
     } else {
       entry = character.items.find(entry => entry.id === selection.id && entry.slot === 'bag');
-      if (entry && itemIds.includes(entry.item as ItemId)) price = sellPrices[entry.item as ItemId];
+      if (entry && isItemId(entry.item)) price = sellPrices[entry.item];
     }
     this.dialog.querySelector('h3')!.textContent = entry ? lootDefinitions[entry.item].name : '';
-    if (entry && itemIds.includes(entry.item as ItemId)) {
-      const slot = equipmentCatalog[entry.item as ItemId].slot;
+    if (entry && isItemId(entry.item)) {
+      const slot = equipmentCatalog[entry.item].slot;
       renderEquipmentDetails(this.details, this.comparison, entry, character, character.activeSet,
         slot === 'ring' ? character.items.some(item => item.slot === 'ring-left') && !character.items.some(item => item.slot === 'ring-right') ? 'ring-right' : 'ring-left' : slot);
     } else if (entry?.item === 'potion') this.details.textContent = 'Restore 40 Health';

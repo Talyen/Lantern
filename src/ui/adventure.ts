@@ -5,7 +5,7 @@ import { bagWidth, bagHeight, stackLimit, emptyPosition, equipInstance, lootDefi
 import { progression, shelterRecipe, skillProgress } from '../gameplay/skills';
 import { countItem } from '../gameplay/inventory';
 import type { WeaponSet } from '../gameplay/abilities';
-import { equipmentCatalog, isEquipmentSlot, itemIds, sharedSlots, supportsShield, type EquipmentSlot, type ItemId } from '../gameplay/equipment';
+import { equipmentCatalog, isEquipmentSlot, isItemId, sharedSlots, supportsShield, type EquipmentSlot } from '../gameplay/equipment';
 import { resolveCombatStats } from '../gameplay/combat-stats';
 import { itemIcon } from './item-icons';
 import { setText, setDisabled } from './dom';
@@ -176,7 +176,7 @@ export class AdventureMenus {
   private refreshSelection(): void {
     const entry = this.selectedItem(); this.inventory.classList.toggle('has-selection',!!entry); this.detail.textContent = entry ? `${lootDefinitions[entry.item].name}${lootDefinitions[entry.item].stackable ? ` · ${entry.quantity}` : ''}` : '';
     this.renderComparison(entry);
-    const ringMove=entry && itemIds.includes(entry.item as ItemId) && equipmentCatalog[entry.item as ItemId].slot==='ring' && isEquipmentSlot(entry.slot) && entry.slot!==this.ringSlot;
+    const ringMove=entry && isItemId(entry.item) && equipmentCatalog[entry.item].slot==='ring' && isEquipmentSlot(entry.slot) && entry.slot!==this.ringSlot;
     for (const [id, visible] of [['inventory-equip', entry && this.container(entry.id)==='bag' && (entry.slot === 'bag' || ringMove) && !lootDefinitions[entry.item].stackable], ['inventory-remove', entry && isEquipmentSlot(entry.slot)], ['inventory-recover', entry?.slot === 'overflow'], ['inventory-transfer', this.stashMode && entry && ['bag','overflow'].includes(entry.slot)], ['inventory-split', entry && entry.quantity > 1]] as const) {
       const button = document.getElementById(id) as HTMLButtonElement; button.hidden = !visible; button.disabled = this.busy;
     }
@@ -184,14 +184,15 @@ export class AdventureMenus {
     this.inventory.querySelectorAll<HTMLElement>('[data-instance]').forEach(el => el.classList.toggle('selected', el.dataset.instance === this.selected));
   }
   private destinationSlot(entry: InventoryItem): EquipmentSlot {
-    const slot = equipmentCatalog[entry.item as ItemId].slot;
+    if (!isItemId(entry.item)) throw new Error('That item cannot be equipped.');
+    const slot = equipmentCatalog[entry.item].slot;
     return slot === 'ring' ? this.ringSlot : slot;
   }
   private renderComparison(entry: InventoryItem | undefined): void {
     const details=document.getElementById('inventory-item-stats')!,comparison=document.getElementById('inventory-comparison')!;
     details.replaceChildren();comparison.replaceChildren();this.ringChoices.hidden=true;
-    if(!entry || !itemIds.some(id=>id===entry.item)) {this.comparisonId=null;return;}
-    const definition=equipmentCatalog[entry.item as ItemId];
+    if(!entry || !isItemId(entry.item)) {this.comparisonId=null;return;}
+    const definition=equipmentCatalog[entry.item];
     if(this.comparisonId!==entry.id) {
       this.comparisonId=entry.id;
       this.ringSlot=entry.slot==='ring-left' || entry.slot==='ring-right' ? entry.slot : this.character!.items.some(item=>item.slot==='ring-left') && !this.character!.items.some(item=>item.slot==='ring-right') ? 'ring-right' : 'ring-left';

@@ -1,4 +1,4 @@
-import { itemIds, weaponFamily } from '../gameplay/equipment.ts';
+import { isItemId, weaponFamily } from '../gameplay/equipment.ts';
 import { resolveAreaLighting } from './lighting.ts';
 import { resolveLocalLight } from './local-lighting.ts';
 import { inReserved } from './decoration.ts';
@@ -111,12 +111,12 @@ export function validateAreas(input: Record<string, AreaDefinition>): string[] {
         id(chest.id);
         if (!finite(chest.position, 2) || boundaryDistance(boundary, chest.position) < 0 || !Number.isInteger(chest.scrolls) || chest.scrolls < 0) fail('invalid chest position/reward');
         if (chest.potions !== undefined && (!Number.isSafeInteger(chest.potions) || chest.potions < 0)) fail('invalid potion reward');
-        if (chest.equipment !== undefined && (!Array.isArray(chest.equipment) || !chest.equipment.every(item=>itemIds.includes(item)))) fail('invalid equipment reward');
+        if (chest.equipment !== undefined && (!Array.isArray(chest.equipment) || !chest.equipment.every(isItemId))) fail('invalid equipment reward');
         const prop = area.props.find(p => p.id === chest.prop);
         if (!prop?.asset || Math.hypot(prop.position[0] - chest.position[0], prop.position[2] - chest.position[1]) > .1) fail('chest must reference its placed asset');
       }
       for (const [enemy,items] of Object.entries(area.enemyEquipment ?? {})) {
-        if (!(enemies ? enemies.some(spawn => spawn.id === enemy) : ['enemy','caster'].includes(enemy) && !!area.layout[enemy as 'enemy'|'caster']) || !Array.isArray(items) || !items.every(item=>itemIds.includes(item))) fail('invalid enemy equipment rewards');
+        if (!(enemies ? enemies.some(spawn => spawn.id === enemy) : ['enemy','caster'].includes(enemy) && !!area.layout[enemy as 'enemy'|'caster']) || !Array.isArray(items) || !items.every(isItemId)) fail('invalid enemy equipment rewards');
       }
       for (const scatter of area.scatter) {
         id(scatter.id); if (!Number.isInteger(scatter.count) || scatter.count < 0 || scatter.count > 2000 || !finite(scatter.radius, 2) || scatter.radius[0] < 0 || scatter.radius[1] < scatter.radius[0]) fail('invalid scatter count/radius');

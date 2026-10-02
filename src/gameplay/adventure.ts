@@ -3,7 +3,7 @@ import { validBar, type ActionBar, type WeaponSet } from './abilities';
 import { applyEquipment, createEncounter, type Encounter, type EnemyId } from './encounter';
 import type { Point, Spawn } from './area';
 import type { AreaDefinition, Campfire, Chest } from '../levels/types';
-import { isEquipmentSlot, itemIds, type ItemId } from './equipment';
+import { isEquipmentSlot, isItemId, type ItemId } from './equipment';
 import { character, type CharacterSave } from './character-save';
 import { CharacterPersistence, type StorageSource } from './character-persistence';
 export { characterSaveKey } from './character-save';
@@ -134,8 +134,8 @@ export class Adventure {
   sell(encounter: Encounter, area: AreaDefinition, id: string): void {
     this.assertShop(encounter, area);
     const entry = this.character.items.find(entry => entry.id === id);
-    if (!entry || entry.slot !== 'bag' || !itemIds.includes(entry.item as ItemId)) throw new Error('Select equipment from your bag.');
-    const item = entry.item as ItemId, price = sellPrices[item];
+    if (!entry || entry.slot !== 'bag' || !isItemId(entry.item)) throw new Error('Select equipment from your bag.');
+    const item = entry.item, price = sellPrices[item];
     if (!Number.isSafeInteger(this.character.gold + price)) throw new Error('Gold wallet is full.');
     this.character.items = this.character.items.filter(entry => entry.id !== id);
     this.character.gold += price;

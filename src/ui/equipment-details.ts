@@ -1,39 +1,83 @@
 import type { CharacterSave } from '../gameplay/character-save';
 import type { WeaponSet } from '../gameplay/abilities';
 import { resolveCombatStats, type CombatStats } from '../gameplay/combat-stats';
-import { equipmentCatalog, supportsShield, type EquipmentSlot, type ItemId, type WeaponItem } from '../gameplay/equipment';
+import { equipmentCatalog, isItemId, isWeaponItem, supportsShield, type Bonuses, type EquipmentSlot } from '../gameplay/equipment';
 import { lootDefinitions, type InventoryItem } from '../gameplay/inventory';
 
+const statLabels: Record<keyof CombatStats, string> = {
+  damage: 'Damage', attackRate: 'Attack speed', reach: 'Reach / Range', armor: 'Armor',
+  maxHealth: 'Health', maxMana: 'Mana', manaRegen: 'Mana recovery', moveSpeed: 'Movement', family: 'Weapon',
+};
+const bonusLabels: Record<keyof Bonuses, string> = {
+  armor: 'Armor', health: 'Health', mana: 'Mana', manaRegen: 'Mana recovery',
+  damage: 'Damage', attackRate: 'Attack speed', moveSpeed: 'Movement',
+};
+const comparisonStats = ['damage', 'attackRate', 'reach', 'armor', 'maxHealth', 'maxMana', 'manaRegen', 'moveSpeed'] as const;
+
 export function statLabel(key: keyof CombatStats): string {
-    return {damage:'Damage',attackRate:'Attack speed',reach:'Reach / Range',armor:'Armor',maxHealth:'Health',maxMana:'Mana',manaRegen:'Mana recovery',moveSpeed:'Movement',family:'Weapon'}[key];
-  }
+  return statLabels[key];
+}
 export function statValue(key: keyof CombatStats, value: number): string {
-    if(key==='attackRate')return `${Math.round(value*100)}%`;
-    if(key==='reach')return `${Number(value.toFixed(2))} m`;
-    if(key==='moveSpeed')return `${Number(value.toFixed(2))} m/s`;
-    if(key==='manaRegen')return `${Number(value.toFixed(2))}/s`;
-    return String(Number(value.toFixed(2)));
-  }
+  if (key === 'attackRate') return `${Math.round(value * 100)}%`;
+  const amount = Number(value.toFixed(2));
+  if (key === 'reach') return `${amount} m`;
+  if (key === 'moveSpeed') return `${amount} m/s`;
+  if (key === 'manaRegen') return `${amount}/s`;
+  return String(amount);
+}
+function statRow(label: string, value: string): HTMLDivElement {
+  const row = document.createElement('div');
+  const name = document.createElement('span');
+  const amount = document.createElement('strong');
+  name.textContent = label;
+  amount.textContent = value;
+  row.append(name, amount);
+  return row;
+}
+function bonusValue(key: keyof Bonuses, value: number): string {
+  if (key === 'damage' || key === 'attackRate' || key === 'moveSpeed') return `+${Math.round(value * 100)}%`;
+  return `+${value}${key === 'manaRegen' ? '/s' : ''}`;
+}
 
 /** Inventory and trading use the same authored properties and effective-loadout comparison. */
-export function renderEquipmentDetails(details: HTMLElement, comparison: HTMLElement, entry: InventoryItem,
-  character: CharacterSave, set: WeaponSet, slot: EquipmentSlot): void {
-  const definition = equipmentCatalog[entry.item as ItemId];
-    const line=(label:string,value:string)=>{const row=document.createElement('div'),name=document.createElement('span'),amount=document.createElement('strong');name.textContent=label;amount.textContent=value;row.append(name,amount);return row;};
-    if(definition.weapon)for(const [key,value] of [['damage',definition.weapon.damage],['attackRate',definition.weapon.rate],['reach',definition.weapon.reach]] as const)details.append(line(statLabel(key),statValue(key,value)));
-    const labels={armor:'Armor',health:'Health',mana:'Mana',manaRegen:'Mana recovery',damage:'Damage',attackRate:'Attack speed',moveSpeed:'Movement'};
-    for(const [key,value] of Object.entries(definition.bonuses))details.append(line(labels[key as keyof typeof labels],`+${['damage','attackRate','moveSpeed'].includes(key) ? `${Math.round(value*100)}%` : `${value}${key==='manaRegen' ? '/s' : ''}`}`));
-    if(entry.item==='shield')details.append(line('Frontal block','50% damage reduction'));
-    const hand=slot==='main' || slot==='off';
-    const equipped=character.items.find(item=>item.slot===slot && (!hand || (item.weaponSet ?? 0)===set));
-    if(equipped?.id===entry.id)return;
-    const label=document.createElement('p');label.textContent=equipped ? `Compared with ${lootDefinitions[equipped.item].name}` : 'Compared with empty slot';comparison.append(label);
-    const candidate=character.items.filter(item=>item.id!==entry.id && !(item.slot===slot && (!hand || (item.weaponSet ?? 0)===set)) && !(slot==='main' && !supportsShield(entry.item as WeaponItem) && item.slot==='off' && (item.weaponSet ?? 0)===set));
-    candidate.push({...entry,slot,weaponSet:hand ? set : undefined});
-    const before=resolveCombatStats(character.items,set),after=resolveCombatStats(candidate,set);
-    for(const key of ['damage','attackRate','reach','armor','maxHealth','maxMana','manaRegen','moveSpeed'] as const) {
-      const delta=after[key]-before[key];if(Math.abs(delta)<.00001)continue;
-      const amount=key==='attackRate' ? `${Math.round(delta*100)}%` : statValue(key,delta);
-      const row=line(statLabel(key),`${delta>0 ? '+' : ''}${amount}`);row.dataset.gain=String(delta>0);comparison.append(row);
-    }
+export function renderEquipmentDetails(
+  details: HTMLElement, comparison: HTMLElement, entry: InventoryItem,
+  character: CharacterSave, set: WeaponSet, slot: EquipmentSlot,
+): void {
+  if (!isItemId(entry.item)) return;
+  const definition = equipmentCatalog[entry.item];
+  if (definition.weapon) {
+    for (const [key, value] of [
+      ['damage', definition.weapon.damage], ['attackRate', definition.weapon.rate], ['reach', definition.weapon.reach],
+    ] as const) details.append(statRow(statLabel(key), statValue(key, value)));
+  }
+  for (const key of Object.keys(definition.bonuses) as (keyof Bonuses)[]) {
+    const value = definition.bonuses[key]!;
+    details.append(statRow(bonusLabels[key], bonusValue(key, value)));
+  }
+  if (entry.item === 'shield') details.append(statRow('Frontal block', '50% damage reduction'));
+
+  const hand = slot === 'main' || slot === 'off';
+  const occupiesDestination = (item: InventoryItem) => item.slot === slot && (!hand || (item.weaponSet ?? 0) === set);
+  const equipped = character.items.find(occupiesDestination);
+  if (equipped?.id === entry.id) return;
+  const label = document.createElement('p');
+  label.textContent = equipped ? `Compared with ${lootDefinitions[equipped.item].name}` : 'Compared with empty slot';
+  comparison.append(label);
+
+  const displacesShield = slot === 'main' && isWeaponItem(entry.item) && !supportsShield(entry.item);
+  const candidate = character.items.filter(item =>
+    item.id !== entry.id && !occupiesDestination(item) &&
+    !(displacesShield && item.slot === 'off' && (item.weaponSet ?? 0) === set));
+  candidate.push({ ...entry, slot, weaponSet: hand ? set : undefined });
+  const before = resolveCombatStats(character.items, set);
+  const after = resolveCombatStats(candidate, set);
+  for (const key of comparisonStats) {
+    const delta = after[key] - before[key];
+    if (Math.abs(delta) < .00001) continue;
+    const amount = statValue(key, delta);
+    const row = statRow(statLabel(key), `${delta > 0 ? '+' : ''}${amount}`);
+    row.dataset.gain = String(delta > 0);
+    comparison.append(row);
+  }
 }

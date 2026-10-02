@@ -1,6 +1,6 @@
 import { registerRuntimeSnapshot } from '../diagnostics/report';
 import { ShopMenu } from '../ui/shop';
-import { parseJson } from '../data/json';
+import { ClearingDiagnostics } from './diagnostics';
 import { disposeSceneResources, sceneTextures } from '../assets/resource-ownership';
 import { resolveAreaLighting as lightingFor } from '../levels/lighting';
 import type { SurfaceMode } from '../assets/environment-surfaces';
@@ -403,6 +403,28 @@ function renderFrame(dt: number): boolean {
   if (rendered && active && !transitioning) renderedRevision = revision;
   return rendered;
 }
+const runtimeDiagnostics = new ClearingDiagnostics({
+  audio, adventure, encounter, preferences, harvesting, gathering, approach,
+  playerEquipment, enemyActors, actors, camera, controls, renderer, mount,
+  get currentArea() { return currentArea; },
+  get active() { return active; },
+  get graphics() { return graphics; },
+  get options() { return options; },
+  get personalLantern() { return personalLantern; },
+  get movementWorld() { return movementWorld; },
+  get hoveredInteraction() { return hoveredInteraction; },
+  get surfaceMode() { return surfaceMode; },
+  get revision() { return revision; },
+  get renderedRevision() { return renderedRevision; },
+  get transitioning() { return transitioning; },
+  get areaErrors() { return areaErrors; },
+  get characterMissing() { return characterMissing; },
+  get contentHash() { return contentHash; },
+  get updateMs() { return updateMs; },
+  get renderedFrames() { return renderedFrames; },
+});
+const diagnostics = () => runtimeDiagnostics.snapshot();
+
 try {
   const paladin = await loader.loadAsync(characters.player.model);
   sceneTextures(paladin.scene);
@@ -477,51 +499,7 @@ function dispose(): void {
   void disposeAreaCache().catch((error: unknown) => console.error('Unable to release area assets.', error));
 }
 
-registerRuntimeSnapshot(() => {
-  const sound = audio.diagnostics();
-  const pipeline = graphics?.pipelineDiagnostics();
-  return {
-    area: currentArea.id, ready: !!active && renderedRevision === revision && !transitioning && !areaErrors.length && !mount.dataset.renderError,
-    backend: 'webgpu', missing: [...(active?.missing ?? []), ...(characterMissing ? ['character'] : [])].slice(0, 16),
-    errors: [...areaErrors, ...(mount.dataset.renderError ? [mount.dataset.renderError] : [])].slice(-16),
-    settings: options ? { ...options.settings } : undefined,
-    audio: { state: sound.state, loaded: sound.loaded, loading: sound.loading, voices: sound.voices, errors: sound.errors.slice(-16) },
-    persistence: adventure.saveDiagnostics(),
-    graphics: pipeline && 'sceneWidth' in pipeline ? { ready: pipeline.ready, method: pipeline.method, sceneWidth: pipeline.sceneWidth ?? 0, sceneHeight: pipeline.sceneHeight ?? 0,
-      outputWidth: pipeline.outputWidth ?? 0, outputHeight: pipeline.outputHeight ?? 0 } : undefined,
-  };
-});
-
-function diagnostics() {
-  return {
-    audio: audio.diagnostics(), lantern: personalLantern?.diagnostics(), surfaces: surfaceMode,
-    area: currentArea.id, revision, renderedRevision,
-    ready: !!active && renderedRevision === revision && !transitioning && !areaErrors.length && !mount.dataset.renderError,
-    errors: [...areaErrors, ...(mount.dataset.renderError ? [mount.dataset.renderError] : [])],
-    missing: [...(active?.missing ?? []), ...(characterMissing ? ['character'] : [])],
-    contentHash, settings: options!.settings, backend: 'webgpu', updateMs, renderedFrames, phase: encounter.phase,
-    equipment: playerEquipment.diagnostics(),
-    controls: { bindings: preferences.value, actionBar: adventure.character.actionBar },
-    interaction: { hover: hoveredInteraction?.key ?? null, approach: approach.worldKey },
-    harvest: { chopping: gathering.choppingId, trees: active?.resources.map(tree => ({ ...tree, ...harvesting.state(currentArea.id, tree.id) })) },
-    adventure: {
-      persistence: adventure.saveDiagnostics(), character: adventure.character, portal: adventure.portal, castRemaining: adventure.castRemaining,
-      drops: adventure.session(currentArea.id).drops, chests: adventure.session(currentArea.id).chests,
-      fires: (currentArea.campfires ?? []).map(fire => ({ id: fire.id, safe: adventure.fireSafe(currentArea, fire, encounter) })),
-    },
-    encounter: {
-      enemies: structuredClone(encounter.enemies), equipment: enemyActors.diagnostics(),
-      player: { ...encounter.player }, playerMana: encounter.playerMana, stats: {...encounter.stats}, dodgeRemaining: encounter.dodgeRemaining,
-      dodgeCooldown: encounter.dodgeCooldown, blocking: encounter.blocking, projectiles: encounter.projectiles, pending: encounter.pending,
-      animations: Object.fromEntries(Object.entries(actors).map(([id, actor]) => [id, actor.current])),
-      navigationReady: movementWorld?.navigationReady ?? false, navigationMs: movementWorld?.generationMs ?? 0,
-    },
-    camera: { position: camera.position.toArray(), target: controls.target.toArray(), zoom: camera.zoom, viewport: [mount.clientWidth, mount.clientHeight] },
-    objects: active?.root.children.length ?? 0,
-    resources: { memory: { ...renderer.info.memory }, drawCalls: renderer.info.render.drawCalls, triangles: renderer.info.render.triangles },
-    graphics: renderer.domElement.dataset.graphics ? parseJson(renderer.domElement.dataset.graphics) : null,
-  };
-}
+registerRuntimeSnapshot(() => runtimeDiagnostics.report());
 
 function freezePreview(value: boolean): void {
   frozen = value; fixedCamera = value; clearInput();

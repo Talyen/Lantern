@@ -27,7 +27,7 @@ This table is the canonical map read by `agent:context`. Owners are starting poi
 
 ## Desktop reporting
 
-[Desktop candidates and reporting](DESKTOP.md) owns distribution and report behavior. The bounded collector in `src/diagnostics/report.ts` starts before route imports and receives selected status from the clearing coordinator. It never consumes the full gameplay diagnostic snapshot or character saves. Electron's `electron/reporting.cjs` owns local report retention and native export through the restricted preload bridge.
+[Desktop candidates and reporting](DESKTOP.md) owns distribution and report behavior. The bounded collector in `src/diagnostics/report.ts` starts before route imports and receives selected status from [clearing diagnostics](../src/clearing/diagnostics.ts), which keeps report fields separate from the full development snapshot. It never consumes the full gameplay diagnostic snapshot or character saves. Electron's `electron/reporting.cjs` owns local report retention and native export through the restricted preload bridge.
 
 ## Owners and data flow
 
