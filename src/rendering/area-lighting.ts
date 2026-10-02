@@ -41,13 +41,23 @@ export class AreaLightingResources {
     const sky = new THREE.Color(spec.sky), horizon = new THREE.Color(spec.horizon), ground = new THREE.Color(spec.ground);
     const sun = new THREE.Color(spec.sunColor), direction = new THREE.Vector3(...look.sun.position).normalize();
     const ray = new THREE.Vector3(), color = new THREE.Color();
-    for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
-      const theta = Math.PI * (y + .5) / height, phi = 2 * Math.PI * (x + .5) / width;
-      ray.set(-Math.sin(theta) * Math.cos(phi), Math.cos(theta), Math.sin(theta) * Math.sin(phi));
-      color.copy(horizon).lerp(ray.y >= 0 ? sky : ground, Math.pow(Math.abs(ray.y), .55));
-      const panel = Math.pow(Math.max(0, ray.dot(direction)), 32) * spec.sunIntensity;
-      color.r += sun.r * panel; color.g += sun.g * panel; color.b += sun.b * panel;
-      const i = (y * width + x) * 4; pixels[i] = color.r; pixels[i + 1] = color.g; pixels[i + 2] = color.b; pixels[i + 3] = 1;
+    // Longitude depends only on the column. Retain double precision and the
+    // original multiplication order so the uploaded sky pixels stay identical.
+    const longitudeCos = new Float64Array(width), longitudeSin = new Float64Array(width);
+    for (let x = 0; x < width; x++) {
+      const phi = 2 * Math.PI * (x + .5) / width;
+      longitudeCos[x] = Math.cos(phi); longitudeSin[x] = Math.sin(phi);
+    }
+    for (let y = 0; y < height; y++) {
+      const theta = Math.PI * (y + .5) / height, latitudeSin = Math.sin(theta), latitudeCos = Math.cos(theta);
+      const blend = Math.pow(Math.abs(latitudeCos), .55);
+      for (let x = 0; x < width; x++) {
+        ray.set(-latitudeSin * longitudeCos[x], latitudeCos, latitudeSin * longitudeSin[x]);
+        color.copy(horizon).lerp(ray.y >= 0 ? sky : ground, blend);
+        const panel = Math.pow(Math.max(0, ray.dot(direction)), 32) * spec.sunIntensity;
+        color.r += sun.r * panel; color.g += sun.g * panel; color.b += sun.b * panel;
+        const i = (y * width + x) * 4; pixels[i] = color.r; pixels[i + 1] = color.g; pixels[i + 2] = color.b; pixels[i + 3] = 1;
+      }
     }
     const texture = new THREE.DataTexture(pixels, width, height, THREE.RGBAFormat, THREE.FloatType);
     texture.colorSpace = THREE.LinearSRGBColorSpace; texture.mapping = THREE.EquirectangularReflectionMapping; texture.needsUpdate = true;

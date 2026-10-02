@@ -20,16 +20,17 @@ export class LightingCache<T> {
     const lease = this.acquire(key)!; this.trim(); return lease;
   }
   private trim(): void {
+    let { entries, bytes } = this.stats();
     for (const [key, entry] of this.entries) {
-      const stats = this.stats();
-      if (stats.entries <= this.maxEntries && stats.bytes <= this.maxBytes) break;
+      if (entries <= this.maxEntries && bytes <= this.maxBytes) break;
       if (entry.references) continue;
-      this.entries.delete(key); this.destroy(entry.value);
+      this.entries.delete(key); entries--; bytes -= entry.bytes; this.destroy(entry.value);
     }
   }
   stats() {
-    const entries = [...this.entries.values()];
-    return { entries: entries.length, bytes: entries.reduce((sum, item) => sum + item.bytes, 0), leased: entries.filter(item => item.references > 0).length, maxEntries: this.maxEntries, maxBytes: this.maxBytes };
+    let bytes = 0, leased = 0;
+    for (const entry of this.entries.values()) { bytes += entry.bytes; if (entry.references > 0) leased++; }
+    return { entries: this.entries.size, bytes, leased, maxEntries: this.maxEntries, maxBytes: this.maxBytes };
   }
   dispose(): void { this.closed = true; this.entries.forEach(entry => this.destroy(entry.value)); this.entries.clear(); }
 }
