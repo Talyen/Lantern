@@ -625,7 +625,7 @@ test('caster windup begins after its cooldown unlocks within a frame', () => {
 });
 
 test('authored packs advance player clocks once and resolve sweeps, projectiles and the final victory by enemy ID', () => {
-  const layout: import('../src/gameplay/area').EncounterLayout = {
+  const layout: EncounterLayout = {
     boundary: {kind:'circle',center:[0,0],radius:10}, player:{position:[0,0],yaw:0},
     enemies: ['left','middle','right'].map((id,index) => ({id,position:[(index-1)*.6,1.2],yaw:Math.PI,kind:'raider',rig:'skeleton',loadout:{main:'sword',off:null}})),
   };

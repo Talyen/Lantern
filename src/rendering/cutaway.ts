@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import type * as THREE from 'three';
 /** Camera cutaways retain real opaque geometry in shadow and irradiance captures. */
 export const lightingOnlyLayer = 1;
 export function lightingOnly(root: THREE.Object3D): void {

@@ -262,7 +262,7 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
     });
     for (const meshes of staticBatches.values()) if (meshes.length > 1) {
       const first = meshes[0], batch = new THREE.InstancedMesh(first.geometry, first.material, meshes.length);
-      batch.layers.mask = first.layers.mask; batch.userData.lightingOnly = first.userData.lightingOnly;
+      batch.layers.mask = first.layers.mask; batch.userData.lightingOnly = first.userData.lightingOnly === true;
       batch.name = `instances:${first.name}`; batch.castShadow = first.castShadow; batch.receiveShadow = first.receiveShadow;
       batch.userData.outlineStrength = (first.userData.outlineStrength as number | undefined) ?? 0;
       meshes.forEach((mesh, i) => { batch.setMatrixAt(i, mesh.matrixWorld); mesh.removeFromParent(); }); batch.computeBoundingSphere(); root.add(batch);
