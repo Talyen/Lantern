@@ -11,7 +11,7 @@ export type ParticleKind = 'fire' | 'smoke' | 'sparks' | 'hit' | 'rain' | 'snow'
 interface Emitter { position: THREE.Vector3; kind: ParticleKind; rate: number; carry: number; space: THREE.Object3D; }
 interface Pool {
   object: THREE.Points; positions: Float32Array; velocities: Float32Array; age: Float32Array;
-  life: Float32Array; colors: Float32Array; cursor: number; capacity: number; active: number; limit: number;
+  life: Float32Array; live: Uint16Array; colors: Float32Array; cursor: number; capacity: number; active: number; limit: number;
 }
 interface WaterOptions { width?: number; length?: number; flow?: number; shorelineMask?: THREE.Texture; }
 interface Water { mesh: THREE.Mesh<THREE.PlaneGeometry>; waves: ReturnType<typeof createWaterWaves>; options: WaterOptions; normal: THREE.Texture; shoreline: THREE.Texture; }
@@ -56,7 +56,7 @@ export class CoreEffects {
       const material = new THREE.PointsMaterial({ map: particleTextures[kind] ?? this.texture, vertexColors: true, transparent: true, depthWrite: false,
         size: sizes[kind], opacity: kind === 'smoke' ? 0.25 : kind === 'dust' ? 0.32 : 0.8, blending: ['fire', 'sparks', 'hit'].includes(kind) ? THREE.AdditiveBlending : THREE.NormalBlending });
       const object = new THREE.Points(geometry, material); object.frustumCulled = false; object.visible = false; object.name = kind; this.root.add(object);
-      this.pools.set(kind, { object, positions, colors: vertexColors, velocities: new Float32Array(capacity * 3), age: new Float32Array(capacity), life: new Float32Array(capacity), cursor: 0, capacity, active: 0, limit: capacity });
+      this.pools.set(kind, { object, positions, colors: vertexColors, velocities: new Float32Array(capacity * 3), age: new Float32Array(capacity), life: new Float32Array(capacity), live: new Uint16Array(capacity), cursor: 0, capacity, active: 0, limit: capacity });
     }
   }
   setQuality(quality: QualityLevel): void {
@@ -64,7 +64,12 @@ export class CoreEffects {
     for (const pool of this.pools.values()) {
       pool.limit = Math.max(1, Math.floor(pool.capacity * particlePresets[quality].capacity));
       pool.object.geometry.setDrawRange(0, pool.limit);
-      for (let i = pool.limit; i < pool.capacity; i++) { if (pool.life[i] > 0) pool.active--; pool.life[i] = 0; pool.positions[i * 3 + 1] = 1e6; }
+      for (let i = pool.limit; i < pool.capacity; i++) { pool.life[i] = 0; pool.positions[i * 3 + 1] = 1e6; }
+      // Compact surviving slots after a quality change; pool capacity and draw
+      // order stay unchanged, including particles overwritten by the ring cursor.
+      let active = 0;
+      for (let i = 0; i < pool.active; i++) if (pool.life[pool.live[i]] > 0) pool.live[active++] = pool.live[i];
+      pool.active = active;
       if (!pool.active) pool.object.visible = false;
       pool.object.geometry.attributes.position.needsUpdate = true;
     }
@@ -93,7 +98,7 @@ export class CoreEffects {
   private spawn(kind: ParticleKind, x: number, y: number, z: number): void {
     const p = this.pools.get(kind)!;
     const i = p.cursor++ % p.limit, k = i * 3; const spread = kind === 'rain' || kind === 'snow' ? 0 : kind === 'dust' ? 1.8 : 0.1;
-    if (p.life[i] === 0) p.active++;
+    if (p.life[i] === 0) p.live[p.active++] = i;
     p.object.visible = true;
     p.positions[k] = x + (Math.random() - 0.5) * spread; p.positions[k + 1] = y + (kind === 'dust' ? (Math.random() - 0.5) * 1.2 : 0); p.positions[k + 2] = z + (Math.random() - 0.5) * spread;
     p.age[i] = 0; p.life[i] = kind === 'rain' ? 1.4 : kind === 'snow' ? 5 : kind === 'dust' ? 4 + Math.random() * 3 : kind === 'smoke' ? 2.2 : kind === 'fire' ? 0.65 : kind === 'hit' ? .22 : 0.5;
@@ -179,14 +184,16 @@ export class CoreEffects {
       // Empty pools contribute no pixels. Leave their buffers alone until the
       // next spawn, rather than scanning/uploading clipped vertices every frame.
       if (!p.active) continue;
-      for (let i = 0; i < p.limit; i++) {
-        if (p.life[i] === 0) continue;
-        const k = i * 3; p.age[i] += dt;
-        if (p.age[i] >= p.life[i]) { p.positions[k + 1] = 1e6; p.life[i] = 0; p.active--; continue; }
+      // Each slot evolves independently. Swap-remove expired entries without
+      // changing GPU slot order or visiting the unused portion of the pool.
+      for (let live = 0; live < p.active;) {
+        const i = p.live[live], k = i * 3; p.age[i] += dt;
+        if (p.age[i] >= p.life[i]) { p.positions[k + 1] = 1e6; p.life[i] = 0; p.live[live] = p.live[--p.active]; continue; }
         p.positions[k] += (p.velocities[k] + this.wind.value.x) * dt; p.positions[k + 1] += p.velocities[k + 1] * dt; p.positions[k + 2] += (p.velocities[k + 2] + this.wind.value.z) * dt;
         if (kind === 'hit' || kind === 'sparks') p.velocities[k + 1] -= dt * 4;
         const fade = kind === 'dust' ? Math.sin(Math.PI * p.age[i] / p.life[i]) : 1 - p.age[i] / p.life[i]; const color = colors[kind];
         p.colors[k] = color.r * fade; p.colors[k + 1] = color.g * fade; p.colors[k + 2] = color.b * fade;
+        live++;
       }
       p.object.geometry.attributes.position.needsUpdate = true; p.object.geometry.attributes.color.needsUpdate = true;
       p.object.visible = p.active > 0;

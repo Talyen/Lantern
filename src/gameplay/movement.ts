@@ -38,7 +38,7 @@ export class MovementWorld implements Movement {
   private navigationRevision = 0;
   private navigationPending = false;
   private navigationPostQueued = false;
-  private routes = new WeakMap<ActorState, { path: [number, number, number][]; target: number[]; age: number }>();
+  private routes = new WeakMap<ActorState, { path: [number, number, number][]; target: number[]; age: number; next: number }>();
   readonly generationMs: number;
   private disposed = false;
   static async create(boundary: Boundary, traversal: Traversal = { obstacles: [] }): Promise<MovementWorld> {
@@ -124,15 +124,16 @@ export class MovementWorld implements Movement {
       return this.lineOfSight(from, to) ? { x: to.x - from.x, z: to.z - from.z } : { x: 0, z: 0 };
     }
     let route = this.routes.get(from);
-    if (!route) { route = {path:[],target:[Infinity,Infinity],age:Infinity}; this.routes.set(from,route); }
+    if (!route) { route = {path:[],target:[Infinity,Infinity],age:Infinity,next:0}; this.routes.set(from,route); }
     route.age += dt;
     if (route.age >= .25 || Math.hypot(to.x - route.target[0], to.z - route.target[1]) >= .4) {
       const result = findPath(this.nav, [from.x, from.y, from.z], [to.x, to.y, to.z], [.6, 1, .6], DEFAULT_QUERY_FILTER);
       route.path = result.success ? result.path.map(p => [...p.position] as [number, number, number]) : [];
-      route.target = [to.x, to.z]; route.age = 0;
+      route.target[0] = to.x; route.target[1] = to.z; route.age = 0; route.next = 0;
     }
-    while (route.path.length && Math.hypot(route.path[0][0] - from.x, route.path[0][2] - from.z) < .18) route.path.shift();
-    const next = route.path[0];
+    // Consuming a waypoint need not move every remaining point in the array.
+    while (route.next < route.path.length && Math.hypot(route.path[route.next][0] - from.x, route.path[route.next][2] - from.z) < .18) route.next++;
+    const next = route.path[route.next];
     return next ? { x: next[0] - from.x, z: next[2] - from.z } : { x: 0, z: 0 };
   }
   /** Independent pickup paths never replace the enemy's pursuit-path cache. */
