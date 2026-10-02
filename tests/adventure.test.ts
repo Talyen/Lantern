@@ -615,3 +615,23 @@ test('buyback retains only the last ten, migrates revision 6 without gifts and r
   expect(migrated.items).toEqual(legacy.items); expect(migrated.campClaims).toEqual(legacy.campClaims);
   state.closeSave();restored.closeSave();
 });
+
+test('integrated menu and interaction owners keep Shop modal and dispatch its reached target', async () => {
+  const {MenuController}=await import('../src/clearing/menu-controller');
+  const {InteractionActions}=await import('../src/clearing/interaction-actions');
+  const THREE=await import('three');
+  const shop={paused:true,close:vi.fn(()=>{shop.paused=false;})};
+  const openInventory=vi.fn(),openOptions=vi.fn();
+  const menus={paused:false,close:vi.fn(),openInventory,openRepair:vi.fn(),openTravel:vi.fn()};
+  const controller=new MenuController({shop,adventure:menus,skills:{paused:false,close:vi.fn(),open:vi.fn()},bindings:{paused:false,close:vi.fn()},options:{paused:false,close:vi.fn(),open:openOptions}},()=>true);
+  expect(controller.paused).toBe(true);controller.toggleInventory();
+  expect(shop.close).toHaveBeenCalledOnce();expect(openInventory).not.toHaveBeenCalled();expect(controller.paused).toBe(false);
+  controller.toggleInventory();expect(openInventory).toHaveBeenCalledOnce();
+  shop.paused=true;controller.toggleOptions();expect(openOptions).not.toHaveBeenCalled();expect(controller.paused).toBe(false);
+  const {state,encounter}=trading(),openShop=vi.fn();
+  const actions=new InteractionActions(state,encounter,menus,{select:vi.fn()},{play:vi.fn()},{area:()=>home,definitions:()=>({homestead:home}),paused:()=>controller.paused,changeArea:()=>Promise.resolve(true),syncAdventure:vi.fn(),openShop});
+  const target={key:'shop/merchant',name:'Shop',type:'shop' as const,position:home.shop!.position,range:1.8,height:0,obstacleId:home.shop!.prop,object:new THREE.Group()};
+  actions.execute(target);expect(openShop).toHaveBeenCalledOnce();
+  shop.paused=true;actions.execute(target);expect(openShop).toHaveBeenCalledOnce();
+  state.closeSave();
+});
