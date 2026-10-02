@@ -41,7 +41,10 @@ await cli(async () => {
       else if (entry.name.endsWith('.md')) files.push(path);
     }
   }
-  if (existsSync(resolve(root, 'Docs'))) await walk(resolve(root, 'Docs'));
+  for (const directory of ['Docs', '.agents']) {
+    const path = resolve(root, directory);
+    if (existsSync(path)) await walk(path);
+  }
   const scripts = JSON.parse(await readFile(resolve(root, 'package.json'), 'utf8')).scripts;
   const errors = [];
   const headings = new Map();

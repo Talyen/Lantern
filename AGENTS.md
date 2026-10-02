@@ -11,6 +11,12 @@ Lantern is a desktop-browser fantasy action RPG prototype using Vite, TypeScript
 - Investigate failures with a specific hypothesis and focused evidence. Reassess unproductive approaches; do not change product behavior or raise timeouts merely to hide local contention.
 - Use plain language and player-facing names. Include implementation details when they explain a decision or risk.
 
+## Friction and lasting guidance
+
+- When friction occurs, consult [.agents/FRICTION_LOG.md](.agents/FRICTION_LOG.md). Record unresolved misleading guidance, workflow gaps, recurring problems, or significant first-time blockers; update an existing matching entry rather than duplicating it. Skip routine transient failures and issues fully resolved during the same task. No task-start review is required.
+- Agents may proactively fix small, understood, reversible independent friction issues in their owned task when the cause and focused verification are clear. Leave broad, uncertain, or consequential changes logged for a separate decision; avoid speculative cleanup.
+- Fix and verify the cause before archiving an open entry with a resolution link. A workaround alone leaves it open. Put lasting guidance in the canonical document or tool; the log records intake and history. Keep updates in the owned worktree and preserve concurrent entries during integration.
+
 ## Concurrent work and Git
 
 - Use `npm run agent:start -- --task <slug>` before feature edits, then use its returned worktree directory for every command. Up to four tasks may work independently. Do not edit main directly during ordinary task work.

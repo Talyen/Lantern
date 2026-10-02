@@ -77,7 +77,7 @@ Choose one single-view command for ordinary review. Only `--all` creates a conta
 | `npm run dev` | Browser iteration on loopback |
 | `npm run typecheck` | Runtime, tests and Vite/Vitest configuration types |
 | `npm test` | Existing Vitest suite, using two workers |
-| `npm run docs:check` | Local links, heading fragments and npm command names in root Markdown and `Docs/`, including archives |
+| `npm run docs:check` | Local links, heading fragments and npm command names in root Markdown, `Docs/` and `.agents/`, including archives |
 | `npm run levels:check` | Area definitions, gate links, library selections and optional-art warnings |
 | `npm run build` | Typecheck, stage private runtime art, and build |
 | `npm run preview` | Serve the built renderer locally |
