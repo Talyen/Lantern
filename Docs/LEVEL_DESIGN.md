@@ -60,7 +60,7 @@ Prerequisites: the project's Node version, installed npm dependencies, `agent-br
 2. Edit area JSON. Vite hot updates preserve renderer/cache, preview camera and graphics settings. Content changes reset temporal history and encounter pose. Frozen previews retain the selected target and zoom. No production build, browser restart or Blender export is needed.
 3. Use Area/View, Play/Freeze and Guides controls, or `npm run levels:capture -- --area=clearing`.
 4. Inspect one resulting view locally. Correct a visible concern in the same session. `--view ID` selects another view; `--all` explicitly creates the full contact sheet.
-5. Use the fast sanity gate after the area stabilizes and one relevant interaction when behavior changed. Measurements and broad smoke flows are optional targeted checks.
+5. Use the fast sanity gate after the area stabilizes and one relevant interaction when behavior changed. Broad smoke flows are targeted checks for concrete functional concerns. Measurements require a specific user request or an evidenced performance defect; routine area completion never benchmarks.
 6. `npm run levels:stop` closes only the owned browser/server. Close rendering sessions after review to release the agent GPU slot.
 
 The development-only route is `/?author=levels&area=<id>`. Scene-code changes may reload the page; data edits are the optimized path. Invalid definitions preserve the last valid scene and report the area/object. Invalid JSON syntax also triggers Vite's error overlay. Superseded asynchronous loads are discarded and released. Readiness means the committed revision has loaded and rendered, not merely that requests started.

@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { resolve, join } from 'node:path';
 import { context, readJSON, processIdentity, reserveSpace } from './state.mjs';
 import { root } from '../lib/cli.mjs';
+export const RESOURCE_LIMITS = Object.freeze({ gpu: 1, checks: 1, heavy: 1 });
 const owned = new Map(), scope = new AsyncLocalStorage();
 const inheritedAtStart = JSON.parse(process.env.LANTERN_LEASES ?? '{}');
 const active = () => scope.getStore() ?? owned;
@@ -21,9 +22,10 @@ export async function registerChild(pid) {
 export function releaseChild(pid) {
   for (const lease of active().values()) if (lease.child && !lease.child.stdin.destroyed) lease.child.stdin.write(JSON.stringify({ done: pid }) + '\n');
 }
-export async function acquire(resource, { cwd = root, ctx, slots = resource === 'checks' || resource === 'gpu' ? 2 : 1, slot, tryOnly = false } = {}) {
+export async function acquire(resource, { cwd = root, ctx, slots = RESOURCE_LIMITS[resource] ?? 1, slot, tryOnly = false } = {}) {
   ctx ??= await context(cwd);
   if (!/^[a-z0-9-]+$/.test(resource)) throw new Error('Invalid resource name');
+  if (RESOURCE_LIMITS[resource] && (slots !== RESOURCE_LIMITS[resource] || (slot !== undefined && slot !== 0))) throw new Error(`Managed ${resource} operations require one slot.`);
   const scoped = scope.getStore()?.get(resource);
   if (scoped?.store === ctx.store && (slot === undefined || scoped.record.slot === slot)) return { ...scoped, release: async () => {} };
   const inherited = JSON.parse(process.env.LANTERN_LEASES ?? '{}')[resource];
@@ -34,7 +36,7 @@ export async function acquire(resource, { cwd = root, ctx, slots = resource === 
   }
   if (resource === 'heavy') await reserveSpace(ctx.main);
   const token = randomUUID();
-  const child = spawn('python3', [resolve(root, 'scripts/agents/native.py'), 'lease', join(ctx.store, 'leases'), resource, '--slots', String(slots), '--token', token, '--task', cwd, ...(slot === undefined ? [] : ['--slot',String(slot)]), ...(tryOnly ? ['--try-only'] : [])], { stdio: ['pipe', 'pipe', 'inherit'] });
+  const child = spawn('python3', [resolve(root, 'scripts/agents/native.py'), 'lease', join(ctx.store, 'leases'), resource, '--slots', String(slots), '--token', token, '--task', cwd, ...(['gpu', 'checks'].includes(resource) ? ['--drain-slots', '2'] : []), ...(slot === undefined ? [] : ['--slot',String(slot)]), ...(tryOnly ? ['--try-only'] : [])], { stdio: ['pipe', 'pipe', 'inherit'] });
   const exited = new Promise(accept => child.once('exit', accept));
   const record = await new Promise((accept, reject) => {
     child.once('error', reject);
@@ -60,13 +62,7 @@ export async function withResource(resource, operation, options) {
   try { return await scope.run(leases, operation); } finally { await lease.release(); }
 }
 
-/** Reserve the other slot without waiting: measured samples must never overlap another review. */
-export async function reserveGpuMeasurement({cwd=root,ctx}={}) {
-  ctx ??= await context(cwd);
-  const own=await acquire('gpu',{cwd,ctx});
-  try {
-    const other=await acquire('gpu',{cwd,ctx,slots:2,slot:1-own.record.slot,tryOnly:true});
-    if(!other){await own.release();return {deferred:true,reason:'Another GPU slot is in use',release:async()=>{}};}
-    return {deferred:false,release:async()=>{try{await other.release();}finally{await own.release();}}};
-  } catch(error) {await own.release();throw error;}
+/** Measurements borrow the owned preview's single GPU lease. */
+export async function reserveGpuMeasurement(options = {}) {
+  return acquire('gpu', options);
 }

@@ -2,11 +2,17 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
+import { spawn, execFile } from 'node:child_process';
+import { createInterface } from 'node:readline';
+import { promisify } from 'node:util';
+import { once } from 'node:events';
 import { join } from 'node:path';
 import { git, context, writeJSON, readJSON, taskPath, spaceRequirement } from './state.mjs';
 import { startTask, finishTask, cleanupTask, recover } from './workflow.mjs';
 import { privateTree } from './copy.mjs';
-import { withResource } from './resources.mjs';
+import { acquire, childEnvironment, withResource } from './resources.mjs';
+
+import { checkStages } from '../check.mjs';
 
 async function fixture() {
   const directory = await mkdtemp(join(tmpdir(), 'lantern-workflow-'));
@@ -107,4 +113,104 @@ test('native APFS clones are independent and overlapping asset changes require e
     await finishTask(ctx, await readJSON(taskPath(ctx, second.id)), { resolvedAssets: ['model.glb'] });
     assert.equal(await readFile(join(ctx.main, 'public/vendor/model.glb'), 'utf8'), 'second combined model');
   } finally { await ctx.dispose(); }
+});
+
+
+test('light handoff excludes suites and builds even for packaging and workflow changes', () => {
+  const names = (files, args) => checkStages(files, args).map(([name]) => name);
+  for (const file of ['package.json', 'package-lock.json', 'vite.config.ts', 'scripts/build.mjs', 'scripts/agents/resources.mjs', 'assets/playable-characters.json']) {
+    const light = names([file]);
+    assert.ok(light.includes('types'));
+    for (const stage of ['tests', 'workflow', 'build', 'inventory', 'preview']) assert.ok(!light.includes(stage), `${file}: ${stage}`);
+  }
+  assert.deepEqual(names(['AGENTS.md']), ['docs', 'index-diff', 'diff']);
+  assert.ok(names(['src/levels/lighting.ts']).includes('levels'));
+  const full = names([], { '--full': true });
+  for (const stage of ['tests', 'workflow', 'build', 'inventory', 'preview']) assert.ok(full.includes(stage));
+  const assets = names(['assets/playable-characters.json'], { '--assets': true });
+  assert.ok(assets.includes('assets'));
+  assert.ok(!assets.includes('build'));
+});
+
+test('managed resources serialize, inherit leases and clean up without a second slot', { timeout: 15000 }, async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'lantern-resources-'));
+  const ctx = { main: directory, store: join(directory, 'state') };
+  try {
+    for (const resource of ['gpu', 'checks']) {
+      await withResource(resource, async () => {
+        const nested = await acquire(resource, { ctx });
+        assert.equal(nested.record.slot, 0);
+        await nested.release();
+        // A child borrows the same live token; releasing it must not release the owner.
+        const code = `import {acquire} from ${JSON.stringify(new URL('./resources.mjs', import.meta.url).href)}; const lease=await acquire(${JSON.stringify(resource)}, {ctx:JSON.parse(process.env.TEST_CTX)}); console.log(lease.record.token); await lease.release();`;
+        const { stdout } = await promisify(execFile)(process.execPath, ['--input-type=module', '-e', code], { env: { ...childEnvironment(), TEST_CTX: JSON.stringify(ctx) } });
+        assert.equal(stdout.trim(), nested.record.token);
+        // Use a separate process so AsyncLocalStorage does not intentionally reuse ownership.
+        const probe = `import {acquire} from ${JSON.stringify(new URL('./resources.mjs', import.meta.url).href)}; console.log(await acquire(${JSON.stringify(resource)}, {ctx:JSON.parse(process.env.TEST_CTX),tryOnly:true}));`;
+        const result = await promisify(execFile)(process.execPath, ['--input-type=module', '-e', probe], { env: { ...process.env, LANTERN_LEASES: '{}', TEST_CTX: JSON.stringify(ctx) } });
+        assert.equal(result.stdout.trim(), 'null');
+      }, { ctx });
+      const lease = await acquire(resource, { ctx, tryOnly: true });
+      assert.ok(lease);
+      const marker = join(directory, `${resource}-cleanup`);
+      lease.cleanup([process.execPath, '-e', `require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'cleaned')`]);
+      await lease.release();
+      assert.equal(await readFile(marker, 'utf8'), 'cleaned');
+      assert.equal(await readJSON(join(ctx.store, 'leases', `${resource}-0.json`), null), null);
+      await assert.rejects(acquire(resource, { ctx, slots: 2 }), /require one slot/);
+    }
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
+test('retired GPU slot drains, remains blocked for old worktrees and releases on interruption', { timeout: 15000 }, async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'lantern-legacy-resource-'));
+  const ctx = { main: directory, store: join(directory, 'state') };
+  const native = new URL('./native.py', import.meta.url).pathname;
+  const legacy = spawn('python3', [native, 'lease', join(ctx.store, 'leases'), 'gpu', '--slots', '2', '--slot', '1', '--token', 'legacy-test'], { stdio: ['pipe', 'pipe', 'inherit'] });
+  const lines = createInterface({ input: legacy.stdout });
+  let lease;
+  try {
+    const [line] = await once(lines, 'line');
+    assert.equal(JSON.parse(line).acquired.slot, 1);
+    assert.equal(await acquire('gpu', { ctx, tryOnly: true }), null);
+    const queued = spawn('python3', [native, 'lease', join(ctx.store, 'leases'), 'gpu', '--drain-slots', '2', '--token', 'queued-test'], { stdio: ['pipe', 'pipe', 'inherit'] });
+    const queuedLines = createInterface({ input: queued.stdout });
+    try {
+      const [waiting] = await once(queuedLines, 'line');
+      assert.equal(JSON.parse(waiting).waiting, 'gpu');
+      const admitted = once(queuedLines, 'line');
+      const exited = once(legacy, 'exit');
+      legacy.stdin.end();
+      await exited;
+      const [acquired] = await admitted;
+      assert.equal(JSON.parse(acquired).acquired.slot, 0);
+    } finally {
+      queuedLines.close();
+      const exited = once(queued, 'exit');
+      queued.stdin.end();
+      await exited;
+    }
+    lease = await acquire('gpu', { ctx, tryOnly: true });
+    assert.ok(lease);
+    const { stdout } = await promisify(execFile)('python3', [native, 'lease', join(ctx.store, 'leases'), 'gpu', '--slots', '2', '--slot', '1', '--try-only', '--token', 'legacy-probe']);
+    assert.equal(JSON.parse(stdout).deferred, 'gpu');
+    const interrupted = once(lease.child, 'exit');
+    lease.child.kill('SIGTERM');
+    await interrupted;
+    await lease.release();
+    lease = await acquire('gpu', { ctx, tryOnly: true });
+    assert.ok(lease);
+  } finally {
+    lines.close();
+    if (legacy.exitCode === null && legacy.signalCode === null) { const exited = once(legacy, 'exit'); legacy.stdin.end(); await exited; }
+    if (lease) await lease.release();
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+
+test('local full gate and unrequested measurement reject before expensive work', async () => {
+  const execute = promisify(execFile);
+  await assert.rejects(execute(process.execPath, [new URL('../check.mjs', import.meta.url).pathname, '--full'], { env: { ...process.env, CI: 'false' } }), error => error.code === 1 && error.stderr.includes('requires --allow-local'));
+  await assert.rejects(execute(process.execPath, [new URL('./run.mjs', import.meta.url).pathname, '--resource', 'gpu', '--reuse-preview', '--require-reason', '--', process.execPath, new URL('../levels/measure.mjs', import.meta.url).pathname]), error => error.code === 1 && error.stderr.includes('requires --reason'));
 });

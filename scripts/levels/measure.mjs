@@ -4,10 +4,10 @@ import { cli,parseArgs,root } from '../lib/cli.mjs';
 import { reserveGpuMeasurement } from '../agents/resources.mjs';
 import { readAreas,readState,evaluate,ready,outputDir,command } from './common.mjs';
 await cli(async()=>{
-  const args=parseArgs(process.argv.slice(2),{'--area':'value'});if(args['--help']){console.log('Usage: npm run levels:measure -- [--area ID]');return;}
+  const args=parseArgs(process.argv.slice(2),{'--area':'value','--reason':'value'});if(args['--help']){console.log('Usage: npm run levels:measure -- --reason "request or defect evidence" [--area ID]');return;}
+  const reason=args['--reason']?.trim();if(!reason)throw new Error('Performance measurement requires --reason with a specific user request or evidenced performance defect.');
   const area=args['--area']??'clearing';if(!(await readAreas())[area])throw new Error(`Unknown area: ${area}`);
   const reservation=await reserveGpuMeasurement();
-  if(reservation.deferred){const dir=await outputDir(area,'performance-deferred');const note=resolve(dir,'performance-deferred.json');await writeFile(note,JSON.stringify({status:'deferred',area,reason:reservation.reason,recordedAt:new Date().toISOString()},null,2)+'\n');console.log(`Performance measurement deferred: ${reservation.reason}. Task completion may continue. Note: ${note}`);return;}
   try{
   const state=await readState();await ready(state);await evaluate(state,`window.lanternAuthoring.selectArea(${JSON.stringify(area)})`);const initial=await ready(state,area),dir=await outputDir(area,`${initial.runtimeId.slice(0,8)}-${initial.revision}`);
   try{
@@ -15,7 +15,7 @@ await cli(async()=>{
     const latest=await ready(state,area);if(latest.contentHash!==initial.contentHash||latest.runtimeId!==initial.runtimeId)throw new Error('Scene changed during measurement');
     const gpu=await evaluate(state,`(async()=>{const adapter=await navigator.gpu?.requestAdapter();if(adapter)return {vendor:adapter.info.vendor,architecture:adapter.info.architecture,device:adapter.info.device,description:adapter.info.description,isFallbackAdapter:adapter.info.isFallbackAdapter};return {status:'WebGPU adapter information unavailable'};})()`);
     const hardware=await command(process.execPath,['-e',"const os=require('node:os');console.log(JSON.stringify({platform:os.platform(),release:os.release(),cpu:os.cpus()[0]?.model,memory:os.totalmem()}))"]);
-    await writeFile(resolve(dir,'performance.json'),JSON.stringify({area,revision:initial.revision,contentHash:initial.contentHash,definition:await evaluate(state,'window.lanternAuthoring.area()'),hardware:JSON.parse(hardware),gpu,...samples,conditions:'Keyboard-driven player movement and active combat; headless authoring browser. Presentation cadence, not isolated GPU execution. Confirm GPU acceleration and target hardware separately.'},null,2)+'\n');console.log(`Performance evidence: ${resolve(dir,'performance.json')}`);
+    await writeFile(resolve(dir,'performance.json'),JSON.stringify({reason,area,revision:initial.revision,contentHash:initial.contentHash,definition:await evaluate(state,'window.lanternAuthoring.area()'),hardware:JSON.parse(hardware),gpu,...samples,conditions:'Keyboard-driven player movement and active combat; headless authoring browser. Presentation cadence, not isolated GPU execution. Confirm GPU acceleration and target hardware separately.'},null,2)+'\n');console.log(`Performance evidence: ${resolve(dir,'performance.json')}`);
   }finally{await evaluate(state,'window.lanternAuthoring.freeze(true);window.lanternAuthoring.clean(false);window.lanternAuthoring.overlays(true)').catch(()=>{});}
   }finally{await reservation.release();}
 });

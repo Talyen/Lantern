@@ -30,3 +30,25 @@ jobs:
           path: .local/checks/
           include-hidden-files: true
           retention-days: 7
+  workflow-macos:
+    runs-on: macos-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+      - run: |
+          mkdir -p .local/checks
+          node --test scripts/agents/workflow.test.mjs 2>&1 | tee .local/checks/mac-workflow.log
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: mac-workflow-diagnostics
+          path: .local/checks/
+          include-hidden-files: true
+          retention-days: 7

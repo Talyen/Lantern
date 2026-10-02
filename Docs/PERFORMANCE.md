@@ -1,6 +1,6 @@
 # Performance and renderer evidence
 
-Ordinary feature work follows the [lean task workflow](DEVELOPMENT.md#working-alongside-other-agents): one relevant preview and fast sanity checks. Benchmarking and the matched protocol below are for a concrete performance issue, requested measurement or release work, not every visual/gameplay edit. Managed scripts queue one heavy operation and two agent GPU inspections while leaving the user's play session alone.
+Ordinary feature work follows the [lean task workflow](DEVELOPMENT.md#working-alongside-other-agents): one relevant preview and fast sanity checks. Benchmarking and the matched protocol below require a specific user request or an evidenced performance defect. Routine feature work, audits, release-readiness gates and scheduled automation must not benchmark. Managed scripts queue one heavy operation, one check job and one agent GPU inspection while leaving the user's play session alone.
 
 
 Use matched local measurements to judge changes; performance numbers are advisory, not CI gates. Browser resource smoke does not execute the renderer.
@@ -17,7 +17,7 @@ This single before/after sanity measurement includes Python startup and excludes
 
 Lantern requires native WebGPU across gameplay, authoring and labs through the shared graph. FSR Temporal is the sole reconstruction method (Balanced, sharpening 0.50 by default), with output pixel ratio fixed at 1. There is no reconstruction fallback; WebGPU/FSR startup failure produces an actionable error. Independent Shadow Quality and Particle Effects presets replace the overloaded quality setting. Atmosphere is simple profile distance fog; volumetric rendering is retired.
 
-Archived studies and initial authoring measurements include evidence from before the native WebGPU-only migration. WebGL comparisons, retired lab controls and former TAA defaults are historical evidence. Re-measure current authored areas and comparison labs on target hardware before drawing performance conclusions.
+Archived studies and initial authoring measurements include evidence from before the native WebGPU-only migration. WebGL comparisons, retired lab controls and former TAA defaults are historical evidence. When measurements are requested or an evidenced performance defect warrants them, re-measure current authored areas and comparison labs on target hardware before drawing performance conclusions.
 
 ## Current measurement protocol
 
@@ -35,7 +35,7 @@ The [September 30 renderer studies](archive/RENDERER_STUDIES_2026-09-30.md) pres
 
 ## Level authoring measurements
 
-See [level design](LEVEL_DESIGN.md) for the persistent visual loop. `npm run levels:measure -- --area=clearing` records a moving-gameplay sample after five seconds of warmup and at least 180 frames under ignored `.local/level-design/`. It uses the development authoring browser: treat it as iteration evidence and repeat release measurements with a fresh production build and GPU acceleration confirmed. The report records revision/hash, area definition, runtime, viewport/DPR, backend/settings, machine CPU/OS/memory and cadence samples. Browser GPU/driver identification and hardware acceleration need explicit inspection; CPU metadata alone does not establish the GPU.
+See [level design](LEVEL_DESIGN.md) for the persistent visual loop. `npm run levels:measure -- --reason "request or defect evidence" --area=clearing` records a moving-gameplay sample after five seconds of warmup and at least 180 frames under ignored `.local/level-design/`. It uses the development authoring browser: treat it as iteration evidence and repeat release measurements with a fresh production build and GPU acceleration confirmed. The report records revision/hash, area definition, runtime, viewport/DPR, backend/settings, machine CPU/OS/memory and cadence samples. Browser GPU/driver identification and hardware acceleration need explicit inspection; CPU metadata alone does not establish the GPU.
 
 Targets remain 60 fps on a named integrated-GPU baseline and scalable 120 fps on stronger hardware. Baseline hardware and cross-machine validation are outstanding. Use Unlimited for comparisons, report adapter identity and actual internal resolution, and do not infer 120 fps headroom from a 60 Hz presentation cadence. Warm authoring targets are <2 s edit-to-ready and <5 s per clean view; report cold startup separately.
 
@@ -94,4 +94,4 @@ Outlines adds one RGBA16F attachment to the existing scene pass and contour samp
 
 Private review under `.local/outlines/` covers golden/silver and Moonlit/Deep night/Misty night, zoom extremes, native mask/depth occlusion, all four reconstruction qualities, DOF Off and sharpening 1. An initial maximum-of-directions edge combiner exposed diagonal crawl; the retained effect averages angular coverage before FSR. Continuous-motion and stationary probes include a thin weapon and an alpha-cutout occluder, with selected/unselected objects sharing a material. Settings save/reload and Reset passed in hidden native Chromium. Numerical pixel variation remains under high-contrast reduced-resolution stress; this is local visual evidence rather than an absolute no-aliasing guarantee or Windows/other-GPU certification. Keep matched timing samples, source hashes and asset-inventory fingerprints private alongside the review.
 
-Performance measurements require exclusive use of both GPU slots. If another GPU slot is in use, defer measurements, finish the task normally, and note the deferral in the handoff. `levels:measure` reserves the spare slot without waiting and writes a private deferral note when it is occupied; ordinary visual reviews may use either of the two slots.
+Measurements borrow the verified owned authoring preview's single GPU lease; there is no spare-slot reservation. The required `--reason` is validated before GPU admission or sampling and saved in the private report. Ordinary visual reviews use the same single slot. This prevents overlap between managed agent sessions, but does not establish exclusive hardware use while external applications or the user's play session are running. Record those conditions when interpreting results.

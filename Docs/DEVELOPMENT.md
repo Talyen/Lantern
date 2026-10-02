@@ -47,7 +47,7 @@ The October 1 demonstration measured about 57 MiB of tracked source per worktree
 
 Finish combines current main assets with task-edited artifacts before checking. Overlapping different outputs return `needs-asset-repair`. Reconcile/re-export them against main, then provide `--resolved-assets <json-file>` naming the reviewed conflicted vendor-relative paths. That acknowledgement is bound to the recorded main revision and conflicted artifact hashes; newer source or artifact changes require another reconciliation. Unchanged source archives are not repeatedly hashed.
 
-Automatic limits are four task worktrees, two lightweight check jobs (two Vitest workers each), one heavy build/export/install, and two agent GPU-review sessions. Resource waiting is recorded separately from execution time. A queued build waits before its execution deadline begins and does not hold a lightweight-check slot. These limits do not close or change the user's own play session. Previews start on demand; closing them releases the GPU resource. Level capture/measure/bake operations borrow their verified owned authoring session's lease.
+Automatic limits are four task worktrees, one static-check job, one heavy build/export/install, and one agent GPU-review session. Resource waiting is recorded separately from execution time. A queued build waits before its execution deadline begins and does not hold a lightweight-check slot. These limits do not close or change the user's own play session. Previews start on demand; closing them releases the GPU resource. Level capture/measure/bake operations borrow their verified owned authoring session's lease. Retired second-slot locks drain without terminating their owners and remain reserved so older worktrees cannot admit another job. These are managed-command limits, not a hardware cap on external apps.
 
 Local/private-asset operations require 20 GiB available disk; admission also refuses a fifth live worktree. Asset-free CI with no private vendor/source directories uses a 1 GiB reserve, since [standard hosted runners](https://docs.github.com/en/actions/reference/runners/github-hosted-runners) advertise 14 GB storage. CI containing private inputs retains the 20 GiB reserve. If disk space or task slots are exhausted, the agent runs `agent:status`, cleans completed tasks with `agent:cleanup`, and retries without asking the user to manage resources. Preserve unfinished tasks and source archives. Cleanup retains successful/failure check evidence and preview logs alongside private sources in `.local/agent-archives/<slug>/`. Staging and production public files also use native clones. Successful check evidence replaces older successful evidence; failure evidence is retained. Captures replace the same task/view output rather than collecting a settings matrix.
 
@@ -57,7 +57,7 @@ The October 1 shared-checkout work was drained and committed as a settled baseli
 
 ## Level authoring
 
-Use the persistent preview and captures in [level design](LEVEL_DESIGN.md): `npm run levels:dev`, `npm run levels:capture`, `npm run levels:check`, `npm run levels:assets`, `npm run levels:measure`, and `npm run levels:stop`. Use one representative view; `levels:capture -- --all` is an explicit batch. Close owned sessions after review. Ordinary scene-data edits need no build/export/restart.
+Use the persistent preview and captures in [level design](LEVEL_DESIGN.md): `npm run levels:dev`, `npm run levels:capture`, `npm run levels:check`, `npm run levels:assets`, `npm run levels:measure -- --reason "request or defect evidence"` only when authorized by the performance policy, and `npm run levels:stop`. Use one representative view; `levels:capture -- --all` is an explicit batch. Close owned sessions after review. Ordinary scene-data edits need no build/export/restart.
 
 When a capture helps review an area, run these from its task worktree with the owned authoring preview active:
 
@@ -76,16 +76,17 @@ Choose one single-view command for ordinary review. Only `--all` creates a conta
 | --- | --- |
 | `npm run dev` | Browser iteration on loopback |
 | `npm run typecheck` | Runtime, tests and Vite/Vitest configuration types |
-| `npm test` | Existing Vitest suite, using two workers |
+| `npm test -- tests/encounter.test.ts` | Explicit focused test for a concrete failure; one local worker |
+| `npm test` | Full unit suite in CI (two workers); local full-suite use requires a user request |
 | `npm run docs:check` | Local links, heading fragments and npm command names in root Markdown, `Docs/` and `.agents/`, including archives |
 | `npm run levels:check` | Area definitions, gate links, library selections and optional-art warnings |
-| `npm run build` | Typecheck, stage private runtime art, and build |
+| `npm run build` | Explicit asset/packaging validation or requested build readiness; typecheck, stage private runtime art, and build |
 | `npm run preview` | Serve the built renderer locally |
-| `npm run smoke:preview` | Owned preview server and HTML/JS/CSS response checks |
+| `npm run smoke:preview` | CI HTTP resource smoke; does not execute gameplay or WebGPU |
 | `npm run assets:check` | Available local runtime assets and selected-library closure |
 | `npm run assets:check -- --playable` | Require character and compatible default Mixamo motions |
 | `npm run check` | Change-aware sanity checks; no ordinary production build |
-| `npm run check:full` | Complete production/build gate for CI and requested readiness |
+| `npm run check:full` | Complete CI gate; requested local use requires `-- --allow-local` |
 | `npm run agent:start` / `agent:finish` | Private task creation and automatic local integration |
 | `npm run agent:dev` / `main:dev` | Private and integrated previews |
 | `npm run agent:status` / `agent:cleanup` | Lifecycle/resource inspection and safe cleanup |
@@ -93,13 +94,15 @@ Choose one single-view command for ordinary review. Only `--all` creates a conta
 | `npm run desktop:run` | Visible manual play of an existing build |
 | `npm run desktop:check -- --debug-port=9231` | Hidden non-focusable Electron; attach CDP |
 
-Run a focused check only when it helps an implementation decision, then the lean final gate once. Runtime code runs rendering policy, types, the existing small test suite and whitespace. Documentation-only changes run links/whitespace; level/docs validators run when relevant inputs change. CSS-only changes need their representative preview and cheap policy/whitespace checks. Packaging, dependencies, exported assets or build configuration trigger build/inventory/resource checks. Explicit `check:full` retains all stages and CI uses it.
+Run the light final gate once. Runtime code runs rendering policy, types and whitespace. Documentation-only changes run links/whitespace; level/docs validators run when relevant inputs change. CSS-only changes need their representative preview and cheap policy/whitespace checks. Packaging, dependencies, exported assets and build configuration do not automatically trigger suites or builds. Validate affected prepared-art output and references explicitly; build staging is reserved for a focused asset/packaging need or user-requested readiness. `check --assets` adds asset validation without building.
 
-Keep automated tests focused on established gameplay, save/inventory safety, resource ownership and asynchronous failure behavior. Use small deterministic fixtures instead of full authored scenery or stress matrices; `levels:check` validates the current area files. Avoid assertions that merely repeat decorative tuning tables. Workflow integration tests run only for changes under `scripts/agents/` or the full gate. Test-only changes need the suite and sanity gate, with no gameplay preview.
+CI runs full unit/workflow suites, build/inventory validation and HTTP smoke on Linux; a small hosted macOS job runs workflow/resource tests including APFS coverage. Triggers remain pull requests, main pushes and manual dispatch. Local integration uses the light gate and may precede CI. Pushes require a user request; local finishing does not push or wait for remote CI. Future automated E2E is CI-first; there is currently no maintained browser E2E suite. Native WebGPU and licensed-art requirements must be resolved before adding one.
 
-`check --base <sha>` validates committed candidate whitespace and collects changes relative to the integration baseline. It records inputs, timings and stage logs in ignored `.local/checks/`, reuses successful checks only for matching inputs, and rejects a source/asset change during validation. Neither mode downloads, exports, bakes, benchmarks or launches browser-review matrices.
+Keep automated tests focused on established gameplay, save/inventory safety, resource ownership and asynchronous failure behavior. Use small deterministic fixtures instead of full authored scenery or stress matrices; `levels:check` validates the current area files. Avoid assertions that merely repeat decorative tuning tables. Workflow integration tests run in CI, including macOS coverage. A focused local test may investigate a concrete failure or validate consequential resource-ownership changes; full local suites require a user request. Test-only changes use the light gate, with no gameplay preview.
 
-Default acceptance is one preview session and one relevant interaction at normal settings. No new test is required unless it protects an important established behavior. Broaden checks only for an observed failure, consequential save migration, renderer initialization/dependency change or explicitly requested audit/release; record the reason briefly. Build/resource checks do not prove visual quality or platform performance. Finish reports the completed behavior, sanity check and material limits.
+`check --base <sha>` validates committed candidate whitespace and collects changes relative to the integration baseline. It records inputs, timings and stage logs in ignored `.local/checks/`, records the light/full mode and executed stages, reuses successful checks only for matching inputs and mode, and rejects a source/asset change during validation. Neither mode downloads, exports, bakes, benchmarks or launches browser-review matrices.
+
+Default acceptance is one preview session and one relevant interaction at normal settings. No new test is required unless it protects an important established behavior. Broaden local functional inspection only for an observed failure, consequential save migration or renderer initialization/dependency change; record the reason briefly. Audits and release readiness do not automatically authorize local full suites or performance testing. Build/resource checks do not prove visual quality or platform performance. Finish reports the completed behavior, sanity check and material limits.
 
 ## Private asset workflow
 
@@ -162,11 +165,11 @@ For the solo caster, follow the left branch of the woodland approach to the glad
 
 Use default native WebGPU FSR Temporal. Renderer initialization/dependency changes may warrant a focused unsupported-WebGPU/FSR error probe; no reconstruction or WebGL fallback exists. Inspect the animation lab (`/?lab=animations`) only when its changed behavior needs review. Older art/renderer routes load the normal clearing without opening Options; use Escape to open it.
 
-Automated Electron inspection always launches `desktop:check` or `--background`; attach CDP on loopback and confirm `visible:false`/`focused:false`. Own and close test processes; do not launch visible/focusable windows while the user works. Performance comparisons follow [the matched protocol](PERFORMANCE.md).
+Automated Electron inspection always launches `desktop:check` or `--background`; attach CDP on loopback and confirm `visible:false`/`focused:false`. Own and close test processes; do not launch visible/focusable windows while the user works. Performance comparisons require a specific user request or evidenced performance defect and follow [the matched protocol](PERFORMANCE.md).
 
 For aim/follow changes, check idle pointer turning, sideways/backward WASD movement with a stationary cursor, pointer exit and zoom. Each click commits its swing direction; moving the pointer during a swing or hit reaction takes effect when the action lock ends. WASD controls dodge direction when held; a stationary dodge uses the latest aim. Menus clear aim and require a fresh pointer event on return. Aim ignores points within 0.15 m of the player. Check the calibrated forward/backward/strafe families, transitions into contact poses, and half-speed directional walking while blocking.
 
-Use viewport/zoom variants, cache pressure, missing-bake injection, animation comparisons and performance measurements only for a concrete change or failure in that subsystem. Routine gameplay or visual changes do not require those matrices. Renderer initialization/dependency changes require checking native startup and actionable unsupported-WebGPU/FSR preparation errors, including affected development routes; never assert a reconstruction fallback. Keep managed previews, single-view captures and measurement tools available on demand.
+Use viewport/zoom variants, cache pressure, missing-bake injection and animation comparisons only for a concrete change or failure in that subsystem. Performance measurements require a specific user request or an evidenced performance defect, with `levels:measure --reason "request or defect evidence"`. Routine feature work, audits, release-readiness gates and scheduled automation must not benchmark. Future automation uses the same managed resource limits and CI-first testing policy; no recurring test or benchmark job is created by default. Routine gameplay or visual changes do not require those matrices. Renderer initialization/dependency changes require checking native startup and actionable unsupported-WebGPU/FSR preparation errors, including affected development routes; never assert a reconstruction fallback. Keep managed previews, single-view captures and measurement tools available on demand.
 
 Camera defaults are a 0.15 m ground dead zone, 0.20 seconds of movement look-ahead capped at 0.65 m, and exponential easing at 8 per second. Lead stays off inside the dead zone and decays when actual movement stops, including wall collision. Check starts, stops, reversals, dodges, both zoom extremes and a narrow viewport; pointer turning alone must leave framing stable. Restart, travel and inspection return reset follow; frozen authoring views must remain deterministic.
 
@@ -195,4 +198,4 @@ Left-click loot or a usable chest, fire, portal or tree to approach and interact
 
 For this feature, use one owned normal-settings session: acquire camp rewards, configure Sword + Shield in set I and Bow in set II, assign their Basics and Skills, activate the fixed bar to switch automatically, and verify cooldowns persist. Use/release Shield Basic, heal with F, cast with T, click a tree/chest, and apply/cancel a remapping including a mouse input and secondary movement. Restart to verify saved equipment/assignments/preferences. Toggle cosmetic Outlines off in the same session to confirm interaction highlighting remains. The source motion audition and focused migration/simulation checks supplement this flow; no full gameplay matrix is required.
 
-Performance measurements require exclusive use of both GPU slots. If another GPU slot is in use, defer measurements, finish the task normally, and note the deferral in the handoff. `levels:measure` reserves the spare slot without waiting and writes a private deferral note when it is occupied; ordinary visual reviews may use either of the two slots.
+Performance testing requires a specific user request or an evidenced performance defect, recorded with `levels:measure --reason "request or defect evidence"`. It borrows the owned authoring preview's single GPU lease. Routine handoff does not measure.

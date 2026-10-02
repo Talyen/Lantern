@@ -69,10 +69,22 @@ def lease(args):
     parent_started = identity(parent)
     handle = None
     waited = False
+    drained = []
     while handle is None:
         if identity(parent) != parent_started:
             return
-        for slot in ([args.slot] if args.slot is not None else range(args.slots)):
+        # Hold retired slot locks too, so older worktrees cannot start a second job.
+        blocked = False
+        for retired in range(args.slots, args.drain_slots):
+            candidate = (directory / f'{args.resource}-{retired}.lock').open('a+')
+            try:
+                fcntl.flock(candidate, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                drained.append(candidate)
+            except BlockingIOError:
+                candidate.close()
+                blocked = True
+                break
+        for slot in ([] if blocked else ([args.slot] if args.slot is not None else range(args.slots))):
             candidate = (directory / f'{args.resource}-{slot}.lock').open('a+')
             try:
                 fcntl.flock(candidate, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -81,6 +93,9 @@ def lease(args):
             except BlockingIOError:
                 candidate.close()
         if handle is None:
+            for retired in drained:
+                retired.close()
+            drained.clear()
             if args.try_only:
                 print(json.dumps({'deferred': args.resource}), flush=True)
                 return
@@ -125,6 +140,8 @@ def lease(args):
                 pass
         record_path.unlink(missing_ok=True)
         handle.close()
+        for retired in drained:
+            retired.close()
 
 
 parser = argparse.ArgumentParser()
@@ -137,6 +154,7 @@ lock = sub.add_parser('lease')
 lock.add_argument('directory')
 lock.add_argument('resource')
 lock.add_argument('--slots', type=int, default=1)
+lock.add_argument('--drain-slots', type=int, default=1)
 lock.add_argument('--slot', type=int)
 lock.add_argument('--try-only', action='store_true')
 lock.add_argument('--token', required=True)

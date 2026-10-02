@@ -29,7 +29,7 @@ Lantern is a desktop-browser fantasy action RPG prototype using Vite, TypeScript
 
 Read [architecture](Docs/ARCHITECTURE.md) and [development workflow](Docs/DEVELOPMENT.md) for affected owners, commands and asset preparation. [Level design](Docs/LEVEL_DESIGN.md) owns area conventions and the rapid visual authoring loop. [Performance](Docs/PERFORMANCE.md) owns measurement evidence; [roadmap](ROADMAP.md) owns milestones.
 
-Use `npm run check` for a fast sanity check; `agent:finish` runs it on the integration candidate. Production checks use `npm run check:full` for CI or requested build/release readiness. Inspect the task diff and update the canonical owner when changing an invariant. Prepared-art tasks validate affected references; full playable validation is targeted, not a routine extra step.
+Use `npm run check` for a fast sanity check; `agent:finish` runs it on the integration candidate. Full unit/workflow suites, production builds, inventory and HTTP smoke run in CI. A user-requested local full gate uses `npm run check:full -- --allow-local`; routine handoff never runs it. Inspect the task diff and update the canonical owner when changing an invariant. Prepared-art tasks validate affected references; full playable validation is targeted, not a routine extra step.
 
 ## Asset boundaries
 
@@ -85,13 +85,15 @@ Follow [the art direction](Docs/ART_DIRECTION.md) for Lantern's visual identity 
 - Documentation needs links and diff inspection, no browser. Internal tooling needs fast checks and one relevant observable outcome. Asset changes need inspection of the affected output and its required references.
 - Do not add tests by default. Extend an existing test only for an important established behavior that warrants lasting protection. Avoid speculative edge cases, coverage targets, elaborate fixtures, implementation assertions and new gameplay test infrastructure.
 - Run relevant checks once after the final edit. Repeat only after relevant changes or observed failures. Unrelated integration changes do not automatically invalidate visual acceptance.
-- Broad gameplay flows, alternate moods/zooms/platforms, full catalogs, benchmarks and contact sheets are optional targeted tools. Expand verification only for a concrete failure, consequential save migration, renderer/dependency initialization change, or an explicit audit/release request; briefly state why.
+- Broad gameplay flows, alternate moods/zooms/platforms, full catalogs, benchmarks and contact sheets are optional targeted tools. Expand local functional inspection only for a concrete failure, consequential save migration or renderer/dependency initialization change; briefly state why. Full local suites require a user request. Audits and release readiness do not automatically authorize benchmarks.
 - `npm run check` is the lean default. `npm run check:full` retains the full production gate. Neither automatically downloads, exports, bakes lighting, benchmarks, or runs browser matrices.
-- Automated Electron uses hidden non-focusable `desktop:check` and CDP. Managed checks use two Vitest workers; resource leases allow two lightweight checks, one heavy operation and two agent GPU inspections. Leave the user's play session alone.
+- Automated Electron uses hidden non-focusable `desktop:check` and CDP. Resource leases allow one check job, one heavy operation and one agent GPU inspection. Explicit local unit runs use one Vitest worker; CI may use two. Leave the user's play session alone.
 - Revisit this policy when Lantern moves beyond the prototype phase or gains public release requirements.
 
 ## Review and handoff
 
 Review the task diff and its integration, finish through automatic local promotion, and report completed behavior, the sanity check performed, and material limitations briefly. Do not claim exhaustive coverage or cross-platform performance from a sanity check.
 
-Performance measurements require exclusive use of both GPU slots. If another GPU slot is in use, defer measurements, finish the task normally, and note the deferral in the handoff. `levels:measure` reserves the spare slot without waiting and writes a private deferral note when it is occupied; ordinary visual reviews may use either of the two slots.
+Performance testing is allowed only for a specific user request or an evidenced performance defect; record the request or defect with `levels:measure --reason "request or defect evidence"`. Measurements borrow the owned preview's single GPU lease. Routine feature work, audits, release-readiness gates and scheduled automation must not benchmark. Passive diagnostics and short visual reviews remain available.
+
+Local handoff runs change-aware static checks: types, rendering policy, documentation links, structural levels and whitespace. Full unit/workflow tests, builds and automated E2E are CI-first. A focused local test may investigate a concrete failure; prepared-art tasks validate affected output/references and may build when staging is necessary. Full local suites require a user request. Future automation follows these same limits and exclusions; do not schedule tests or measurements by default. Local promotion may precede CI; pushes still require a user request.
