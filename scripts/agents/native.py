@@ -70,39 +70,76 @@ def lease(args):
     handle = None
     waited = False
     drained = []
-    while handle is None:
-        if identity(parent) != parent_started:
-            return
-        # Hold retired slot locks too, so older worktrees cannot start a second job.
-        blocked = False
-        for retired in range(args.slots, args.drain_slots):
-            candidate = (directory / f'{args.resource}-{retired}.lock').open('a+')
-            try:
-                fcntl.flock(candidate, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                drained.append(candidate)
-            except BlockingIOError:
-                candidate.close()
-                blocked = True
-                break
-        for slot in ([] if blocked else ([args.slot] if args.slot is not None else range(args.slots))):
-            candidate = (directory / f'{args.resource}-{slot}.lock').open('a+')
-            try:
-                fcntl.flock(candidate, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                handle = candidate
-                break
-            except BlockingIOError:
-                candidate.close()
-        if handle is None:
-            for retired in drained:
-                retired.close()
-            drained.clear()
-            if args.try_only:
-                print(json.dumps({'deferred': args.resource}), flush=True)
+    queue_path = directory / f'{args.resource}.queue.json'
+    queue_lock = (directory / f'{args.resource}.queue.lock').open('a+')
+    waiter = {'pid': os.getpid(), 'started': identity(os.getpid()), 'token': args.token}
+
+    def read_queue():
+        queue = json.loads(queue_path.read_text()) if queue_path.exists() else []
+        return [entry for entry in queue if identity(entry['pid']) == entry['started']]
+
+    def write_queue(queue):
+        temporary = queue_path.with_suffix(f'.{os.getpid()}.tmp')
+        temporary.write_text(json.dumps(queue))
+        temporary.replace(queue_path)
+
+    def stop_waiting(*_):
+        raise SystemExit(1)
+
+    signal.signal(signal.SIGTERM, stop_waiting)
+    signal.signal(signal.SIGINT, stop_waiting)
+    try:
+        while handle is None:
+            if identity(parent) != parent_started:
                 return
-            if not waited:
-                print(json.dumps({'waiting': args.resource}), flush=True)
-                waited = True
-            time.sleep(.15)
+            fcntl.flock(queue_lock, fcntl.LOCK_EX)
+            try:
+                queue = read_queue()
+                if not args.try_only and not any(entry['token'] == args.token for entry in queue):
+                    queue.append(waiter)
+                # Keep admission and slot acquisition in the same critical section:
+                # a later poll or try-only request cannot overtake the first waiter.
+                turn = not queue or queue[0]['token'] == args.token
+                blocked = not turn
+                for retired in (range(args.slots, args.drain_slots) if turn else []):
+                    candidate = (directory / f'{args.resource}-{retired}.lock').open('a+')
+                    try:
+                        fcntl.flock(candidate, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                        drained.append(candidate)
+                    except BlockingIOError:
+                        candidate.close()
+                        blocked = True
+                        break
+                for slot in ([] if blocked else ([args.slot] if args.slot is not None else range(args.slots))):
+                    candidate = (directory / f'{args.resource}-{slot}.lock').open('a+')
+                    try:
+                        fcntl.flock(candidate, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                        handle = candidate
+                        break
+                    except BlockingIOError:
+                        candidate.close()
+                if handle is not None:
+                    queue = [entry for entry in queue if entry['token'] != args.token]
+                write_queue(queue)
+            finally:
+                fcntl.flock(queue_lock, fcntl.LOCK_UN)
+            if handle is None:
+                for retired in drained:
+                    retired.close()
+                drained.clear()
+                if args.try_only:
+                    print(json.dumps({'deferred': args.resource}), flush=True)
+                    return
+                if not waited:
+                    print(json.dumps({'waiting': args.resource}), flush=True)
+                    waited = True
+                time.sleep(.15)
+    finally:
+        fcntl.flock(queue_lock, fcntl.LOCK_EX)
+        try:
+            write_queue([entry for entry in read_queue() if entry['token'] != args.token])
+        finally:
+            queue_lock.close()
     record_path = directory / f'{args.resource}-{slot}.json'
     record = {'pid': os.getpid(), 'started': identity(os.getpid()), 'parent': os.getppid(),
               'resource': args.resource, 'slot': slot, 'token': args.token, 'task': args.task}

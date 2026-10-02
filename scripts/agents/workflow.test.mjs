@@ -10,6 +10,7 @@ import { join } from 'node:path';
 import { git, context, writeJSON, readJSON, taskPath, taskCapacity, spaceRequirement } from './state.mjs';
 import { startTask, finishTask, cleanupTask, recover, installedDependenciesMatch } from './workflow.mjs';
 import { acquire, childEnvironment, withResource } from './resources.mjs';
+import { sessionPath, stopPreview } from './preview.mjs';
 
 import { checkStages } from '../check.mjs';
 
@@ -283,4 +284,60 @@ test('local full gate and unrequested measurement reject before expensive work',
   const execute = promisify(execFile);
   await assert.rejects(execute(process.execPath, [new URL('../check.mjs', import.meta.url).pathname, '--full'], { env: { ...process.env, CI: 'false' } }), error => error.code === 1 && error.stderr.includes('requires --allow-local'));
   await assert.rejects(execute(process.execPath, [new URL('./run.mjs', import.meta.url).pathname, '--resource', 'gpu', '--reuse-preview', '--require-reason', '--', process.execPath, new URL('../levels/measure.mjs', import.meta.url).pathname]), error => error.code === 1 && error.stderr.includes('requires --reason'));
+});
+
+test('queued previews can be stopped and concurrent startup keeps one owner', { timeout: 15000 }, async () => {
+  const ctx = await fixture(), starters = [];
+  let lease;
+  const start = () => {
+    const code = `import {startPreview} from ${JSON.stringify(new URL('./preview.mjs', import.meta.url).href)}; await startPreview(process.cwd(), {browser:true});`;
+    const child = spawn(process.execPath, ['--input-type=module', '-e', code], { cwd: ctx.main, env: { ...process.env, LANTERN_LEASES: '{}' }, stdio: ['ignore','pipe','pipe'] });
+    child.stdout.resume(); child.stderr.resume(); starters.push(child); return child;
+  };
+  try {
+    lease = await acquire('gpu', { ctx });
+    start(); start();
+    let record;
+    for (let i = 0; i < 60; i++) {
+      record = await readJSON(sessionPath(ctx.main), null);
+      if (record && starters.some(child => child.exitCode !== null)) break;
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    assert.equal(record?.status, 'starting');
+    assert.equal(starters.filter(child => child.exitCode !== null).length, 1);
+    const exit = Promise.all(starters.map(child => child.exitCode === null ? once(child, 'exit') : Promise.resolve()));
+    await stopPreview(ctx.main); await exit;
+    assert.equal(await readJSON(sessionPath(ctx.main), null), null);
+    const queuePath = join(ctx.store, 'leases/gpu.queue.json');
+    for (let i = 0; i < 20 && (await readJSON(queuePath, [])).length; i++) await new Promise(resolve => setTimeout(resolve, 50));
+    assert.deepEqual(await readJSON(queuePath, []), []);
+  } finally {
+    await stopPreview(ctx.main).catch(() => {});
+    for (const child of starters) if (child.exitCode === null) { const exit = once(child, 'exit'); child.kill('SIGTERM'); await exit; }
+    await lease?.release(); await ctx.dispose();
+  }
+});
+
+test('later resource probes cannot overtake a queued GPU waiter', { timeout: 15000 }, async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'lantern-fifo-resource-'));
+  const ctx = { main: directory, store: join(directory, 'state') };
+  let lease, waiter;
+  try {
+    lease = await acquire('gpu', { ctx });
+    waiter = spawn('python3', [new URL('./native.py', import.meta.url).pathname, 'lease', join(ctx.store, 'leases'), 'gpu', '--token', 'first-waiter', '--drain-slots', '2'], { stdio: ['pipe','pipe','pipe'] });
+    waiter.stderr.resume();
+    const lines = createInterface({ input: waiter.stdout });
+    const [waiting] = await once(lines, 'line'); assert.equal(JSON.parse(waiting).waiting, 'gpu');
+    waiter.kill('SIGSTOP');
+    await lease.release(); lease = undefined;
+    const later = await acquire('gpu', { ctx, tryOnly: true });
+    if (later) { await later.release(); assert.fail('Later request overtook the queued waiter'); }
+    const admitted = once(lines, 'line'); waiter.kill('SIGCONT');
+    const [line] = await admitted; assert.equal(JSON.parse(line).acquired.token, 'first-waiter');
+    const exit = once(waiter, 'exit'); waiter.stdin.end(); await exit;
+    lines.close();
+  } finally {
+    if (waiter && waiter.exitCode === null) { waiter.kill('SIGCONT'); const exit = once(waiter, 'exit'); waiter.kill('SIGTERM'); await exit; }
+    await lease?.release(); await rm(directory, { recursive: true, force: true });
+  }
 });

@@ -198,7 +198,7 @@ test('resource level and skill XP drive contact yields without changing depletio
   expect(harvest.contact('clearing',node.id,point,levelXp(9))?.quantity).toBe(3);harvest.contact('clearing',node.id,point);expect(harvest.contact('clearing',node.id,point)).toBeUndefined();
 });
 
-test('gathering retries a selected resource after the previous attack finishes cooling down', async () => {
+test('gathering retries after attack cooldown and cancels a newly pursuing threat before contact', async () => {
   const THREE = await import('three');
   const { GatheringController } = await import('../src/clearing/gathering');
   const { makeActor } = await import('../src/clearing/actors');
@@ -221,7 +221,17 @@ test('gathering retries a selected resource after the previous attack finishes c
   gathering.advance(.05); gathering.advance(.35);
   expect(gathering.choppingId).toBe('tree');
   expect(adventure.session().drops.map(drop=>[drop.item,drop.quantity])).toEqual([['wood',1]]);
-  gathering.cancel(); actor.mixer.stopAllAction();
+  gathering.cancel();
+  const unsafeArea = { ...grassArea, kind: 'encounter' as const };
+  const threatened = new GatheringController(state,adventure,harvesting,actor,tools,audio,{area:()=>unsafeArea,instance:()=>undefined,navigation:()=>navigation,paused:()=>false});
+  for (const enemy of Object.values(state.enemies)) { enemy.engaged = false; enemy.x = 30; enemy.z = 30; }
+  threatened.select(node);
+  Object.assign(state.enemies[state.enemyIds[0]], { hp: 200, home: { position: [30, 30], yaw: 0 }, engaged: true });
+  const drops = adventure.session().drops.length;
+  threatened.advance(.35);
+  expect(adventure.session().drops).toHaveLength(drops);
+  expect(threatened.target).toBeNull();
+  actor.mixer.stopAllAction();
 });
 
 

@@ -21,6 +21,7 @@ export class LootLabels {
   constructor(private host: HTMLElement, private select: (id: string) => void) { this.root.id = 'loot-labels'; host.append(this.root); }
   sync(drops: GroundDrop[], camera: THREE.Camera, point: [number, number], hidden: boolean): void {
     if (this.root.hidden !== hidden) this.root.hidden = hidden;
+    if (hidden) this.hovered = null;
     let changed = drops.length !== this.drops.size;
     // Rebuild membership in linear time; only changed membership needs sorting.
     for (const drop of drops) { if (!this.drops.has(drop.id)) changed = true; }
@@ -50,7 +51,7 @@ export class LootLabels {
       const onScreen = this.position.z >= -1 && this.position.z <= 1 && Math.abs(this.position.x) <= 1 && Math.abs(this.position.y) <= 1;
       const invisible = !onScreen || Math.hypot(point[0] - drop.position[0], point[1] - drop.position[1]) > 12;
       if (label.hidden !== invisible) label.hidden = invisible;
-      if (label.hidden) continue;
+      if (label.hidden) { if (this.hovered === id) this.hovered = null; continue; }
       layout.x = (this.position.x + 1) * width / 2; layout.y = (1 - this.position.y) * height / 2;
       visible.push(layout);
     }

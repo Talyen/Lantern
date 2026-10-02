@@ -102,6 +102,9 @@ export class GatheringController {
   advance(dt: number): void {
     const area = this.context.area();
     const { player, enemies } = this.encounter;
+    // Combat advances before gathering contacts; a newly pursuing enemy must
+    // cancel this swing before it can award another resource.
+    if (this.selected && !gatheringSafe(this.encounter, area.kind)) this.cancel();
     const occupants = this.occupants;
     occupants.length = 0;
     const playerOccupant = this.occupantRecords.player;

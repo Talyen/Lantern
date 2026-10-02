@@ -4,14 +4,14 @@ import { mkdir, open, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { context, readJSON, writeJSON, processIdentity } from './state.mjs';
 import { acquire } from './resources.mjs';
 import { run, root } from '../lib/cli.mjs';
 export const sessionPath = cwd => join(cwd, '.local/agents/preview.json');
 export async function livePreview(cwd) {
   const record = await readJSON(sessionPath(cwd), null);
-  if (!record) return null;
+  if (!record?.url) return null;
   if (await processIdentity(record.pid) !== record.started) return null;
   try {
     const owner = await fetch(`${record.url}/__agent-owner`, { signal: AbortSignal.timeout(1500) }).then(response => response.json());
@@ -22,7 +22,7 @@ export async function stopPreview(cwd) {
   const record = await readJSON(sessionPath(cwd), null);
   if (!record) return;
   if (await processIdentity(record.pid) !== record.started) { await rm(sessionPath(cwd)); return; }
-  if (!await livePreview(cwd)) throw new Error(`Preview identity could not be verified; preserve its session record: ${cwd}`);
+  if (record.status !== 'starting' && !await livePreview(cwd)) throw new Error(`Preview identity could not be verified; preserve its session record: ${cwd}`);
   process.kill(record.pid, 'SIGTERM');
   for (let attempt = 0; attempt < 100; attempt++) {
     if (await processIdentity(record.pid) !== record.started) return;
@@ -65,18 +65,28 @@ async function serve() {
   const cwd = process.cwd(), ctx = await context(cwd);
   if (options.main && cwd !== ctx.main) throw new Error('Main preview must use the main checkout.');
   const session = `lantern-level-${options.token}`;
-  let lease, server, timer, closing = false, browserOpened = false;
+  let lease, ownerLease, server, timer, closing = false, browserOpened = false;
+  const record = { pid: process.pid, started: await processIdentity(process.pid), token: options.token,
+    session, renderer: 'webgpu', browser: options.browser, author: options.author, status: 'starting', ready: false };
   const close = async () => {
     if (closing) return; closing = true;
     clearInterval(timer);
     if (browserOpened) await run('agent-browser', ['--session', session, 'close']).catch(() => {});
-    await server?.close(); await rm(sessionPath(cwd), { force: true });
-    if (options.author) await rm(join(cwd, '.local/level-design/session.json'), { force: true });
-    await lease?.release(); process.exit(0);
+    await server?.close();
+    if ((await readJSON(sessionPath(cwd), null))?.token === options.token) await rm(sessionPath(cwd), { force: true });
+    if (options.author && (await readJSON(join(cwd, '.local/level-design/session.json'), null))?.token === options.token) await rm(join(cwd, '.local/level-design/session.json'), { force: true });
+    await lease?.release(); await ownerLease?.release(); process.exit(0);
   };
   process.once('SIGTERM', close); process.once('SIGINT', close);
   try {
+    // A second startup must never overwrite this task's session or leave an
+    // untracked server alive. This per-checkout lease also covers GPU admission.
+    const owner = `preview-${createHash('sha256').update(cwd).digest('hex').slice(0, 16)}`;
+    ownerLease = await acquire(owner, { cwd, ctx, tryOnly: true });
+    if (!ownerLease) throw new Error('An owned preview is already starting or running.');
+    await writeJSON(sessionPath(cwd), record);
     lease = options.browser ? await acquire('gpu', { cwd, ctx }) : null;
+    if (closing) { await lease?.release(); return; }
     lease?.cleanup(['agent-browser', '--session', session, 'close']);
     const port = options.main ? 5173 : await new Promise((accept, reject) => {
       const probe = portServer(); probe.once('error', reject);
@@ -100,7 +110,7 @@ async function serve() {
     }] });
     await server.listen();
     const url = `http://127.0.0.1:${server.httpServer.address().port}`;
-    const record = { pid: process.pid, started: await processIdentity(process.pid), token: options.token, url, session, renderer: 'webgpu', browser: options.browser, author: options.author, gpuLease: lease ? { token: lease.record.token, slot: lease.record.slot } : null, ready: false };
+    Object.assign(record, { url, status: 'serving', gpuLease: lease ? { token: lease.record.token, slot: lease.record.slot } : null });
     await writeJSON(sessionPath(cwd), record);
     if (options.author) await writeJSON(join(cwd, '.local/level-design/session.json'), record);
     if (options.browser) { browserOpened = true; await run('agent-browser', ['--session', session, '--headed', 'false', '--webgpu', 'open', `${url}/?area=${encodeURIComponent(options.area)}${options.author ? '&author=levels' : ''}`]); }
