@@ -71,6 +71,12 @@ export class Adventure {
   replaceItems(items: InventoryItem[]): void { this.character.items = items; this.save(); }
   message(text: string): void { this.notice = text; this.noticeTime = 2; }
   cancelPickup(): void { this.pickupTarget = null; }
+  /** Restart refreshes the outing while retaining permanent character progress. */
+  restart(): void {
+    this.sessions.clear(); this.portal = null; this.castRemaining = 0; this.cancelPickup();
+    this.notice = ''; this.noticeTime = 0; this.healing = false; this.atShelter = false;
+    this.checkpoint = 0; this.events = [];
+  }
   spawnDrop(item: LootItem, quantity: number, origin: Point, options: Partial<Pick<GroundDrop, 'claim' | 'instanceId' | 'blocked' | 'harvestXp'>> = {}): GroundDrop {
     const point = this.placeGround(origin, this.session().drops.length);
     const drop: GroundDrop = { id: this.newId(), item, quantity, origin: [...origin], ...point, age: 0, ...options };

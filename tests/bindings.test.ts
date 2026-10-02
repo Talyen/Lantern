@@ -20,6 +20,13 @@ test('conflicting inputs and missing movement directions cannot replace usable p
 
 test('code-less held inputs resolve consistently while physical codes take precedence',()=>{expect(keyboardInput({code:'',key:'r',location:0})).toBe('key:KeyR');expect(keyboardInput({code:'KeyW',key:'z',location:0})).toBe('key:KeyW');expect(keyboardInput({code:'',key:'Shift',location:2})).toBe('key:ShiftRight');});
 
+test('code-less punctuation and numpad inputs retain their remappable physical binding', () => {
+  expect(keyboardInput({code:'',key:'.',location:0})).toBe('key:Period');
+  expect(keyboardInput({code:'',key:'?',location:0})).toBe('key:Slash');
+  expect(keyboardInput({code:'',key:'1',location:3})).toBe('key:Numpad1');
+  expect(keyboardInput({code:'',key:'Enter',location:3})).toBe('key:NumpadEnter');
+});
+
 
 test('keybinding changes apply immediately and retry storage silently without keeping Apply open',async()=>{
   vi.useFakeTimers();

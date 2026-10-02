@@ -452,3 +452,32 @@ test('automatic swaps and repeated slot assignments preserve skill cooldowns and
   const cooldown=state.abilityCooldowns.sweep;stepExploration(state,1,{...idle,paused:true},undefined,clocks);expect(state.abilityCooldowns.sweep).toBe(cooldown);
   state.pending=null;useAbility(state,'shield-basic',clocks.player,false);expect(state.blocking).toBe(true);stepExploration(state,.05,{...idle,block:false},undefined,clocks);expect(state.blocking).toBe(false);
 });
+
+test('melee contact reaches an enemy overlapping the player', () => {
+  const state = closeEncounter();
+  state.enemies.enemy.z = state.player.z;
+  state.enemies.enemy.cooldown = 999;
+  attack(state,timing.player,false);
+  stepEncounter(state,.43,idle,timing);
+  expect(state.enemies.enemy.hp).toBe(50);
+});
+
+test('dodge immunity is evaluated at contact time within the frame', () => {
+  const state = closeEncounter();
+  state.enemies.enemy.attackTime = .4;
+  state.enemies.enemy.cooldown = 999;
+  state.invulnerability = .03;
+  stepEncounter(state,.05,idle,timing);
+  expect(state.player.hp).toBe(100); // Contact at .02 precedes immunity expiry at .03.
+  expect(state.invulnerability).toBe(0);
+  state.enemies.enemy.attackTime = .4;
+  state.enemies.enemy.contactIndex = 0;
+  stepEncounter(state,.05,idle,timing);
+  expect(state.player.hp).toBe(80);
+  for (const [distance,health] of [[.5,100],[.74,80]] as const) {
+    const shot = closeEncounter(); shot.invulnerability = .03; shot.enemies.enemy.lock = 999;
+    shot.projectiles.push({id:1,owner:'enemy',kind:'bolt',x:0,y:1.08,z:distance,dx:0,dz:-1,remaining:12});
+    stepEncounter(shot,.05,idle,timing);
+    expect(shot.player.hp).toBe(health); expect(shot.projectiles).toEqual([]);
+  }
+});

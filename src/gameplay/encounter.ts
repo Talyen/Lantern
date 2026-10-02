@@ -135,7 +135,6 @@ export function dodge(state: Encounter, direction: { x: number; z: number }, pau
 }
 function advancePlayerClocks(state: Encounter, dt: number): void {
   state.attackCooldown = Math.max(0, state.attackCooldown - dt);
-  state.invulnerability = Math.max(0, state.invulnerability - dt);
   state.player.lock = Math.max(0, state.player.lock - dt);
   state.dodgeCooldown = Math.max(0, state.dodgeCooldown - dt);
   state.playerMana=Math.min(playerMaxMana,state.playerMana+dt*8);
@@ -193,7 +192,7 @@ function preparePlayer(state: Encounter, dt: number, input: Input, timing: Actor
 }
 
 function hit(state: Encounter, actor: ActorId, timing: Timings, events: EncounterEvent[], source?: Weapon, incoming?: { x: number; z: number }, impactOffset = 0, playerDamage = playerAttackDamage): void {
-  if ((actor === 'player' ? state.player : state.enemies[actor]).hp <= 0 || actor === 'player' && state.invulnerability > 0) return;
+  if ((actor === 'player' ? state.player : state.enemies[actor]).hp <= 0 || actor === 'player' && state.invulnerability > impactOffset) return;
   const target = actor === 'player' ? state.player : state.enemies[actor];
   let damage = actor !== 'player' ? playerDamage : enemyAttackDamage;
   if (actor === 'player' && state.blocking) {
@@ -210,7 +209,7 @@ function hit(state: Encounter, actor: ActorId, timing: Timings, events: Encounte
   const contact = timing[actor].contacts[0];
   const committed = enemy?.kind === 'raider' && (timing[actor].commitLead ?? 0) > 0 && target.attackTime >= 0 && target.attackTime + impactOffset >= Math.max(0, contact - (timing[actor].commitLead ?? 0)) && target.attackTime < contact && target.hp > 0;
   if (!blocked && !committed) { target.lock = timing[actor].hit; target.attackTime = -1; }
-  if (actor === 'player') { state.invulnerability = .65; state.dodgeRemaining = 0; state.pending = null; if (!blocked) state.blocking = false; }
+  if (actor === 'player') { state.invulnerability = .65 + impactOffset; state.dodgeRemaining = 0; state.pending = null; if (!blocked) state.blocking = false; }
   else if (!committed) target.contactIndex = 0;
   events.push({type:'hit',actor}, {type:'impact',actor,weapon:source ?? null,blocked,lethal:target.hp<=0});
   if (!blocked && !committed) events.push({type:'animation',actor,motion:'hit'});
@@ -240,7 +239,7 @@ function stepPlayerAttack(state: Encounter, dt: number, timing: Timings, events:
       const enemy = state.enemies[id];
       if (!enemy.home || enemy.hp <= 0) continue;
       const dx = enemy.x-player.x, dz = enemy.z-player.z, distance = Math.hypot(dx,dz);
-      const facing = distance > 0 ? (Math.sin(player.yaw)*dx + Math.cos(player.yaw)*dz)/distance : 0;
+      const facing = distance > 0 ? (Math.sin(player.yaw)*dx + Math.cos(player.yaw)*dz)/distance : 1;
       if (distance < 1.95 && facing >= Math.cos(action.arc)-1e-6 && (!movementWorld || movementWorld.lineOfSight(player,enemy)) && Math.abs(player.y-enemy.y)<.8) hit(state,id,timing,events,action.weapon ?? undefined,undefined,Math.max(0,contacts[player.contactIndex-1]-(player.attackTime-dt)),action.damage);
     }
   }
@@ -250,7 +249,8 @@ function stepPlayerAttack(state: Encounter, dt: number, timing: Timings, events:
 function advanceProjectile(state: Encounter, projectile: Projectile, dt: number, timing: Timings, events: EncounterEvent[], movementWorld?: Movement): boolean {
   if (state.phase === 'lost' || projectile.owner !== 'player' && state.enemies[projectile.owner].hp <= 0) return false;
   const speed = projectile.owner !== 'player' ? casterBoltSpeed : projectile.kind === 'arrow' ? 24 : 16;
-  const distance = Math.min(projectile.remaining, (projectile.firstStep ?? dt) * speed);
+  const elapsed = projectile.firstStep ?? dt;
+  const distance = Math.min(projectile.remaining, elapsed * speed);
   projectile.firstStep = undefined;
   const to = { x: projectile.x + projectile.dx * distance, y: projectile.y, z: projectile.z + projectile.dz * distance };
   const wall = movementWorld?.segmentHit?.(projectile, to) ?? null;
@@ -267,7 +267,7 @@ function advanceProjectile(state: Encounter, projectile: Projectile, dt: number,
   }
   hits.sort((a,b)=>a.fraction-b.fraction);
   for (const contact of hits) {
-    hit(state,contact.id,timing,events,projectile.kind==='arrow' ? 'bow' : 'staff',{x:-projectile.dx,z:-projectile.dz},dt-distance/speed+contact.fraction*distance/speed,projectile.damage ?? playerAttackDamage);
+    hit(state,contact.id,timing,events,projectile.kind==='arrow' ? 'bow' : 'staff',{x:-projectile.dx,z:-projectile.dz},dt-elapsed+contact.fraction*distance/speed,projectile.damage ?? playerAttackDamage);
     if (!projectile.pierced) return false;
     projectile.pierced.push(contact.id);
   }
@@ -280,6 +280,11 @@ function stepProjectiles(state: Encounter, dt: number, timing: Timings, events: 
   state.projectiles = state.projectiles.filter(projectile => projectile.owner === 'player' || state.enemies[projectile.owner].hp > 0);
   if (state.player.hp <= 0) state.projectiles = [];
 }
+/** Contacts compare immunity against their offset before the frame consumes its clock. */
+function finishPlayerFrame(state: Encounter, dt: number, events: EncounterEvent[]): EncounterEvent[] {
+  state.invulnerability = Math.max(0, state.invulnerability - dt);
+  return events;
+}
 /** Safe and cleared areas retain attacks and projectile presentation without enemy AI. */
 export function stepExploration(state: Encounter, dt: number, input: Input, movementWorld?: Movement, timing?: Timings): EncounterEvent[] {
   if (input.paused || state.player.hp <= 0 || !['playing','won'].includes(state.phase)) return [];
@@ -287,7 +292,7 @@ export function stepExploration(state: Encounter, dt: number, input: Input, move
   const clocks = timing ?? {player:fallback,enemy:fallback,caster:fallback};
   const events = preparePlayer(state,dt,input,clocks.player);
   stepPlayerAttack(state,dt,clocks,events,movementWorld); stepProjectiles(state,dt,clocks,events,movementWorld);
-  events.push(...movePlayer(state,dt,input,movementWorld)); return events;
+  events.push(...movePlayer(state,dt,input,movementWorld)); return finishPlayerFrame(state,dt,events);
 }
 export function stepEncounter(state: Encounter, dt: number, input: Input, timing: Timings, movementWorld?: Movement): EncounterEvent[] {
   if (input.paused || state.phase !== 'playing') return [];
@@ -297,13 +302,13 @@ export function stepEncounter(state: Encounter, dt: number, input: Input, timing
     enemy.lock = Math.max(0, enemy.lock - dt); enemy.cooldown = Math.max(0, enemy.cooldown - dt);
   }
   stepPlayerAttack(state,dt,timing,events,movementWorld); stepProjectiles(state,dt,timing,events,movementWorld);
-  if (state.phase !== 'playing') return events;
+  if (state.phase !== 'playing') return finishPlayerFrame(state,dt,events);
   events.push(...movePlayer(state, dt, input, movementWorld));
   for (const id of enemyIds) {
     if (state.phase !== 'playing') break;
     if (state.enemies[id].home && state.enemies[id].hp > 0) stepEnemy(state,id,dt,timing,events,movementWorld);
   }
-  return events;
+  return finishPlayerFrame(state,dt,events);
 }
 function stepEnemy(state: Encounter, id: EnemyId, dt: number, timing: Timings, events: EncounterEvent[], movementWorld?: Movement): void {
   const player = state.player, enemy = state.enemies[id];
@@ -360,7 +365,7 @@ function stepEnemy(state: Encounter, id: EnemyId, dt: number, timing: Timings, e
       events.push({type:'action',actor:id,action:'contact',weapon:'axe'});
       const contactDx = player.x-enemy.x, contactDz = player.z-enemy.z, reach = Math.hypot(contactDx,contactDz);
       const facing = reach > 0 ? (Math.sin(enemy.yaw)*contactDx+Math.cos(enemy.yaw)*contactDz)/reach : 1;
-      if (facing >= .5 && Math.hypot(player.x - enemy.x, player.z - enemy.z) <= 1.8 && (!movementWorld || movementWorld.lineOfSight(enemy, player)) && Math.abs(player.y - enemy.y) < .8) hit(state, 'player', timing, events, 'axe', {x:enemy.x-player.x,z:enemy.z-player.z});
+      if (facing >= .5 && Math.hypot(player.x - enemy.x, player.z - enemy.z) <= 1.8 && (!movementWorld || movementWorld.lineOfSight(enemy, player)) && Math.abs(player.y - enemy.y) < .8) hit(state, 'player', timing, events, 'axe', {x:enemy.x-player.x,z:enemy.z-player.z}, Math.max(0,timing[id].contacts[enemy.contactIndex-1]-(enemy.attackTime-dt)));
       if (state.phase !== 'playing') return;
     }
     if (enemy.attackTime >= timing[id].attack) {

@@ -24,6 +24,12 @@ export class Harvesting {
   private elapsed = 0;
   private nextRegrowthAt = Infinity;
   private readonly areas = new Map<string, Map<string, SessionResource>>();
+  reset(): void {
+    this.elapsed = 0;
+    for (const nodes of this.areas.values()) for (const node of nodes.values()) {
+      node.hits = 0; node.regrowAt = undefined;
+    }
+  }
   register(areaId: string, resources: (ResourceDefinition | TreeDefinition)[]): void {
     const previous = this.areas.get(areaId);
     this.areas.set(areaId, new Map(resources.map(node => {

@@ -81,7 +81,11 @@ export class InputPreferences {
 export function keyboardInput(event: Pick<KeyboardEvent,'code'|'key'|'location'>): string {
   let code=event.code;
   if(!code){
-    if(/^[a-z]$/i.test(event.key))code=`Key${event.key.toUpperCase()}`;
+    const punctuation: Record<string,string> = {'.':'Period','>':'Period',',':'Comma','<':'Comma','/':'Slash','?':'Slash',';':'Semicolon',':':'Semicolon',"'":'Quote','"':'Quote','[':'BracketLeft','{':'BracketLeft',']':'BracketRight','}':'BracketRight','\\':'Backslash','|':'Backslash','`':'Backquote','~':'Backquote','-':'Minus','_':'Minus','=':'Equal','+':'Equal'};
+    const numpad: Record<string,string> = {Enter:'Enter','.':'Decimal',',':'Decimal','+':'Add','-':'Subtract','*':'Multiply','/':'Divide'};
+    if(event.location===3 && (/^[0-9]$/.test(event.key) || numpad[event.key]))code=`Numpad${numpad[event.key] ?? event.key}`;
+    else if(punctuation[event.key])code=punctuation[event.key];
+    else if(/^[a-z]$/i.test(event.key))code=`Key${event.key.toUpperCase()}`;
     else if(/^[0-9]$/.test(event.key))code=`Digit${event.key}`;
     else if(['Shift','Control','Alt','Meta'].includes(event.key))code=event.key+(event.location===2 ? 'Right' : 'Left');
     else code=event.key===' ' ? 'Space' : event.key;

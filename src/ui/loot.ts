@@ -29,7 +29,8 @@ export class LootLabels {
       let label = this.labels.get(drop.id);
       if (!label) {
         label = document.createElement('button'); label.type = 'button'; label.className = 'loot-label'; label.dataset.drop = drop.id; label.textContent = lootDefinitions[drop.item].name;
-        label.onpointerdown = event => { event.preventDefault(); event.stopPropagation(); this.select(drop.id); };
+        label.onpointerdown = event => { if (event.button !== 0) return; event.preventDefault(); event.stopPropagation(); this.select(drop.id); };
+        label.oncontextmenu = event => event.preventDefault();
         label.onclick = event => { event.preventDefault(); event.stopPropagation(); if (event.detail === 0) this.select(drop.id); };
         label.onpointerenter = () => { this.hovered = drop.id; }; label.onpointerleave = () => { if (this.hovered === drop.id) this.hovered = null; };
         this.root.append(label); this.labels.set(drop.id, label);

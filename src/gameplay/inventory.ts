@@ -140,6 +140,7 @@ export function moveItem(
     return next.filter((i) => i.quantity > 0);
   }
   if (!fits(next, entry.item, x, y, id)) throw new Error('Item does not fit.');
+  if (lootDefinitions[entry.item].stackable) quantity = Math.min(quantity, stackLimit);
   if (quantity < entry.quantity) {
     // The source rectangle remains occupied when splitting.
     if (!fits(next, entry.item, x, y)) throw new Error('Item does not fit.');

@@ -54,6 +54,15 @@ export function createInput(
     dispatch(binding);
   }, { signal });
 
+  window.addEventListener('pointerdown', event => {
+    if (event.defaultPrevented || !menuOpen()) return;
+    const binding = `mouse:${event.button}`, action = inputFor(preferences.value, binding);
+    if (!action || !menus.has(action)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    dispatch(binding);
+  }, { signal });
+
   window.addEventListener('pointerup', event => down.delete(`mouse:${event.button}`), { signal });
   window.addEventListener('keydown', event => {
     if (event.defaultPrevented || event.target instanceof HTMLElement &&

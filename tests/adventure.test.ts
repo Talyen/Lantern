@@ -5,7 +5,7 @@ import { createEncounter } from '../src/gameplay/encounter';
 import homestead from '../src/levels/areas/homestead.json';
 import clearing from '../src/levels/areas/clearing.json';
 import type { AreaDefinition } from '../src/levels/types';
-import { equipInstance, itemLoadout, receive, removeQuantity, sortedItems, validItems, transferItem, type InventoryItem } from '../src/gameplay/inventory';
+import { equipInstance, itemLoadout, moveItem, receive, removeQuantity, sortedItems, validItems, transferItem, type InventoryItem } from '../src/gameplay/inventory';
 const home = homestead as unknown as AreaDefinition, field = clearing as unknown as AreaDefinition;
 const memory = () => { const data = new Map<string, string>(); return { data, getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => { data.set(key, value); } }; };
 
@@ -399,4 +399,31 @@ test('overflow transfers into empty stash cells cap stacks and retain quantity a
   const last = transferItem(second.source, second.destination, 'legacy', 2, () => 'unused', {x:2,y:0});
   expect(last.source).toEqual([]); expect(last.destination.map(i => [i.id,i.quantity])).toEqual([['part-1',99],['part-2',99],['legacy',2]]);
   expect(source[0].quantity).toBe(200);
+});
+
+test('unpacking an oversized recovery stack into the bag retains the remainder', () => {
+  const items: InventoryItem[] = [{id:'legacy',item:'wood',quantity:200,slot:'overflow',x:0,y:0}];
+  const next = moveItem(items,'legacy',0,0,200,()=> 'unpacked');
+  expect(next.find(i=>i.slot==='bag')).toMatchObject({id:'unpacked',quantity:99});
+  expect(next.find(i=>i.slot==='overflow')).toMatchObject({id:'legacy',quantity:101});
+  expect(validItems(next)).toBe(true);
+  expect(items[0].quantity).toBe(200);
+});
+
+test('Restart refreshes chest rewards, drops and portals while retaining collected progress', () => {
+  const state = new Adventure(memory(),()=>1), encounter = createEncounter('playing');
+  const chest = field.chests![0];
+  state.enter(encounter,field,{position:chest.position,yaw:0});
+  encounter.enemies.enemy.hp = 0;
+  state.openChest(encounter,field,chest);
+  const sword = state.session().drops.find(d=>d.item==='sword')!; sword.age = .6;
+  state.pickup(sword.id,chest.position,true);
+  state.beginCast(true); state.step(encounter,field,2);
+  const character = JSON.stringify(state.character);
+  state.restart();
+  expect(JSON.stringify(state.character)).toBe(character);
+  expect(state.session().drops).toEqual([]);
+  expect(state.portal).toBeNull(); expect(state.castRemaining).toBe(0);
+  expect(state.openChest(encounter,field,chest)).toBe(true);
+  expect(state.session().drops.map(d=>d.item)).toEqual(['scroll','potion','shield','bow','staff']);
 });

@@ -102,6 +102,10 @@ test('all standing trees retain harvest identity and three chop contacts regrow 
   expect(harvesting.advance(1, [{ areaId: 'clearing', position: [tree.position[0],tree.position[2]] }])).toEqual([]);
   expect(harvesting.advance(.05, [{ areaId: 'clearing', position: point }])).toEqual([{ areaId: 'clearing', id: tree.id, felled: false }]);
   expect(harvesting.state('clearing', tree.id)).toEqual({ hits: 0, felled: false });
+  for (let hit=0;hit<3;hit++) harvesting.contact('clearing', tree.id, point);
+  harvesting.reset();
+  expect(harvesting.state('clearing', tree.id)).toEqual({ hits: 0, felled: false });
+  expect(harvesting.nearest('clearing', point)?.id).toBe(tree.id);
   expect(new Harvesting().state('clearing', tree.id)).toBeUndefined();
 });
 

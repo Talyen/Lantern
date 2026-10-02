@@ -8,7 +8,7 @@ import { setText, setAttribute, setDisabled } from './dom';
 import './combat.css';
 
 type Context={character():CharacterSave;encounter():Encounter;preferences:InputPreferences;activate(id:AbilityId):void;potion():void;portal():void;swap():void;canEdit():boolean;portalReady():boolean;assign(bar:ActionBar):void;clear():void;focus():void};
-type Drag={id:AbilityId;slot?:number;x:number;y:number;active:boolean};
+type Drag={id:AbilityId;slot?:number;x:number;y:number;active:boolean;pointer:number};
 type SlotElements={button:HTMLButtonElement;icon:HTMLElement;cooldown:HTMLElement;key:HTMLElement};
 type UtilityElements={button:HTMLButtonElement;count:Element;key:Element};
 export class CombatUI {
@@ -27,6 +27,8 @@ export class CombatUI {
   private family='sword';
   private drag:Drag | null=null;
   private held:AbilityId | null=null;
+  private heldPointer:number | null=null;
+  private heldKey:string | null=null;
   private ignoreClickUntil=0;
   constructor(private ctx:Context){
     this.bar.id='action-bar';this.bar.setAttribute('aria-label','Action bar');
@@ -37,12 +39,19 @@ export class CombatUI {
     for(let i=0;i<6;i++){
       const button=document.createElement('button');button.type='button';button.className='action-slot';button.dataset.slot=String(i);button.innerHTML='<span class="ability-icon"></span><span class="cooldown-value"></span><kbd></kbd>';
       this.slots.push({button,icon:button.querySelector<HTMLElement>('.ability-icon')!,cooldown:button.querySelector<HTMLElement>('.cooldown-value')!,key:button.querySelector('kbd')!});
-      button.onclick=()=>{if(performance.now()<this.ignoreClickUntil)return;if(this.paused && !this.drag?.active && this.selected && this.ctx.canEdit()){const bar=[...this.ctx.character().actionBar];bar[i]=this.selected;this.ctx.assign(bar);this.update();}};
+      button.onclick=event=>{if(performance.now()<this.ignoreClickUntil)return;if(this.paused && !this.drag?.active && this.selected && this.ctx.canEdit()){const bar=[...this.ctx.character().actionBar];bar[i]=this.selected;this.ctx.assign(bar);this.update();}else if(!this.paused && event.detail===0){const id=this.ctx.character().actionBar[i];if(id){this.ctx.activate(id);this.ctx.focus();}}};
+      button.onkeydown=event=>{
+        if(this.paused || !['Enter',' '].includes(event.key))return;
+        event.preventDefault();event.stopPropagation();if(event.repeat)return;
+        const id=this.ctx.character().actionBar[i];if(!id)return;
+        if(abilities[id].activation==='hold'){this.held=id;this.heldKey=event.key;this.heldPointer=null;}
+        this.ctx.activate(id);this.ctx.focus();
+      };
       button.onpointerdown=event=>{
         if(event.button!==0)return;
         const id=this.ctx.character().actionBar[i];
-        if(this.paused){if(!this.ctx.canEdit() || !id || this.selected)return;this.drag={id,slot:i,x:event.clientX,y:event.clientY,active:false};button.setPointerCapture(event.pointerId);}
-        else if(id){event.preventDefault();this.held=abilities[id].activation==='hold' ? id : null;this.ctx.activate(id);}
+        if(this.paused){if(!this.ctx.canEdit() || !id || this.selected)return;this.drag={id,slot:i,x:event.clientX,y:event.clientY,active:false,pointer:event.pointerId};button.setPointerCapture(event.pointerId);}
+        else if(id){event.preventDefault();this.held=abilities[id].activation==='hold' ? id : null;this.heldPointer=this.held ? event.pointerId : null;this.heldKey=null;this.ctx.activate(id);}
       };
       this.buttons.push(button);slots.append(button);
     }
@@ -58,18 +67,21 @@ export class CombatUI {
     this.ghost.className='ability-ghost';this.dialog.append(this.ghost);
     window.addEventListener('pointermove',event=>{if(!this.drag)return;if(Math.hypot(event.clientX-this.drag.x,event.clientY-this.drag.y)>5)this.drag.active=true;if(!this.drag.active)return;this.ghost.innerHTML=abilityIcon(this.drag.id);this.ghost.hidden=false;this.ghost.style.left=`${event.clientX}px`;this.ghost.style.top=`${event.clientY}px`;this.buttons.forEach(button=>{const rect=button.getBoundingClientRect();button.classList.toggle('drop-target',event.clientX>=rect.left && event.clientX<=rect.right && event.clientY>=rect.top && event.clientY<=rect.bottom);});});
     window.addEventListener('pointerup',event=>{
-      this.held=null;const drag=this.drag;this.drag=null;this.ghost.hidden=true;this.buttons.forEach(button=>button.classList.remove('drop-target'));
+      if(event.button!==0)return;
+      if(event.pointerId===this.heldPointer){this.held=null;this.heldPointer=null;}
+      const drag=this.drag;if(drag && event.pointerId!==drag.pointer)return;this.drag=null;this.ghost.hidden=true;this.buttons.forEach(button=>button.classList.remove('drop-target'));
       if(!drag?.active || !this.ctx.canEdit())return;this.ignoreClickUntil=performance.now()+100;
       const target=document.elementFromPoint(event.clientX,event.clientY)?.closest<HTMLElement>('[data-slot]'),bar=[...this.ctx.character().actionBar];
       if(target){const slot=Number(target.dataset.slot);if(drag.slot!==undefined)bar[drag.slot]=bar[slot];bar[slot]=drag.id;}
       else if(drag.slot!==undefined)bar[drag.slot]=null;
       this.selected=null;this.ctx.assign(bar);this.update();this.renderTree();
     });
+    window.addEventListener('keyup',event=>{if(event.key===this.heldKey){event.preventDefault();this.held=null;this.heldKey=null;this.ctx.focus();}});
     window.addEventListener('pointercancel',()=>this.clearHold());window.addEventListener('blur',()=>this.clearHold());this.ghost.hidden=true;this.update();
   }
   get paused():boolean{return this.dialog.open;}
   get blocking():boolean{return this.held==='shield-basic';}
-  clearHold():void{this.held=null;this.drag=null;this.ghost.hidden=true;}
+  clearHold():void{this.held=null;this.heldPointer=null;this.heldKey=null;this.drag=null;this.ghost.hidden=true;this.buttons.forEach(button=>button.classList.remove('drop-target'));}
   open():void{this.ctx.clear();this.selected=null;this.dialog.append(this.bar);this.dialog.showModal();this.renderTree();this.update();}
   close():void{this.clearHold();this.dialog.close();document.getElementById('app')!.append(this.bar);this.ctx.clear();this.ctx.focus();}
   private renderTree():void{
@@ -78,7 +90,7 @@ export class CombatUI {
       const button=document.createElement('button');button.type='button';button.className='skill-node';button.innerHTML=abilityIcon(id);button.title=this.tooltip(id);button.setAttribute('aria-label',abilities[id].name);button.disabled=!this.ctx.canEdit();
       const label=document.createElement('span');label.textContent=abilities[id].motion==='attack' || abilities[id].motion==='block' ? 'Basic' : abilities[id].name;button.append(label);button.setAttribute('aria-pressed',String(this.selected===id));
       button.onclick=()=>{if(performance.now()<this.ignoreClickUntil)return;this.selected=this.selected===id ? null : id;this.renderTree();};
-      button.onpointerdown=event=>{if(event.button===0 && this.ctx.canEdit()){this.drag={id,x:event.clientX,y:event.clientY,active:false};button.setPointerCapture(event.pointerId);}};this.nodes.append(button);
+      button.onpointerdown=event=>{if(event.button===0 && this.ctx.canEdit()){this.drag={id,x:event.clientX,y:event.clientY,active:false,pointer:event.pointerId};button.setPointerCapture(event.pointerId);}};this.nodes.append(button);
     }
     if(['sword','bow'].includes(this.family)){const locked=document.createElement('button');locked.type='button';locked.className='skill-node locked';locked.disabled=true;locked.innerHTML='<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M15 22v-7a9 9 0 0 1 18 0v7M11 22h26v19H11zM24 29v5"/></svg><span>Ultimate</span>';locked.title='Locked';this.nodes.append(locked);}
     this.status.textContent=this.ctx.canEdit() ? this.selected ? `${abilities[this.selected].name} · Choose a slot` : '' : 'Assignments unavailable in combat.';
