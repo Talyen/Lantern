@@ -24,7 +24,7 @@ def field_image(name,values,path=None):
         path=Path(path);path.parent.mkdir(parents=True,exist_ok=True);image.filepath_raw=str(path.resolve());image.file_format='PNG';image.save()
     return image
 
-def author_fields(source,family):
+def author_fields(source,family,recipe=None):
     rgb=pixels(source)[:,:,:3];h,w=rgb.shape[:2]
     luma=rgb@np.array([.2126,.7152,.0722],dtype=np.float32)
     smooth=blur(luma,max(2,w*.003));broad=blur(luma,w*.022)
@@ -47,6 +47,29 @@ def author_fields(source,family):
     slope=np.sqrt(dx*dx+dy*dy)
     rough=np.clip(ROUGH[family]-.045*np.clip(slope/18,0,1)+np.clip(form,-1,1)*.018,.65,.99)
     cavity=1-.13*np.clip((blur(height,w*.01)-height)*6,0,1)
+    if recipe:
+        # Broad painted regions define worn/open material versus crevices. These
+        # controls are opt-in per asset; existing prepared families stay intact.
+        lo,hi=recipe.get('roughness',[ROUGH[family]-.04,ROUGH[family]+.02])
+        open_surface=np.clip(.5+form*.3+contrast*.15,0,1)
+        if family=='stone':
+            # Select actual dark fissures relative to their surrounding plane;
+            # broad bright mineral stains must not become embossed ridges.
+            cracks=np.clip((broad-smooth-.01)/.07,0,1)
+            height=.54-cracks*.23+np.clip(form,-1,1)*.06
+            open_surface=1-blur(cracks,max(1,w*.002))
+        elif family in ['bark','timber']:
+            # Structural grain carries relief; paint only modulates the ridges.
+            height=height*.4+(.5+grain*.12)*.6
+        elif family=='cloth':
+            height=.5+np.clip(contrast,-1,1)*.035
+        elif family=='foliage':
+            height=.5+np.clip(form,-1,1)*.12+np.clip(contrast,-1,1)*.06
+        rough=hi-(hi-lo)*open_surface
+        if family=='leather': rough=lo+(hi-lo)*open_surface
+        height=np.clip(.5+(height-.5)*recipe.get('relief',1),.08,.92)
+        cavity=1-.13*np.clip((blur(height,w*.01)-height)*6,0,1)
+        cavity=np.clip(1-(1-cavity)*recipe.get('cavity',1),.76,1)
     data=np.stack([height,rough,cavity,np.ones_like(height)],axis=-1).astype(np.float32)
     return field_image('Relief '+family,data)
 

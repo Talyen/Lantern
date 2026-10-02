@@ -99,138 +99,383 @@
         "patches": [
           {
             "center": [
-              -9.5459,
-              9.5459
+              -8,
+              6
             ],
-            "radius": 2.6,
-            "color": "#806b50",
-            "strength": 0.75
+            "radius": 10,
+            "color": "#826047",
+            "strength": 0.98,
+            "layer": "litter"
           },
           {
             "center": [
-              -8.4853,
-              7.0711
+              8,
+              5
             ],
-            "radius": 2.6,
-            "color": "#806b50",
-            "strength": 0.75
+            "radius": 10,
+            "color": "#826047",
+            "strength": 0.96,
+            "layer": "litter"
           },
           {
             "center": [
-              -7.0711,
-              4.2426
+              5,
+              -13
             ],
-            "radius": 2.6,
-            "color": "#806b50",
-            "strength": 0.75
+            "radius": 7,
+            "color": "#826047",
+            "strength": 0.96,
+            "layer": "litter"
           },
           {
             "center": [
-              -4.2426,
-              2.8284
-            ],
-            "radius": 2.6,
-            "color": "#806b50",
-            "strength": 0.75
-          },
-          {
-            "center": [
-              -1.4142,
-              1.4142
-            ],
-            "radius": 2.6,
-            "color": "#806b50",
-            "strength": 0.75
-          },
-          {
-            "center": [
-              0.7071,
-              -0.7071
-            ],
-            "radius": 2.6,
-            "color": "#806b50",
-            "strength": 0.75
-          },
-          {
-            "center": [
-              2.1213,
-              -2.1213
-            ],
-            "radius": 2.6,
-            "color": "#806b50",
-            "strength": 0.75
-          },
-          {
-            "center": [
-              4.2426,
-              -4.2426
-            ],
-            "radius": 5.6,
-            "color": "#897458",
-            "strength": 0.8
-          },
-          {
-            "center": [
-              2.1213,
-              -7.7782
-            ],
-            "radius": 2.8,
-            "color": "#897458",
-            "strength": 0.85
-          },
-          {
-            "center": [
-              4.2426,
-              -11.3137
-            ],
-            "radius": 3.4,
-            "color": "#756047",
-            "strength": 0.8
-          },
-          {
-            "center": [
-              -9.1924,
-              14.8492
-            ],
-            "radius": 3.5,
-            "color": "#874739",
-            "strength": 0.16
-          },
-          {
-            "center": [
-              14.1421,
-              2.8284
+              -14,
+              5
             ],
             "radius": 4,
-            "color": "#AF8050",
-            "strength": 0.16
+            "color": "#826047",
+            "strength": 0.98,
+            "layer": "litter"
           },
           {
             "center": [
-              -5.6569,
-              -9.8995
+              -12,
+              3
+            ],
+            "radius": 3.7,
+            "color": "#826047",
+            "strength": 0.98,
+            "layer": "litter"
+          },
+          {
+            "center": [
+              -12,
+              7.8
+            ],
+            "radius": 3.7,
+            "color": "#826047",
+            "strength": 0.98,
+            "layer": "litter"
+          },
+          {
+            "center": [
+              -6.5,
+              11.6
             ],
             "radius": 3.5,
-            "color": "#AD9145",
-            "strength": 0.16
+            "color": "#826047",
+            "strength": 0.98,
+            "layer": "litter"
+          },
+          {
+            "center": [
+              -3.8,
+              13.2
+            ],
+            "radius": 4.6,
+            "color": "#826047",
+            "strength": 0.98,
+            "layer": "litter"
+          },
+          {
+            "center": [
+              0,
+              13.8
+            ],
+            "radius": 3.3,
+            "color": "#826047",
+            "strength": 0.98,
+            "layer": "litter"
+          },
+          {
+            "center": [
+              10.5,
+              6
+            ],
+            "radius": 4.5,
+            "color": "#826047",
+            "strength": 0.98,
+            "layer": "litter"
+          },
+          {
+            "center": [
+              13.4,
+              3.2
+            ],
+            "radius": 4,
+            "color": "#826047",
+            "strength": 0.98,
+            "layer": "litter"
+          },
+          {
+            "center": [
+              15,
+              -1
+            ],
+            "radius": 3,
+            "color": "#826047",
+            "strength": 0.98,
+            "layer": "litter"
+          },
+          {
+            "center": [
+              9,
+              -14
+            ],
+            "radius": 3.3,
+            "color": "#826047",
+            "strength": 0.98,
+            "layer": "litter"
+          },
+          {
+            "center": [
+              1,
+              -15
+            ],
+            "radius": 3.6,
+            "color": "#826047",
+            "strength": 0.98,
+            "layer": "litter"
+          },
+          {
+            "center": [
+              -5.5,
+              -10.5
+            ],
+            "radius": 3.6,
+            "color": "#826047",
+            "strength": 0.98,
+            "layer": "litter"
+          },
+          {
+            "center": [
+              -6.364,
+              10.6066
+            ],
+            "radius": 2.3,
+            "color": "#777568",
+            "strength": 0.9,
+            "layer": "rocky-soil"
+          },
+          {
+            "center": [
+              -4.8,
+              10.9
+            ],
+            "radius": 2.3,
+            "color": "#777568",
+            "strength": 0.9,
+            "layer": "rocky-soil"
+          },
+          {
+            "center": [
+              2.1213,
+              3.5355
+            ],
+            "radius": 2,
+            "color": "#777568",
+            "strength": 0.9,
+            "layer": "rocky-soil"
+          },
+          {
+            "center": [
+              5.8,
+              1.7
+            ],
+            "radius": 2,
+            "color": "#777568",
+            "strength": 0.9,
+            "layer": "rocky-soil"
+          },
+          {
+            "center": [
+              -13.1,
+              6.4
+            ],
+            "radius": 2,
+            "color": "#777568",
+            "strength": 0.9,
+            "layer": "rocky-soil"
+          },
+          {
+            "center": [
+              -9.7,
+              1.5
+            ],
+            "radius": 2,
+            "color": "#777568",
+            "strength": 0.9,
+            "layer": "rocky-soil"
+          },
+          {
+            "center": [
+              -4.9497,
+              -3.5355
+            ],
+            "radius": 2,
+            "color": "#777568",
+            "strength": 0.9,
+            "layer": "rocky-soil"
+          },
+          {
+            "center": [
+              7.0711,
+              -14.1421
+            ],
+            "radius": 2,
+            "color": "#777568",
+            "strength": 0.9,
+            "layer": "rocky-soil"
+          },
+          {
+            "center": [
+              16.2635,
+              -3.5355
+            ],
+            "radius": 2,
+            "color": "#777568",
+            "strength": 0.9,
+            "layer": "rocky-soil"
+          },
+          {
+            "center": [
+              -9.55,
+              9.55
+            ],
+            "radius": 2.1,
+            "color": "#806b50",
+            "strength": 1,
+            "layer": "earth"
+          },
+          {
+            "center": [
+              -8.6,
+              7.5
+            ],
+            "radius": 2.1,
+            "color": "#806b50",
+            "strength": 1,
+            "layer": "earth"
+          },
+          {
+            "center": [
+              -7.2,
+              5.2
+            ],
+            "radius": 2.2,
+            "color": "#806b50",
+            "strength": 1,
+            "layer": "earth"
+          },
+          {
+            "center": [
+              -5.7,
+              3.8
+            ],
+            "radius": 2.25,
+            "color": "#806b50",
+            "strength": 1,
+            "layer": "earth"
+          },
+          {
+            "center": [
+              -3.6,
+              2.7
+            ],
+            "radius": 2.3,
+            "color": "#806b50",
+            "strength": 1,
+            "layer": "earth"
+          },
+          {
+            "center": [
+              -1.4,
+              1.4
+            ],
+            "radius": 2.3,
+            "color": "#806b50",
+            "strength": 1,
+            "layer": "earth"
+          },
+          {
+            "center": [
+              0.7,
+              -0.7
+            ],
+            "radius": 2.3,
+            "color": "#806b50",
+            "strength": 1,
+            "layer": "earth"
+          },
+          {
+            "center": [
+              2.1,
+              -2.1
+            ],
+            "radius": 2.5,
+            "color": "#806b50",
+            "strength": 1,
+            "layer": "earth"
+          },
+          {
+            "center": [
+              3.9,
+              -3.9
+            ],
+            "radius": 4.8,
+            "color": "#806b50",
+            "strength": 1,
+            "layer": "earth"
+          },
+          {
+            "center": [
+              2.1,
+              -7.8
+            ],
+            "radius": 3.5,
+            "color": "#806b50",
+            "strength": 1,
+            "layer": "earth"
+          },
+          {
+            "center": [
+              4.5,
+              -10
+            ],
+            "radius": 3,
+            "color": "#806b50",
+            "strength": 1,
+            "layer": "earth"
+          },
+          {
+            "center": [
+              10.8,
+              -6.2
+            ],
+            "radius": 2,
+            "color": "#806b50",
+            "strength": 1,
+            "layer": "earth"
+          },
+          {
+            "center": [
+              12.5,
+              -7.2
+            ],
+            "radius": 2,
+            "color": "#806b50",
+            "strength": 1,
+            "layer": "earth"
           },
           {
             "center": [
               -10,
               -5
             ],
-            "radius": 2.3,
-            "color": "#68523d",
-            "strength": 0.55
-          },
-          {
-            "center": [
-              -8,
-              -1
-            ],
-            "radius": 1.2,
-            "color": "#68523d",
-            "strength": 0.3
+            "radius": 3,
+            "color": "#806b50",
+            "strength": 1,
+            "layer": "earth"
           }
         ]
       }
@@ -278,9 +523,9 @@
     {
       "id": "bedroll",
       "position": [
-        4.9497,
+        3.6,
         0,
-        -9.1924
+        -10
       ],
       "yaw": -0.7853981633974483,
       "scale": [
@@ -297,9 +542,9 @@
     {
       "id": "supplies",
       "position": [
-        8.4853,
+        7.2,
         0,
-        -8.4853
+        -12.4
       ],
       "yaw": 0.5,
       "scale": [
@@ -316,9 +561,9 @@
     {
       "id": "barrel",
       "position": [
-        9.6167,
+        7.9,
         0,
-        -7.3539
+        -11.4
       ],
       "yaw": 0,
       "scale": [
@@ -335,9 +580,9 @@
     {
       "id": "sitting-log",
       "position": [
-        -2.1213,
+        -0.7,
         0,
-        -7.7782
+        -10.2
       ],
       "yaw": 0.7853981633974483,
       "scale": [
@@ -355,9 +600,9 @@
     {
       "id": "pine-0",
       "position": [
-        -15.5563,
+        -14.4,
         0,
-        8.4853
+        5.2
       ],
       "yaw": 0.0,
       "scale": [
@@ -375,9 +620,9 @@
     {
       "id": "pine-1",
       "position": [
-        -9.1924,
+        -4.8,
         0,
-        14.8492
+        13.6
       ],
       "yaw": 1.71,
       "scale": [
@@ -395,9 +640,9 @@
     {
       "id": "pine-2",
       "position": [
-        -4.2426,
+        10.8,
         0,
-        14.1421
+        6.1
       ],
       "yaw": 3.42,
       "scale": [
@@ -415,9 +660,9 @@
     {
       "id": "pine-3",
       "position": [
-        0.0,
+        -12.9,
         0,
-        12.7279
+        7.4
       ],
       "yaw": 5.13,
       "scale": [
@@ -435,9 +680,9 @@
     {
       "id": "pine-4",
       "position": [
-        4.9497,
+        -2.2,
         0,
-        10.6066
+        14.3
       ],
       "yaw": 6.84,
       "scale": [
@@ -455,9 +700,9 @@
     {
       "id": "pine-5",
       "position": [
-        9.5459,
+        13.2,
         0,
-        6.7175
+        3.9
       ],
       "yaw": 8.55,
       "scale": [
@@ -475,9 +720,9 @@
     {
       "id": "pine-6",
       "position": [
-        14.1421,
+        15.0,
         0,
-        2.8284
+        1.4
       ],
       "yaw": 10.26,
       "scale": [
@@ -535,9 +780,9 @@
     {
       "id": "pine-9",
       "position": [
-        10.6066,
+        9.1,
         0,
-        -14.8492
+        -14.8
       ],
       "yaw": 15.39,
       "scale": [
@@ -555,9 +800,9 @@
     {
       "id": "pine-10",
       "position": [
-        -12.0208,
+        -12.4,
         0,
-        2.1213
+        1.8
       ],
       "yaw": 17.1,
       "scale": [
@@ -575,9 +820,9 @@
     {
       "id": "pine-11",
       "position": [
-        -12.4,
+        -13.6,
         0,
-        -1.8
+        -0.6
       ],
       "yaw": 18.81,
       "scale": [
@@ -715,9 +960,9 @@
     {
       "id": "rock-1",
       "position": [
-        -2.8284,
+        -4.8,
         0,
-        7.0711
+        10.9
       ],
       "yaw": 1.3,
       "scale": [
@@ -755,9 +1000,9 @@
     {
       "id": "rock-3",
       "position": [
-        6.364,
+        5.8,
         0,
-        2.1213
+        1.7
       ],
       "yaw": 3.9000000000000004,
       "scale": [
@@ -775,9 +1020,9 @@
     {
       "id": "rock-4",
       "position": [
-        -12.7279,
+        -13.1,
         0,
-        7.0711
+        6.4
       ],
       "yaw": 5.2,
       "scale": [
@@ -795,9 +1040,9 @@
     {
       "id": "rock-5",
       "position": [
-        -8.4853,
+        -9.7,
         0,
-        1.4142
+        1.5
       ],
       "yaw": 6.5,
       "scale": [
@@ -895,9 +1140,9 @@
     {
       "id": "fern-1",
       "position": [
-        6.3365,
+        -14.263,
         0,
-        -15.8499
+        5.07
       ],
       "yaw": 5.15364826100068,
       "scale": [
@@ -910,14 +1155,14 @@
       "asset": {
         "libraryId": "generic:model:sm-gen-env-fern-01"
       },
-      "height": 0.4220721233899361
+      "height": 0.49
     },
     {
       "id": "fern-3",
       "position": [
-        16.4491,
+        -10.948,
         0,
-        -4.449
+        0.633
       ],
       "yaw": 0.8556161033685823,
       "scale": [
@@ -930,14 +1175,14 @@
       "asset": {
         "libraryId": "generic:model:sm-gen-env-fern-01"
       },
-      "height": 0.4839130656099647
+      "height": 0.411
     },
     {
       "id": "fern-5",
       "position": [
-        -19.6558,
+        -6.605,
         0,
-        2.8775
+        12.018
       ],
       "yaw": 0.8891266834746974,
       "scale": [
@@ -950,14 +1195,14 @@
       "asset": {
         "libraryId": "generic:model:sm-gen-env-fern-01"
       },
-      "height": 0.6409658774060056
+      "height": 0.421
     },
     {
       "id": "fern-6",
       "position": [
-        3.2394,
+        -2.378,
         0,
-        -14.6422
+        13.389
       ],
       "yaw": 5.399394785750948,
       "scale": [
@@ -970,14 +1215,14 @@
       "asset": {
         "libraryId": "generic:model:sm-gen-env-fern-01"
       },
-      "height": 0.5776363513325017
+      "height": 0.418
     },
     {
       "id": "fern-7",
       "position": [
-        15.7693,
+        10.507,
         0,
-        -5.1156
+        6.275
       ],
       "yaw": 0.061079938504080146,
       "scale": [
@@ -990,14 +1235,14 @@
       "asset": {
         "libraryId": "generic:model:sm-gen-env-fern-01"
       },
-      "height": 0.41164757609765035
+      "height": 0.496
     },
     {
       "id": "fern-8",
       "position": [
-        -7.8,
+        14.289,
         0,
-        -8.1
+        2.223
       ],
       "yaw": 3.2057971032043975,
       "scale": [
@@ -1010,14 +1255,14 @@
       "asset": {
         "libraryId": "generic:model:sm-gen-env-fern-01"
       },
-      "height": 0.4250437750969614
+      "height": 0.386
     },
     {
       "id": "fern-9",
       "position": [
-        -5.1234,
+        9.119,
         0,
-        8.5595
+        -13.633
       ],
       "yaw": 3.4134356303844986,
       "scale": [
@@ -1030,14 +1275,14 @@
       "asset": {
         "libraryId": "generic:model:sm-gen-env-fern-01"
       },
-      "height": 0.6313021366881502
+      "height": 0.436
     },
     {
       "id": "fern-10",
       "position": [
-        4.766,
+        0.491,
         0,
-        2.4866
+        -15.524
       ],
       "yaw": 4.935778083163057,
       "scale": [
@@ -1050,14 +1295,14 @@
       "asset": {
         "libraryId": "generic:model:sm-gen-env-fern-01"
       },
-      "height": 0.31350900629768885
+      "height": 0.647
     },
     {
       "id": "fern-12",
       "position": [
-        -1.8105,
+        -6.669,
         0,
-        -15.7555
+        -11.279
       ],
       "yaw": 5.327962054970152,
       "scale": [
@@ -1070,14 +1315,14 @@
       "asset": {
         "libraryId": "generic:model:sm-gen-env-fern-01"
       },
-      "height": 0.5515929116034115
+      "height": 0.544
     },
     {
       "id": "fern-13",
       "position": [
-        1.4216,
+        -12.658,
         0,
-        12.878
+        7.089
       ],
       "yaw": 0.8398755344790418,
       "scale": [
@@ -1090,14 +1335,14 @@
       "asset": {
         "libraryId": "generic:model:sm-gen-env-fern-01"
       },
-      "height": 0.6300679904005065
+      "height": 0.615
     },
     {
       "id": "fern-14",
       "position": [
-        11.3945,
+        -11.933,
         0,
-        0.3505
+        0.789
       ],
       "yaw": 4.897218520653897,
       "scale": [
@@ -1110,14 +1355,14 @@
       "asset": {
         "libraryId": "generic:model:sm-gen-env-fern-01"
       },
-      "height": 0.380703724317496
+      "height": 0.614
     },
     {
       "id": "fern-15",
       "position": [
-        -2.2736,
+        -4.333,
         0,
-        7.9131
+        10.273
       ],
       "yaw": 0.9443566299005512,
       "scale": [
@@ -1130,14 +1375,14 @@
       "asset": {
         "libraryId": "generic:model:sm-gen-env-fern-01"
       },
-      "height": 0.4648952068689547
+      "height": 0.586
     },
     {
       "id": "fern-17",
       "position": [
-        11.7981,
+        -1.995,
         0,
-        1.9722
+        13.363
       ],
       "yaw": 5.654109768027125,
       "scale": [
@@ -1150,14 +1395,14 @@
       "asset": {
         "libraryId": "generic:model:sm-gen-env-fern-01"
       },
-      "height": 0.43626052376690383
+      "height": 0.441
     },
     {
       "id": "fern-18",
       "position": [
-        8.098,
+        11.29,
         0,
-        7.3061
+        6.952
       ],
       "yaw": 0.6266373943034445,
       "scale": [
@@ -1170,14 +1415,14 @@
       "asset": {
         "libraryId": "generic:model:sm-gen-env-fern-01"
       },
-      "height": 0.352160941831333
+      "height": 0.434
     },
     {
       "id": "fern-19",
       "position": [
-        -2.7751,
+        13.223,
         0,
-        -10.1027
+        2.526
       ],
       "yaw": 4.100226484734896,
       "scale": [
@@ -1190,14 +1435,14 @@
       "asset": {
         "libraryId": "generic:model:sm-gen-env-fern-01"
       },
-      "height": 0.569883449157038
+      "height": 0.392
     },
     {
       "id": "fern-20",
       "position": [
-        8.3951,
+        7.308,
         0,
-        4.327
+        -13.798
       ],
       "yaw": 5.389740489696317,
       "scale": [
@@ -1210,14 +1455,14 @@
       "asset": {
         "libraryId": "generic:model:sm-gen-env-fern-01"
       },
-      "height": 0.404936602347031
+      "height": 0.491
     },
     {
       "id": "fern-21",
       "position": [
-        5.7153,
+        1.44,
         0,
-        -16.1133
+        -14.393
       ],
       "yaw": 1.2207911702683405,
       "scale": [
@@ -1230,14 +1475,14 @@
       "asset": {
         "libraryId": "generic:model:sm-gen-env-fern-01"
       },
-      "height": 0.5426176531997937
+      "height": 0.649
     },
     {
       "id": "fern-22",
       "position": [
-        6.6845,
+        -4.371,
         0,
-        3.8187
+        -9.416
       ],
       "yaw": 4.882171489669688,
       "scale": [
@@ -1250,14 +1495,14 @@
       "asset": {
         "libraryId": "generic:model:sm-gen-env-fern-01"
       },
-      "height": 0.4379280205258649
+      "height": 0.601
     },
     {
       "id": "fern-23",
       "position": [
-        -6.6,
+        -13.381,
         0,
-        -4.3
+        5.223
       ],
       "yaw": 2.3825992285144935,
       "scale": [
@@ -1270,14 +1515,14 @@
       "asset": {
         "libraryId": "generic:model:sm-gen-env-fern-01"
       },
-      "height": 0.6457989998528056
+      "height": 0.555
     },
     {
       "id": "fern-24",
       "position": [
-        8.3621,
+        -11.363,
         0,
-        -0.5462
+        1.919
       ],
       "yaw": 4.906514237962287,
       "scale": [
@@ -1290,14 +1535,14 @@
       "asset": {
         "libraryId": "generic:model:sm-gen-env-fern-01"
       },
-      "height": 0.31492073025962003
+      "height": 0.406
     },
     {
       "id": "fern-25",
       "position": [
-        13.538,
+        -6.722,
         0,
-        0.8214
+        12.41
       ],
       "yaw": 1.9127752079534095,
       "scale": [
@@ -1310,14 +1555,14 @@
       "asset": {
         "libraryId": "generic:model:sm-gen-env-fern-01"
       },
-      "height": 0.3335113161407101
+      "height": 0.548
     },
     {
       "id": "fern-26",
       "position": [
-        14.8256,
+        -2.514,
         0,
-        -5.6148
+        12.03
       ],
       "yaw": 4.521652106961262,
       "scale": [
@@ -1330,14 +1575,14 @@
       "asset": {
         "libraryId": "generic:model:sm-gen-env-fern-01"
       },
-      "height": 0.30466971967148815
+      "height": 0.492
     },
     {
       "id": "fern-27",
       "position": [
-        -13.2,
+        11.63,
         0,
-        -3.8
+        6.758
       ],
       "yaw": 1.2172453890280057,
       "scale": [
@@ -1350,14 +1595,14 @@
       "asset": {
         "libraryId": "generic:model:sm-gen-env-fern-01"
       },
-      "height": 0.3217218276111699
+      "height": 0.658
     },
     {
       "id": "fern-29",
       "position": [
-        1.6149,
+        11.891,
         0,
-        3.0634
+        3.092
       ],
       "yaw": 0.8524064204114935,
       "scale": [
@@ -1370,14 +1615,14 @@
       "asset": {
         "libraryId": "generic:model:sm-gen-env-fern-01"
       },
-      "height": 0.5169082467815451
+      "height": 0.604
     },
     {
       "id": "fern-30",
       "position": [
-        2.383,
+        7.634,
         0,
-        -19.0492
+        -12.707
       ],
       "yaw": 5.256044963645895,
       "scale": [
@@ -1390,14 +1635,14 @@
       "asset": {
         "libraryId": "generic:model:sm-gen-env-fern-01"
       },
-      "height": 0.36886612818047954
+      "height": 0.537
     },
     {
       "id": "fern-32",
       "position": [
-        -0.2743,
+        -0.146,
         0,
-        -12.3779
+        -16.163
       ],
       "yaw": 2.632452742984211,
       "scale": [
@@ -1410,14 +1655,14 @@
       "asset": {
         "libraryId": "generic:model:sm-gen-env-fern-01"
       },
-      "height": 0.5728874467161706
+      "height": 0.655
     },
     {
       "id": "fern-34",
       "position": [
-        -9.6152,
+        -6.942,
         0,
-        2.6518
+        -11.334
       ],
       "yaw": 5.034474562493768,
       "scale": [
@@ -1430,14 +1675,14 @@
       "asset": {
         "libraryId": "generic:model:sm-gen-env-fern-01"
       },
-      "height": 0.6342434119602283
+      "height": 0.474
     },
     {
       "id": "fern-35",
       "position": [
-        0.7498,
+        -12.16,
         0,
-        9.4073
+        6.85
       ],
       "yaw": 4.727900162813107,
       "scale": [
@@ -1450,14 +1695,14 @@
       "asset": {
         "libraryId": "generic:model:sm-gen-env-fern-01"
       },
-      "height": 0.47835102197594764
+      "height": 0.513
     },
     {
       "id": "fern-40",
       "position": [
-        9.0983,
+        -11.506,
         0,
-        -12.6494
+        2.192
       ],
       "yaw": 4.096066560272394,
       "scale": [
@@ -1470,14 +1715,14 @@
       "asset": {
         "libraryId": "generic:model:sm-gen-env-fern-01"
       },
-      "height": 0.5004964186419932
+      "height": 0.458
     },
     {
       "id": "fern-41",
       "position": [
-        11.0331,
+        -6.183,
         0,
-        4.747
+        11.671
       ],
       "yaw": 1.9741092147719346,
       "scale": [
@@ -1490,14 +1735,14 @@
       "asset": {
         "libraryId": "generic:model:sm-gen-env-fern-01"
       },
-      "height": 0.32964560430170897
+      "height": 0.558
     },
     {
       "id": "fern-42",
       "position": [
-        -15.3468,
+        -4.486,
         0,
-        2.8256
+        12.069
       ],
       "yaw": 5.170898317084407,
       "scale": [
@@ -1510,14 +1755,14 @@
       "asset": {
         "libraryId": "generic:model:sm-gen-env-fern-01"
       },
-      "height": 0.5912074731836173
+      "height": 0.419
     },
     {
       "id": "fern-43",
       "position": [
-        1.4666,
+        11.075,
         0,
-        2.3176
+        6.863
       ],
       "yaw": 6.206770800105317,
       "scale": [
@@ -1530,14 +1775,14 @@
       "asset": {
         "libraryId": "generic:model:sm-gen-env-fern-01"
       },
-      "height": 0.4859637171149011
+      "height": 0.652
     },
     {
       "id": "fern-44",
       "position": [
-        -13.4845,
+        13.603,
         0,
-        4.6356
+        2.611
       ],
       "yaw": 0.3055610720652942,
       "scale": [
@@ -1550,14 +1795,14 @@
       "asset": {
         "libraryId": "generic:model:sm-gen-env-fern-01"
       },
-      "height": 0.31293837046593453
+      "height": 0.594
     },
     {
       "id": "fern-45",
       "position": [
-        -10.9518,
+        9.255,
         0,
-        0.2456
+        -13.763
       ],
       "yaw": 1.7818669515305936,
       "scale": [
@@ -1570,14 +1815,14 @@
       "asset": {
         "libraryId": "generic:model:sm-gen-env-fern-01"
       },
-      "height": 0.5128826093797085
+      "height": 0.383
     },
     {
       "id": "fern-47",
       "position": [
-        7.5228,
+        0.626,
         0,
-        2.3149
+        -15.722
       ],
       "yaw": 2.798720552213426,
       "scale": [
@@ -1590,14 +1835,14 @@
       "asset": {
         "libraryId": "generic:model:sm-gen-env-fern-01"
       },
-      "height": 0.541146953409943
+      "height": 0.429
     },
     {
       "id": "fern-50",
       "position": [
-        1.2936,
+        -7.165,
         0,
-        13.6319
+        -11.5
       ],
       "yaw": 2.7706656309767177,
       "scale": [
@@ -1610,14 +1855,14 @@
       "asset": {
         "libraryId": "generic:model:sm-gen-env-fern-01"
       },
-      "height": 0.3010526031237017
+      "height": 0.622
     },
     {
       "id": "fern-51",
       "position": [
-        -16.5358,
+        -14.15,
         0,
-        5.4301
+        6.273
       ],
       "yaw": 0.8468467196430717,
       "scale": [
@@ -1630,14 +1875,14 @@
       "asset": {
         "libraryId": "generic:model:sm-gen-env-fern-01"
       },
-      "height": 0.5705597876807991
+      "height": 0.438
     },
     {
       "id": "bush-0",
       "position": [
-        -4.9497,
+        -5.7,
         0,
-        16.2635
+        13.1
       ],
       "yaw": 0.0,
       "scale": [
@@ -1650,14 +1895,14 @@
       "asset": {
         "libraryId": "generic:model:sm-gen-env-bush-01"
       },
-      "height": 1.1
+      "height": 0.8
     },
     {
       "id": "bush-1",
       "position": [
-        0.7071,
+        -2.7,
         0,
-        14.8492
+        14.9
       ],
       "yaw": 1.3,
       "scale": [
@@ -1670,14 +1915,14 @@
       "asset": {
         "libraryId": "generic:model:sm-gen-env-bush-01"
       },
-      "height": 1.1
+      "height": 0.8
     },
     {
       "id": "bush-2",
       "position": [
-        6.364,
+        10.5,
         0,
-        10.6066
+        6.8
       ],
       "yaw": 2.6,
       "scale": [
@@ -1690,14 +1935,14 @@
       "asset": {
         "libraryId": "generic:model:sm-gen-env-bush-01"
       },
-      "height": 1.1
+      "height": 0.8
     },
     {
       "id": "bush-3",
       "position": [
-        12.0208,
+        13.1,
         0,
-        4.9497
+        3
       ],
       "yaw": 3.9000000000000004,
       "scale": [
@@ -1715,9 +1960,9 @@
     {
       "id": "bush-4",
       "position": [
-        16.9706,
+        16,
         0,
-        -1.4142
+        -1.8
       ],
       "yaw": 5.2,
       "scale": [
@@ -1735,9 +1980,9 @@
     {
       "id": "bush-5",
       "position": [
-        16.2635,
+        15.2,
         0,
-        -6.364
+        -8
       ],
       "yaw": 6.5,
       "scale": [
@@ -1755,9 +2000,9 @@
     {
       "id": "bush-6",
       "position": [
-        6.364,
+        8.4,
         0,
-        -16.2635
+        -14.9
       ],
       "yaw": 7.800000000000001,
       "scale": [
@@ -1775,9 +2020,9 @@
     {
       "id": "bush-7",
       "position": [
-        0.0,
+        1,
         0,
-        -15.5563
+        -16
       ],
       "yaw": 9.1,
       "scale": [
@@ -1795,9 +2040,9 @@
     {
       "id": "bush-8",
       "position": [
-        -5.6569,
+        -6.2,
         0,
-        -11.3137
+        -11.2
       ],
       "yaw": 10.4,
       "scale": [
@@ -1815,9 +2060,9 @@
     {
       "id": "bush-9",
       "position": [
-        -11.1,
+        -12.8,
         0,
-        -0.8
+        2.5
       ],
       "yaw": 11.700000000000001,
       "scale": [
@@ -1835,9 +2080,9 @@
     {
       "id": "bush-10",
       "position": [
-        -15.5563,
+        -15.1,
         0,
-        1.4142
+        4.8
       ],
       "yaw": 13.0,
       "scale": [
@@ -1855,9 +2100,9 @@
     {
       "id": "bush-11",
       "position": [
-        -16.2635,
+        -12.9,
         0,
-        6.364
+        8.2
       ],
       "yaw": 14.3,
       "scale": [
@@ -1890,7 +2135,8 @@
         "size": [
           0.65
         ],
-        "color": "#81796a"
+        "color": "#81796a",
+        "surface": "stone"
       },
       "harvest": {
         "kind": "stone",
@@ -1918,7 +2164,8 @@
         "size": [
           0.65
         ],
-        "color": "#81796a"
+        "color": "#81796a",
+        "surface": "stone"
       },
       "harvest": {
         "kind": "stone",
@@ -1946,7 +2193,8 @@
         "size": [
           0.65
         ],
-        "color": "#746052"
+        "color": "#746052",
+        "surface": "stone"
       },
       "harvest": {
         "kind": "iron",
@@ -2330,9 +2578,9 @@
       {
         "id": "supplies",
         "position": [
-          8.4853,
+          7.2,
           0.4,
-          -8.4853
+          -12.4
         ],
         "size": [
           0.8,
@@ -2344,9 +2592,9 @@
       {
         "id": "barrel",
         "position": [
-          9.6167,
+          7.9,
           0.55,
-          -7.3539
+          -11.4
         ],
         "size": [
           1,
@@ -2358,9 +2606,9 @@
       {
         "id": "sitting-log",
         "position": [
-          -2.1213,
+          -0.7,
           0.3,
-          -7.7782
+          -10.2
         ],
         "size": [
           0.657,
@@ -2372,9 +2620,9 @@
       {
         "id": "pine-2",
         "position": [
-          -4.2426,
+          10.8,
           3.5,
-          14.1421
+          6.1
         ],
         "size": [
           0.55,
@@ -2386,9 +2634,9 @@
       {
         "id": "pine-3",
         "position": [
-          0.0,
+          -12.9,
           3.4,
-          12.7279
+          7.4
         ],
         "size": [
           0.55,
@@ -2400,9 +2648,9 @@
       {
         "id": "pine-4",
         "position": [
-          4.9497,
+          -2.2,
           3.5,
-          10.6066
+          14.3
         ],
         "size": [
           0.55,
@@ -2414,9 +2662,9 @@
       {
         "id": "pine-5",
         "position": [
-          9.5459,
+          13.2,
           3.7,
-          6.7175
+          3.9
         ],
         "size": [
           0.55,
@@ -2442,9 +2690,9 @@
       {
         "id": "pine-10",
         "position": [
-          -12.0208,
+          -12.4,
           2.9,
-          2.1213
+          1.8
         ],
         "size": [
           0.55,
@@ -2456,9 +2704,9 @@
       {
         "id": "pine-11",
         "position": [
-          -12.4,
+          -13.6,
           3.0,
-          -1.8
+          -0.6
         ],
         "size": [
           0.55,
@@ -2512,9 +2760,9 @@
       {
         "id": "rock-1",
         "position": [
-          -2.8284,
+          -4.8,
           0.55,
-          7.0711
+          10.9
         ],
         "size": [
           2.623,
@@ -2540,9 +2788,9 @@
       {
         "id": "rock-3",
         "position": [
-          6.364,
+          5.8,
           0.6,
-          2.1213
+          1.7
         ],
         "size": [
           2.862,
@@ -2554,9 +2802,9 @@
       {
         "id": "rock-4",
         "position": [
-          -12.7279,
+          -13.1,
           0.6,
-          7.0711
+          6.4
         ],
         "size": [
           2.862,
@@ -2568,9 +2816,9 @@
       {
         "id": "rock-5",
         "position": [
-          -8.4853,
+          -9.7,
           0.5,
-          1.4142
+          1.5
         ],
         "size": [
           2.385,
@@ -2714,5 +2962,98 @@
       "amber-amulet"
     ]
   },
-  "level": 1
+  "level": 1,
+  "grass": [
+    {
+      "id": "approach-west",
+      "center": [
+        -12,
+        5.1
+      ],
+      "radii": [
+        4.3,
+        6
+      ],
+      "yaw": 0.2,
+      "density": 150
+    },
+    {
+      "id": "foreground-bank",
+      "center": [
+        -3.3,
+        12.9
+      ],
+      "radii": [
+        6,
+        3.3
+      ],
+      "yaw": 0.5,
+      "density": 150
+    },
+    {
+      "id": "eastern-bank",
+      "center": [
+        11.8,
+        4.4
+      ],
+      "radii": [
+        4,
+        5.8
+      ],
+      "yaw": -0.5,
+      "density": 150
+    },
+    {
+      "id": "camp-rear",
+      "center": [
+        6.9,
+        -14.3
+      ],
+      "radii": [
+        5,
+        2.8
+      ],
+      "yaw": 0.2,
+      "density": 150
+    },
+    {
+      "id": "camp-west",
+      "center": [
+        -5.2,
+        -10.5
+      ],
+      "radii": [
+        3.8,
+        3
+      ],
+      "yaw": -0.3,
+      "density": 150
+    },
+    {
+      "id": "approach-undergrowth",
+      "center": [
+        -7,
+        5.5
+      ],
+      "radii": [
+        8,
+        7
+      ],
+      "yaw": 0.4,
+      "density": 140
+    },
+    {
+      "id": "camp-east-edge",
+      "center": [
+        11,
+        -2
+      ],
+      "radii": [
+        5,
+        5
+      ],
+      "yaw": -0.3,
+      "density": 130
+    }
+  ]
 }

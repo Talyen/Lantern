@@ -12,8 +12,9 @@ import { environmentOutlineEligible, environmentSurface, prepareEnvironmentMater
 import { markOutline } from '../rendering/outlines';
 import { assetLibrary, type AssetInstance } from '../assets/asset-library';
 import { updateAssetLods } from '../rendering/asset-lods';
+import { filterMaterialTexture } from '../rendering/surface-detail';
 import { createGrass } from '../rendering/grass';
-import { woodlandGroundRecipe, woodlandMaterial } from '../rendering/woodland-ground';
+import { woodlandGroundRecipeFor, woodlandMaterial } from '../rendering/woodland-ground';
 import { Portal } from '../rendering/portal';
 import { resolveLocalLight } from './local-lighting';
 import type { CoreEffects } from '../rendering/effects';
@@ -81,13 +82,17 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
       const m = new MeshStandardNodeMaterial({ color: p.color, roughness: 1, side: p.doubleSided ? THREE.DoubleSide : THREE.FrontSide });
       ownedMaterial.add(m);
       if (p.surface === 'stone') {
-        const map = groundMap(new URL('../../assets/textures/environment/stone-v1.png', import.meta.url).href, false);
-        m.colorNode = mix(color('#aaa797'), triplanarTexture(texture(map), undefined, undefined, float(.45)).rgb, .45).mul(color(p.color));
+        const study = area.id === 'clearing';
+        const map = filterMaterialTexture(groundMap(study ? new URL('../../assets/textures/environment/showcase/stone-v2.png', import.meta.url).href : new URL('../../assets/textures/environment/stone-v1.png', import.meta.url).href, false));
+        const mineral = triplanarTexture(texture(map), undefined, undefined, float(.45)).rgb;
+        m.colorNode = study ? mix(color(p.color), mineral, .7) : mix(color('#aaa797'), mineral, .45).mul(color(p.color));
+        if (study) m.roughness = .82;
       }
       if (p.surface === 'woodland') {
         const patches = [...groundPatches, ...(p.patches ?? []), ...(showcase?.ground.patches as GroundPatch[] ?? [])];
-        lightingProcedural.push({ woodlandMaterial: woodlandGroundRecipe, patches });
-        const surface = woodlandMaterial(groundMap, patches);
+        const recipe = woodlandGroundRecipeFor(area.id);
+        lightingProcedural.push({ woodlandMaterial: recipe, patches });
+        const surface = woodlandMaterial(groundMap, patches, recipe);
         m.colorNode = surface.color; m.normalNode = surface.normal; m.roughnessNode = surface.roughness; m.aoNode = surface.cavity;
         if (grass?.coverage) {
           m.map = grass.coverage.texture;
@@ -123,11 +128,12 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
     };
     const outlined = (p: Placement) => !treeIds.has(p.id) && !p.terrain && !p.foliage && !p.decoration && (p.asset ? environmentOutlineEligible(p.asset) : p.primitive?.surface !== 'woodland');
     async function asset(ref: AssetRef, allowVariant = true, showcasePlacement = false): Promise<THREE.Group> {
-      const variant = allowVariant && environmentSurface(ref, surfaceMode, showcasePlacement);
+      const variant = allowVariant && environmentSurface(ref, surfaceMode, showcasePlacement, area.id);
       if (variant) { try { return await asset({ url: variant }, false); } catch {
+        missing.push(`surface:${variant}`);
         if (showcasePlacement) missing.push(`showcase:${'libraryId' in ref ? ref.libraryId : ref.url}`);
         // Optional showcase art retains the current prepared surface before falling back to its source.
-        const current = showcasePlacement && environmentSurface(ref, 'projected');
+        const current = showcasePlacement && environmentSurface(ref, 'projected', false, area.id);
         if (current) { try { return await asset({ url: current }, false); } catch { /* Keep the encounter runnable. */ } }
       } }
       if ('libraryId' in ref) {
@@ -155,7 +161,7 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
       model.position.fromArray(p.position);
       model.rotation.y += p.yaw; model.scale.multiply(new THREE.Vector3(...p.scale)); model.name = p.id;
       const resource = resources.find(n => n.id === p.id);
-      if(resource?.kind==='iron')model.traverse(o=>{if(isMesh(o) && o.material instanceof MeshStandardNodeMaterial){const ore=o.material.clone();ore.colorNode=mix(color('#5e5b52'),color('#89654e'),smoothstep(.25,.65,sin(positionWorld.x.mul(13).add(positionWorld.z.mul(8))).mul(.5).add(.5)));ore.roughness=.85;ownedMaterial.add(ore);o.material=ore;}});
+      if(resource?.kind==='iron')model.traverse(o=>{if(isMesh(o) && o.material instanceof MeshStandardNodeMaterial){const ore=o.material.clone();const vein=mix(color('#5e5b52'),color('#89654e'),smoothstep(.25,.65,sin(positionWorld.x.mul(13).add(positionWorld.z.mul(8))).mul(.5).add(.5)));ore.colorNode=area.id==='clearing' ? mix(o.material.colorNode ?? color(o.material.color),vein,.3) : vein;ore.roughness=.85;ownedMaterial.add(ore);o.material=ore;}});
       if (resource && resource.kind !== 'tree') { model.userData.harvestResource=p.id; model.traverse(o=>animated.add(o)); model.userData.resourceScaleY=model.scale.y; mineralModels.set(p.id,model); interactables.set(`resource/${p.id}`,model); }
       if (area.shop?.prop === p.id) { interactables.set(`shop/${area.shop.id}`, model); model.traverse(object => animated.add(object)); }
       const tree = treeIds.get(p.id);

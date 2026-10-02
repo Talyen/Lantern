@@ -10,6 +10,11 @@
       "url": "/vendor/lighting/0e791ae364dbad6463fd834b945e50507cc6e3164b99bfaa226d13c0369f9422.json",
       "area": "graveyard-crypt",
       "surfaces": "projected"
+    },
+    "76f852c538b7f6c618e6b9f80aac1deb6199e474fdda3dd1d4a2fc925b19bd48": {
+      "url": "/vendor/lighting/76f852c538b7f6c618e6b9f80aac1deb6199e474fdda3dd1d4a2fc925b19bd48.json",
+      "area": "clearing",
+      "surfaces": "projected"
     }
   }
 }

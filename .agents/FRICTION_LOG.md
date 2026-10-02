@@ -14,7 +14,7 @@ Centralized intake for unresolved agent friction while working in Lantern. Keep 
 
 | Date | Area | Symptom (expected vs actual) |
 |------|------|------------------------------|
-| 2026-10-02 | Level preview reload | After scene-code/data HMR and reload, initial area preparation can remain pending before the authoring bridge appears. A cached AssetLibrary archway load remained pending even though a fresh GLTF load/parse of the same 281668-byte file completed. A later settled-frame check after data refresh also left CDP unresponsive. Restarting the owned browser/preview restored readiness; this is a workaround, and the stale-load cause remains unverified. Private evidence: graveyard-crypt preview log and level captures. |
+| 2026-10-02 | Level preview reload | After scene-code/data HMR and reload, initial area preparation can remain pending before the authoring bridge appears. A cached AssetLibrary archway load remained pending even though a fresh GLTF load/parse of the same 281668-byte file completed. A later settled-frame check after data refresh also left CDP unresponsive. Restarting the owned browser/preview restored readiness; this is a workaround, and the stale-load cause remains unverified. Private evidence: graveyard-crypt preview log and level captures; also reproduced during Clearing surface preparation, with a fresh individual scenery load completing while the initial candidate remained pending. Clearing evidence is retained with the clearing-art-composition preview log. |
 
 ## Archive
 

@@ -118,7 +118,7 @@ def bake(row, textures, output, size):
         pixels[:,:,:3]=autumn_colors(pixels[:,:,:3],look,reference)
         image.pixels.foreach_set(pixels.ravel());image.update()
         surfaces['foliage']=image
-    fields={family:author_fields(surface,family) for family,surface in surfaces.items()}
+    fields={family:author_fields(surface,family,row.get('materialFields',{}).get(family)) for family,surface in surfaces.items()}
     for mesh in meshes:
         bpy.ops.object.select_all(action='DESELECT'); mesh.select_set(True); bpy.context.view_layer.objects.active=mesh
         if row.get('bevel') and row['kind']=='rock':
@@ -197,12 +197,18 @@ def bake(row, textures, output, size):
                     links.new(coord.outputs['Generated'],mapping.inputs['Vector']);links.new(mapping.outputs['Vector'],tex.inputs['Vector'])
                 fieldtex=nodes.new('ShaderNodeTexImage');fieldtex.image=fields[family];fieldtex.projection=tex.projection;fieldtex.projection_blend=.25;fieldtex.extension='REPEAT'
                 links.new(tex.inputs['Vector'].links[0].from_socket,fieldtex.inputs['Vector'])
-                channels=nodes.new('ShaderNodeSeparateColor');channels.mode='RGB';links.new(fieldtex.outputs['Color'],channels.inputs[0]);field=channels
+                channels=nodes.new('ShaderNodeSeparateColor');channels.mode='RGB';links.new(fieldtex.outputs['Color'],channels.inputs[0])
+                field={key:channels.outputs[channel] for key,channel in [('height','Red'),('roughness','Green'),('cavity','Blue')]}
                 bump=nodes.new('ShaderNodeBump');bump.inputs['Strength'].default_value=.55;bump.inputs['Distance'].default_value=DEPTH[family]*1.8
                 links.new(channels.outputs['Red'],bump.inputs['Height'])
-                # Half authored palette, half original surface: recognizable facets without photographic contrast.
+                # Retain the authored palette; individual recipes choose how
+                # strongly painted marks carry the form at gameplay distance.
                 mix=nodes.new('ShaderNodeMixRGB');mix.blend_type='MIX';mix.inputs[0].default_value=rule.get('blend',row['projection']['colorBlend'] if family!='foliage' else row['projection']['foliageBlend'])
-                links.new(attr.outputs['Color'],mix.inputs[1]);links.new(tex.outputs['Color'],mix.inputs[2]);color=mix.outputs[0]
+                painted=tex.outputs['Color']
+                if rule.get('contrast'):
+                    contrast=nodes.new('ShaderNodeBrightContrast');contrast.inputs['Contrast'].default_value=rule['contrast']
+                    links.new(painted,contrast.inputs['Color']);painted=contrast.outputs['Color']
+                links.new(attr.outputs['Color'],mix.inputs[1]);links.new(painted,mix.inputs[2]);color=mix.outputs[0]
                 if family=='foliage' and 'interior' in rule:
                     # Broad radial material variation: darker inner needles, restrained outer tips.
                     separate=nodes.new('ShaderNodeSeparateXYZ');links.new(coord.outputs['Generated'],separate.inputs[0])
@@ -216,6 +222,19 @@ def bake(row, textures, output, size):
                     finish=nodes.new('ShaderNodeMixRGB');finish.blend_type='MULTIPLY';finish.inputs[0].default_value=1;links.new(color,finish.inputs[1]);links.new(value.outputs['Result'],finish.inputs[2]);color=finish.outputs[0]
                 if 'valueScale' in rule:
                     finish=nodes.new('ShaderNodeMixRGB');finish.blend_type='MULTIPLY';finish.inputs[0].default_value=1;finish.inputs[2].default_value=(rule['valueScale'],)*3+(1,);links.new(color,finish.inputs[1]);color=finish.outputs[0]
+                if rule.get('footWear'):
+                    # Object-space lower-edge dirt follows each form, independently
+                    # of projected texture brightness and the direction of light.
+                    separate=nodes.new('ShaderNodeSeparateXYZ');links.new(coord.outputs['Generated'],separate.inputs[0])
+                    wear=nodes.new('ShaderNodeMapRange');wear.clamp=True
+                    wear.inputs['From Min'].default_value=0;wear.inputs['From Max'].default_value=.22
+                    wear.inputs['To Min'].default_value=1-rule['footWear'];wear.inputs['To Max'].default_value=1
+                    links.new(separate.outputs[row.get('upAxis',2)],wear.inputs['Value'])
+                    finish=nodes.new('ShaderNodeMixRGB');finish.blend_type='MULTIPLY';finish.inputs[0].default_value=1
+                    links.new(color,finish.inputs[1]);links.new(wear.outputs['Result'],finish.inputs[2]);color=finish.outputs[0]
+                    dirt=nodes.new('ShaderNodeMath');dirt.operation='SUBTRACT';dirt.inputs[0].default_value=1;links.new(wear.outputs['Result'],dirt.inputs[1])
+                    rough=nodes.new('ShaderNodeMath');rough.operation='MULTIPLY_ADD';rough.use_clamp=True;rough.inputs[1].default_value=.3
+                    links.new(dirt.outputs[0],rough.inputs[0]);links.new(field['roughness'],rough.inputs[2]);field['roughness']=rough.outputs[0]
             emission=nodes.new('ShaderNodeEmission');out=nodes.new('ShaderNodeOutputMaterial');links.new(color,emission.inputs['Color']);links.new(emission.outputs[0],out.inputs['Surface'])
             materials.append((family,mat,emission));colorsockets.append(color);alpha.append(attr.outputs['Alpha']);fieldnodes.append(field);outputs.append(out);bumps.append(bump)
         mesh.data.materials.clear()
@@ -231,10 +250,9 @@ def bake(row, textures, output, size):
                 if channel=='color':links.new(colorsockets[index],emission.inputs['Color'])
                 elif channel=='alpha':links.new(alpha[index],emission.inputs['Color'])
                 elif channel in ['height','roughness','cavity'] and fieldnodes[index]:
-                    socket={'height':'Red','roughness':'Green','cavity':'Blue'}[channel]
-                    links.new(fieldnodes[index].outputs[socket],emission.inputs['Color'])
+                    links.new(fieldnodes[index][channel],emission.inputs['Color'])
                 else:
-                    value=ROUGH[family] if channel=='roughness' else .65 if channel=='metalness' and family=='metal' else .5 if channel=='height' else 1 if channel in ['cavity','coverage'] else 1 if channel=='eligibility' and family in ['stone','bark','timber'] else 0
+                    value=row.get('roughness',{}).get(family,ROUGH[family]) if channel=='roughness' else .65 if channel=='metalness' and family=='metal' else .5 if channel=='height' else 1 if channel in ['cavity','coverage'] else 1 if channel=='eligibility' and family in ['stone','bark','timber'] else 0
                     emission.inputs['Color'].default_value=(value,value,value,1)
                 target=nodes.new('ShaderNodeTexImage');target.image=image;nodes.active=target
             bpy.ops.object.bake(type='EMIT',margin=0 if channel=='coverage' else 8);image.pack();baked[channel]=image

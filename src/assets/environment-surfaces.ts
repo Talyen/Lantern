@@ -8,10 +8,11 @@ import type { AssetRef } from '../levels/types';
 export type SurfaceMode = 'projected' | 'authored' | 'showcase';
 const variants = new Map(manifest.assets.map(asset => [asset.id, asset]));
 const showcaseVariants = new Map(manifest.showcase.assets.map(asset => [asset.id, asset.url]));
-export function environmentSurface(ref: AssetRef, mode: SurfaceMode = 'projected', showcasePlacement = false): string | undefined {
+const areaVariants = new Map(Object.entries(manifest.areaAssets).map(([area, assets]) => [area, new Map(assets.map(asset => [asset.id, asset.url]))]));
+export function environmentSurface(ref: AssetRef, mode: SurfaceMode = 'projected', showcasePlacement = false, area?: string): string | undefined {
   const id = 'libraryId' in ref ? ref.libraryId : ref.url, variant = variants.get(id);
   if (import.meta.env.DEV && mode === 'showcase' && showcasePlacement) return showcaseVariants.get(id) ?? variant?.url;
-  return mode === 'authored' ? variant?.sourceUrl : variant?.url;
+  return mode === 'authored' ? variant?.sourceUrl : (area && areaVariants.get(area)?.get(id)) || variant?.url;
 }
 export function environmentOutlineEligible(ref: AssetRef): boolean {
   const id = 'libraryId' in ref ? ref.libraryId : ref.url;

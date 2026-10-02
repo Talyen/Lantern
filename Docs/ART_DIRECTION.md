@@ -53,6 +53,14 @@ Normal maps carry broad relief that catches Golden sunlight and local flames; ro
 
 Small locally prepared rock bevels remain inside existing collision footprints. Pine shaping preserves bounds, trunk, pivots and harvest identity. Foliage remains composed in broad solid masses; cutouts are not added where they would undermine that silhouette. No broad uneven-floor displacement, relief/cone-step mapping, compression or streaming is part of this upgrade.
 
+### Clearing approach and camp
+
+Forest Clearing is the first composed woodland material pass. Its existing models form uneven woodland masses around a continuous compacted approach and open camp. Larger copper leaf banks, mineral transitions and feathered olive grass connect the scenery. Compacted dusty soil marks the continuous approach and camp floor; paths, arrivals and fighting ground remain quiet. The three gathering outcrops retain their geometry and identity with painted mineral surfaces.
+
+Clearing-specific variants belong to `areaAssets.clearing` in the environment manifest. They retain the previous prepared geometry, normals and hierarchy while increasing painted texture contribution, grouping canopy interiors and needle tips, and adding object-space lower-edge wear. `areaPreparation.clearing` owns material-field response; per-asset mapping owns scale, contrast and texture contribution. Existing original color sources are reused. Ground sampling and material scale belong to `woodlandGroundRecipeFor` in `src/rendering/woodland-ground.ts`; placement belongs to the area definition. Homestead and the other areas retain their existing treatment until deliberately authored. Golden lighting and graphics defaults stay shared.
+
+Prepare these variants with `environment.mjs --area clearing`, then `pack.mjs --area clearing`, using the owned heavy-resource wrapper from [asset preparation](ASSET_PREPARATION.md#optional-scenery-and-surface-studies). Reload the owned preview before inspection and explicitly refresh Clearing's projected lighting bake. Licensed derivatives and gameplay captures remain private.
+
 ## Golden woodland and amber refuge
 
 Homestead and Forest Clearing use the approved Golden appearance with balanced honey-gold sunlight from `src/levels/lighting-preset.ts`. Honey-gold sunlight brings out copper, rust and ochre, while restrained cool sky fill and local bounce keep shaded ground readable without flattening the light. Preserve deep tree/prop shadows and material color. Use full material saturation and lighter grading than the earlier muted Golden look; do not compensate with higher player exposure or a global orange filter.

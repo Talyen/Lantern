@@ -18,7 +18,7 @@ export function grassCoverage(area: AreaDefinition, patches: GrassPatch[], x: nu
   let groundClearance = 1;
   for (const prop of area.props) for (const patch of prop.primitive?.patches ?? []) {
     // Subdued tree-edge stains remain grassy; strongly worn camp/path soil stays bare.
-    if (patch.strength < .25) continue;
+    if (patch.strength < .25 || patch.layer === 'litter') continue;
     groundClearance = Math.min(groundClearance, smooth(.8, 1.15, Math.hypot(x - patch.center[0], z - patch.center[1]) / patch.radius));
   }
   let coverage = 0;
@@ -41,7 +41,7 @@ export function generateGrass(area: AreaDefinition, patches: GrassPatch[]): Gras
   const minX = Math.min(...patches.map((p, i) => p.center[0] - extent[i])), maxX = Math.max(...patches.map((p, i) => p.center[0] + extent[i]));
   const minZ = Math.min(...patches.map((p, i) => p.center[1] - extent[i])), maxZ = Math.max(...patches.map((p, i) => p.center[1] + extent[i]));
   // Only ground patches can clear grass; skip unrelated scenery for every sampled root.
-  const coverageArea = { ...area, props: area.props.filter(p => p.primitive?.patches?.some(patch => patch.strength >= .25)) };
+  const coverageArea = { ...area, props: area.props.filter(p => p.primitive?.patches?.some(patch => patch.strength >= .25 && patch.layer !== 'litter')) };
   const result: GrassBlade[] = [];
   let accepted = 0;
   for (let z = minZ; z < maxZ; z += step) for (let x = minX; x < maxX; x += step) {
@@ -64,7 +64,7 @@ export function grassMask(area: AreaDefinition, patches: GrassPatch[], resolutio
   const span: [number, number] = boundary.kind === 'circle' ? [boundary.radius * 2, boundary.radius * 2] : [Math.max(...boundary.points.map(p => p[0])) - min[0], Math.max(...boundary.points.map(p => p[1])) - min[1]];
   const density = Math.max(1, ...patches.map(p => p.density)), data = new Uint8Array(resolution * resolution);
   // Match blade generation: unrelated scenery cannot clear the coverage mask.
-  const coverageArea = { ...area, props: area.props.filter(p => p.primitive?.patches?.some(patch => patch.strength >= .25)) };
+  const coverageArea = { ...area, props: area.props.filter(p => p.primitive?.patches?.some(patch => patch.strength >= .25 && patch.layer !== 'litter')) };
   for (let z = 0; z < resolution; z++) for (let x = 0; x < resolution; x++) data[z * resolution + x] = Math.round(grassCoverage(coverageArea, patches, min[0] + (x + .5) / resolution * span[0], min[1] + (z + .5) / resolution * span[1]) / density * 255);
   return { data, min, span, resolution };
 }
