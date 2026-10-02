@@ -12,6 +12,7 @@ type PreparedSet = { equipment: PreparedEquipment; motions: CombatMotions; loado
 /** Both sets prepare before replacement; inactive attachments remain owned for instant swaps. */
 export class EquipmentSets {
   private sets: [PreparedSet, PreparedSet] | undefined;
+  private timings: Readonly<NonNullable<ActorTiming['abilities']>> = {};
 
   constructor(private readonly actor: Actor, private readonly equipment: Equipment, private readonly loader: GLTFLoader, private readonly prepareArrow: () => Promise<void>) {}
 
@@ -36,6 +37,7 @@ export class EquipmentSets {
     }
     for (const previous of this.sets ?? []) this.equipment.discard(previous.equipment);
     this.sets = next;
+    this.refreshTimings();
   }
 
   activate(set: WeaponSet): void {
@@ -45,7 +47,12 @@ export class EquipmentSets {
     installMotions(this.actor, prepared.motions);
   }
 
-  abilityTimings(): NonNullable<ActorTiming['abilities']> {
+  abilityTimings(): Readonly<NonNullable<ActorTiming['abilities']>> {
+    // Simulation reads these values; only replacing prepared sets changes them.
+    return this.timings;
+  }
+
+  private refreshTimings(): void {
     const timings: NonNullable<ActorTiming['abilities']> = {};
     for (const prepared of this.sets ?? []) {
       const basic = basicAbility(prepared.loadout.main);
@@ -55,6 +62,6 @@ export class EquipmentSets {
         if (clip && contacts) timings[id] = { attack: clip.duration, contacts };
       }
     }
-    return timings;
+    this.timings = timings;
   }
 }

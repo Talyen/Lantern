@@ -7,7 +7,12 @@ export type Gate = { id: string; role: 'entrance' | 'exit' | 'branch'; position:
 export const legacyLayout: EncounterLayout = { boundary: { kind: 'circle', center: [0, 0], radius: 6.55 }, player: { position: [-2.3, 1.7], yaw: 0 }, enemy: { position: [2.1, -1.5], yaw: 0 } };
 export function boundaryDistance(boundary: Boundary, point: Point): number {
   if (boundary.kind === 'circle') return boundary.radius - Math.hypot(point[0] - boundary.center[0], point[1] - boundary.center[1]);
-  return Math.min(...boundary.points.map((a, i) => { const b = boundary.points[(i + 1) % boundary.points.length]; return ((b[0] - a[0]) * (point[1] - a[1]) - (b[1] - a[1]) * (point[0] - a[0])) / Math.hypot(b[0] - a[0], b[1] - a[1]); }));
+  let distance = Infinity;
+  for (let i = 0; i < boundary.points.length; i++) {
+    const a = boundary.points[i], b = boundary.points[(i + 1) % boundary.points.length];
+    distance = Math.min(distance, ((b[0] - a[0]) * (point[1] - a[1]) - (b[1] - a[1]) * (point[0] - a[0])) / Math.hypot(b[0] - a[0], b[1] - a[1]));
+  }
+  return distance;
 }
 export function constrain(boundary: Boundary, point: Point): Point {
   if (boundary.kind === 'circle') { const dx = point[0] - boundary.center[0], dz = point[1] - boundary.center[1], length = Math.hypot(dx, dz); const scale = length > boundary.radius ? boundary.radius / length : 1; return [boundary.center[0] + dx * scale, boundary.center[1] + dz * scale]; }

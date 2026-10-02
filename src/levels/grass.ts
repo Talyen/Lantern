@@ -63,6 +63,8 @@ export function grassMask(area: AreaDefinition, patches: GrassPatch[], resolutio
   const min: [number, number] = boundary.kind === 'circle' ? boundary.center.map(v => v - boundary.radius) as [number, number] : [Math.min(...boundary.points.map(p => p[0])), Math.min(...boundary.points.map(p => p[1]))];
   const span: [number, number] = boundary.kind === 'circle' ? [boundary.radius * 2, boundary.radius * 2] : [Math.max(...boundary.points.map(p => p[0])) - min[0], Math.max(...boundary.points.map(p => p[1])) - min[1]];
   const density = Math.max(1, ...patches.map(p => p.density)), data = new Uint8Array(resolution * resolution);
-  for (let z = 0; z < resolution; z++) for (let x = 0; x < resolution; x++) data[z * resolution + x] = Math.round(grassCoverage(area, patches, min[0] + (x + .5) / resolution * span[0], min[1] + (z + .5) / resolution * span[1]) / density * 255);
+  // Match blade generation: unrelated scenery cannot clear the coverage mask.
+  const coverageArea = { ...area, props: area.props.filter(p => p.primitive?.patches?.some(patch => patch.strength >= .25)) };
+  for (let z = 0; z < resolution; z++) for (let x = 0; x < resolution; x++) data[z * resolution + x] = Math.round(grassCoverage(coverageArea, patches, min[0] + (x + .5) / resolution * span[0], min[1] + (z + .5) / resolution * span[1]) / density * 255);
   return { data, min, span, resolution };
 }

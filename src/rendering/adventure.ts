@@ -8,13 +8,20 @@ import { assetLibrary, type AssetInstance } from '../assets/asset-library';
 import { LootSound } from './loot-sound';
 import { disposeSceneInstances } from '../assets/resource-ownership';
 
-type DropVisual = { root: THREE.Group; model: THREE.Group; instance?: AssetInstance; quantity: number; landed: boolean };
+type DropVisual = {
+  root: THREE.Group; model: THREE.Group; instance?: AssetInstance; quantity: number; landed: boolean;
+  seed: number; bounds: THREE.Box3; boundsMatrix: THREE.Matrix4; boundsValid: boolean;
+};
 /** Area-owned presentation; object motion follows simulation-owned landing clocks. */
 export class AdventureVisuals {
   private portal: Portal | null = null;
   get portalTarget(): THREE.Object3D | null {return this.portal?.root ?? null;}
   private portalKey = '';
   private drops = new Map<string, DropVisual>();
+  private currentDrops = new Map<string, GroundDrop>();
+  private pickRoots: THREE.Object3D[] = [];
+  private pickHits: THREE.Intersection[] = [];
+  private pickPoint = new THREE.Vector3();
   private geometry = new THREE.CylinderGeometry(.07, .07, .36, 8);
   private box = new THREE.BoxGeometry(1, 1, 1);
   private arc = new THREE.TorusGeometry(.3, .025, 5, 16, Math.PI);
@@ -35,12 +42,15 @@ export class AdventureVisuals {
   sync(drops: GroundDrop[], portal: Point | null, hovered: string | null): void {
     const key = portal?.join(',') ?? '';
     if (key !== this.portalKey) { this.portal?.dispose(); this.portal = portal ? new Portal({ id: 'return-portal', position: [portal[0], .02, portal[1]], yaw: Math.PI / 4, width: 1.4, height: 2.3 }, this.parent) : null; this.portalKey = key; }
-    for (const [id, visual] of this.drops) if (!drops.some(drop => drop.id === id)) { if (visual.landed) this.sound.play(true); visual.instance?.release(); disposeSceneInstances(visual.root); visual.root.removeFromParent(); this.drops.delete(id); }
+    this.currentDrops.clear(); for (const drop of drops) this.currentDrops.set(drop.id, drop);
+    let changed = false;
+    for (const [id, visual] of this.drops) if (!this.currentDrops.has(id)) { if (visual.landed) this.sound.play(true); visual.instance?.release(); disposeSceneInstances(visual.root); visual.root.removeFromParent(); this.drops.delete(id); changed = true; }
     for (const drop of drops) {
       let visual = this.drops.get(drop.id);
       if (!visual) {
         const root = new THREE.Group(), model = new THREE.Group(); root.add(model); root.userData.dropId = drop.id; this.parent.add(root);
-        visual = { root, model, quantity: drop.quantity, landed: drop.age >= dropLandingSeconds }; this.drops.set(drop.id, visual);
+        visual = { root, model, quantity: drop.quantity, landed: drop.age >= dropLandingSeconds, seed: Number(drop.id.match(/\d+/)?.[0] ?? 0), bounds: new THREE.Box3(), boundsMatrix: new THREE.Matrix4(), boundsValid: false };
+        this.drops.set(drop.id, visual); changed = true;
         if (drop.item === 'scroll') {
           const scroll = new THREE.Mesh(this.geometry, this.paper), band = new THREE.Mesh(this.geometry, this.ribbon);
           scroll.rotation.z = band.rotation.z = Math.PI / 2; band.scale.set(1.03, .15, 1.03); model.add(scroll, band); model.position.y = .08;
@@ -65,18 +75,18 @@ export class AdventureVisuals {
       }
       const t = Math.min(1, drop.age / dropLandingSeconds), travel = 1 - (1 - t) ** 2;
       visual.root.position.set(THREE.MathUtils.lerp(drop.origin[0], drop.position[0], travel), drop.height + Math.sin(t * Math.PI) * .65 + .02, THREE.MathUtils.lerp(drop.origin[1], drop.position[1], travel));
-      const seed = Number(drop.id.match(/\d+/)?.[0] ?? 0);
-      visual.root.rotation.set((1 - t) * Math.PI * 1.3, seed * 2.4 + (1 - t) * 1.5, (1 - t) * .7);
+      visual.root.rotation.set((1 - t) * Math.PI * 1.3, visual.seed * 2.4 + (1 - t) * 1.5, (1 - t) * .7);
       if (!visual.landed && t === 1) { visual.landed = true; this.sound.play(false); }
       if (drop.quantity < visual.quantity) this.sound.play(true); visual.quantity = drop.quantity;
     }
-    const selected = drops.find(d => d.id === hovered); this.highlight.visible = !!selected;
+    if (changed) { this.pickRoots.length = 0; for (const visual of this.drops.values()) this.pickRoots.push(visual.root); }
+    const selected = hovered ? this.currentDrops.get(hovered) : undefined; this.highlight.visible = !!selected;
     if (selected) this.highlight.position.set(selected.position[0], selected.height + .035, selected.position[1]);
   }
   private async loadPotion(drop: GroundDrop, visual: DropVisual): Promise<void> {
     let instance: AssetInstance | undefined;
     try { instance=await assetLibrary.loadAsset('generic:model:sm-gen-prop-potion-01'); if(this.disposed || this.drops.get(drop.id)!==visual){instance.release();return;}
-      const object=instance.object;object.updateMatrixWorld(true);const size=new THREE.Box3().setFromObject(object).getSize(new THREE.Vector3());object.scale.multiplyScalar(.28/Math.max(size.x,size.y,size.z));object.updateMatrixWorld(true);const bounds=new THREE.Box3().setFromObject(object),center=bounds.getCenter(new THREE.Vector3());object.position.sub(new THREE.Vector3(center.x,bounds.min.y,center.z));disposeSceneInstances(visual.model);visual.model.clear();visual.model.add(object);visual.instance=instance;
+      const object=instance.object;object.updateMatrixWorld(true);const size=new THREE.Box3().setFromObject(object).getSize(new THREE.Vector3());object.scale.multiplyScalar(.28/Math.max(size.x,size.y,size.z));object.updateMatrixWorld(true);const bounds=new THREE.Box3().setFromObject(object),center=bounds.getCenter(new THREE.Vector3());object.position.sub(new THREE.Vector3(center.x,bounds.min.y,center.z));disposeSceneInstances(visual.model);visual.model.clear();visual.model.add(object);visual.instance=instance;visual.boundsValid=false;
     } catch { instance?.release(); }
   }
   private async loadGear(drop: GroundDrop, visual: DropVisual): Promise<void> {
@@ -88,22 +98,32 @@ export class AdventureVisuals {
       object.scale.multiplyScalar(itemDefinitions[drop.item as ItemId].length / Math.max(size.x, size.y, size.z));
       object.rotation.x = Math.PI / 2; object.updateMatrixWorld(true);
       bounds.setFromObject(object); const center = bounds.getCenter(new THREE.Vector3()); object.position.add(new THREE.Vector3(-center.x, .03 - bounds.min.y, -center.z));
-      disposeSceneInstances(visual.model); visual.model.clear(); visual.model.add(object); visual.instance = instance;
+      disposeSceneInstances(visual.model); visual.model.clear(); visual.model.add(object); visual.instance = instance; visual.boundsValid = false;
     } catch { instance?.release(); /* The name and category silhouette remain available. */ }
   }
   pick(ray: THREE.Raycaster): string | null {
-    const roots = [...this.drops.values()].map(v => v.root);
-    for (const hit of ray.intersectObjects(roots, true)) {
+    if (!this.drops.size) return null;
+    ray.intersectObjects(this.pickRoots, true, this.pickHits);
+    let selected: string | null = null;
+    hits: for (const hit of this.pickHits) {
       let object: THREE.Object3D | null = hit.object;
-      while (object) { if (object.userData.dropId) return object.userData.dropId; object = object.parent; }
+      while (object) { if (object.userData.dropId) { selected = object.userData.dropId; break hits; } object = object.parent; }
     }
+    this.pickHits.length = 0;
+    if (selected) return selected;
     // Thin blades and rolled papers need a little click tolerance at gameplay scale.
-    const bounds = new THREE.Box3(), point = new THREE.Vector3();
-    let selected: string | null = null, distance = Infinity;
-    for (const root of roots) {
-      bounds.setFromObject(root).expandByScalar(.1);
-      if (!ray.ray.intersectBox(bounds, point)) continue;
-      const next = ray.ray.origin.distanceToSquared(point);
+    let distance = Infinity;
+    for (const visual of this.drops.values()) {
+      const root = visual.root;
+      root.updateWorldMatrix(true, false);
+      // Drop children are static between prepared-model replacement callbacks.
+      // Landing or parent transforms invalidate the same world-space bounds.
+      if (!visual.boundsValid || !visual.boundsMatrix.equals(root.matrixWorld)) {
+        visual.bounds.setFromObject(root).expandByScalar(.1);
+        visual.boundsMatrix.copy(root.matrixWorld); visual.boundsValid = true;
+      }
+      if (!ray.ray.intersectBox(visual.bounds, this.pickPoint)) continue;
+      const next = ray.ray.origin.distanceToSquared(this.pickPoint);
       if (next < distance) { distance = next; selected = root.userData.dropId; }
     }
     return selected;
@@ -112,6 +132,7 @@ export class AdventureVisuals {
   dispose(): void {
     this.disposed = true; this.portal?.dispose(); this.sound.dispose(); this.highlight.removeFromParent();
     this.drops.forEach(v => { v.instance?.release(); disposeSceneInstances(v.root); v.root.removeFromParent(); }); this.drops.clear();
+    this.currentDrops.clear(); this.pickRoots.length = 0; this.pickHits.length = 0;
     for (const resource of [this.oreGeometry, this.stone, this.iron, this.geometry, this.box, this.arc, this.paper, this.ribbon, this.bark, this.metal, this.potionGlass, this.markerGeometry, this.markerMaterial]) resource.dispose();
   }
 }
