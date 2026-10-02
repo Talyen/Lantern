@@ -51,6 +51,7 @@ export class CoreEffects {
   private emitters: Emitter[] = [];
   private waters: Water[] = [];
   private foliage: Foliage[] = [];
+  private readonly foliageMeshes = new Set<THREE.Mesh>();
   private grass: GrassCarpets[] = [];
   private texture: THREE.CanvasTexture;
   private weather: ParticleKind | null = null;
@@ -160,7 +161,7 @@ export class CoreEffects {
   addGrass(carpet: GrassCarpets): void { this.grass.push(carpet); carpet.update(this.time, this.wind.value); }
   addFoliage(root: THREE.Object3D): void {
     root.traverse((o) => {
-      if (!isMesh(o) || o instanceof THREE.SkinnedMesh || this.foliage.some((f) => f.mesh === o)) return;
+      if (!isMesh(o) || o instanceof THREE.SkinnedMesh || this.foliageMeshes.has(o)) return;
       o.geometry.computeBoundingBox(); const box = o.geometry.boundingBox!; const height = Math.max(0.01, box.max.y - box.min.y);
       const original = o.material; const sources = Array.isArray(original) ? original : [original]; const owned: THREE.Material[] = [];
       const materials = sources.map((source) => {
@@ -176,6 +177,7 @@ export class CoreEffects {
       // Small displacement remains inside expanded culling bounds.
       o.geometry.computeBoundingSphere(); if (o.geometry.boundingSphere) o.geometry.boundingSphere.radius *= 1.12;
       this.foliage.push(record);
+      this.foliageMeshes.add(o);
     });
   }
   update(dt: number): void {
@@ -228,7 +230,7 @@ export class CoreEffects {
   clearArea(): void {
     for (const f of this.foliage) { f.mesh.material = f.original; f.mesh.customDepthMaterial = f.depth; f.mesh.customDistanceMaterial = f.distance; f.owned.forEach((m) => m.dispose()); }
     for (const w of this.waters) { w.mesh.removeFromParent(); w.mesh.traverse((o) => { if (isMesh(o)) { o.geometry.dispose(); (o.material as THREE.Material).dispose(); } }); w.normal.dispose(); w.shoreline.dispose(); }
-    this.emitters.length = 0; this.foliage.length = 0; this.grass.length = 0; this.waters.length = 0; this.time = 0; this.clock.value = 0; this.clear();
+    this.emitters.length = 0; this.foliage.length = 0; this.foliageMeshes.clear(); this.grass.length = 0; this.waters.length = 0; this.time = 0; this.clock.value = 0; this.clear();
   }
   dispose(): void {
     if (this.disposed) return; this.disposed = true; this.root.removeFromParent();

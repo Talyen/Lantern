@@ -31,6 +31,11 @@ export class MovementWorld implements Movement {
   // Ground surfaces remain eligible for loot; active obstacle proxies do not.
   private readonly blockingObstacles = new Set<number>();
   private readonly isSolid = (collider: RAPIER.Collider): boolean => this.solid.has(collider.handle);
+  // Rapier consumes these inputs synchronously. Each area owns its scratch
+  // storage; query filters never call back into movement or another query.
+  private readonly queryRay = new RAPIER.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 0 });
+  private readonly actorPosition = { x: 0, y: 0, z: 0 };
+  private readonly desiredMovement = { x: 0, y: 0, z: 0 };
   private nav!: NavMesh;
   private readonly baseSurfaces: Surface[];
   private readonly obstacles = new Map<string, { definition: Obstacle; collider: RAPIER.Collider; felled: boolean }>();
@@ -112,8 +117,11 @@ export class MovementWorld implements Movement {
     if (this.disposed) return;
     let collider = this.actors.get(id);
     if (!collider) { collider = this.world.createCollider(RAPIER.ColliderDesc.capsule(halfHeight, radius).setSensor(true)); this.actors.set(id, collider); }
-    collider.setTranslation({ x: actor.x, y: actor.y + centerHeight, z: actor.z });
-    this.controller.computeColliderMovement(collider, { x: dx, y: -Math.max(.03, 9.81 * dt * dt), z: dz }, undefined, undefined, this.isSolid);
+    const position = this.actorPosition, movement = this.desiredMovement;
+    position.x = actor.x; position.y = actor.y + centerHeight; position.z = actor.z;
+    movement.x = dx; movement.y = -Math.max(.03, 9.81 * dt * dt); movement.z = dz;
+    collider.setTranslation(position);
+    this.controller.computeColliderMovement(collider, movement, undefined, undefined, this.isSolid);
     const delta = this.controller.computedMovement();
     [actor.x, actor.z] = constrain(this.boundary, [actor.x + delta.x, actor.z + delta.z]);
     actor.y = Math.max(0, actor.y + delta.y);
@@ -171,14 +179,15 @@ export class MovementWorld implements Movement {
     return null;
   }
   interactionVisible(from: ActorState, point: [number,number], height: number, obstacleId: string): boolean {
-    return this.visible(from, { x: point[0], y: height, z: point[1] }, .9, this.obstacles.get(obstacleId)?.collider.handle);
+    return this.visible(from, { x: point[0], y: height, z: point[1] }, .9, this.obstacles.get(obstacleId)?.collider);
   }
 
   lootGround(origin: [number, number], index: number, player: ActorState): { position: [number, number]; height: number } {
     for (let attempt = 0; attempt < 24; attempt++) {
       const angle = index * 2.4 + attempt * 2.4, distance = .65 + (attempt % 4) * .25;
       const point = constrain(this.boundary, [origin[0] + Math.cos(angle) * distance, origin[1] + Math.sin(angle) * distance]);
-      const hit = this.world.castRay(new RAPIER.Ray({ x: point[0], y: player.y + 12, z: point[1] }, { x: 0, y: -1, z: 0 }), 30, true, undefined, undefined, undefined, undefined, this.isSolid);
+      const ray = this.setQueryRay(point[0], player.y + 12, point[1], 0, -1, 0);
+      const hit = this.world.castRay(ray, 30, true, undefined, undefined, undefined, undefined, this.isSolid);
       if (!hit || this.blockingObstacles.has(hit.collider.handle)) continue;
       const height = Math.max(0, player.y + 12 - hit.timeOfImpact);
       if (this.pickupPath(player, point, height)) return { position: point, height };
@@ -188,27 +197,32 @@ export class MovementWorld implements Movement {
   }
   /** Resource contacts may intersect their own proxy, but never another blocking prop. */
   resourceVisible(from: ActorState, id: string, point: {x:number;y:number;z:number}): boolean {
-    return this.visible(from, point, .7, this.obstacles.get(id)?.collider.handle);
+    return this.visible(from, point, .7, this.obstacles.get(id)?.collider);
   }
   lineOfSight(from: ActorState, to: ActorState): boolean {
     return this.visible(from, to, .9);
   }
-  private visible(from: ActorState, to: { x: number; y: number; z: number }, eyeHeight: number, ignored?: number): boolean {
+  private setQueryRay(x: number, y: number, z: number, dx: number, dy: number, dz: number): RAPIER.Ray {
+    const ray = this.queryRay;
+    ray.origin.x = x; ray.origin.y = y; ray.origin.z = z;
+    ray.dir.x = dx; ray.dir.y = dy; ray.dir.z = dz;
+    return ray;
+  }
+  private visible(from: ActorState, to: { x: number; y: number; z: number }, eyeHeight: number, ignored?: RAPIER.Collider): boolean {
     const dx = to.x - from.x, dy = to.y - from.y, dz = to.z - from.z, length = Math.hypot(dx, dy, dz);
     if (length < .001) return true;
-    const ray = new RAPIER.Ray(
-      { x: from.x, y: from.y + eyeHeight, z: from.z },
-      { x: dx / length, y: dy / length, z: dz / length },
-    );
-    const filter = ignored === undefined ? this.isSolid : (collider: RAPIER.Collider) => this.isSolid(collider) && collider.handle !== ignored;
-    return !this.world.castRay(ray, length, true, undefined, undefined, undefined, undefined, filter);
+    const ray = this.setQueryRay(from.x, from.y + eyeHeight, from.z, dx / length, dy / length, dz / length);
+    // Native exclusion preserves self-proxy tolerance without a per-query
+    // JavaScript predicate closure or candidate callback for that collider.
+    return !this.world.castRay(ray, length, true, undefined, undefined, ignored, undefined, this.isSolid);
   }
   /** Earliest solid intersection along the exact projectile segment, expressed as 0–1 travel. */
   segmentHit(from: { x: number; y: number; z: number }, to: { x: number; y: number; z: number }): number | null {
     if (this.disposed) return null;
     const dx = to.x - from.x, dy = to.y - from.y, dz = to.z - from.z, length = Math.hypot(dx, dy, dz);
     if (length < .000001) return null;
-    const hit = this.world.castRay(new RAPIER.Ray(from, { x: dx / length, y: dy / length, z: dz / length }), length, true, undefined, undefined, undefined, undefined, this.isSolid);
+    const ray = this.setQueryRay(from.x, from.y, from.z, dx / length, dy / length, dz / length);
+    const hit = this.world.castRay(ray, length, true, undefined, undefined, undefined, undefined, this.isSolid);
     return hit ? hit.timeOfImpact / length : null;
   }
   get navigationReady(): boolean { return !this.navigationPending && !this.disposed; }

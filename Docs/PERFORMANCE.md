@@ -19,6 +19,14 @@ Lantern requires native WebGPU across gameplay, authoring and labs through the s
 
 Archived studies and initial authoring measurements include evidence from before the native WebGPU-only migration. WebGL comparisons, retired lab controls and former TAA defaults are historical evidence. When measurements are requested or an evidenced performance defect warrants them, re-measure current authored areas and comparison labs on target hardware before drawing performance conclusions.
 
+## Collision scratch storage and foliage registration — October 2, 2026
+
+`src/gameplay/movement.ts` reuses area-owned ray origin/direction and character-controller input records for synchronous Rapier calls. Ray distances, normalization, grounding and collision formulas remain unchanged. Resource and interaction visibility use Rapier's native collider exclusion to preserve self-proxy tolerance without allocating a custom filter closure. The existing solid-membership predicate still applies to other colliders.
+
+`src/rendering/effects.ts` tracks registered foliage meshes in a membership set instead of scanning every earlier registration for each mesh. This removes quadratic duplicate-check work during area activation, at the cost of one additional set entry per registered mesh. Clearing the area releases those entries alongside the material records; overlapping registration, wind materials and culling bounds retain their behavior.
+
+Two focused existing collision cases passed, covering walls, grounded movement, self-proxy tolerance, projectile obstruction and tree felling/regrowth. A private comparison matched 64 foliage material/bounds records and checked duplicate registration, cleanup, re-registration and disposal. Evidence is retained under `.local/runtime-cost/` in the task archive. No benchmark or full local suite was run; these changes establish reduced allocation and lookup work, not measured frame-time or process-memory savings. Native gameplay inspection was blocked by another task holding the shared GPU-review slot, so visual inspection remains unverified.
+
 ## Combat, water and loot CPU work — October 2, 2026
 
 The combat coordinator reuses its timing records instead of rebuilding five objects and a closure on every frame. Each query refreshes all three actors' durations, contacts and commitment lead plus prepared ability timings; simulation consumes the records synchronously and snapshots accepted attacks. Weapon swaps and replacement motions therefore remain visible on the next query.
