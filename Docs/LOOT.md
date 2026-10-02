@@ -17,7 +17,7 @@ Enemies, chests, Woodcutting and inventory dropping use one shared ground-drop s
 
 Each drop has a small recognizable 3D object. Start with representative category models: equipment silhouettes, coins, material bundles, potions, and scrolls. A brief toss and slight tumble end in a settled resting pose, with restrained landing and collection sounds. Avoid persistent beams, glow, or constant idle animation. Resolve placement on reachable ground using the existing navigation and collision boundaries.
 
-The table defines the shared collection contract. Equipment, Wood, Stone, Iron, Health Potions and scrolls are implemented; gold and other supply categories remain planned.
+The table defines the shared collection contract. Equipment, Gold, Wood, Stone, Iron, Health Potions and scrolls are implemented; other supply categories remain planned.
 
 | Loot | Collection | Destination |
 | --- | --- | --- |
@@ -62,7 +62,7 @@ Follow the existing [architecture](ARCHITECTURE.md#owners-and-data-flow): simula
 
 Extend the continuing Adventure state and its area snapshots, using the existing navigation/collision adapter for pickup approaches. Keep input priority explicit in the clearing coordinator. Render loot through the shared native WebGPU pipeline with TSL/node materials, and project labels using the displayed unjittered camera. Do not introduce a separate render graph or backend. Drop animation follows the gameplay pause gates; landing eligibility remains simulation-owned rather than decided by a render callback.
 
-Current consumable rewards retain their earlier quantities/chances; guaranteed equipment discoveries follow the area reward lists. Woodcutting and Mining attach XP provenance to contact drops; only successfully collected quantities award progress, and re-dropping resources never recreates that provenance. See [gathering and shelter](GATHERING.md). Scroll casting reserves one usable scroll against dropping during its two-second cast, preserving death precedence. Gold/economy balance remains future work; [authored equipment](EQUIPMENT.md) owns current statistics and guaranteed discovery rewards. Pirata One is locally bundled with its license under `public/fonts/`.
+Current consumable rewards retain their earlier quantities/chances; guaranteed equipment discoveries follow the area reward lists. Woodcutting and Mining attach XP provenance to contact drops; only successfully collected quantities award progress, and re-dropping resources never recreates that provenance. See [gathering and shelter](GATHERING.md). Scroll casting reserves one usable scroll against dropping during its two-second cast, preserving death precedence. [Economy](../src/gameplay/economy.ts) owns current Gold and Shop values; further economy balance remains future work. [Authored equipment](EQUIPMENT.md) owns current statistics and guaranteed discovery rewards. Pirata One is locally bundled with its license under `public/fonts/`.
 
 ## Implementation acceptance
 

@@ -337,9 +337,15 @@ export class InventoryPanel {
   private confirmSplit(): void {
     const entry = this.entry(this.splitId ?? undefined), input = this.split.querySelector('input')!, quantity = Number(input.value);
     if (!entry || !Number.isSafeInteger(quantity) || quantity < 1 || quantity > stackLimit || quantity >= entry.quantity) { input.reportValidity(); return; }
+    const source = this.dialog.querySelector<HTMLButtonElement>(`[data-instance="${CSS.escape(entry.id)}"]`)!;
+    const rect = source.getBoundingClientRect();
+    // The split controls disappear here. Keep keyboard carrying in the panel
+    // and anchor it to the source, even when no pointer has moved yet.
+    this.pointer = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
     this.split.hidden = true; this.splitId = null;
-    this.drag = { id: entry.id, container: this.source(entry.id), quantity, x: this.pointer.x, y: this.pointer.y, offsetX: 0, offsetY: 0, active: true, carried: true }; this.showGhost();
-    this.ghost.style.left = `${this.pointer.x}px`; this.ghost.style.top = `${this.pointer.y}px`;
+    this.drag = { id: entry.id, container: this.source(entry.id), quantity, x: this.pointer.x, y: this.pointer.y, offsetX: rect.width / 2, offsetY: rect.height / 2, active: true, carried: true }; this.showGhost();
+    this.ghost.style.left = `${rect.left}px`; this.ghost.style.top = `${rect.top}px`;
+    source.focus(); this.previewPlacement(this.pointer.x, this.pointer.y);
   }
   private cancelDrag(): void {
     this.drag = null; this.ghost.hidden = true; this.marker.hidden = true; this.split.hidden = true; this.splitId = null;
