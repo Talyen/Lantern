@@ -3,9 +3,9 @@
 Implementation acceptance follows the [lean task workflow](DEVELOPMENT.md#working-alongside-other-agents): inspect one representative loot interaction at normal gameplay scale. Alternate lighting/zoom and broader comparison scenarios below are optional targeted references.
 
 
-The physical-drop system is implemented for enemy scrolls, the clearing chest's existing equipment/scroll rewards, harvested Wood/Stone/Iron, and player-dropped inventory items. Gold, shops, armor, and equipment stat tradeoffs remain later milestone work.
+The physical-drop system is implemented for enemy scrolls, the clearing chest's equipment/scroll/potion rewards, harvested Wood/Stone/Iron, and player-dropped inventory items. Gold, shops, armor, and equipment stat tradeoffs remain later milestone work.
 
-The bag is a 12 × 8 grid. Sword uses 1 × 3 cells; Axe and Shield use 2 × 3; Bow and Staff use 2 × 4. Wood and Scroll of Return stacks use 1 × 1, stack to 99, and can occupy multiple cells. Each equipment copy has its own identity; equipped main/off-hand items occupy equipment slots instead of bag space. Item dimensions belong to `src/gameplay/inventory.ts`, alongside placement, transfers and packing.
+The bag is a 12 × 8 grid. Sword uses 1 × 3 cells; Axe and Shield use 2 × 3; Bow and Staff use 2 × 4. Wood, Stone, Iron, Health Potion and Scroll of Return stacks each use 1 × 1, stack to 99, and can occupy multiple cells. Each equipment copy has its own identity; equipped main/off-hand items occupy equipment slots instead of bag space. Item dimensions belong to `src/gameplay/inventory.ts`, alongside placement, transfers and packing.
 
 Pickups auto-place without shuffling the bag. Drag to move, merge, equip or drop outside the panel; invalid moves and Escape cancel. Shift-click chooses an amount to split, then click its destination or the world outside the panel. Sort consolidates supplies and packs larger objects first, committing only when everything fits. Equipped-item displacement and asset/motion preparation must succeed before any equipment change commits. Player-dropped supplies wait until the player leaves their pickup radius and returns, or explicitly selects them.
 
@@ -64,7 +64,7 @@ The current rewards retain their earlier quantities/chances. Woodcutting and Min
 
 ## Implementation acceptance
 
-Use a few representative player flows when implementing, following [Development](DEVELOPMENT.md#commands-and-handoff). Use the implemented categories for current checks; gold and potion scenarios remain future acceptance requirements.
+Choose the relevant portion of these player flows when implementing, following [Development](DEVELOPMENT.md#commands-and-handoff). Equipment, materials, Health Potions and scrolls are available for current checks; gold scenarios remain future acceptance requirements.
 
 1. **Fight and collect:** defeat an enemy, watch its rewards toss and settle, and collect nearby supplies while combat remains active. Click equipment by label and by object; each request collects once, never attacks or auto-equips it.
 2. **Chest and crowded loot:** open a chest, select individual rewards from separated name-only labels, and approach distant gear. Confirm hover identifies the matching object, including when scenery obscures it.

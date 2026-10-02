@@ -2,7 +2,7 @@
 
 ## Project
 
-Lantern is a desktop-browser fantasy action RPG prototype using Vite, TypeScript, three.js, and locally converted licensed art. The current prototype connects Homestead and Forest Clearing, with a guarded camp, a separate caster fight, equipment, loot and Woodcutting. [The roadmap](ROADMAP.md) owns the remaining milestones.
+Lantern is a desktop-browser fantasy action RPG prototype using Vite, TypeScript, three.js, and locally converted licensed art. The current prototype connects Homestead and Forest Clearing, with a guarded camp, a separate caster fight, two weapon sets, assignable abilities, loot, Woodcutting, Mining, shelter restoration and a stash. [The roadmap](ROADMAP.md) owns the remaining milestones.
 
 ## Working style
 
@@ -19,7 +19,7 @@ Lantern is a desktop-browser fantasy action RPG prototype using Vite, TypeScript
 
 ## Concurrent work and Git
 
-- Use `npm run agent:start -- --task <slug>` before feature edits, then use its returned worktree directory for every command. Up to four tasks may work independently. Do not edit main directly during ordinary task work.
+- Use `npm run agent:start -- --task <slug>` before task edits, including documentation, then use its returned worktree directory for every command. Up to four tasks may work independently. Do not edit main directly during ordinary task work.
 - The [task workflow](Docs/DEVELOPMENT.md#working-alongside-other-agents) authorizes private task branches, reviewed local task commits, and automatic integration into local main. Pushes, PRs and releases still require a user request.
 - One agent owns a task worktree through completion. Routine work requires no inter-agent messages, file reservations, or user-managed merges. Repair conflicts and failed sanity checks in the task, then retry `npm run agent:finish` until integrated.
 - Stage only explicitly reviewed task paths. Never reset, clean, stash, overwrite or terminate another task's work. Preserve private source archives and unexpected main edits.

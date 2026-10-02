@@ -19,18 +19,19 @@ Open Vite's printed local URL to begin halfway along Forest Clearing’s approac
 | --- | --- |
 | WASD / arrows | Move |
 | Q / E / R / G / LMB / RMB | Activate an assigned action-bar ability; left-click objects to approach and interact |
-| Right mouse, held | Block with an equipped Shield |
 | Shift | Dodge |
 | F / T / Tab / K | Health Potion / Scroll of Return / weapon swap / Skills |
 | B | Toggle Inventory |
 | Escape | Close a menu or open Options |
 | Mouse wheel | Zoom |
 
-Walk home or approach the goblin camp, defeat its guard and open the chest for two return scrolls and unclaimed Sword, Shield, Bow and Staff rewards. A separate staff-wielding caster waits off the left side of the woodland approach. Pick up equipment by clicking its object or name label, then equip it in Inventory; Wood, Stone, Iron, Health Potions and scrolls collect automatically nearby after landing.
+Assign abilities in Skills. Hold the input assigned to Shield Basic to block with an equipped Shield; right mouse is an assignable action slot. Action-bar assignments and both weapon sets save with character progress. Options → Keybindings remaps keyboard/mouse inputs with primary and secondary bindings.
+
+Walk home or approach the goblin camp, defeat its guard and open the chest for two return scrolls, two Health Potions and unclaimed Sword, Shield, Bow and Staff rewards. A separate staff-wielding caster waits off the left side of the woodland approach. Pick up equipment by clicking its object or name label, then equip it in Inventory; Wood, Stone, Iron, Health Potions and scrolls collect automatically nearby after landing.
 
 Discover campfires on foot, then travel between safe fires, or cast a Scroll of Return to open a round-trip portal home. Safe campfires heal 3% maximum health per second within 3 m; enemies within 10 m of the fire or pursuing/returning anywhere in the area block healing and travel. Player and enemies have 100 health; current basic player hits deal 50 and enemy hits deal 20 before shield blocking. Defeat offers Return Home with collected items retained.
 
-Inventory, equipment, materials, Woodcutting/Mining/Axe Combat XP, collected chest weapon claims, discovered fires, shelter restoration, stash contents and remaining Rested time save locally. Ground drops, enemies and open chests retain session state through travel/death; restarting refreshes the world at the clearing midpoint with full health. Options pauses play and contains Graphics and Sound controls. Rock inspection and Restart belong to development level authoring. See [level design](Docs/LEVEL_DESIGN.md#fast-iteration) for that workflow.
+Inventory, equipment, materials, Woodcutting/Mining/Axe Combat XP, collected chest weapon claims, discovered fires, shelter restoration, stash contents and remaining Rested time save locally. Ground drops, enemies and open chests retain session state through travel/death; restarting refreshes the world at the clearing midpoint with full health. Options pauses play and contains Graphics, Sound and access to Keybindings. Rock inspection and Restart belong to development level authoring. See [level design](Docs/LEVEL_DESIGN.md#fast-iteration) for that workflow.
 
 Gather Wood, Stone and Iron to repair the Homestead shelter, unlock its stash and refresh Rested. See [gathering and shelter](Docs/GATHERING.md).
 
@@ -43,6 +44,8 @@ npm run desktop     # build and open Electron for manual play
 npm run desktop:check -- --debug-port=9231  # hidden Electron; attach CDP
 ```
 
+Agents use the [private task workflow](Docs/DEVELOPMENT.md#working-alongside-other-agents) before editing. Routine handoff uses the light gate; a specifically requested local full gate is `npm run check:full -- --allow-local`. Managed GPU reviews allow one owned session, and measurements borrow that preview's lease.
+
 ## Documentation
 
 - [Architecture](Docs/ARCHITECTURE.md): runtime owners and simulation boundaries.
@@ -52,6 +55,7 @@ npm run desktop:check -- --debug-port=9231  # hidden Electron; attach CDP
 - [Lighting](Docs/LIGHTING.md): shared Golden preset, local lights and explicit bake preparation.
 - [Gameplay sound](Docs/AUDIO.md): event timing, sound controls and private preparation.
 - [Loot](Docs/LOOT.md): inventory, physical drops, labels and pickup rules.
+- [Gathering and shelter](Docs/GATHERING.md): Woodcutting, Mining, restoration, stash and Rested.
 - [Animations](Docs/ANIMATIONS.md): compatible profiles, action clocks and review evidence.
 - [Level design](Docs/LEVEL_DESIGN.md): area definitions, travel, and rapid visual authoring.
 - [Character preview](Docs/CHARACTERS.md): private roster preparation and model/motion comparison.
@@ -70,5 +74,3 @@ Original Lantern code and content are source-available for noncommercial use und
 `src/clearing/` coordinates the playable encounter, actors, input and camera. `src/levels/` owns area definitions, scenery construction and authoring; `src/gameplay/` contains the browser-independent simulation; `src/rendering/` owns graphics; `src/ui/` owns menus and HUD. Shared asset loading and combat motions live in `src/assets/` and `src/animation/`. Animation and character comparison live in `src/labs/animations/` and `src/labs/characters/`. Asset preparation tools are grouped under `scripts/assets/`, and level-authoring tools under `scripts/levels/`; build and verification entry points remain in `scripts/`. See [architecture](Docs/ARCHITECTURE.md) for ownership and dependency boundaries.
 
 Character and animation comparison labs are development-only. Game builds stage referenced gameplay art and exclude the private gallery roster and retired surface experiments.
-
-Action-bar assignments and both weapon sets save with character progress. Options → Keybindings remaps keyboard/mouse inputs with primary and secondary bindings. GPU reviews allow two owned slots; performance measurements defer when another slot is occupied.

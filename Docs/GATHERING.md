@@ -4,7 +4,7 @@ Gathering is a brief stop during an adventure. Tools appear for the action and n
 
 ## Contextual gathering
 
-Left-click a standing tree or mineral outcrop to approach that specific node along a reachable path. The player closes to the working distance before swinging. Loot retains click priority; other clicks perform the normal Basic attack. Clicking the same gathering target continues its action, and pointer movement does not redirect it.
+Left-click a standing tree or mineral outcrop to approach that specific node along a reachable path. The player closes to the working distance before swinging. Loot and world interactions take priority over the action assigned to left mouse; other clicks activate that assignment. Clicking the same gathering target continues its action, and pointer movement does not redirect it.
 
 A living enemy within 6 m, or any pursuing enemy in the active area, prevents gathering. An approaching threat cancels it. Movement, another action, damage, menus, travel, death and lost reach cancel the sequence and restore the combat equipment. Click fires, chests, shelter or stash to approach and interact; object clicks take priority over the action-bar ability assigned to left mouse.
 

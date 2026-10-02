@@ -16,7 +16,7 @@ The clearing contains explicit proxies for its rocks, chest, tent, supplies, bar
 
 ## Deferred projects
 
-Recast remains the navigation alternative if navcat fails a demonstrated requirement. Yuka, runtime IK, InstancedMesh2 and Quarks are deferred. Use native instancing and baked motion cleanup first. BVH is conditional on a query need Rapier cannot satisfy. Water shaders wait for an authored water area. glTF Transform is available for measured loading, memory or rendering problems; file compression alone does not improve FPS. EZ-Tree and studying example-game source are excluded; vegetation remains Synty.
+Recast remains the navigation alternative if navcat fails a demonstrated requirement. Yuka, runtime IK, InstancedMesh2 and Quarks are deferred. Use native instancing and baked motion cleanup first. BVH is conditional on a query need Rapier cannot satisfy. New water materials wait for an authored water area; the [water and weather plan](../ROADMAP.md#stylized-water-and-weather) owns the selected native approach and deferred alternatives. glTF Transform is available for measured loading, memory or rendering problems; file compression alone does not improve FPS. EZ-Tree and studying example-game source are excluded; vegetation remains Synty.
 
 See [architecture](ARCHITECTURE.md), [level authoring](LEVEL_DESIGN.md) and [performance evidence](PERFORMANCE.md). Use the normal [development handoff](DEVELOPMENT.md#commands-and-handoff) and one relevant gameplay flow when behavior changes. Prepared-art validation is targeted to affected outputs.
 

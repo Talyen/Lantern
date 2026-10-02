@@ -6,7 +6,7 @@ Lantern uses recorded weapon and movement foley, compact creature reactions, sub
 
 `src/audio/audio.ts` owns one Web Audio context, cached decoded buffers, gain buses, variant selection, positional attenuation and bounded playback. `src/audio/gameplay.ts` maps numeric gameplay results to the authored cues in [the audio manifest](../assets/audio/manifest.json). Simulation and rendering never depend on playback succeeding.
 
-Encounter events distinguish accepted attacks, contact/release, dodge/landing, successful damage/block and projectile collision. Existing hit/animation events retain their presentation consumers. Adventure queues successful discovery, chest, physical drop/landing/collection, healing-start and Return cast/portal events; the coordinator drains them once. UI sounds follow menu transitions and successful equipment commits. Animation resets and restoring area snapshots emit no attack, reward or death sounds.
+Encounter events distinguish accepted attacks, contact/release, dodge/landing, successful damage/block and projectile collision. Existing hit/animation events retain their presentation consumers. Adventure queues successful discovery, chest, physical drop/landing/collection, healing-start, potion-use and Return cast/portal events; the coordinator drains them once. UI sounds follow menu transitions and successful equipment commits. Animation resets and restoring area snapshots emit no attack, reward or death sounds.
 
 Footsteps follow collision-resolved displacement and gait half-cycles. Standing, walking into a wall, teleporting, attack locks and pauses emit none. Player steps occasionally add quiet armor/cloth movement. Combat one-shots have 20 voices, UI has four, and ambient loops have twelve at most. Repeated cues avoid the immediately previous variant. World sounds attenuate to silence at 18 m with restrained stereo placement relative to the isometric view; UI and outcome cues remain centered.
 
@@ -18,12 +18,13 @@ Sound settings use `lantern.audio.v1`, independent of character and graphics sav
 
 - Movement: player/enemy footsteps, equipment rustle, dodge and landing.
 - Combat: axe/sword swings, body impacts, shield blocks, bow release/arrow impacts, staff/caster charge/release, projectile terrain collision, player/enemy hurt and death, victory/defeat cues.
-- Gathering: separate chop swing/contact, final wood crack/felling and quiet material confirmation.
-- Rewards: first chest opening, physical equipment/Wood/scroll toss and landing, successful equipment/supply pickup, and partial stack collection.
+- Gathering: chop swing/contact, final wood crack/felling, mining swing/contact using existing cues and quiet material confirmation.
+- Rewards: first chest opening, physical equipment/material/potion/scroll toss and landing, successful equipment/supply pickup, and partial stack collection.
 - Travel/refuge: Return cast, portal opening/hum/passage/closing, successful campfire travel, first fire discovery, healing start, woodland and nearby flame ambience.
-- Menus: Inventory, Travel and Options opening/closing, enabled button activation, successful inventory moves/splits/sorting/drops and equipment changes.
+- Recovery: Health Potion use reuses the healing cue.
+- Menus: Inventory, Travel and Options opening/closing, enabled button activation, successful inventory/stash moves/splits/sorting/drops and equipment changes.
 
-Continuous healing, hovering, XP changes and tree regrowth remain quiet. Sounds do not add mechanics for future gold, potion, shop or skill systems. Flame ambience does not decide campfire safety or healing eligibility.
+Continuous healing, hovering, XP changes and resource renewal remain quiet. Starter Skills use their existing weapon cues; sounds do not add mechanics for future gold, shops or earned Ultimates. Flame ambience does not decide campfire safety or healing eligibility.
 
 ## Private asset preparation
 
