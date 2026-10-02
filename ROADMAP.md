@@ -75,6 +75,7 @@ Area definitions and reciprocal walking travel are implemented for Homestead and
 
 - [x] Establish area definitions and linked gate travel between Homestead and the clearing, retaining health and session enemy/drop state.
 - [ ] Build a compact branching authored woodland section with a clear main route, optional side paths, and an unlockable return shortcut. Introduce shelter restoration requirements early without gating advancement. Include an approach, introductory fight, chest/supplies, brief harvesting stops for Wood, Stone, and Iron, ordinary packs, and a harder mixed or elite encounter. Aim for a three-to-five-minute introductory combat route, with exploration, gathering, crafting, and repeat outings extending the adventure.
+- [ ] Introduce [stylized water and weather](#stylized-water-and-weather) alongside the woodland expansion: authored water, puddles, wet surfaces, restrained rain and impacts, with simple reflections by default. Optional Detailed reflections are accepted separately and do not block the first slice.
 - [ ] Add one handcrafted side encounter with a distinct fight and authored reward.
 - [ ] Extend the first slice into a nearby area culminating in a named woodland boss. Its readable attacks and openings should test dodge, sword/bow swapping, and the earned Ultimate. Defeating it reveals a lead toward the next adventure.
 - [ ] Carry character health, equipment, inventory, and skill progress across area transitions. Health, equipment, scroll inventory, Wood and basic Woodcutting/Axe Combat XP are retained across travel, alongside session enemy/drop state; broader skills remain. Clearing chest state and uncollected scroll drops persist during the session; preserve defeated enemies until their return is due.
@@ -87,12 +88,70 @@ Area definitions and reciprocal walking travel are implemented for Homestead and
 
 Acceptance: players can explore the branching woodland, open a return shortcut, complete the handcrafted side encounter, reach the nearby area, and defeat its named boss with character state intact across travel. Shelter restoration supports preparation without gating those destinations. Players can restore shelter and storage, automatically refresh rested benefits, and undertake a second outing. They can swap sword and bow sets, earn and use an Ultimate, make meaningful ability/equipment choices, gather briefly, and craft or shop at home without frequent unloading. After time away they can revisit renewed resources, ordinary and special fights, and chests for repeat loot while permanent progress remains intact. Found and crafted gear both offer useful tradeoffs. Record playtest findings and measured hardware limits without claiming untested platform support.
 
+## Stylized water and weather
+
+Balance appearance and performance through authored shapes, restrained motion and inexpensive materials. Irregular shorelines, broad flowing patterns, dark water with readable shallows and small amber highlights should fit the [warm grimdark art direction](Docs/ART_DIRECTION.md). Rain adds atmosphere while characters, attacks and loot remain easy to read. Weather is authored per area; Homestead stays dry. Costs below are implementation assessments, not measured Lantern benchmarks.
+
+### Effect decisions
+
+| Effect | Visual value and performance considerations | Commitment |
+| --- | --- | --- |
+| Environment reflections | Existing environment lighting gives water and wet surfaces coherent sky color and highlights without another scene render. Exact reflected trees or characters are unnecessary for the default stylized appearance. | Default foundation wherever the material calls for it; no separate toggle. |
+| Planar reflections | Recognizable character and tree reflections on flat water, including off-screen scenery. Another scene render adds geometry and potentially shadow work even at low resolution. See the native [reflector API](https://threejs.org/docs/pages/ReflectorNode.html). | Optional Detailed water reflections: one shared plane per area for designated prominent water. Small puddles retain simple reflections. |
+| Screen-space reflections (SSR) | Depth tracing, missing hidden/off-screen objects, screen-edge disappearance, material inputs and temporal integration offer limited benefit at the isometric camera scale. The installed basic path needs deliberate nonmetallic reflection handling; stochastic SSR expects downstream denoising. See the [r186 SSR source](https://github.com/mrdoob/three.js/blob/r186/examples/jsm/tsl/display/SSRNode.js). | Defer beyond the first slice; no shipping toggle or dormant implementation. Reconsider only for a demonstrated scene need. |
+| Local cubemap reflections | Capturing six views is excessive for ordinary water or armor; static captures also need preparation and placement. See [CubeCamera](https://threejs.org/docs/pages/CubeCamera.html). | Defer until a particular reflective landmark needs a local capture. |
+| Ponds and streams | Shape, shallow/deep treatment, flowing normals, shorelines and restrained highlights provide most of the value. Flow maps follow river bends; directional flow suffices elsewhere. See the [native water implementation](https://github.com/mrdoob/three.js/blob/r186/examples/jsm/objects/Water2Mesh.js). | Include with the first authored water area. Share TSL materials; retain geometry and basic animation at every graphics setting. |
+| Refraction and underwater rendering | Scene-color sampling adds ordering and transparency concerns. Authored depth colors and visible bank/bed geometry can communicate depth without underwater gameplay. | Defer scene refraction and underwater effects; no extra settings. |
+| Puddles and wet ground | Bounded irregular masks, modest darkening, smoother highlights and subtle normal changes communicate wetness. Uniform gloss would make the woodland look plastic and compete with combat. | Include authored nonmetallic wet surfaces; no wetness toggle or drying simulation. |
+| Rain | Modest numbers of elongated streaks near the camera communicate rain. The official [rain example](https://github.com/mrdoob/three.js/blob/r186/examples/webgpu_compute_particles_rain.html) demonstrates compute and collision-rendering techniques, but initial densities do not require them. | Include bounded batched streaks, shared wind and authored shelter exclusions; enabled by default in rainy areas. Defer GPU compute until measurements justify it. |
+| Rain impacts and ripples | Sparse short-lived water rings and ground splashes communicate contact better than raising airborne density. Animated shapes or normal perturbations avoid a water solver. | Include bounded impact pools with rain, scaled through Particle Effects. Avoid persistent bright rings or white foam everywhere. |
+| Interactive water simulation | A [compute height field](https://threejs.org/examples/webgpu_compute_water.html) adds simulation buffers and scheduling, with greater value for water-centered interaction. | Defer the solver. Add simple contact ripples when an authored crossing needs them; swimming, buoyancy, wakes and water physics remain outside the first slice. |
+| Wind | Coordinated foliage, grass and rain motion adds atmosphere without another scene render; the shared wind clock already exists. | Retain and extend shared wind with authored area strength; no new toggle. |
+| Fog and haze | Existing distance fog supports depth and quiet distant scenery. Volumetric mist and light shafts add rendering work and conflict with the atmosphere contract. | Retain distance fog and Atmosphere; do not restore volumetrics. |
+| Skies and clouds | Native [SkyMesh](https://threejs.org/docs/pages/SkyMesh.html) supports procedural clouds, but little sky is visible from the isometric camera. Cloud shadows also change lighting and readability. | Defer visible sky/cloud animation; coordinate weather with shared Golden lighting rather than a new global mood. |
+| Snow | Falling flakes could reuse precipitation infrastructure, but believable snow also needs an authored snowy ground/prop treatment. | Defer until the first snowy area, then reuse Weather Effects and Particle Effects without a separate snow control. |
+| Lightning and storms | Flashes and thunder can establish a dramatic area, but repeated flashes obscure combat and need deliberate lighting/audio authoring. | Defer to an authored storm area or encounter; no first-slice storm system or lightning toggle. |
+| FFT oceans and fluid libraries | Large waves, persistent foam and buoyancy are disproportionate to woodland ponds and streams. | Exclude from the first slice; add no water/weather dependency. |
+
+### Defaults and controls
+
+These are planned controls, not implemented settings. Keep the Options layout compact and retain existing graphics defaults except for the new fields below.
+
+| Control | Fresh/reset default | Behavior |
+| --- | --- | --- |
+| Water Reflections — Simple / Detailed | Simple | Simple uses environment reflections. Detailed adds the area's designated planar reflection. Both retain water color, flow, shorelines and puddles. |
+| Weather Effects — On / Off | On | Controls rain or snow particles and their precipitation impacts. Off retains authored wet surfaces, water, wind and fog. Weather audio follows the existing Ambience volume. |
+| Particle Effects — Low / Medium / High | Existing default | Also scales precipitation and impact density. Keep existing bounded rain capacities as the initial ceiling; raise them only for a demonstrated visual need. |
+| Atmospheric particles — On / Off | Existing default | Controls motes, smoke and embers independently of precipitation. |
+| Atmosphere | Existing default | Continues controlling distance fog. |
+
+Do not add separate controls for foam, ripples, wetness, refraction, clouds or reflection algorithms. When implemented, add `waterReflections: 'simple' | 'detailed'` and `weatherEffects: boolean` to saved graphics settings. Preserve existing choices; seed an existing player's Weather Effects preference from their prior Atmospheric particles choice, then persist the two independently. Fresh/reset settings use Simple and On.
+
+### Implementation sequence
+
+- [ ] Author a shallow stream or pond, a few irregular puddles, wet surface masks and one deliberately rainy area alongside milestone 5's woodland expansion. Keep Homestead dry. Water traversal and blocking remain explicit gameplay decisions in [area authoring](Docs/LEVEL_DESIGN.md).
+- [ ] Finish the inexpensive appearance first: shared TSL water materials, broad normal flow driven by the paused effects clock, authored shoreline/depth masks and sparse shoreline accents appropriate to moving water. Quiet puddles need no foam rim. Adapt useful flow techniques from the native water example without adopting its always-present reflection/refraction setup.
+- [ ] Add bounded precipitation and sparse impacts around the camera's visible ground region. Respect authored shelter and prepare static surface-height information with the area. Avoid per-drop physics queries and per-frame collision scene captures. Reuse shared wind and existing bounded particle pools with batched streak geometry.
+- [ ] Add the two compact controls, independent atmospheric/weather behavior, Particle Effects density scaling and preference migration described above. Keep basic water appearance available at every setting.
+- [ ] After accepting the baseline, add optional Detailed reflections through the native reflector mechanism in the shared pipeline. Share one planar view across designated coplanar water, at half the internal scene dimensions capped at 512 pixels on the longest side, with reflection bounces disabled. Skip capture when eligible water is not visible and confirm shadow work is not multiplied unexpectedly. Accept this enhancement separately; it does not block the first slice.
+- [ ] Integrate through the existing [rendering owners](Docs/ARCHITECTURE.md#owners-and-data-flow). Preserve native WebGPU, FSR Temporal Balanced, sharpening 0.50 and pixel ratio 1. Account for animated water and reflected motion in FSR reactivity; surface velocity alone does not describe movement within a reflection. Respect pause, settings changes, area replacement and resource disposal ownership. Keep weather within shared [Golden lighting](Docs/LIGHTING.md).
+- [ ] Complete the focused visual and performance acceptance below before marking the default appearance finished; validate optional Detailed reflections separately.
+
+### Acceptance and performance
+
+Use one representative rainy water area at normal gameplay scale. Exercise movement, combat readability, shelter, pause, travel, settings and reload. Check shoreline artifacts, repetition, excessive gloss, reflection instability and FSR ghosting; revise the weakest visible part. Verify that disabling weather retains authored wet ground/water, Atmospheric particles remains independent, and reflection detail changes preserve basic water appearance. No new gameplay test infrastructure is required; extend an existing settings test only where lasting preference protection warrants it.
+
+Performance balance is central to this feature, so compare matched dry/basic, rainy/basic and rainy/Detailed cases using the [production measurement protocol](Docs/PERFORMANCE.md#current-measurement-protocol). Record median/p95 cadence, resource counts and reliable GPU timings where available. Target the existing 60-fps baseline goal; Windows and second-GPU validation remain milestone 5 work before claiming cross-GPU performance. Simple remains the default even if Detailed passes locally.
+
+SSR, local captures, snow, storms, dynamic weather/wetting/drying, visible sky/cloud animation, refraction/underwater rendering and simulation-heavy water are conditional future work, activated by an authored scene or demonstrated need rather than a standing commitment to implement every effect.
+
 ## Beyond the first complete slice
 
 - Expand the connected world and enemy challenges around the loot-driven adventure loop.
 - Extend gathering and crafting beyond Woodcutting, Mining, and Smithing as substantial progression paths alongside combat. Hide acquisition does not yet commit the first slice to Leatherworking.
 - Add more weapon families and deepen their abilities and passive progression after sword and bow playtesting.
 - Consider Leech and other healing effects only after evaluating the outside-combat regeneration, potion, and safe-fire recovery loop.
+- Revisit [deferred water and weather effects](#stylized-water-and-weather) only when an authored area or demonstrated need justifies their visual, performance and implementation cost.
 
 Broader expansion remains beyond the first slice. Two equipped weapon sets with Basic / Skill / Ultimate, shared regenerating mana and Ultimate cooldown, authored equipment tradeoffs, optional shelter restoration with automatic rested benefits, branching routes with a side encounter and named boss, and time-away renewal for resources, fights, and chests are established direction. Permanent character progress survives renewed encounters and repeat rewards.
 
