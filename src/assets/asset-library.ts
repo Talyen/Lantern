@@ -19,10 +19,11 @@ interface MaterialSpec {
   alphaMode?: string; alphaCutoff?: number; emissive?: number[]; effectRole?: string;
   textures: Partial<Record<'baseColor' | 'normal' | 'emissive', { id: string; scale: number[]; offset: number[] }>>;
 }
+type CachedModel = LibraryModel & { skinned: boolean };
 /** A library owns shared art. Instances release native bindings and skeletons independently. */
 export class AssetLibrary {
   private catalog?: Promise<AssetCatalog>;
-  private gltfs = new Map<string, Promise<LibraryModel>>();
+  private gltfs = new Map<string, Promise<CachedModel>>();
   private json = new Map<string, Promise<unknown>>();
   private textures = new Map<string, Promise<THREE.Texture>>();
   private materials = new Map<string, Promise<MeshStandardNodeMaterial>>();
@@ -69,14 +70,16 @@ export class AssetLibrary {
     const asset = await this.entry(id);
     return this.cached(this.json, id, () => this.fetchJson(asset.url)) as Promise<T>;
   }
-  private async gltf(id: string): Promise<LibraryModel> {
+  private async gltf(id: string): Promise<CachedModel> {
     const asset = await this.entry(id);
     return this.cached(this.gltfs, id, async () => {
       const gltf = await this.loader.loadAsync(asset.url);
       prepareStandardMaterials(gltf.scene);
       sceneTextures(gltf.scene);
+      let skinned = false;
+      gltf.scene.traverse(object => { if (object instanceof THREE.SkinnedMesh) skinned = true; });
       const metadata = gltf.parser.json as { meshes?: { extras?: { bindposes?: number[] } }[] };
-      return { scene: gltf.scene, bindposes: metadata.meshes?.[0]?.extras?.bindposes };
+      return { scene: gltf.scene, bindposes: metadata.meshes?.[0]?.extras?.bindposes, skinned };
     });
   }
   private async texture(id: string, color: boolean): Promise<THREE.Texture> {
@@ -120,7 +123,14 @@ export class AssetLibrary {
   private async instantiate(id: string, options: LoadAssetOptions): Promise<AssetInstance> {
     const asset = await this.entry(id);
     if (!['model', 'assembly', 'mesh'].includes(asset.kind)) throw new Error(`Not a placeable asset: ${id}`);
-    const object = asset.kind === 'assembly' ? await this.assembly(id) : new THREE.Group().add(cloneSkeleton((await this.gltf(id)).scene));
+    let object: THREE.Group;
+    if (asset.kind === 'assembly') object = await this.assembly(id);
+    else {
+      const model = await this.gltf(id);
+      // SkeletonUtils builds two node lookup maps and walks the hierarchy twice
+      // after cloning. Static props need only the identical ordinary clone.
+      object = new THREE.Group().add(model.skinned ? cloneSkeleton(model.scene) : model.scene.clone(true));
+    }
     try {
       if (this.disposed) throw new Error('Asset library disposed during load');
       const variants = options.materialVariant ? await Promise.all(options.materialVariant.map(id => this.material(id))) : undefined;

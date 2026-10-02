@@ -27,6 +27,12 @@ Water reuses the existing wave terms along each axis of its unchanged 33 × 25 v
 
 Loot picking now checks cached expanded world bounds before querying model triangles. Exact triangle hits retain priority over thin-item click tolerance; landing transforms, parent transforms and prepared-model replacement still invalidate bounds. A focused comparison of 2,625 queries matched the preceding selection behavior across landing poses, overlapping items, transformed parents, membership removal and model replacement. The grid queries submitted 629 candidate roots instead of 78,120. These are correctness and operation-count observations, not frame-time or hardware benchmarks. Private comparison scripts/results remain under the task's `.local/` evidence.
 
+## Static instances and interaction contours — October 2, 2026
+
+The asset library detects skinned meshes once in each cached GLTF. Static models use the same ordinary hierarchy clone that SkeletonUtils starts with, avoiding its two node lookup maps and two subsequent hierarchy walks per instance. Skinned models retain skeleton cloning; assembly construction and shared geometry/material ownership remain unchanged.
+
+Interaction contours refresh the selected target's ancestors and subtree once per frame instead of refreshing each outlined mesh's ancestor chain separately. Visibility checks, copied world matrices and world-width conversion remain unchanged. A private focused comparison matched static clone structure and shared resources, confirmed independent cloned skeletons, and matched 480 contour matrix/visibility/width results across parent motion and visibility changes. A normal-settings native WebGPU preview exercised hover and click interaction without browser errors. These checks establish behavior equivalence, not measured frame-time or RAM savings; evidence is retained in the resource-efficiency task archive.
+
 ## Current measurement protocol
 
 Run a fresh production build before measuring. Use hidden `npm run desktop:check -- --debug-port=9231` and attach CDP, or use a real browser. Keep GPU acceleration enabled. Record hardware, OS, browser/Electron and three.js versions, native WebGPU adapter, content viewport, scene/output dimensions, fixed output pixel ratio, FSR Resolution Quality and sharpening, graphics settings, camera, and asset set. Use [current graphics settings](GRAPHICS.md) for controls and temporary overrides.

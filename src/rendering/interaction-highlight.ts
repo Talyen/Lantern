@@ -26,10 +26,14 @@ export class InteractionHighlight {
     });
   }
   update(worldWidth:number):void{
+    // Refresh shared ancestors and the selected subtree once. Per-mesh refreshes
+    // repeat the same parent chains on multi-part scenery every hover frame.
+    if(!this.parts.length)return;
+    this.target!.updateWorldMatrix(true,true);
     const scale=this.scale;
     for(const part of this.parts){
       let visible=true;for(let object:THREE.Object3D | null=part.source;object;object=object.parent)if(!object.visible)visible=false;
-      part.mesh.visible=visible;part.source.updateWorldMatrix(true,false);part.mesh.matrix.copy(part.source.matrixWorld);
+      part.mesh.visible=visible;part.mesh.matrix.copy(part.source.matrixWorld);
       // The world matrix is already current; getWorldScale would refresh its ancestors again.
       part.source.matrixWorld.decompose(this.position,this.rotation,scale);part.width.value=worldWidth/Math.max(.001,Math.max(scale.x,scale.y,scale.z));
     }
