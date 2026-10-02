@@ -1,5 +1,5 @@
 import { expect, test, vi } from 'vitest';
-import { Matrix4, OrthographicCamera, Vector3, Object3D, Node, type NodeBuilder, type TextureNode } from 'three/webgpu';
+import { Matrix4, OrthographicCamera, Vector3, Object3D, Node, NodeFrame, type NodeBuilder, type TextureNode } from 'three/webgpu';
 import { velocity } from 'three/tsl';
 import { fsrTemporal } from '../src/rendering/fsr-temporal';
 
@@ -47,13 +47,13 @@ test('preparation cleanup and cached graph switches never turn stationary raster
     expect(hooks.before).toHaveLength(2);
     const object = new Object3D();
     camera.updateMatrixWorld(); object.updateMatrixWorld();
-    let frameId = 0;
+    const frame = new NodeFrame(); frame.camera = camera; frame.object = object;
     for (const index of [0, 1, 0]) {
       // The actual pipeline clears the singleton after compilation/disposal.
       velocity.setProjectionMatrix(null);
       hooks.before[index]();
       expect(velocity.projectionMatrix).toBe(graphs[index].upscaler!.unjitteredProjectionMatrix);
-      velocity.update({ frameId: ++frameId, camera, object } as Parameters<typeof velocity.update>[0]);
+      frame.frameId++; velocity.update(frame);
       const current = new Vector3(1, 1, 0).applyMatrix4(velocity.projectionMatrix!);
       const previous = new Vector3(1, 1, 0).applyMatrix4(velocity.previousProjectionMatrix.value);
       expect(current.distanceTo(previous)).toBe(0);
