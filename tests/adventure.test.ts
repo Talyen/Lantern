@@ -4,7 +4,7 @@ import { createEncounter } from '../src/gameplay/encounter';
 import homestead from '../src/levels/areas/homestead.json';
 import clearing from '../src/levels/areas/clearing.json';
 import type { AreaDefinition } from '../src/levels/types';
-import { equipInstance, receive, removeQuantity, sortedItems, validItems, transferItem, type InventoryItem } from '../src/gameplay/inventory';
+import { equipInstance, itemLoadout, receive, removeQuantity, sortedItems, validItems, transferItem, type InventoryItem } from '../src/gameplay/inventory';
 const home = homestead as unknown as AreaDefinition, field = clearing as unknown as AreaDefinition;
 const memory = () => { const data = new Map<string, string>(); return { data, getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => { data.set(key, value); } }; };
 
@@ -89,26 +89,26 @@ test('the chest scatters rewards once per session and only collected gear is per
   encounter.enemies.enemy.hp = 0; encounter.phase = 'won';
   expect(state.openChest(encounter, field, chest)).toBe(true);
   expect(state.character.equipment).toEqual(['axe']); expect(state.character.scrolls).toBe(3);
-  expect(state.session().drops).toHaveLength(5); expect(state.openChest(encounter, field, chest)).toBe(false);
+  expect(state.session().drops).toHaveLength(6); expect(state.openChest(encounter, field, chest)).toBe(false);
   const sword = state.session().drops.find(d => d.item === 'sword')!; sword.age = .6;
   expect(state.pickup(sword.id, chest.position, true)).toBe(true);
   state.enter(encounter, home); state.enter(encounter, field);
-  expect(state.session().drops).toHaveLength(4);
+  expect(state.session().drops).toHaveLength(5);
   const restored = new Adventure(storage); restored.enter(encounter, field, { position: chest.position, yaw: 0 }); encounter.enemies.enemy.hp = 0;
   restored.openChest(encounter, field, chest);
-  expect(restored.session().drops.map(d => d.item)).toEqual(['scroll', 'shield', 'bow', 'staff']);
+  expect(restored.session().drops.map(d => d.item)).toEqual(['scroll', 'potion', 'shield', 'bow', 'staff']);
 });
 
 test('legacy characters migrate equipped copies, resources and claimed rewards without loss', () => {
   const storage = memory(); storage.setItem(characterSaveKey, JSON.stringify({ version: 2, scrolls: 7, campfires: ['clearing/camp'], equipment: ['axe', 'sword', 'shield', 'bow', 'staff'], loadout: { main: 'bow', off: null }, wood: 12000, xp: { woodcutting: 20, axeCombat: 30 }, campEquipmentClaimed: true }));
   const state = new Adventure(storage, () => 1), encounter = createEncounter('playing');
-  expect([state.character.version, state.character.scrolls, state.character.loadout.main]).toEqual([4, 7, 'bow']);
+  expect([state.character.version, state.character.scrolls, state.character.loadout.main]).toEqual([5, 7, 'bow']);
   expect(state.character.equipment).toEqual(['bow', 'axe', 'sword', 'shield', 'staff']);
   expect(state.character.wood).toBe(12000); expect(state.character.items.some(i => i.slot === 'overflow')).toBe(true);
   expect(validItems(state.character.items)).toBe(true);
   const restored = new Adventure(storage); expect(restored.character).toEqual(state.character);
   restored.enter(encounter, field, { position: field.chests![0].position, yaw: 0 }); encounter.enemies.enemy.hp = 0; restored.openChest(encounter, field, field.chests![0]);
-  expect(restored.session().drops.map(d => d.item)).toEqual(['scroll']);
+  expect(restored.session().drops.map(d => d.item)).toEqual(['scroll','potion']);
   const overflow = restored.character.items.find(i => i.slot === 'overflow')!;
   const woodStack = restored.character.items.find(i => i.slot === 'bag' && i.item === 'wood')!;
   restored.replaceItems(removeQuantity(restored.character.items, woodStack.id, woodStack.quantity));
@@ -157,7 +157,7 @@ test('the separate caster and camp guard retain independent defeat and reward st
   expect(state.openChest(encounter,field,chest)).toBe(true);
   state.enter(encounter,home,undefined,true); state.enter(encounter,field);
   expect([encounter.enemies.caster.hp,encounter.enemies.enemy.hp,encounter.phase]).toEqual([0,0,'won']);
-  expect(state.session(field.id).drops).toHaveLength(7);
+  expect(state.session(field.id).drops).toHaveLength(8);
 });
 
 test('landing and physical access gate pickups, and a casting scroll cannot be dropped', () => {
@@ -179,7 +179,7 @@ test('adventure sound facts describe successful changes once and do not replay a
   expect(adventure.openChest(encounter,field,chest)).toBe(true);
   const rewards=adventure.takeEvents();
   expect(rewards.filter(e=>e.type==='chestOpen')).toHaveLength(1);
-  expect(rewards.filter(e=>e.type==='lootDrop')).toHaveLength(5);
+  expect(rewards.filter(e=>e.type==='lootDrop')).toHaveLength(6);
   const sword=adventure.session().drops.find(drop=>drop.item==='sword')!;
   sword.age=.6; expect(adventure.pickup(sword.id,sword.position,true)).toBe(true);
   expect(adventure.takeEvents().filter(e=>e.type==='lootPickup')).toHaveLength(1);
@@ -212,7 +212,7 @@ test('harvest XP is collected once, including partial stacks; transfers and re-d
 
 test('shelter repair consumes its exact recipe once and stash transfers retain overflow without changing equipment',()=>{
   const storage=memory(),state=new Adventure(storage),encounter=createEncounter('playing',home.layout);state.enter(encounter,home);
-  for(const [item,quantity,x] of [['wood',15,1],['stone',8,2],['iron',4,3]] as const)state.character.items.push({id:item,item,quantity,slot:'bag',x,y:0});
+  for(const [item,quantity,x] of [['wood',15,2],['stone',8,3],['iron',4,4]] as const)state.character.items.push({id:item,item,quantity,slot:'bag',x,y:0});
   expect(state.canRepair()).toBe(true);state.repairShelter();expect(state.character.items.filter(i=>['wood','stone','iron'].includes(i.item)).map(i=>i.quantity)).toEqual([3,2,1]);
   expect(()=>state.repairShelter()).toThrow();state.transferStash('wood',3,true);
   expect(state.character.stash[0].quantity).toBe(3);expect(state.character.loadout.main).toBe('axe');
@@ -234,8 +234,8 @@ test('Rested uses active time, refreshes on shelter entry, saves fractional XP a
 
 test('revision 3 migration retains IDs, claims, discoveries and XP while initializing Homestead progress',()=>{
   const storage=memory(),state=new Adventure(storage);state.character.campClaims=['bow'];state.character.xp.woodcutting=327;
-  const old={...state.character,version:3};storage.setItem(characterSaveKey,JSON.stringify(old));
-  const restored=new Adventure(storage);expect(restored.character.items).toEqual(old.items);expect(restored.character.campClaims).toEqual(['bow']);expect(restored.character.xp.woodcutting).toBe(327);expect(restored.character.xp.mining).toBe(0);expect(restored.character.stash).toEqual([]);expect(restored.character.shelterRestored).toBe(false);
+  const old={...state.character,items:state.character.items.filter(i=>i.item!=='potion'),version:3};storage.setItem(characterSaveKey,JSON.stringify(old));
+  const restored=new Adventure(storage);expect(restored.character.items.filter(i=>i.item!=='potion')).toEqual(old.items);expect(restored.character.campClaims).toEqual(['bow']);expect(restored.character.xp.woodcutting).toBe(327);expect(restored.character.xp.mining).toBe(0);expect(restored.character.stash).toEqual([]);expect(restored.character.shelterRestored).toBe(false);
 });
 
 
@@ -244,4 +244,45 @@ test('stash stack transfers retain partial quantities and rejected equipped tran
   const result=transferItem(source,destination,'s',3,()=> 'split',{x:0,y:0});
   expect(result.source[0].quantity).toBe(2);expect(result.destination[0].quantity).toBe(99);expect(source[0].quantity).toBe(3);expect(destination[0].quantity).toBe(98);
   const equipped:InventoryItem[]=[{id:'axe',item:'axe',quantity:1,slot:'main',x:0,y:0}];expect(()=>transferItem(equipped,destination,'axe',1,()=> 'next')).toThrow('bag first');expect(equipped[0].slot).toBe('main');
+});
+
+test('two equipped sets retain individual copies and returning a main hand only displaces its own shield', () => {
+  const state=new Adventure(),items=state.character.items;
+  receive(items,'sword',1,state.newId);receive(items,'shield',1,state.newId);receive(items,'bow',1,state.newId);
+  let next=equipInstance(items,items.find(i=>i.item==='sword')!.id,'main',0);
+  next=equipInstance(next,next.find(i=>i.item==='shield')!.id,'off',0);
+  next=equipInstance(next,next.find(i=>i.item==='bow')!.id,'main',1);
+  expect([itemLoadout(next,0),itemLoadout(next,1)]).toEqual([{main:'sword',off:'shield'},{main:'bow',off:null}]);
+  expect(validItems(next)).toBe(true);expect(new Set(next.map(i=>i.id)).size).toBe(next.length);
+  next=removeQuantity(next,next.find(i=>i.item==='bow')!.id,1);
+  expect(itemLoadout(next,0).off).toBe('shield');expect(validItems(next)).toBe(true);
+});
+
+test('revision 3 migration preserves a full bag and grants starter potions only once', () => {
+  const storage=memory(),items:InventoryItem[]=Array.from({length:96},(_,i)=>({id:`full-${i}`,item:'wood',quantity:99,slot:'bag',x:i%12,y:Math.floor(i/12)}));
+  items.push({id:'item-20',item:'axe',quantity:1,slot:'main',x:0,y:0});
+  storage.setItem(characterSaveKey,JSON.stringify({version:3,items,campfires:['homestead/camp'],xp:{woodcutting:30,axeCombat:40},campClaims:['sword']}));
+  const migrated=new Adventure(storage);expect(migrated.character.version).toBe(5);expect(migrated.character.items.filter(i=>i.item!=='potion')).toEqual(items);
+  expect(migrated.character.items.find(i=>i.item==='potion')).toMatchObject({slot:'overflow',quantity:3});
+  migrated.setActionBar(['sweep','piercing-shot',null,null,'axe-basic','shield-basic']);migrated.setWeaponSet(1);
+  const restored=new Adventure(storage);expect(restored.character).toEqual(migrated.character);expect(restored.character.items.filter(i=>i.item==='potion')).toHaveLength(1);
+});
+
+test('potions heal during an action, never consume at full health, and keep their cooldown across travel', () => {
+  const adventure=new Adventure(),encounter=createEncounter('playing');adventure.enter(encounter,field);
+  expect(adventure.usePotion(encounter)).toBe(false);expect(adventure.character.potions).toBe(3);
+  encounter.player.hp=20;encounter.player.lock=.5;encounter.player.attackTime=.1;
+  expect(adventure.usePotion(encounter)).toBe(true);expect([encounter.player.hp,encounter.player.lock,encounter.player.attackTime,adventure.character.potions]).toEqual([60,.5,.1,2]);
+  expect(adventure.usePotion(encounter)).toBe(false);encounter.playerMana=37;encounter.abilityCooldowns.sweep=3;encounter.weapon='sword';encounter.shield=true;
+  adventure.enter(encounter,home);expect([encounter.potionCooldown,encounter.playerMana,encounter.abilityCooldowns.sweep,encounter.weapon,encounter.shield]).toEqual([8,37,3,'sword',true]);
+  encounter.player.hp=0;expect(adventure.usePotion(encounter)).toBe(false);expect(adventure.character.potions).toBe(2);
+});
+
+test('revision 4 Homestead progress migrates with combat controls and starter potions without changing stash identities',()=>{
+  const storage=memory();
+  const items:InventoryItem[]=[{id:'item-42',item:'sword',quantity:1,slot:'main',x:0,y:0},{id:'item-43',item:'scroll',quantity:5,slot:'bag',x:0,y:0}];
+  const stash:InventoryItem[]=[{id:'item-900',item:'iron',quantity:99,slot:'bag',x:0,y:0}];
+  storage.setItem(characterSaveKey,JSON.stringify({version:4,items,stash,shelterRestored:true,restedSeconds:123,campfires:['homestead/camp'],xp:{woodcutting:327.5,mining:47.5,axeCombat:60},campClaims:['sword']}));
+  const migrated=new Adventure(storage);expect(migrated.character.version).toBe(5);expect(migrated.character.stash).toEqual(stash);expect(migrated.character.shelterRestored).toBe(true);expect(migrated.character.restedSeconds).toBe(123);expect(migrated.character.xp.mining).toBe(47.5);expect(migrated.character.actionBar[4]).toBe('sword-basic');expect(migrated.character.potions).toBe(3);
+  const restored=new Adventure(storage);expect(restored.character).toEqual(migrated.character);expect(restored.character.potions).toBe(3);expect(new Set([...restored.character.items,...restored.character.stash].map(i=>i.id)).size).toBe(restored.character.items.length+restored.character.stash.length);
 });

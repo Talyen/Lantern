@@ -8,11 +8,11 @@ import type { Loadout } from '../gameplay/equipment';
 export type RigId = 'player' | 'enemy';
 export const motionStates = ['idle', 'run', 'attack', 'hit', 'death'] as const;
 export type MotionState = typeof motionStates[number];
-export type AnimationRole = Motion | 'backward' | 'left' | 'right' | 'blockForward' | 'blockBackward' | 'blockLeft' | 'blockRight' | 'grip';
+export type AnimationRole = Motion | 'backward' | 'left' | 'right' | 'blockForward' | 'blockBackward' | 'blockLeft' | 'blockRight' | 'grip' | 'pierceDraw' | 'pierceRelease';
 export type MotionClip = { id: string; name: string; description?: string; category: string; url: string; duration: number; contact?: number; speed?: number; sourceId?: string; audit?: boolean; phaseOffset?: number };
 export type MotionPack = { id: string; label: string; clips: MotionClip[] };
 export type MotionCatalog = { version: number; packs: MotionPack[]; defaults: Record<AnimationRole, string>; profiles: Record<string, Partial<Record<AnimationRole, string>>> };
-export type CombatMotions = { clips: Record<MotionState, THREE.AnimationClip> & Partial<Record<AnimationRole, THREE.AnimationClip>>; contacts: number[]; commitLead?: number; runSpeed: number; speeds: Partial<Record<AnimationRole, number>>; chopContact: number; mineContact: number; phases: Partial<Record<AnimationRole, number>> };
+export type CombatMotions = { clips: Record<MotionState, THREE.AnimationClip> & Partial<Record<AnimationRole, THREE.AnimationClip>>; contacts: number[]; commitLead?: number; runSpeed: number; speeds: Partial<Record<AnimationRole, number>>; chopContact: number; mineContact: number; skillContacts: Partial<Record<'sweep' | 'pierce',number[]>>; phases: Partial<Record<AnimationRole, number>> };
 const cache = new Map<string, Promise<THREE.AnimationClip>>();
 const catalogs = new Map<string, Promise<MotionCatalog>>();
 export function getMotionCatalog(who: RigId): Promise<MotionCatalog> {
@@ -44,8 +44,9 @@ export async function loadEquipmentMotions(loader: GLTFLoader, who: RigId, loado
     return [role, clip];
   })) as Record<MotionState, MotionClip>;
   const all: Partial<Record<AnimationRole, MotionClip>> = { ...base };
-  for (const role of ['dodge', 'block', 'chop', 'mine', 'backward', 'left', 'right', 'blockForward', 'blockBackward', 'blockLeft', 'blockRight', 'grip'] as const) {
+  for (const role of ['dodge', 'block', 'chop', 'mine', 'backward', 'left', 'right', 'blockForward', 'blockBackward', 'blockLeft', 'blockRight', 'grip', 'sweep', 'pierceDraw', 'pierceRelease'] as const) {
     const clip = pack.clips.find(item => item.id === profile[role]);
+    if(profile[role] && !clip)throw new Error(`Unavailable ${role} motion. Prepare compatible Mixamo motions.`);
     if (clip) all[role] = clip;
   }
   const clips = Object.fromEntries(await Promise.all(Object.entries(all).map(async ([role, source]) => {
@@ -55,11 +56,14 @@ export async function loadEquipmentMotions(loader: GLTFLoader, who: RigId, loado
     const marker=all[role]?.contact, clip=clips[role];
     if (!clip || marker === undefined || !Number.isFinite(marker) || marker <= 0 || marker >= clip.duration) throw new Error('Gathering motions need reviewed contact markers. Prepare the curated motion profiles with npm run assets:export-character.');
   }
+  for(const role of ['sweep','pierceRelease'] as const)if(clips[role] && (typeof all[role]?.contact!=='number' || all[role]!.contact!<=0 || all[role]!.contact!>=clips[role]!.duration))throw new Error('Skill has no reviewed contact marker. Prepare compatible Mixamo motions.');
+  if (clips.pierceDraw && clips.pierceRelease) clips.pierce=joinShot(clips.pierceDraw,clips.pierceRelease);
   const contact = base.attack.contact;
   if (contact === undefined || contact <= 0 || contact >= clips.attack.duration) throw new Error('Attack has no reviewed contact marker. Prepare the curated motion profiles.');
   const motions: CombatMotions = { clips, contacts: [contact], commitLead: (motionProfiles.clips as Record<string,{commitLead?:number}>)[base.attack.id]?.commitLead ?? 0, runSpeed: base.run.speed ?? 4,
     speeds: Object.fromEntries(Object.entries(all).map(([role, source]) => [role, source.speed ?? 4])),
     chopContact: all.chop?.contact ?? 0, mineContact: all.mine?.contact ?? 0,
+    skillContacts:{sweep:all.sweep?.contact !== undefined ? [all.sweep.contact] : undefined,pierce:clips.pierceDraw && all.pierceRelease?.contact !== undefined ? [clips.pierceDraw.duration+all.pierceRelease.contact] : undefined},
     phases: Object.fromEntries(Object.entries(all).map(([role, source]) => [role, source.phaseOffset ?? 0])) };
   if (loadout.main==='staff') {
     const gripPose = motions.clips.grip;
@@ -78,4 +82,27 @@ export function holdStaffArm(clip: THREE.AnimationClip, carrying: THREE.Animatio
     const size=track.getValueSize();
     for (let i=0;i<track.values.length;i++) track.values[i]=pose.values[i%size];
   }
+}
+
+/** Join two independently retargeted Mixamo actions, easing only their short pose transition. */
+function joinShot(draw: THREE.AnimationClip, release: THREE.AnimationClip): THREE.AnimationClip {
+  const duration=draw.duration+release.duration, tracks: THREE.KeyframeTrack[]=[];
+  for (const start of draw.tracks) {
+    const end=release.tracks.find(track=>track.name===start.name);
+    if (!end) throw new Error('Bow release does not match its draw rig.');
+    const a=start.InterpolantFactoryMethodLinear(), b=end.InterpolantFactoryMethodLinear(), size=start.getValueSize(), times:number[]=[], values:number[]=[];
+    const last=Array.from(a.evaluate(draw.duration) as ArrayLike<number>);
+    const samples=Math.max(1,Math.round(duration*30));
+    for (let i=0;i<=samples;i++) {
+      const t=duration*i/samples, pose=Array.from((t<=draw.duration ? a.evaluate(t) : b.evaluate(t-draw.duration)) as ArrayLike<number>);
+      if (t>draw.duration && t-draw.duration<.08) {
+        const weight=(t-draw.duration)/.08;
+        if (start instanceof THREE.QuaternionKeyframeTrack) new THREE.Quaternion().fromArray(last).slerp(new THREE.Quaternion().fromArray(pose),weight).toArray(pose);
+        else for (let j=0;j<size;j++) pose[j]=THREE.MathUtils.lerp(last[j],pose[j],weight);
+      }
+      times.push(t); values.push(...pose);
+    }
+    tracks.push(start instanceof THREE.QuaternionKeyframeTrack ? new THREE.QuaternionKeyframeTrack(start.name,times,values) : new THREE.VectorKeyframeTrack(start.name,times,values));
+  }
+  return new THREE.AnimationClip('pierce',duration,tracks);
 }

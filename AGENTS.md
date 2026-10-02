@@ -47,7 +47,8 @@ Use `npm run check` for a fast sanity check; `agent:finish` runs it on the integ
 
 ## Prototype conventions
 
-- Keep gameplay and render state explicit in TypeScript. The camera is fixed isometric with follow and scroll zoom; WASD or arrows move, left click attacks, Shift dodges, B toggles Inventory, and Escape toggles Options or closes a menu.
+- Keep gameplay and render state explicit in TypeScript. The camera is fixed isometric with follow and scroll zoom; WASD or arrows move, six assignable action slots default to Q/E/R/G/LMB/RMB, Shift dodges, F uses a Health Potion, T uses a Scroll of Return, Tab swaps weapon sets, K opens Skills, B toggles Inventory, and Escape toggles Options or closes a menu. Click world objects to approach and interact; all gameplay controls are remappable through Keybindings.
+- Gathering never requires owned or equipped tools. Show presentation-only basic tools with compatible Mixamo gathering motions, and restore combat presentation without changing inventory or weapon sets.
 - Keep the encounter runnable when optional scenery is absent; report missing playable character art clearly.
 - Select animation clips only from a verified compatible rig. Gameplay uses Paladin J Nordstrom for the player and Goblin D Shareyko for the enemy, with curated Mixamo clips baked independently to each rig. The playable Paladin uses its original authored textures; retired palette experiments remain privately archived. Original text-prompted surfaces are projected and baked locally. Use Mixamo exclusively for both the clearing and the comparison lab. Do not reintroduce the discarded animation providers. Preserve the full source catalog privately, and lazy-load only selected GLB clips.
 - After gameplay edits, use one short browser interaction flow demonstrating the changed behavior. Choose the relevant portion of the optional smoke references; do not replay the entire game checklist.
@@ -80,9 +81,11 @@ Follow [the art direction](Docs/ART_DIRECTION.md) for Lantern's visual identity 
 - Run relevant checks once after the final edit. Repeat only after relevant changes or observed failures. Unrelated integration changes do not automatically invalidate visual acceptance.
 - Broad gameplay flows, alternate moods/zooms/platforms, full catalogs, benchmarks and contact sheets are optional targeted tools. Expand verification only for a concrete failure, consequential save migration, renderer/dependency initialization change, or an explicit audit/release request; briefly state why.
 - `npm run check` is the lean default. `npm run check:full` retains the full production gate. Neither automatically downloads, exports, bakes lighting, benchmarks, or runs browser matrices.
-- Automated Electron uses hidden non-focusable `desktop:check` and CDP. Managed checks use two Vitest workers; resource leases allow two lightweight checks, one heavy operation and one agent GPU inspection. Leave the user's play session alone.
+- Automated Electron uses hidden non-focusable `desktop:check` and CDP. Managed checks use two Vitest workers; resource leases allow two lightweight checks, one heavy operation and two agent GPU inspections. Leave the user's play session alone.
 - Revisit this policy when Lantern moves beyond the prototype phase or gains public release requirements.
 
 ## Review and handoff
 
 Review the task diff and its integration, finish through automatic local promotion, and report completed behavior, the sanity check performed, and material limitations briefly. Do not claim exhaustive coverage or cross-platform performance from a sanity check.
+
+Performance measurements require exclusive use of both GPU slots. If another GPU slot is in use, defer measurements, finish the task normally, and note the deferral in the handoff. `levels:measure` reserves the spare slot without waiting and writes a private deferral note when it is occupied; ordinary visual reviews may use either of the two slots.

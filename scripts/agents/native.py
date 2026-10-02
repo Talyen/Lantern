@@ -72,7 +72,7 @@ def lease(args):
     while handle is None:
         if identity(parent) != parent_started:
             return
-        for slot in range(args.slots):
+        for slot in ([args.slot] if args.slot is not None else range(args.slots)):
             candidate = (directory / f'{args.resource}-{slot}.lock').open('a+')
             try:
                 fcntl.flock(candidate, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -81,6 +81,9 @@ def lease(args):
             except BlockingIOError:
                 candidate.close()
         if handle is None:
+            if args.try_only:
+                print(json.dumps({'deferred': args.resource}), flush=True)
+                return
             if not waited:
                 print(json.dumps({'waiting': args.resource}), flush=True)
                 waited = True
@@ -134,6 +137,8 @@ lock = sub.add_parser('lease')
 lock.add_argument('directory')
 lock.add_argument('resource')
 lock.add_argument('--slots', type=int, default=1)
+lock.add_argument('--slot', type=int)
+lock.add_argument('--try-only', action='store_true')
 lock.add_argument('--token', required=True)
 lock.add_argument('--task', default='main')
 args = parser.parse_args()
@@ -142,4 +147,6 @@ if args.operation == 'clone':
     size = 0 if sys.platform == 'darwin' else (sum(p.stat().st_size for p in source.rglob('*') if p.is_file() and not p.is_symlink()) if source.is_dir() else source.stat().st_size)
     clone(args.source, args.target, set(args.exclude), small_copy=sys.platform != 'darwin' and size <= 1024 * 1024)
 else:
+    if args.slots < 1 or args.slot is not None and not 0 <= args.slot < args.slots:
+        parser.error('Invalid resource slot')
     lease(args)

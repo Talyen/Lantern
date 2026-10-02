@@ -1,6 +1,11 @@
 import { resolveAreaLighting as lightingFor } from '../levels/lighting';
 import type { SurfaceMode } from '../assets/environment-surfaces';
 import type { AreaDefinition, AreaLighting } from '../levels/types';
+import { CombatUI } from '../ui/combat';
+import { KeybindingsMenu } from '../ui/keybindings';
+import { InputPreferences, type InputAction } from '../input/bindings';
+import { abilities, abilitySet, basicAbility, type AbilityId } from '../gameplay/abilities';
+import { InteractionHighlight } from '../rendering/interaction-highlight';
 import { Adventure, homeArea, near, chestUnlocked } from '../gameplay/adventure';
 import { AdventureMenus } from '../ui/adventure';
 import { AdventureVisuals } from '../rendering/adventure';
@@ -11,7 +16,7 @@ import { MovementWorld } from '../gameplay/movement';
 import { cameraOffset } from './projection';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { createEncounter, resetEncounter, attack, dodge, stepExploration, stepEncounter, type EncounterEvent, type ActorId, type Timings, type AimPoint, enemyIds } from '../gameplay/encounter';
+import { createEncounter, resetEncounter, useAbility, swapWeaponSet, inCombat, dodge, stepExploration, stepEncounter, type EncounterEvent, type ActorId, type Timings, type AimPoint, enemyIds } from '../gameplay/encounter';
 import { readSettings } from '../rendering/graphics-settings';
 import { FramePacer } from '../rendering/frame-pacer';
 import { createRenderer } from '../rendering/renderer';
@@ -27,8 +32,8 @@ import { createInput } from './input';
 import { createCamera } from './camera';
 import { createHud } from '../ui/hud';
 import characters from '../../assets/playable-characters.json';
-import { loadEquipmentMotions } from '../animation/combat-animations';
-import { normalizeLoadout, type Loadout } from '../gameplay/equipment';
+import { loadEquipmentMotions, type CombatMotions } from '../animation/combat-animations';
+import { type Loadout } from '../gameplay/equipment';
 import { Equipment, type PreparedEquipment } from '../rendering/equipment';
 import { ProjectileVisuals, CasterVisuals } from '../rendering/projectiles';
 import { GameAudio } from '../audio/audio';
@@ -82,7 +87,7 @@ let adventureVisuals: AdventureVisuals | undefined;
 const frames: { left: number; resolve: () => void }[] = [];
 const waitFrames = (count = 16) => new Promise<void>(resolve => frames.push({ left: count, resolve }));
 const renderer = await createRenderer(mount);
-renderer.domElement.setAttribute('aria-label', 'Lantern. WASD or arrows to move, Mouse to aim, Left click to attack or gather, Shift to dodge, E to interact, B for inventory, Escape for options.');
+renderer.domElement.setAttribute('aria-label', 'Lantern. Move and use abilities with your configured controls. Click objects to interact.');
 renderer.info.autoReset = false;
 let renderedFrames = 0;
 const cameraOwner = createCamera(renderer.domElement);
@@ -97,6 +102,12 @@ const gatheringTools = new GatheringTools(player.root,playerEquipment);
 const projectileVisuals = new ProjectileVisuals(scene);
 const casterVisuals = new CasterVisuals(scene, caster.root);
 const harvesting = new Harvesting();
+const interactionHighlight=new InteractionHighlight(scene);
+let preparedSets: {equipment:PreparedEquipment;motions:CombatMotions;loadout:Loadout}[]=[];
+let combatUI: CombatUI | undefined;
+const preferences=new InputPreferences(storage);
+let worldApproach: {key:string;points:Point[];elapsed:number;stalled:number;last:Point} | null=null;
+let hoveredInteraction: WorldInteraction | null=null;
 const audio = new GameAudio();
 const gameplayAudio = new GameplayAudio(audio);
 document.addEventListener('click', event => {
@@ -106,41 +117,40 @@ document.addEventListener('click', event => {
 let equipmentLoading = false;
 let chopping: { tree: ResourceDefinition; time: number; contacted: boolean } | null = null;
 let gatheringTarget: ResourceDefinition | null = null;
-let gatheringRoute: {points:Point[];elapsed:number;stalled:number;last:Point} | null = null;
 function cancelChop(releaseLock = true): void {
-  gatheringTarget=null; gatheringRoute=null; gatheringTools.show(null);
+  gatheringTarget=null; gatheringTools.show(null);
   if (!chopping) return;
   chopping = null; if (releaseLock) encounter.player.lock = 0;
   if (player.current === 'chop' || player.current === 'mine') play(player,'idle');
 }
-function clearInput(): void { adventure.cancelPickup(); pickupRoute = null; input.clear(); encounter.pending = null; encounter.blocking = false; cancelChop(); }
-function applyLoadoutState(): void { encounter.weapon = adventure.character.loadout.main; encounter.shield = !!adventure.character.loadout.off; }
-async function changeEquipment(requested: Loadout, save = false, items?: InventoryItem[]): Promise<void> {
-  if (equipmentLoading || !player.mixer) throw new Error('Character equipment is still loading.');
-  const loadout = normalizeLoadout(requested);
-  if ([loadout.main,loadout.off].some(item=>item && !adventure.character.equipment.includes(item))) throw new Error('That item is not in your Inventory.');
-  equipmentLoading = true; clearInput();
-  let candidate: PreparedEquipment | undefined;
+function clearInput(): void {adventure.cancelPickup();pickupRoute=null;worldApproach=null;input.clear();combatUI?.clearHold();encounter.pending=null;encounter.blocking=false;cancelChop();hoveredInteraction=null;interactionHighlight.clear();}
+function applyLoadoutState(): void {
+  encounter.weaponSets=[itemLoadout(adventure.character.items,0),itemLoadout(adventure.character.items,1)];
+  encounter.activeSet=adventure.character.activeSet;encounter.weapon=encounter.weaponSets[encounter.activeSet].main;encounter.shield=!!encounter.weaponSets[encounter.activeSet].off;
+}
+async function changeEquipment(items: InventoryItem[] = adventure.character.items, save = false): Promise<void> {
+  if(equipmentLoading || !player.mixer)throw new Error('Character equipment is still loading.');
+  equipmentLoading=true;clearInput();
+  const candidates:PreparedEquipment[]=[],next:typeof preparedSets=[];
   try {
-    if (loadout.main === 'bow') await projectileVisuals.prepareArrow();
-    candidate = await playerEquipment.stage(loadout);
-    const prepared = await loadEquipmentMotions(loader,'player',loadout);
-    installMotions(player,prepared); playerEquipment.commit(candidate); candidate=undefined;
-    if (save && items) adventure.replaceItems(items);
-    applyLoadoutState(); encounter.player.lock=0; encounter.player.attackTime=-1; encounter.attackCooldown=0;
-    play(player,'idle'); menus.updateCharacter(adventure.character);
-    if (save) audio.play('equip');
-  } catch(error) { if (candidate) playerEquipment.discard(candidate); throw error; }
-  finally { equipmentLoading=false; }
+    for(const set of [0,1] as const){const loadout=itemLoadout(items,set);if(loadout.main==='bow')await projectileVisuals.prepareArrow();const equipment=await playerEquipment.stage(loadout);candidates.push(equipment);const motions=await loadEquipmentMotions(loader,'player',loadout);next.push({equipment,motions,loadout});}
+    installMotions(player,next[adventure.character.activeSet].motions);
+    playerEquipment.commit(next[adventure.character.activeSet].equipment,true);
+    for(const previous of preparedSets)playerEquipment.discard(previous.equipment);
+    preparedSets=next;if(save)adventure.replaceItems(items);applyLoadoutState();play(player,'idle');menus.updateCharacter(adventure.character);if(save)audio.play('equip');
+  } catch(error){candidates.forEach(candidate=>playerEquipment.discard(candidate));throw error;}
+  finally{equipmentLoading=false;}
 }
+
 let inspecting = false;
-const input = createInput(renderer.domElement, startAttack, startDodge, interact, openInventory, toggleOptions, () => { encounter.pending=null; encounter.blocking=false; cancelChop(); });
+const input = createInput(renderer.domElement,preferences,dispatchInput,worldClick,()=>{encounter.pending=null;encounter.blocking=false;worldApproach=null;pickupRoute=null;adventure.cancelPickup();cancelChop();});
 async function changeInventory(items: InventoryItem[]): Promise<void> {
-  if (!validItems(items)) throw new Error('Item does not fit.');
-  const loadout = itemLoadout(items);
-  if (JSON.stringify(loadout) !== JSON.stringify(adventure.character.loadout)) await changeEquipment(loadout, true, items);
-  else { adventure.replaceItems(items); menus.updateCharacter(adventure.character); audio.play('inventoryMove'); }
+  if(!validItems(items))throw new Error('Item does not fit.');
+  const equipment=(entries:InventoryItem[])=>entries.filter(i=>i.slot==='main' || i.slot==='off').map(i=>[i.id,i.slot,i.weaponSet ?? 0]).sort();
+  if(JSON.stringify(equipment(items))!==JSON.stringify(equipment(adventure.character.items))){if(!canEditAbilities())throw new Error('Equipment cannot change during combat or an action.');await changeEquipment(items,true);}
+  else{adventure.replaceItems(items);menus.updateCharacter(adventure.character);audio.play('inventoryMove');}
 }
+
 const menus = new AdventureMenus(clearInput, () => renderer.domElement.focus(), () => { if (!paused()) adventure.beginCast(encounter.player.hp > 0); }, {
   change: changeInventory, newId: adventure.newId,
   changeContainers: (items,stash) => { adventure.replaceContainers(items,stash); menus.updateCharacter(adventure.character); audio.play('inventoryMove'); },
@@ -170,8 +180,9 @@ let pickupRoute: { id: string; points: Point[]; elapsed: number; stalled: number
 const lootLabels = new LootLabels(mount, selectLoot);
 function selectLoot(id: string): void {
   if (paused() || encounter.player.hp <= 0) return;
+  renderer.domElement.focus();
   const drop = adventure.session().drops.find(d => d.id === id); if (!drop) return;
-  cancelChop(); encounter.pending = null; adventure.cancelPickup(); pickupRoute = null;
+  worldApproach=null;cancelChop(); encounter.pending = null; adventure.cancelPickup(); pickupRoute = null;
   const point: Point = [encounter.player.x, encounter.player.z];
   if (near(point, drop.position, 1.5) && adventure.canCollectGround(drop)) {
     if (drop.age >= .55) adventure.pickup(id, point, true);
@@ -200,8 +211,9 @@ function present(events: EncounterEvent[]): void {
     actor.root.rotation.y = state.yaw;
   }
   for (const event of events) {
+    if(event.type==='weaponSet'){const prepared=preparedSets[event.set];if(!prepared)throw new Error('Weapon set is not prepared.');playerEquipment.commit(prepared.equipment,true);installMotions(player,prepared.motions);adventure.setWeaponSet(event.set);audio.play('equip');menus.updateCharacter(adventure.character);}
     if (event.type === 'axeXp') adventure.grantAxeCombatXp();
-    if (event.type === 'hit' && event.actor === 'player') cancelChop(false);
+    if (event.type === 'hit' && event.actor === 'player') {cancelChop(false);worldApproach=null;pickupRoute=null;adventure.cancelPickup();if(events.some(e=>e.type==='impact' && e.actor==='player' && !e.blocked)){combatUI?.clearHold();for(let i=0;i<6;i++)if(adventure.character.actionBar[i]==='shield-basic')input.suppress(`slot${i}` as InputAction);}}
     if (event.type === 'animation' || event.type === 'hit') {
       const actor = actors[event.actor];
       if (event.type === 'animation') play(actor, event.motion);
@@ -233,62 +245,94 @@ function resetPresentation(): void {
   graphics?.resetHistory();
 }
 function reset(): void { clearInput(); resetEncounter(encounter); applyLoadoutState(); resetPresentation(); }
-function toggleOptions(): void {
-  if (options?.paused) options.close();
-  else if (menus.paused) menus.close();
-  else options?.open();
+const bindingsMenu=new KeybindingsMenu(preferences,()=>adventure.character.actionBar,clearInput,()=>renderer.domElement.focus());
+function closeMenus(): void {if(bindingsMenu.paused)bindingsMenu.close();if(combatUI?.paused)combatUI.close();if(menus.paused)menus.close();if(options?.paused)options.close();}
+function toggleOptions(): void {if(bindingsMenu.paused || combatUI?.paused || menus.paused || options?.paused)closeMenus();else options?.open();}
+function openInventory(): void {if(menus.paused){menus.close();return;}closeMenus();if(!paused() && encounter.player.hp>0)menus.openInventory();}
+function openSkills(): void {if(combatUI?.paused){combatUI.close();return;}closeMenus();if(!paused() && encounter.player.hp>0)combatUI?.open();}
+function canEditAbilities(): boolean {return encounter.phase!=='loading' && encounter.player.hp>0 && !inCombat(encounter) && encounter.player.lock===0 && encounter.dodgeRemaining===0 && !equipmentLoading && !transitioning && !gatheringTarget;}
+function dispatchInput(action:InputAction):void {
+  if(action==='inventory'){openInventory();return;}if(action==='skills'){openSkills();return;}if(action==='options'){toggleOptions();return;}
+  if(paused())return;
+  if(action.startsWith('slot')){const id=adventure.character.actionBar[Number(action.slice(4))];if(id)startAbility(id);}
+  else if(action==='dodge')startDodge();else if(action==='swap')startSwap();else if(action==='potion')usePotion();else if(action==='portal')castReturn();
+  else if(action==='zoomIn' || action==='zoomOut')cameraOwner.zoom(action==='zoomIn' ? 1 : -1);
 }
-function openInventory(): void {
-  if (options?.paused) options.close();
-  if (menus.paused) { menus.close(); return; }
-  if (!paused() && encounter.player.hp > 0) menus.openInventory();
+function usePotion():void {if(!paused()){adventure.usePotion(encounter);syncAdventure();}}
+function castReturn():void {if(!paused()){worldApproach=null;pickupRoute=null;adventure.cancelPickup();cancelChop();adventure.beginCast(encounter.player.hp>0);syncAdventure();}}
+combatUI=new CombatUI({character:()=>adventure.character,encounter:()=>encounter,preferences,activate:startAbility,potion:usePotion,portal:castReturn,swap:startSwap,canEdit:canEditAbilities,portalReady:()=>currentArea.id!==homeArea && encounter.player.hp>0 && adventure.character.scrolls>0 && adventure.castRemaining===0,assign:bar=>{if(canEditAbilities())adventure.setActionBar(bar);},clear:clearInput,focus:()=>renderer.domElement.focus()});
+const optionsButton=document.createElement('button');optionsButton.id='hud-options';optionsButton.textContent='⚙';optionsButton.title='Options';optionsButton.setAttribute('aria-label','Options');optionsButton.onclick=()=>toggleOptions();document.getElementById('app')!.append(optionsButton);
+
+type WorldBase={key:string;name:string;position:Point;range:number;height:number;obstacleId:string;object:THREE.Object3D};
+type WorldInteraction=WorldBase & ({type:'resource';resource:ResourceDefinition} | {type:'chest';chest:NonNullable<AreaDefinition['chests']>[number]} | {type:'fire';fire:NonNullable<AreaDefinition['campfires']>[number]} | {type:'portal'} | {type:'shelter'|'stash'});
+function worldTargets():WorldInteraction[]{
+  const targets:WorldInteraction[]=[];if(!active)return targets;
+  for(const node of active.resources){const object=active.interactables.get(`resource/${node.id}`) ?? active.interactables.get(`tree/${node.id}`);if(object && !harvesting.state(currentArea.id,node.id)?.felled)targets.push({key:`resource/${node.id}`,name:node.kind==='tree' ? 'Chop' : 'Mine',type:'resource',resource:node,position:[node.position[0],node.position[2]],range:node.radius+gathering.workingReach,height:node.position[1],obstacleId:node.id,object});}
+  for(const chest of currentArea.chests ?? []){const object=active.interactables.get(`chest/${chest.id}`);if(object && !adventure.chest(currentArea,chest).opened)targets.push({key:`chest/${chest.id}`,name:'Open chest',type:'chest',chest,position:chest.position,range:1.8,height:0,obstacleId:chest.prop,object});}
+  for(const fire of currentArea.campfires ?? []){const object=active.interactables.get(`fire/${fire.id}`);if(object)targets.push({key:`fire/${fire.id}`,name:'Travel',type:'fire',fire,position:fire.position,range:3,height:0,obstacleId:fire.id,object});}
+  if(currentArea.shelter){const site=currentArea.shelter,key=adventure.character.shelterRestored ? 'stash' : 'shelter',object=active.interactables.get(key);if(object)targets.push({key,name:key==='stash' ? 'Stash' : 'Repair shelter',type:key,position:key==='stash' ? site.stash : site.position,range:key==='stash' ? 1.8 : progression.restedRadius,height:0,obstacleId:'shelter',object});}
+  const portal=adventure.portalPosition(currentArea),object=adventureVisuals?.portalTarget;
+  if(portal && object)targets.push({key:'portal',name:currentArea.id===homeArea ? 'Return to adventure' : 'Homestead',type:'portal',position:portal,range:1.8,height:0,obstacleId:'portal',object});
+  return targets;
 }
-function interaction(): { type: 'portal'; position: Point } | { type: 'fire'; position: Point; fire: NonNullable<AreaDefinition['campfires']>[number] } | { type: 'chest'; position: Point; chest: NonNullable<AreaDefinition['chests']>[number] } | { type: 'shelter' | 'stash'; position: Point } | null {
-  const point: Point = [encounter.player.x, encounter.player.z], portal = adventure.portalPosition(currentArea);
-  if (portal && near(point, portal, 1.8)) return { type: 'portal', position: portal };
-  const chest = currentArea.chests?.find(c => near(point, c.position, 1.8) && chestUnlocked(encounter,c) && (!adventure.chest(currentArea, c).opened || adventure.chest(currentArea, c).remaining > 0));
-  if (chest) return { type: 'chest', position: chest.position, chest };
-  if (currentArea.shelter) { const site=currentArea.shelter; if(adventure.character.shelterRestored && near(point,site.stash,1.8))return {type:'stash',position:site.stash}; if(!adventure.character.shelterRestored && near(point,site.position,progression.restedRadius))return {type:'shelter',position:site.position}; }
-  const fire = currentArea.campfires?.find(f => near(point, f.position, 3) && adventure.fireSafe(currentArea, f, encounter));
-  if (fire) return { type: 'fire', position: fire.position, fire };
+function interactionError(target:WorldInteraction):string {
+  if(adventure.castRemaining>0)return 'Scroll of Return is casting';
+  if(target.type==='resource' && !gatheringSafe())return 'Enemies nearby';
+  if(target.type==='fire' && !adventure.fireSafe(currentArea,target.fire,encounter))return 'Enemies nearby';
+  if(target.type==='chest' && !chestUnlocked(encounter,target.chest))return 'Defeat the guard';
+  return '';
+}
+function pickInteraction():WorldInteraction | null {
+  const targets=worldTargets();if(!active)return null;
+  const roots=[active.root,...(adventureVisuals?.portalTarget ? [adventureVisuals.portalTarget] : []),player.root,enemy.root,caster.root];
+  for(const hit of aimRay.intersectObjects(roots,true)){
+    if(!hit.object.visible)continue;
+    let visible=true;for(let object:THREE.Object3D | null=hit.object;object;object=object.parent)if(!object.visible)visible=false;if(!visible)continue;
+    for(let object:THREE.Object3D | null=hit.object;object;object=object.parent){const target=targets.find(target=>target.object===object);if(target)return target;}
+    return null;
+  }
   return null;
 }
-function interact(): void {
-  if (paused() || encounter.player.hp <= 0 || adventure.castRemaining > 0) return;
-  cancelChop();
-  const target = interaction();
-  if (target?.type === 'fire') {
-    const sourceArea = currentArea, sourceFire = target.fire;
-    menus.openTravel(adventure.destinations(definitions).map(({ area, fire, available }) => ({ name: fire.name, available,
-      travel: () => {
-        const allowed = () => adventure.canTravel(encounter, sourceArea, sourceFire, area, fire);
-        if (allowed()) void changeArea({ kind: 'travel', area: area.id, transition: true, spawn: fire.arrival, canCommit: allowed }).then(ok => { if (ok) audio.play('fireTravel'); });
-      },
-    })));
-  } else if (target?.type === 'shelter') menus.openRepair();
-  else if (target?.type === 'stash') menus.openInventory(true);
-  else if (target?.type === 'chest') adventure.openChest(encounter, currentArea, target.chest);
-  else if (target?.type === 'portal' && adventure.portal) {
-    const link = adventure.portal;
-    if (currentArea.id === homeArea) void changeArea({ kind: 'travel', area: link.area, transition: true, spawn: link.departure }).then(ok => { if (ok) audio.play('portalPass'); if (ok && adventure.portal === link) { adventure.portal = null; syncAdventure(); audio.play('portalClose'); } });
-    else void changeArea({ kind: 'travel', area: homeArea, transition: true, spawn: definitions.homestead.portalArrival }).then(ok => { if (ok) audio.play('portalPass'); });
-  }
+function worldClick(clientX:number,clientY:number):boolean {
+  if(paused() || encounter.player.hp<=0)return false;
+  resolveAim({x:clientX,y:clientY});const loot=adventureVisuals?.pick(aimRay);if(loot){selectLoot(loot);return true;}
+  const target=pickInteraction();if(!target)return false;
+  if(target.type==='resource' && gatheringTarget?.id===target.resource.id)return true;
+  clearInput();const error=interactionError(target);if(error){adventure.message(error);return true;}
+  const points=movementWorld?.interactionPath(encounter.player,target.position,target.height,target.range,target.obstacleId);
+  if(!points){adventure.message('Can’t reach object');return true;}
+  worldApproach={key:target.key,points,elapsed:0,stalled:0,last:[encounter.player.x,encounter.player.z]};return true;
 }
+function interact(target:WorldInteraction):void {
+  if(paused() || encounter.player.hp<=0 || encounter.player.lock>0 || encounter.dodgeRemaining>0)return;
+  const error=interactionError(target);if(error){adventure.message(error);return;}
+  if(target.type==='resource'){gatheringTarget=target.resource;beginChop(target.resource);}
+  else if(target.type==='shelter')menus.openRepair();
+  else if(target.type==='stash')menus.openInventory(true);
+  else if(target.type==='chest')adventure.openChest(encounter,currentArea,target.chest);
+  else if(target.type==='fire'){
+    adventure.discover(currentArea,[encounter.player.x,encounter.player.z]);
+    const sourceArea=currentArea,sourceFire=target.fire;
+    menus.openTravel(adventure.destinations(definitions).map(({area,fire,available})=>({name:fire.name,available,travel:()=>{const allowed=()=>adventure.canTravel(encounter,sourceArea,sourceFire,area,fire);if(allowed())void changeArea({kind:'travel',area:area.id,transition:true,spawn:fire.arrival,canCommit:allowed}).then(ok=>{if(ok)audio.play('fireTravel');});}})));
+  }else if(adventure.portal){const link=adventure.portal;if(currentArea.id===homeArea)void changeArea({kind:'travel',area:link.area,transition:true,spawn:link.departure}).then(ok=>{if(ok){audio.play('portalPass');if(adventure.portal===link){adventure.portal=null;syncAdventure();audio.play('portalClose');}}});else void changeArea({kind:'travel',area:homeArea,transition:true,spawn:definitions.homestead.portalArrival}).then(ok=>{if(ok)audio.play('portalPass');});}
+}
+
 function syncAdventure(): void {
   adventureVisuals?.sync(adventure.session(currentArea.id).drops, adventure.portalPosition(currentArea), lootLabels.hovered);
   for (const chest of currentArea.chests ?? []) active?.setChestOpened(chest.id, adventure.chest(currentArea, chest).opened);
-  const target = interaction();
-  const prompt = paused() || encounter.player.hp <= 0 ? '' : adventure.notice || (target?.type === 'portal' ? (currentArea.id === homeArea ? 'E · Return to adventure' : 'E · Homestead') : target?.type === 'chest' ? 'E · Open chest' : target?.type === 'shelter' ? 'E · Repair shelter' : target?.type === 'stash' ? 'E · Stash' : target ? 'E · Travel' : '');
+  const prompt=paused() || encounter.player.hp<=0 ? '' : adventure.notice || (hoveredInteraction ? interactionError(hoveredInteraction) || hoveredInteraction.name : '');
   gameplayAudio.adventure(adventure.takeEvents());
   if (adventure.castRemaining<=0) audio.stop('return-cast');
   menus.updateCharacter(adventure.character);
   menus.update(adventure.character.scrolls, currentArea.id !== homeArea && encounter.player.hp > 0 && adventure.character.scrolls > 0 && adventure.castRemaining === 0, prompt, adventure.castRemaining);
-  document.getElementById('save-status')!.textContent = adventure.saveError;
+  document.getElementById('save-status')!.textContent = adventure.saveError || preferences.error;combatUI?.update();
 }
-function paused(): boolean { return Boolean(characterMissing || options?.paused || menus.paused || equipmentLoading || inspecting || graphics?.preparingSettings || frozen || transitioning); }
+function paused(): boolean { return Boolean(characterMissing || options?.paused || menus.paused || combatUI?.paused || bindingsMenu.paused || equipmentLoading || inspecting || graphics?.preparingSettings || frozen || transitioning); }
 function timings(): Timings {
   const timing = (actor: Actor) => ({ attack: duration(actor, 'attack'), hit: duration(actor, 'hit'), contacts: actor.contacts, commitLead: actor.commitLead });
-  return { player: timing(player), enemy: timing(enemy), caster: timing(caster) };
+  const abilityTimings: NonNullable<Timings['player']['abilities']>={};
+  for(const prepared of preparedSets){const basic=basicAbility(prepared.loadout.main);if(basic)abilityTimings[basic]={attack:prepared.motions.clips.attack.duration,contacts:prepared.motions.contacts};for(const [id,role] of [['sweep','sweep'],['piercing-shot','pierce']] as const){const clip=prepared.motions.clips[role],contacts=prepared.motions.skillContacts[role];if(clip && contacts)abilityTimings[id]={attack:clip.duration,contacts};}}
+  return { player: {...timing(player),abilities:abilityTimings}, enemy: timing(enemy), caster: timing(caster) };
 }
 const aimRay = new THREE.Raycaster();
 const aimPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0));
@@ -318,52 +362,19 @@ function resolveAttackAim(pointer: {x:number;y:number}): AimPoint | undefined {
   if (picked) return {x:picked.x,z:picked.z};
   return ground;
 }
-function gatheringSafe(): boolean {
-  return currentArea.kind==='safe' || !enemyIds.some(id=>{const enemy=encounter.enemies[id];return enemy.home && enemy.hp>0 && ((enemy.engaged && !enemy.returning) || Math.hypot(enemy.x-encounter.player.x,enemy.z-encounter.player.z)<=gathering.threatRadius);});
+function gatheringSafe():boolean {return currentArea.kind==='safe' || !enemyIds.some(id=>{const enemy=encounter.enemies[id];return enemy.home && enemy.hp>0 && ((enemy.engaged && !enemy.returning) || Math.hypot(enemy.x-encounter.player.x,enemy.z-encounter.player.z)<=gathering.threatRadius);});}
+function interruptApproach():void {worldApproach=null;pickupRoute=null;adventure.cancelPickup();cancelChop();}
+function holdingShield():boolean {return !!combatUI?.blocking || adventure.character.actionBar.some((id,index)=>id==='shield-basic' && input.held(`slot${index}` as InputAction));}
+function startAbility(id:AbilityId):void {
+  if(paused())return;interruptApproach();if(!holdingShield())encounter.blocking=false;
+  const pointer=input.pointer(),aim=pointer ? resolveAttackAim(pointer) : undefined;
+  const events=useAbility(encounter,id,timings().player,false,aim);present(events);
+  if(!events.length && !encounter.pending){const set=abilitySet(encounter.weaponSets,encounter.activeSet,id);if(set===undefined)adventure.message(`Equip ${abilities[id].family==='shield' ? 'a Shield' : abilities[id].family==='axe' ? 'an Axe' : `a ${abilities[id].family[0].toUpperCase()+abilities[id].family.slice(1)}`} in a weapon set`);else if(encounter.playerMana<abilities[id].mana)adventure.message('Not enough mana');}
 }
-function startAttack(clientX: number, clientY: number): void {
-  const aim=resolveAttackAim({x:clientX,y:clientY});
-  if (!paused()) {
-    const loot = adventureVisuals?.pick(aimRay); if (loot) { selectLoot(loot); return; }
-    adventure.cancelPickup(); pickupRoute = null;
-    const point:Point=[encounter.player.x,encounter.player.z];
-    const enemyPicked=currentArea.kind!=='safe' && enemyIds.some(id=>encounter.enemies[id].hp>0 && aimRay.intersectObject(actors[id].root,true).length);
-    if(gatheringSafe() && !enemyPicked && !input.blocking() && adventure.castRemaining===0) {
-      const picked=active?.pickResource(aimRay);
-      const yaw=aim ? Math.atan2(aim.x-point[0],aim.z-point[1]) : encounter.player.yaw;
-      const node=harvesting.available(currentArea.id).find(n=>n.id===picked) ?? harvesting.facing(currentArea.id,point,yaw);
-      if(node) {
-        if(gatheringTarget?.id===node.id)return;
-        cancelChop();
-        if(encounter.player.lock>0 || encounter.attackCooldown>0 || encounter.dodgeRemaining>0)return;
-        gatheringTarget=node;
-        if(harvesting.distance(node,point)<=gathering.workingReach && resourceVisible(node))beginChop(node);
-        else if(!prepareGatheringRoute(node)) { cancelChop(); adventure.message('Can’t reach resource'); }
-        return;
-      }
-    }
-    cancelChop();
-  }
-  present(attack(encounter,timings().player,paused(),aim));
-}
-function prepareGatheringRoute(node: ResourceDefinition): boolean {
-  const candidates: {points:Point[];length:number}[]=[];
-  const point:Point=[encounter.player.x,encounter.player.z];
-  const start=Math.atan2(point[0]-node.position[0],point[1]-node.position[2]);
-  for(let i=0;i<8;i++) {
-    const angle=start+i*Math.PI/4, target:Point=[node.position[0]+Math.sin(angle)*(node.radius+gathering.workingReach),node.position[2]+Math.cos(angle)*(node.radius+gathering.workingReach)];
-    const points=movementWorld?.pickupPath(encounter.player,target,node.position[1]);if(!points)continue;
-    let length=0,last=point;for(const next of points){length+=Math.hypot(next[0]-last[0],next[1]-last[1]);last=next;}
-    candidates.push({points,length});
-  }
-  candidates.sort((a,b)=>a.length-b.length);
-  if(!candidates.length)return false;
-  gatheringRoute={points:candidates[0].points,elapsed:0,stalled:0,last:point};return true;
-}
-function startDodge(): void {
-  if (!player.actions.dodge) return;
-  if (!paused()) { adventure.cancelPickup(); pickupRoute = null; cancelChop(); }
-  present(dodge(encounter, input.movement(), paused(), resolveAim()));
+function startSwap():void {if(paused())return;interruptApproach();combatUI?.clearHold();for(let i=0;i<6;i++)if(adventure.character.actionBar[i]==='shield-basic')input.suppress(`slot${i}` as InputAction);present(swapWeaponSet(encounter,false));}
+function startDodge():void {
+  if(!player.actions.dodge || paused())return;interruptApproach();combatUI?.clearHold();for(let i=0;i<6;i++)if(adventure.character.actionBar[i]==='shield-basic')input.suppress(`slot${i}` as InputAction);
+  present(dodge(encounter,input.movement(),false,resolveAim()));
 }
 function resourceVisible(node:ResourceDefinition):boolean { return !!movementWorld?.resourceVisible(encounter.player,node.id,{x:node.position[0],y:node.position[1],z:node.position[2]}); }
 function beginChop(tree: ResourceDefinition): void {
@@ -372,18 +383,22 @@ function beginChop(tree: ResourceDefinition): void {
   if(harvesting.distance(tree,[encounter.player.x,encounter.player.z])>gathering.reach || !resourceVisible(tree))return;
   encounter.pending=null; encounter.player.attackTime=-1; encounter.blocking=false;
   encounter.player.yaw=Math.atan2(tree.position[0]-encounter.player.x,tree.position[2]-encounter.player.z);
-  encounter.player.lock=duration(player,motion); chopping={tree,time:0,contacted:false};gatheringTarget=tree;gatheringRoute=null;
+  encounter.player.lock=duration(player,motion); chopping={tree,time:0,contacted:false};gatheringTarget=tree;
   gatheringTools.show(tree.kind);player.current=null;play(player,motion);audio.play('chopSwing',encounter.player);
 }
+
 function updateGame(dt: number): void {
   const isPaused = paused();
-  if (isPaused) clearInput();
+  if (isPaused) input.clear();
   let movement = input.movement();
-  if(gatheringTarget && (input.blocking() || Math.hypot(movement.x,movement.z)>0 || encounter.player.hp<=0 || !gatheringSafe() || harvesting.state(currentArea.id,gatheringTarget.id)?.felled || chopping && harvesting.distance(gatheringTarget,[encounter.player.x,encounter.player.z])>gathering.reach))cancelChop();
+  const block=holdingShield();
+  if(encounter.pending?.kind==='ability' && encounter.pending.ability==='shield-basic' && !block)encounter.pending=null;
+  if(gatheringTarget && (block || Math.hypot(movement.x,movement.z)>0 || encounter.player.hp<=0 || !gatheringSafe()))cancelChop();
+  if(Math.hypot(movement.x,movement.z)>0 || block)worldApproach=null;
   let approachAim: AimPoint | undefined;
   if (!isPaused && pickupRoute && adventure.pickupTarget) {
     const point: Point = [encounter.player.x, encounter.player.z], drop = adventure.session().drops.find(d => d.id === pickupRoute!.id);
-    if (Math.hypot(movement.x, movement.z) > 0 || input.interacting() || input.blocking() || !drop || encounter.player.hp <= 0) { adventure.cancelPickup(); pickupRoute = null; }
+    if (Math.hypot(movement.x, movement.z) > 0 || block || !drop || encounter.player.hp <= 0) { adventure.cancelPickup(); pickupRoute = null; }
     else if (near(point, drop.position, 1.5) && adventure.canCollectGround(drop)) { if (drop.age >= .55) { adventure.pickup(drop.id, point, true); adventure.cancelPickup(); pickupRoute = null; } }
     else {
       pickupRoute.elapsed += dt;
@@ -402,22 +417,19 @@ function updateGame(dt: number): void {
       }
     }
   }
-  if(!isPaused && gatheringTarget && !chopping) {
-    const point:Point=[encounter.player.x,encounter.player.z];
-    if(harvesting.distance(gatheringTarget,point)<=gathering.workingReach && resourceVisible(gatheringTarget))beginChop(gatheringTarget);
-    else if(!gatheringRoute && movementWorld?.navigationReady && !prepareGatheringRoute(gatheringTarget)){cancelChop();adventure.message('Can’t reach resource');}
-    else if(gatheringRoute) {
-      const route=gatheringRoute;route.elapsed+=dt;
-      if(route.elapsed>=.4 && !prepareGatheringRoute(gatheringTarget)){cancelChop();adventure.message('Can’t reach resource');}
-      if(gatheringRoute) {
-        while(gatheringRoute.points.length && near(point,gatheringRoute.points[0],.2))gatheringRoute.points.shift();
-        const next=gatheringRoute.points[0];if(next){movement={x:next[0]-point[0],z:next[1]-point[1]};approachAim={x:next[0],z:next[1]};}
-        gatheringRoute.stalled=near(point,route.last,.01) ? route.stalled+dt : 0;gatheringRoute.last=point;
-        if(gatheringRoute.stalled>1){cancelChop();adventure.message('Can’t reach resource');}
-      }
+  if(!isPaused && worldApproach){
+    const point:Point=[encounter.player.x,encounter.player.z],target=worldTargets().find(target=>target.key===worldApproach!.key);
+    if(!target || encounter.player.hp<=0){worldApproach=null;}
+    else if(interactionError(target)){adventure.message(interactionError(target));worldApproach=null;}
+    else if(near(point,target.position,target.range) && movementWorld?.interactionVisible(encounter.player,target.position,target.height,target.obstacleId)){
+      if(!encounter.player.lock && !encounter.dodgeRemaining){worldApproach=null;interact(target);}
+    }else{
+      worldApproach.elapsed+=dt;
+      if(worldApproach.elapsed>=.3){const path=movementWorld?.interactionPath(encounter.player,target.position,target.height,target.range,target.obstacleId);if(path)worldApproach.points=path;else if(movementWorld?.navigationReady){adventure.message('Can’t reach object');worldApproach=null;}if(worldApproach)worldApproach.elapsed=0;}
+      if(worldApproach){while(worldApproach.points.length && near(point,worldApproach.points[0],.18))worldApproach.points.shift();const next=worldApproach.points[0];if(next){movement={x:next[0]-point[0],z:next[1]-point[1]};approachAim={x:next[0],z:next[1]};}worldApproach.stalled=!encounter.player.lock && near(point,worldApproach.last,.01) ? worldApproach.stalled+dt : 0;worldApproach.last=point;if(worldApproach.stalled>1 && movementWorld?.navigationReady){adventure.message('Can’t reach object');worldApproach=null;}}
     }
   }
-  const commands = { ...movement, block: input.blocking(), paused: isPaused, aim: isPaused ? undefined : approachAim ?? resolveAim() };
+  const commands = { ...movement, block, paused: isPaused || paused(), aim: isPaused ? undefined : approachAim ?? resolveAim() };
   if (encounter.player.hp > 0 && !commands.paused && Math.hypot(movement.x, movement.z) > 0) hud.dismissResult();
   if (encounter.phase === 'won' || currentArea.kind === 'safe') {
     present(stepExploration(encounter, dt, commands, movementWorld, timings()));
@@ -449,6 +461,9 @@ function updateGame(dt: number): void {
   }
   projectileVisuals.sync(encounter.projectiles);
   casterVisuals.sync(encounter, caster.contacts[0] ?? .8, isPaused ? 0 : dt, currentArea.kind !== 'safe');
+  if(!paused() && input.pointer()){resolveAim();hoveredInteraction=pickInteraction();}else hoveredInteraction=null;
+  interactionHighlight.select(hoveredInteraction && !interactionError(hoveredInteraction) ? hoveredInteraction.object : null);interactionHighlight.update((camera.top-camera.bottom)/camera.zoom/Math.max(1,mount.clientHeight)*1.5);
+  renderer.domElement.style.cursor=hoveredInteraction ? interactionError(hoveredInteraction) ? 'not-allowed' : 'pointer' : '';
   syncAdventure();
   hud.update(encounter, []);
   if (!paused() && encounter.phase !== 'lost' && encounter.phase !== 'loading' && adventure.castRemaining === 0) {
@@ -505,7 +520,7 @@ try {
   attachCharacter(enemy, goblin.scene, goblin.animations, characters.enemy.height);
   attachCharacter(caster, goblin.scene, goblin.animations, characters.enemy.height);
   renderer.domElement.dataset.characters = JSON.stringify({ player: characters.player.name, enemy: characters.enemy.name });
-  await changeEquipment(adventure.character.loadout, false);
+  await changeEquipment();
   await gatheringTools.prepare();
   const goblinMotions = await loadEquipmentMotions(loader, 'enemy', enemyLoadout);
   installMotions(enemy, goblinMotions);
@@ -528,10 +543,10 @@ try {
   options = new Options({
     apply: settings => graphics?.apply(settings), flushSettings: () => graphics?.flushSettings(),
     resetMeasurements: () => graphics?.resetMeasurements(), clearInput,
-    focus: () => renderer.domElement.focus(), audio: {apply:settings=>audio.applySettings(settings),play:cue=>audio.play(cue)},
+    focus: () => renderer.domElement.focus(), keybindings:()=>bindingsMenu.open(), audio: {apply:settings=>audio.applySettings(settings),play:cue=>audio.play(cue)},
   });
   graphics = new Graphics({ scene, camera, renderer, controls, sun, ambient, mount, lighting }, options.settings, effects);
-  window.addEventListener('pagehide', () => { adventure.save(); gatheringTools.dispose(); audio.dispose(); graphics?.dispose(); personalLantern?.dispose(); playerEquipment.dispose(); enemyEquipment.dispose(); casterEquipment.dispose(); projectileVisuals.dispose(); casterVisuals.dispose(); adventureVisuals?.dispose(); lootLabels.dispose(); active?.dispose(); movementWorld?.dispose(); renderer.dispose(); void disposeAreaCache(); }, { once: true });
+  window.addEventListener('pagehide', () => { adventure.save(); gatheringTools.dispose(); audio.dispose(); graphics?.dispose(); personalLantern?.dispose(); playerEquipment.dispose(); interactionHighlight.dispose(); enemyEquipment.dispose(); casterEquipment.dispose(); projectileVisuals.dispose(); casterVisuals.dispose(); adventureVisuals?.dispose(); lootLabels.dispose(); active?.dispose(); movementWorld?.dispose(); renderer.dispose(); void disposeAreaCache(); }, { once: true });
   resize();
   await graphics.initialize();
   requestAnimationFrame(tick);
@@ -543,7 +558,7 @@ try {
       changeArea: id => changeArea({ kind: 'travel', area: id }), restart: reset, inspect: () => { inspect(); return inspecting; }, waitFrames, setFrozen: freezePreview, setView: previewView,
       appearance: () => ({ lantern: lanternEnabled, surfaces: surfaceMode }),
       setAppearance: changeAppearance,
-      diagnostics: () => ({ audio:audio.diagnostics(), lantern: personalLantern?.diagnostics(), surfaces: surfaceMode, area: currentArea.id, revision, renderedRevision, ready: !!active && renderedRevision === revision && !transitioning && !areaErrors.length && !mount.dataset.renderError, errors: [...areaErrors, ...(mount.dataset.renderError ? [mount.dataset.renderError] : [])], missing: [...(active?.missing ?? []), ...(characterMissing ? ['character'] : [])], contentHash, settings: options!.settings, backend: 'webgpu', updateMs, renderedFrames, phase: encounter.phase, equipment: playerEquipment.diagnostics(), harvest: {chopping: chopping?.tree.id ?? null, trees: active?.resources.map(tree=>({...tree,...harvesting.state(currentArea.id,tree.id)}))}, adventure: { character: adventure.character, portal: adventure.portal, castRemaining: adventure.castRemaining, drops: adventure.session(currentArea.id).drops, chests: adventure.session(currentArea.id).chests, fires: (currentArea.campfires ?? []).map(fire => ({ id: fire.id, safe: adventure.fireSafe(currentArea, fire, encounter) })) }, encounter: { enemies: structuredClone(encounter.enemies), enemyEquipment: enemyEquipment.diagnostics(), casterEquipment: casterEquipment.diagnostics(), player: { ...encounter.player }, playerMana: encounter.playerMana, dodgeRemaining: encounter.dodgeRemaining, dodgeCooldown: encounter.dodgeCooldown, blocking: encounter.blocking, projectiles: encounter.projectiles, pending: encounter.pending, animations: { player: player.current, enemy: enemy.current, caster: caster.current }, navigationReady: movementWorld?.navigationReady ?? false, navigationMs: movementWorld?.generationMs ?? 0 }, camera: { position: camera.position.toArray(), target: controls.target.toArray(), zoom: camera.zoom, viewport: [mount.clientWidth, mount.clientHeight] }, objects: active?.root.children.length ?? 0, resources: { memory: { ...renderer.info.memory }, drawCalls: renderer.info.render.drawCalls, triangles: renderer.info.render.triangles }, graphics: renderer.domElement.dataset.graphics ? JSON.parse(renderer.domElement.dataset.graphics) : null }),
+      diagnostics: () => ({ audio:audio.diagnostics(), lantern: personalLantern?.diagnostics(), surfaces: surfaceMode, area: currentArea.id, revision, renderedRevision, ready: !!active && renderedRevision === revision && !transitioning && !areaErrors.length && !mount.dataset.renderError, errors: [...areaErrors, ...(mount.dataset.renderError ? [mount.dataset.renderError] : [])], missing: [...(active?.missing ?? []), ...(characterMissing ? ['character'] : [])], contentHash, settings: options!.settings, backend: 'webgpu', updateMs, renderedFrames, phase: encounter.phase, equipment: playerEquipment.diagnostics(), controls:{bindings:preferences.value,actionBar:adventure.character.actionBar},interaction:{hover:hoveredInteraction?.key ?? null,approach:worldApproach?.key ?? null}, harvest: {chopping: chopping?.tree.id ?? null, trees: active?.resources.map(tree=>({...tree,...harvesting.state(currentArea.id,tree.id)}))}, adventure: { character: adventure.character, portal: adventure.portal, castRemaining: adventure.castRemaining, drops: adventure.session(currentArea.id).drops, chests: adventure.session(currentArea.id).chests, fires: (currentArea.campfires ?? []).map(fire => ({ id: fire.id, safe: adventure.fireSafe(currentArea, fire, encounter) })) }, encounter: { enemies: structuredClone(encounter.enemies), enemyEquipment: enemyEquipment.diagnostics(), casterEquipment: casterEquipment.diagnostics(), player: { ...encounter.player }, playerMana: encounter.playerMana, dodgeRemaining: encounter.dodgeRemaining, dodgeCooldown: encounter.dodgeCooldown, blocking: encounter.blocking, projectiles: encounter.projectiles, pending: encounter.pending, animations: { player: player.current, enemy: enemy.current, caster: caster.current }, navigationReady: movementWorld?.navigationReady ?? false, navigationMs: movementWorld?.generationMs ?? 0 }, camera: { position: camera.position.toArray(), target: controls.target.toArray(), zoom: camera.zoom, viewport: [mount.clientWidth, mount.clientHeight] }, objects: active?.root.children.length ?? 0, resources: { memory: { ...renderer.info.memory }, drawCalls: renderer.info.render.drawCalls, triangles: renderer.info.render.triangles }, graphics: renderer.domElement.dataset.graphics ? JSON.parse(renderer.domElement.dataset.graphics) : null }),
     });
   }
 

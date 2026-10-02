@@ -1,55 +1,49 @@
-export function createInput(canvas: HTMLCanvasElement, onAttack: (x: number, y: number) => void, onDodge: () => void,
-  onInteract: () => void, onInventory: () => void, onOptions: () => void, onClear: () => void = () => {}) {
-  const keys = new Set<string>();
-  let blocking = false;
-  let pointer: { x: number; y: number } | undefined;
-  const clear = () => { keys.clear(); pointer = undefined; blocking = false; onClear(); };
-  const trackPointer = (event: PointerEvent) => {
-    if (event.pointerType !== 'mouse' && event.pointerType !== 'pen') return;
-    // OrbitControls can capture a pressed pointer, delaying pointerleave until release.
-    const rect = canvas.getBoundingClientRect();
-    pointer = event.clientX >= rect.left && event.clientX < rect.right && event.clientY >= rect.top && event.clientY < rect.bottom
-      ? { x: event.clientX, y: event.clientY } : undefined;
+import { keyboardInput, inputFor, type InputAction, type InputPreferences } from '../input/bindings';
+
+/** Physical inputs belong here; gameplay receives actions and held states, never key names. */
+export function createInput(canvas: HTMLCanvasElement, preferences: InputPreferences, onAction: (action:InputAction)=>void,
+  onWorldClick: (x:number,y:number)=>boolean, onClear:()=>void = ()=>{}) {
+  const down=new Set<string>();
+  let pointer:{x:number;y:number} | undefined;
+  const clear=()=> { down.clear(); pointer=undefined; onClear(); };
+  const trackPointer=(event:PointerEvent)=> {
+    const rect=canvas.getBoundingClientRect();
+    if (event.pointerType!=='mouse' && event.pointerType!=='pen') return;
+    pointer=event.clientX>=rect.left && event.clientX<rect.right && event.clientY>=rect.top && event.clientY<rect.bottom ? {x:event.clientX,y:event.clientY} : undefined;
   };
-  canvas.addEventListener('pointermove', event => {
-    if (!document.querySelector('dialog[open]')) trackPointer(event);
-  });
-  canvas.addEventListener('pointerleave', () => { pointer = undefined; });
-  canvas.addEventListener('pointercancel', () => { pointer = undefined; blocking = false; });
-  canvas.addEventListener('contextmenu', event => event.preventDefault());
-  window.addEventListener('pointerup', event => { if (event.button === 2) blocking = false; });
-  window.addEventListener('keydown', (event) => {
-    const key = event.key.toLowerCase();
-    if (event.target instanceof HTMLElement && event.target.closest('input[type="text"], textarea, [contenteditable="true"]')) return;
-    if (key === 'b' || key === 'escape') {
-      event.preventDefault();
-      if (!event.repeat) (key === 'b' ? onInventory : onOptions)();
-      return;
-    }
+  const menus=new Set<InputAction>(['inventory','skills','options']);
+  const dispatch=(binding:string,repeat=false)=> {
+    const action=inputFor(preferences.value,binding);
+    if (action && (!repeat || action==='zoomIn' || action==='zoomOut')) onAction(action);
+    return action;
+  };
+  canvas.addEventListener('pointermove',event=> { if (!document.querySelector('dialog[open]')) trackPointer(event); });
+  canvas.addEventListener('pointerleave',()=> { pointer=undefined; });
+  canvas.addEventListener('pointercancel',clear);
+  canvas.addEventListener('contextmenu',event=>event.preventDefault());
+  canvas.addEventListener('auxclick',event=>event.preventDefault());
+  canvas.addEventListener('pointerdown',event=> {
     if (document.querySelector('dialog[open]')) return;
-    if (event.target instanceof HTMLElement && event.target.closest('select, input, button, summary, a')) return;
-    if (['w', 'a', 's', 'd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright', 'shift'].includes(key)) event.preventDefault();
-    keys.add(key);
-    if (!event.repeat && key === 'e') { event.preventDefault(); onInteract(); }
-    if (!event.repeat && key === 'shift') onDodge();
+    event.preventDefault(); canvas.focus(); trackPointer(event);
+    // World selection always consumes a left click before its assigned combat action.
+    if (event.button===0 && onWorldClick(event.clientX,event.clientY)) return;
+    const binding=`mouse:${event.button}`; down.add(binding); dispatch(binding);
   });
-  canvas.addEventListener('pointerdown', event => {
-    if (document.querySelector('dialog[open]')) return;
-    if (event.button === 2) { event.preventDefault(); canvas.focus(); trackPointer(event); blocking = true; return; }
-    if (event.button !== 0) return;
-    event.preventDefault(); canvas.focus(); trackPointer(event); onAttack(event.clientX, event.clientY);
+  window.addEventListener('pointerup',event=>down.delete(`mouse:${event.button}`));
+  window.addEventListener('keydown',event=> {
+    if (event.defaultPrevented || event.target instanceof HTMLElement && event.target.closest('input,textarea,[contenteditable=true]')) return;
+    const binding=keyboardInput(event), action=inputFor(preferences.value,binding);
+    if (!action) return;
+    if(menus.has(action)){event.preventDefault();if(!event.repeat)onAction(action);return;}
+    if(document.querySelector('dialog[open]'))return;
+    if (event.target instanceof HTMLElement && event.target.closest('select,button,summary,a')) return;
+    event.preventDefault(); down.add(binding); dispatch(binding,event.repeat);
   });
-  window.addEventListener('keyup', (event) => keys.delete(event.key.toLowerCase()));
-  window.addEventListener('blur', clear);
-  return {
-    clear,
-    pointer: () => pointer,
-    blocking: () => blocking,
-    interacting: () => keys.has('e'),
-    movement: () => {
-      const forward = Number(keys.has('w') || keys.has('arrowup')) - Number(keys.has('s') || keys.has('arrowdown'));
-      const right = Number(keys.has('d') || keys.has('arrowright')) - Number(keys.has('a') || keys.has('arrowleft'));
-      return { x: -forward + right, z: -forward - right };
-    },
+  window.addEventListener('keyup',event=>down.delete(keyboardInput(event)));
+  window.addEventListener('blur',clear);
+  canvas.addEventListener('wheel',event=> { if (document.querySelector('dialog[open]') || event.deltaY===0) return; event.preventDefault(); dispatch(event.deltaY<0 ? 'wheel:up' : 'wheel:down'); },{passive:false});
+  const held=(action:InputAction)=>preferences.value[action].some(binding=>binding!==null && down.has(binding));
+  return {clear,pointer:()=>pointer,held,suppress:(action:InputAction)=>preferences.value[action].forEach(binding=>{if(binding) down.delete(binding);}),
+    movement:()=> { const forward=Number(held('moveUp'))-Number(held('moveDown')),right=Number(held('moveRight'))-Number(held('moveLeft')); return {x:-forward+right,z:-forward-right}; },
   };
 }

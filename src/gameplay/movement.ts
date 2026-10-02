@@ -130,6 +130,27 @@ export class MovementWorld implements Movement {
     if (!result.success || !end || Math.hypot(end[0] - point[0], end[2] - point[1]) > .65) return null;
     return result.path.map(p => [p.position[0], p.position[2]]);
   }
+  /** Reach a free point beside an object; never path into its blocking center. */
+  interactionPath(from: ActorState, point: [number,number], height: number, reach: number, obstacleId: string): [number,number][] | null {
+    if (!this.navigationReady) return null;
+    if (Math.hypot(from.x-point[0],from.z-point[1])<=reach && this.interactionVisible(from,point,height,obstacleId)) return [];
+    const angle=Math.atan2(from.z-point[1],from.x-point[0]);
+    for(let i=0;i<16;i++) {
+      const offset=(i%2 ? 1 : -1)*Math.ceil(i/2)*Math.PI/8;
+      const endpoint:[number,number]=[point[0]+Math.cos(angle+offset)*reach*.85,point[1]+Math.sin(angle+offset)*reach*.85];
+      const target={...from,x:endpoint[0],z:endpoint[1],y:height};
+      if (!this.interactionVisible(target,point,height,obstacleId)) continue;
+      const path=this.pickupPath(from,endpoint,height);
+      if(path) return path;
+    }
+    return null;
+  }
+  interactionVisible(from: ActorState, point: [number,number], height: number, obstacleId: string): boolean {
+    const dx=point[0]-from.x,dy=height-from.y,dz=point[1]-from.z,length=Math.hypot(dx,dy,dz);
+    if(length<.001)return true;
+    const ignored=this.obstacles.get(obstacleId)?.collider.handle;
+    return !this.world.castRay(new RAPIER.Ray({x:from.x,y:from.y+.9,z:from.z},{x:dx/length,y:dy/length,z:dz/length}),length,true,undefined,undefined,undefined,undefined,c=>this.solid.has(c.handle) && c.handle!==ignored);
+  }
   lootGround(origin: [number, number], index: number, player: ActorState): { position: [number, number]; height: number } {
     for (let attempt = 0; attempt < 24; attempt++) {
       const angle = index * 2.4 + attempt * 2.4, distance = .65 + (attempt % 4) * .25;

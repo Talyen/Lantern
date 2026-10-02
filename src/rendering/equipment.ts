@@ -10,27 +10,27 @@ export class Equipment {
   private current: PreparedEquipment | null = null;
   private candidates = new Set<PreparedEquipment>();
   private disposed = false;
-  constructor(private actor: THREE.Group, private rig: 'player' | 'enemy' = 'player', private library: AssetLibrary = assetLibrary) {}
+  constructor(private actor: THREE.Group, private rig: 'player' | 'enemy' = 'player', private library: AssetLibrary = assetLibrary, private definitions: typeof itemDefinitions = itemDefinitions) {}
   async stage(requested: Loadout): Promise<PreparedEquipment> {
     if (this.disposed) throw new Error('Equipment has been closed.');
     const loadout = normalizeLoadout(requested);
     const items = [loadout.main, loadout.off].filter((item): item is ItemId => item !== null);
     const sockets = items.map(item => {
-      const name = itemDefinitions[item].hand, socket = this.actor.getObjectByName(name);
-      if (!socket) throw new Error(`Cannot equip ${itemDefinitions[item].name}: character hand is unavailable.`);
+      const name = this.definitions[item].hand, socket = this.actor.getObjectByName(name);
+      if (!socket) throw new Error(`Cannot equip ${this.definitions[item].name}: character hand is unavailable.`);
       return socket;
     });
-    const results = await Promise.allSettled(items.map(item => this.library.loadAsset(itemDefinitions[item].asset)));
+    const results = await Promise.allSettled(items.map(item => this.library.loadAsset(this.definitions[item].asset)));
     const loaded = results.flatMap(result => result.status === 'fulfilled' ? [result.value] : []);
     const failed = results.find(result => result.status === 'rejected');
     if (failed || this.disposed) {
       loaded.forEach(instance => instance.release());
-      throw new Error(failed ? `Unable to equip ${items.map(item => itemDefinitions[item].name).join(' and ')}. Prepare the selected Synty models and try again.` : 'Equipment has been closed.');
+      throw new Error(failed ? `Unable to equip ${items.map(item => this.definitions[item].name).join(' and ')}. Prepare the selected Synty models and try again.` : 'Equipment has been closed.');
     }
     this.actor.updateMatrixWorld(true);
     let attachments: PreparedEquipment['attachments'];
     try { attachments = loaded.map((instance, index) => {
-      const item = items[index], definition = itemDefinitions[item], socket = sockets[index];
+      const item = items[index], definition = this.definitions[item], socket = sockets[index];
       const object = instance.object, grip = new THREE.Group(); grip.name = `equipment-${item}`; grip.userData.transient = true;
       const bounds = new THREE.Box3().setFromObject(object), size = bounds.getSize(new THREE.Vector3()), length = Math.max(size.x, size.y, size.z);
       if (length <= 0 || !Number.isFinite(length)) throw new Error(`${definition.name} has no visible model.`);
@@ -45,16 +45,19 @@ export class Equipment {
     }); } catch (error) { loaded.forEach(instance => instance.release()); throw error; }
     const candidate = { loadout, attachments }; this.candidates.add(candidate); return candidate;
   }
-  commit(candidate: PreparedEquipment): void {
+  commit(candidate: PreparedEquipment, retain = false): void {
     if (this.disposed || !this.candidates.has(candidate)) throw new Error('Equipment preparation is no longer available.');
-    this.candidates.delete(candidate);
-    this.current?.attachments.forEach(({ instance, grip }) => { grip.removeFromParent(); instance.release(); });
+    if (this.current===candidate) { this.setVisible(true); return; }
+    if (!retain) this.candidates.delete(candidate);
+    const previous=this.current;
+    previous?.attachments.forEach(({ instance, grip }) => { grip.removeFromParent(); if(!this.candidates.has(previous!)) instance.release(); });
     for (const { socket, grip } of candidate.attachments) socket.add(grip);
     this.current = candidate;
   }
   discard(candidate: PreparedEquipment): void {
     if (!this.candidates.delete(candidate)) return;
     candidate.attachments.forEach(({ instance, grip }) => { grip.removeFromParent(); instance.release(); });
+    if(this.current===candidate)this.current=null;
   }
   setVisible(visible: boolean): void { this.current?.attachments.forEach(({grip}) => { grip.visible = visible; }); }
   diagnostics() {

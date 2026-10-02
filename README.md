@@ -18,15 +18,15 @@ Open Vite's printed local URL to begin halfway along Forest Clearing’s approac
 | Control | Action |
 | --- | --- |
 | WASD / arrows | Move |
-| Left click | Attack toward the pointer, gather a selected resource, or select ground loot |
+| Q / E / R / G / LMB / RMB | Activate an assigned action-bar ability; left-click objects to approach and interact |
 | Right mouse, held | Block with an equipped Shield |
 | Shift | Dodge |
-| E | Interact with fires, chests, shelter and stash |
+| F / T / Tab / K | Health Potion / Scroll of Return / weapon swap / Skills |
 | B | Toggle Inventory |
 | Escape | Close a menu or open Options |
 | Mouse wheel | Zoom |
 
-Walk home or approach the goblin camp, defeat its guard and open the chest for two return scrolls and unclaimed Sword, Shield, Bow and Staff rewards. A separate staff-wielding caster waits off the left side of the woodland approach. Pick up equipment by clicking its object or name label, then equip it in Inventory; Wood, Stone, Iron and scrolls collect automatically nearby after landing.
+Walk home or approach the goblin camp, defeat its guard and open the chest for two return scrolls and unclaimed Sword, Shield, Bow and Staff rewards. A separate staff-wielding caster waits off the left side of the woodland approach. Pick up equipment by clicking its object or name label, then equip it in Inventory; Wood, Stone, Iron, Health Potions and scrolls collect automatically nearby after landing.
 
 Discover campfires on foot, then travel between safe fires, or cast a Scroll of Return to open a round-trip portal home. Safe campfires heal 3% maximum health per second within 3 m; enemies within 10 m of the fire or pursuing/returning anywhere in the area block healing and travel. Player and enemies have 100 health; current basic player hits deal 50 and enemy hits deal 20 before shield blocking. Defeat offers Return Home with collected items retained.
 
@@ -70,3 +70,5 @@ Original Lantern code and content are source-available for noncommercial use und
 `src/clearing/` coordinates the playable encounter, actors, input and camera. `src/levels/` owns area definitions, scenery construction and authoring; `src/gameplay/` contains the browser-independent simulation; `src/rendering/` owns graphics; `src/ui/` owns menus and HUD. Shared asset loading and combat motions live in `src/assets/` and `src/animation/`. Animation and character comparison live in `src/labs/animations/` and `src/labs/characters/`. Asset preparation tools are grouped under `scripts/assets/`, and level-authoring tools under `scripts/levels/`; build and verification entry points remain in `scripts/`. See [architecture](Docs/ARCHITECTURE.md) for ownership and dependency boundaries.
 
 Character and animation comparison labs are development-only. Game builds stage referenced gameplay art and exclude the private gallery roster and retired surface experiments.
+
+Action-bar assignments and both weapon sets save with character progress. Options → Keybindings remaps keyboard/mouse inputs with primary and secondary bindings. GPU reviews allow two owned slots; performance measurements defer when another slot is occupied.

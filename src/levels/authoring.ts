@@ -54,7 +54,7 @@ export function attachAuthoring(ctx: Context): void {
     selectArea: async(id:string) => {const result=await ctx.changeArea(id);setView(selectedView);return result;},
     setView, freeze,
     overlays: (value:boolean) => {overlay.visible=value;guides.checked=value;},
-    clean: (value:boolean) => { if (value && document.querySelector<HTMLDialogElement>('#options-dialog')?.open) document.querySelector<HTMLButtonElement>('#options-close')?.click(); panel.hidden=value;document.querySelectorAll<HTMLElement>('.resource-orb, .enemy-health, #result-panel, #asset-status, #interaction-prompt, #save-status').forEach(e=>{e.style.visibility=value?'hidden':'';});},
+    clean: (value:boolean) => { if (value && document.querySelector<HTMLDialogElement>('#options-dialog')?.open) document.querySelector<HTMLButtonElement>('#options-close')?.click(); panel.hidden=value;document.querySelectorAll<HTMLElement>('.resource-orb, .enemy-health, #result-panel, #asset-status, #interaction-prompt, #save-status, #action-bar, #hud-options').forEach(e=>{e.style.visibility=value?'hidden':'';});},
     settle: async(count=16, expected=ctx.diagnostics().revision) => {await ctx.waitFrames(count);const d=ctx.diagnostics();if(!d.ready||d.revision!==expected||d.errors.length)throw new Error('Scene revision changed or is not ready');return d;},
     // Deterministic inspection setup; normal smoke tests still exercise keyboard movement/combat.
     placePlayer: (x:number,z:number,yaw:number) => {ctx.encounter.player.x=x;ctx.encounter.player.z=z;ctx.encounter.player.yaw=yaw;},

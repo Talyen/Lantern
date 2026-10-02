@@ -21,30 +21,31 @@ export async function registerChild(pid) {
 export function releaseChild(pid) {
   for (const lease of active().values()) if (lease.child && !lease.child.stdin.destroyed) lease.child.stdin.write(JSON.stringify({ done: pid }) + '\n');
 }
-export async function acquire(resource, { cwd = root, ctx, slots = resource === 'checks' ? 2 : 1 } = {}) {
+export async function acquire(resource, { cwd = root, ctx, slots = resource === 'checks' || resource === 'gpu' ? 2 : 1, slot, tryOnly = false } = {}) {
   ctx ??= await context(cwd);
   if (!/^[a-z0-9-]+$/.test(resource)) throw new Error('Invalid resource name');
   const scoped = scope.getStore()?.get(resource);
-  if (scoped?.store === ctx.store) return { ...scoped, release: async () => {} };
+  if (scoped?.store === ctx.store && (slot === undefined || scoped.record.slot === slot)) return { ...scoped, release: async () => {} };
   const inherited = JSON.parse(process.env.LANTERN_LEASES ?? '{}')[resource];
-  if (inherited && (!inherited.store || inherited.store === ctx.store)) {
+  if (inherited && (slot === undefined || inherited.slot === slot) && (!inherited.store || inherited.store === ctx.store)) {
     const record = await readJSON(join(ctx.store, 'leases', `${resource}-${inherited.slot}.json`), null);
     if (record?.token === inherited.token && await processIdentity(record.pid) === record.started) return { record, store: ctx.store, release: async () => {} };
     throw new Error(`Inherited ${resource} lease no longer belongs to a live owner.`);
   }
   if (resource === 'heavy') await reserveSpace(ctx.main);
   const token = randomUUID();
-  const child = spawn('python3', [resolve(root, 'scripts/agents/native.py'), 'lease', join(ctx.store, 'leases'), resource, '--slots', String(slots), '--token', token, '--task', cwd], { stdio: ['pipe', 'pipe', 'inherit'] });
+  const child = spawn('python3', [resolve(root, 'scripts/agents/native.py'), 'lease', join(ctx.store, 'leases'), resource, '--slots', String(slots), '--token', token, '--task', cwd, ...(slot === undefined ? [] : ['--slot',String(slot)]), ...(tryOnly ? ['--try-only'] : [])], { stdio: ['pipe', 'pipe', 'inherit'] });
   const exited = new Promise(accept => child.once('exit', accept));
   const record = await new Promise((accept, reject) => {
     child.once('error', reject);
     child.once('exit', () => reject(new Error(`${resource} lease exited before acquisition`)));
     const lines = createInterface({ input: child.stdout });
     lines.on('line', line => {
-      try { const result = JSON.parse(line); if (result.waiting) console.log(`Waiting for ${resource} resource`); if (result.acquired) accept(result.acquired); }
+      try { const result = JSON.parse(line); if (result.waiting) console.log(`Waiting for ${resource} resource`); if (result.acquired) accept(result.acquired); if(result.deferred) accept(null); }
       catch (error) { reject(error); }
     });
   });
+  if(!record){child.stdin.end();await exited;return null;}
   const lease = { child, record, store: ctx.store, cleanup: command => child.stdin.write(JSON.stringify({ cleanup: command }) + '\n'), release: async () => {
     if (owned.get(resource) === lease) owned.delete(resource);
     child.stdin.end(); await exited;
@@ -57,4 +58,15 @@ export async function withResource(resource, operation, options) {
   const lease = await acquire(resource, options);
   const leases = new Map(scope.getStore() ?? []); leases.set(resource, lease);
   try { return await scope.run(leases, operation); } finally { await lease.release(); }
+}
+
+/** Reserve the other slot without waiting: measured samples must never overlap another review. */
+export async function reserveGpuMeasurement({cwd=root,ctx}={}) {
+  ctx ??= await context(cwd);
+  const own=await acquire('gpu',{cwd,ctx});
+  try {
+    const other=await acquire('gpu',{cwd,ctx,slots:2,slot:1-own.record.slot,tryOnly:true});
+    if(!other){await own.release();return {deferred:true,reason:'Another GPU slot is in use',release:async()=>{}};}
+    return {deferred:false,release:async()=>{try{await other.release();}finally{await own.release();}}};
+  } catch(error) {await own.release();throw error;}
 }

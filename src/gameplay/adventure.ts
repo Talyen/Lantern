@@ -1,3 +1,4 @@
+import { initialBar, validBar, type ActionBar, type WeaponSet } from './abilities';
 import { createEncounter, playerMaxHealth, enemyIds, type Encounter, type EnemyId } from './encounter';
 import type { Point, Spawn } from './area';
 import type { AreaDefinition, Campfire, Chest } from '../levels/types';
@@ -9,17 +10,18 @@ import { progression, progressMultiplier, shelterRecipe, type Skill, type Gather
 export const characterSaveKey = 'lantern.character.v1';
 export const scrollLimit = 99;
 export const homeArea = 'homestead';
-export type CharacterSave = { version: 4; items: InventoryItem[]; stash: InventoryItem[]; shelterRestored: boolean; restedSeconds: number; campfires: string[]; xp: { woodcutting: number; mining: number; axeCombat: number }; campClaims: ItemId[]; readonly scrolls: number; readonly wood: number; readonly equipment: ItemId[]; readonly loadout: Loadout };
+export type CharacterSave = { version: 5; activeSet: WeaponSet; actionBar: ActionBar; items: InventoryItem[]; stash: InventoryItem[]; shelterRestored: boolean; restedSeconds: number; campfires: string[]; xp: { woodcutting: number; mining: number; axeCombat: number }; campClaims: ItemId[]; readonly scrolls: number; readonly potions: number; readonly wood: number; readonly equipment: ItemId[]; readonly loadout: Loadout };
 export type GroundDrop = { id: string; item: LootItem; quantity: number; position: Point; origin: Point; height: number; age: number; claim?: ItemId; instanceId?: string; blocked?: boolean; harvestXp?: { skill: GatheringSkill; perUnit: number } };
 export type PortalLink = { area: string; departure: Spawn };
 type AreaSession = { encounter?: Encounter; drops: GroundDrop[]; dropRolled: Partial<Record<EnemyId, boolean>>; chests: Record<string, { opened: boolean; remaining: number }> };
-function character(items: InventoryItem[] = [{ id: 'item-1', item: 'axe', quantity: 1, slot: 'main', x: 0, y: 0 }, { id: 'item-2', item: 'scroll', quantity: 3, slot: 'bag', x: 0, y: 0 }]): CharacterSave {
-  const value = { version: 4 as const, items, stash: [] as InventoryItem[], shelterRestored: false, restedSeconds: 0, campfires: ['homestead/camp'], xp: { woodcutting: 0, mining: 0, axeCombat: 0 }, campClaims: [] as ItemId[] };
+function character(items: InventoryItem[] = [{ id: 'item-1', item: 'axe', quantity: 1, slot: 'main', x: 0, y: 0 }, { id: 'item-2', item: 'scroll', quantity: 3, slot: 'bag', x: 0, y: 0 }, { id: 'item-3', item: 'potion', quantity: 3, slot: 'bag', x: 1, y: 0 }]): CharacterSave {
+  const value = { version: 5 as const, activeSet: 0 as WeaponSet, actionBar: initialBar(itemLoadout(items).main), items, stash: [] as InventoryItem[], shelterRestored: false, restedSeconds: 0, campfires: ['homestead/camp'], xp: { woodcutting: 0, mining: 0, axeCombat: 0 }, campClaims: [] as ItemId[] };
   return Object.defineProperties(value, {
     scrolls: { get: () => countItem(value.items.filter(i => i.slot !== 'overflow'), 'scroll') },
+    potions: { get: () => countItem(value.items.filter(i => i.slot !== 'overflow'), 'potion') },
     wood: { get: () => countItem(value.items, 'wood') },
     equipment: { get: () => value.items.filter(i => itemIds.includes(i.item as ItemId)).map(i => i.item as ItemId) },
-    loadout: { get: () => itemLoadout(value.items) },
+    loadout: { get: () => itemLoadout(value.items,value.activeSet) },
   }) as CharacterSave;
 }
 export type Storage = Pick<globalThis.Storage, 'getItem' | 'setItem'>;
@@ -28,7 +30,7 @@ export const fireKey = (area: string, fire: string) => `${area}/${fire}`;
 export const near = (point: Point, target: Point, radius: number) => Math.hypot(point[0] - target[0], point[1] - target[1]) <= radius;
 
 /** Continuing character state and inactive area snapshots; no rendering/browser dependencies. */
-export type AdventureEvent = { type: 'chestOpen' | 'returnCast' | 'portalOpen' | 'portalClose' | 'fireDiscovered' | 'healing'; position?: {x:number;z:number} } | {type:'lootDrop' | 'lootLand' | 'lootPickup'; item:LootItem; position:{x:number;z:number}};
+export type AdventureEvent = { type: 'chestOpen' | 'returnCast' | 'portalOpen' | 'portalClose' | 'fireDiscovered' | 'healing' | 'potionUse'; position?: {x:number;z:number} } | {type:'lootDrop' | 'lootLand' | 'lootPickup'; item:LootItem; position:{x:number;z:number}};
 export class Adventure {
   private events: AdventureEvent[] = [];
   private healing = false;
@@ -46,20 +48,26 @@ export class Adventure {
   placeGround: (origin: Point, index: number) => { position: Point; height: number } = origin => ({ position: [...origin], height: 0 });
   canCollectGround: (drop: GroundDrop) => boolean = () => true;
   private sessions = new Map<string, AreaSession>();
-  private sequence = 2;
+  private sequence = 3;
+  private loadFailed = false;
   newId = (): string => `item-${++this.sequence}`;
   constructor(private storage?: Storage, private random = Math.random) {
     if (!storage) return;
     try {
       const raw = storage.getItem(characterSaveKey); if (!raw) return;
       const value = JSON.parse(raw), counter = (n: unknown) => typeof n === 'number' && Number.isFinite(n) && n >= 0 && n <= Number.MAX_SAFE_INTEGER;
-      if (![1, 2, 3, 4].includes(value?.version) || !Array.isArray(value.campfires) || !value.campfires.every((id: unknown) => typeof id === 'string')) throw new Error('Invalid character save');
+      if (![1, 2, 3, 4, 5].includes(value?.version) || !Array.isArray(value.campfires) || !value.campfires.every((id: unknown) => typeof id === 'string')) throw new Error('Invalid character save');
+      const hasHome=value.version>=5 || value.version===4 && value.stash!==undefined;
+      const hasCombat=value.version>=5 || value.version===4 && value.activeSet!==undefined;
+      if(value.version===4 && !hasHome && !hasCombat)throw new Error('Invalid character save');
       if (value.version >= 3) {
         if (!validItems(value.items) || !counter(value.xp?.woodcutting) || !counter(value.xp?.axeCombat) || !Array.isArray(value.campClaims) || !value.campClaims.every((id: ItemId) => itemIds.includes(id))) throw new Error('Invalid inventory save');
-        if (value.version === 4 && (!validItems(value.stash) || value.stash.some((i: InventoryItem) => i.slot !== 'bag') || new Set([...value.items,...value.stash].map((i: InventoryItem) => i.id)).size !== value.items.length + value.stash.length || typeof value.shelterRestored !== 'boolean' || !counter(value.restedSeconds) || value.restedSeconds > progression.restedSeconds || !counter(value.xp.mining) || !value.shelterRestored && (value.stash.length || value.restedSeconds))) throw new Error('Invalid Homestead save');
+        if (hasHome && (!validItems(value.stash) || value.stash.some((i: InventoryItem) => i.slot !== 'bag') || new Set([...value.items,...value.stash].map((i: InventoryItem) => i.id)).size !== value.items.length + value.stash.length || typeof value.shelterRestored !== 'boolean' || !counter(value.restedSeconds) || value.restedSeconds > progression.restedSeconds || !counter(value.xp.mining) || !value.shelterRestored && (value.stash.length || value.restedSeconds))) throw new Error('Invalid Homestead save');
+        if(hasCombat && (![0,1].includes(value.activeSet) || !validBar(value.actionBar)))throw new Error('Invalid action bar save');
         this.character = character(value.items);
-        this.character.xp = { woodcutting: value.xp.woodcutting, axeCombat: value.xp.axeCombat, mining: value.version === 4 ? value.xp.mining : 0 }; this.character.campClaims = [...new Set<ItemId>(value.campClaims)];
-        if (value.version === 4) { this.character.stash = value.stash; this.character.shelterRestored = value.shelterRestored; this.character.restedSeconds = value.restedSeconds; }
+        if(hasCombat){this.character.activeSet=value.activeSet;this.character.actionBar=[...value.actionBar];}
+        this.character.xp = { woodcutting: value.xp.woodcutting, axeCombat: value.xp.axeCombat, mining: hasHome ? value.xp.mining : 0 }; this.character.campClaims = [...new Set<ItemId>(value.campClaims)];
+        if (hasHome) { this.character.stash = value.stash; this.character.shelterRestored = value.shelterRestored; this.character.restedSeconds = value.restedSeconds; }
         for (const entry of [...value.items,...this.character.stash]) this.sequence = Math.max(this.sequence, Number(entry.id.match(/^item-(\d+)$/)?.[1] ?? 0));
       } else {
         if (!Number.isSafeInteger(value.scrolls) || !counter(value.scrolls) || value.scrolls > scrollLimit) throw new Error('Invalid scroll save');
@@ -81,13 +89,26 @@ export class Adventure {
         if (value.version === 2) { this.character.xp = { woodcutting: value.xp.woodcutting, axeCombat: value.xp.axeCombat, mining: 0 }; if (value.campEquipmentClaimed) this.character.campClaims = ['sword', 'shield', 'bow', 'staff']; }
       }
       this.character.campfires = [...new Set<string>(['homestead/camp', ...value.campfires])];
-      if (value.version !== 4) this.save();
-    } catch { this.saveError = 'Unable to load progress. Check local storage before restarting.'; }
+      if (!hasCombat) {
+        const items=this.character.items, remainder=3-receive(items,'potion',3,this.newId);
+        if (remainder) items.push({id:this.newId(),item:'potion',quantity:remainder,slot:'overflow',x:0,y:0});
+      }
+      if(value.version!==5)this.save();
+    } catch { this.loadFailed = true; this.saveError = 'Unable to load progress. Check local storage before restarting.'; }
   }
   save(): void {
-    if (!this.storage) return;
+    if (!this.storage || this.loadFailed) return;
     try { this.storage.setItem(characterSaveKey, JSON.stringify(this.character)); this.saveError = ''; }
     catch { this.saveError = 'Unable to save progress. Allow local storage before restarting.'; }
+  }
+  setActionBar(bar: ActionBar): void { if (!validBar(bar)) throw new Error('Invalid action bar'); this.character.actionBar=[...bar]; this.save(); }
+  setWeaponSet(set: WeaponSet): void { this.character.activeSet=set; this.save(); }
+  usePotion(encounter: Encounter): boolean {
+    const entry=this.character.items.find(i=>i.item==='potion' && i.slot==='bag');
+    if (!entry || encounter.player.hp<=0 || encounter.player.hp>=playerMaxHealth || encounter.potionCooldown>0 || !['playing','won'].includes(encounter.phase)) return false;
+    encounter.player.hp=Math.min(playerMaxHealth,encounter.player.hp+40); encounter.potionCooldown=8;
+    entry.quantity--; this.character.items=this.character.items.filter(i=>i.quantity>0);
+    this.events.push({type:'potionUse'}); this.save(); return true;
   }
   replaceItems(items: InventoryItem[]): void { this.character.items = items; this.save(); }
   message(text: string): void { this.notice = text; this.noticeTime = 2; }
@@ -160,6 +181,7 @@ export class Adventure {
   /** Call only after destination resources are ready; failed loads cannot change these states. */
   enter(encounter: Encounter, area: AreaDefinition, arrival = area.layout.player, recover = false): void {
     const health = this.currentArea ? encounter.player.hp : playerMaxHealth;
+    const resources={weapon:encounter.weapon,shield:encounter.shield,playerMana:encounter.playerMana,abilityCooldowns:{...encounter.abilityCooldowns},potionCooldown:encounter.potionCooldown,weaponSets:encounter.weaponSets,activeSet:encounter.activeSet};
     if (this.currentArea) this.session().encounter = structuredClone(encounter);
     this.currentArea = area.id;
     const previous = this.session().encounter;
@@ -172,7 +194,7 @@ export class Adventure {
     }
     next.player.x = arrival.position[0]; next.player.z = arrival.position[1]; next.player.yaw = arrival.yaw;
     next.player.hp = recover ? playerMaxHealth : health;
-    Object.assign(encounter, next);
+    Object.assign(encounter, next, resources);
     this.castRemaining = 0; this.cancelPickup(); this.healing = false; this.atShelter = false; this.events = [];
     if (recover) this.portal = null;
   }
@@ -200,6 +222,7 @@ export class Adventure {
     const state = this.chest(area, chest); if (state.opened) return false;
     this.events.push({type:'chestOpen',position:{x:chest.position[0],z:chest.position[1]}});
     if (state.remaining) this.spawnDrop('scroll', state.remaining, chest.position);
+    if (area.id === 'clearing') this.spawnDrop('potion',2,chest.position);
     if (area.id === 'clearing') for (const item of ['sword', 'shield', 'bow', 'staff'] as ItemId[]) if (!this.character.campClaims.includes(item)) this.spawnDrop(item, 1, chest.position, { claim: item });
     state.opened = true; state.remaining = 0; return true;
   }

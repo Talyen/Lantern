@@ -4,9 +4,9 @@ Gathering is a brief stop during an adventure. Tools appear for the action and n
 
 ## Contextual gathering
 
-Left-click a standing tree or mineral outcrop to approach that specific node along a reachable path. Otherwise, aiming within a 30-degree half-cone toward a resource within 1.8 m of its surface selects it. The player closes to the working distance before swinging. Loot retains click priority; other clicks perform the normal Basic attack. Clicking the same gathering target continues its action, and pointer movement does not redirect it.
+Left-click a standing tree or mineral outcrop to approach that specific node along a reachable path. The player closes to the working distance before swinging. Loot retains click priority; other clicks perform the normal Basic attack. Clicking the same gathering target continues its action, and pointer movement does not redirect it.
 
-A living enemy within 6 m, or any pursuing enemy in the active area, prevents gathering. An approaching threat cancels it. Movement, another action, damage, menus, travel, death and lost reach cancel the sequence and restore the combat equipment. E remains the interaction key for travel, chests, shelter repair and storage.
+A living enemy within 6 m, or any pursuing enemy in the active area, prevents gathering. An approaching threat cancels it. Movement, another action, damage, menus, travel, death and lost reach cancel the sequence and restore the combat equipment. Click fires, chests, shelter or stash to approach and interact; object clicks take priority over the action-bar ability assigned to left mouse.
 
 Three valid contacts deplete initial level-1 nodes. Each contact drops Wood, Stone or Iron through the shared [loot system](LOOT.md). Resources collect after landing; partial collection leaves the ground remainder intact. Gathering XP belongs only to successfully collected harvested quantities. Dropping or storing an already collected resource never grants XP again.
 
@@ -24,14 +24,14 @@ The starting recipe uses 12 Wood, 6 Stone and 3 Iron: four novice trees, two sto
 
 ## Shelter and stash
 
-The damaged timber-and-canvas shelter sits beside the Homestead fire. E opens its material requirements. Repair is enabled only when the entire recipe is carried in the bag. The repaired appearance and lighting prepare first; the exact recipe and permanent restoration then commit together. Failed preparation retains materials and the damaged shelter.
+The damaged timber-and-canvas shelter sits beside the Homestead fire. Click the damaged shelter to approach and open its material requirements. Repair is enabled only when the entire recipe is carried in the bag. The repaired appearance and lighting prepare first; the exact recipe and permanent restoration then commit together. Failed preparation retains materials and the damaged shelter.
 
-The repaired shelter exposes a chest and a persistent 12 × 8 stash. E opens Inventory beside Stash. Dragging, splitting, stacking and sorting use the bag's footprints and 99-unit stacks. Double-click transfers what fits; excess remains in its source. Equipped items must enter the bag before storage, and stored items must enter the bag before equipping or dropping.
+The repaired shelter exposes a chest and a persistent 12 × 8 stash. Click the chest to open Inventory beside Stash. Dragging, splitting, stacking and sorting use the bag's footprints and 99-unit stacks. Double-click transfers what fits; excess remains in its source. Equipped items must enter the bag before storage, and stored items must enter the bag before equipping or dropping.
 
 Entering the repaired shelter's 3 m radius automatically refreshes Rested to 30 active-play minutes. Repair completion also grants it immediately. It adds 10% skill XP through the shared XP owner, including Axe Combat; it adds no damage or gathering yield. Refresh replaces remaining duration without stacking or waiting. Inventory displays remaining time. Paused/loading/offline time does not count; remaining time checkpoints every five active seconds and flushes on normal page exit.
 
 ## Persistence and acceptance
 
-Character save revision 4 retains the existing key and migrates revisions 1–3, preserving item IDs, overflow recovery entries, equipment, XP, discoveries and chest claims. It adds Stone/Iron items, Mining XP, stash contents, restoration and remaining Rested time. Ground-drop XP provenance and resource depletion remain session state.
+Character save revision 5 retains the existing key and migrates revisions 1–4, preserving item IDs, overflow recovery entries, equipment, XP, discoveries and chest claims. It adds Stone/Iron items, Mining XP, stash contents, restoration and remaining Rested time. Ground-drop XP provenance and resource depletion remain session state.
 
-Use one [managed preview](DEVELOPMENT.md#working-alongside-other-agents): gather with a Bow equipped, exercise direct-click approach and facing selection, cancel and encounter a threat, repair the shelter, transfer a stack and restart. Inspect the shelter silhouette and tool contacts at gameplay scale. Existing tests protect partial collection/provenance, recipe consumption, transfers, migration and Rested timing.
+Use one [managed preview](DEVELOPMENT.md#working-alongside-other-agents): gather with a Bow equipped, exercise direct-click approach, cancel and encounter a threat, repair the shelter, transfer a stack and restart. Inspect the shelter silhouette and tool contacts at gameplay scale. Existing tests protect partial collection/provenance, recipe consumption, transfers, migration and Rested timing.

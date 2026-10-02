@@ -9,7 +9,7 @@ export function createCamera(canvas: HTMLCanvasElement) {
   const cameraOffset = new THREE.Vector3(...offset);
   camera.position.copy(cameraOffset);
   const controls = new OrbitControls(camera, canvas);
-  controls.enableRotate = false;
+  controls.enableRotate = false; controls.enableZoom = false;
   controls.enablePan = false;
   controls.enableDamping = false;
   controls.minZoom = 0.9;
@@ -31,6 +31,7 @@ export function createCamera(canvas: HTMLCanvasElement) {
     controls.update(); camera.updateMatrixWorld();
   }
   return { camera, controls, resetFollow,
+    zoom(direction: number) { camera.zoom=THREE.MathUtils.clamp(camera.zoom*Math.exp(direction*.09),controls.minZoom,controls.maxZoom); camera.updateProjectionMatrix(); },
     suspendFollow() { sampled = false; },
     follow(position: THREE.Vector3, dt: number) {
       if (dt <= 0) return;

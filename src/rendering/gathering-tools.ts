@@ -13,7 +13,7 @@ export class GatheringTools {
     const socket = this.actor.getObjectByName('Hand_R');
     if (!socket) throw new Error('Gathering hand is unavailable.');
     try {
-      for (const [tool,asset,length] of [['axe',itemDefinitions.axe.asset,itemDefinitions.axe.length],['pickaxe','generic:model:sm-gen-wep-pickaxe-01',.85]] as const) {
+      for (const [tool,asset,length] of [['axe','generic:model:sm-gen-wep-axe-01',itemDefinitions.axe.length],['pickaxe','generic:model:sm-gen-wep-pickaxe-01',.85]] as const) {
         const instance = await assetLibrary.loadAsset(asset), grip = new THREE.Group();
         this.tools.set(tool,{instance,grip});
         const object = instance.object, size = new THREE.Box3().setFromObject(object).getSize(new THREE.Vector3());

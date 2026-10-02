@@ -39,6 +39,7 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
   let disposed = false;
   const grass = createGrass(area, area.grass ?? []); root.add(grass.root);
   const animated = new Set<THREE.Object3D>();
+  const interactables = new Map<string,THREE.Object3D>();
   const chests = new Map<string, { hinge: THREE.Group; opened: boolean }>();
   let shelter: ReturnType<typeof createShelter> | undefined;
   const resources = resourceDefinitions(area), mineralModels = new Map<string, THREE.Object3D>();
@@ -133,8 +134,11 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
     model.rotation.y += p.yaw; model.scale.multiply(new THREE.Vector3(...p.scale)); model.name = p.id;
     const resource = resources.find(n => n.id === p.id);
     if(resource?.kind==='iron')model.traverse(o=>{if(o instanceof THREE.Mesh && o.material instanceof MeshStandardNodeMaterial){const ore=o.material.clone();ore.colorNode=mix(color('#5e5b52'),color('#89654e'),smoothstep(.25,.65,sin(positionWorld.x.mul(13).add(positionWorld.z.mul(8))).mul(.5).add(.5)));ore.roughness=.85;ownedMaterial.add(ore);o.material=ore;}});
-    if (resource && resource.kind !== 'tree') { model.userData.harvestResource=p.id; model.traverse(o=>animated.add(o)); model.userData.resourceScaleY=model.scale.y; mineralModels.set(p.id,model); }
+    if (resource && resource.kind !== 'tree') { model.userData.harvestResource=p.id; model.traverse(o=>animated.add(o)); model.userData.resourceScaleY=model.scale.y; mineralModels.set(p.id,model); interactables.set(`resource/${p.id}`,model); }
     const tree = treeIds.get(p.id);
+    const chest=area.chests?.find(chest=>chest.prop===p.id);
+    const fire=area.campfires?.find(fire=>Math.hypot(fire.position[0]-p.position[0],fire.position[1]-p.position[2])<.2);
+    if(tree || chest || fire){interactables.set(tree ? `tree/${tree.id}` : chest ? `chest/${chest.id}` : `fire/${fire!.id}`,model);model.traverse(object=>animated.add(object));}
     if (tree) {
       // Keep tree roots intact through batching, independently of foliage/surface variants.
       model.userData.harvestTree = p.id; model.traverse(o => animated.add(o));
@@ -206,7 +210,7 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
       let chest:THREE.Group;
       try {chest=await asset({libraryId:'generic:model:sm-gen-prop-chest-01'});}catch{missing.push('shelter-stash');chest=new THREE.Group();const body=new THREE.Mesh(geometry({kind:'box',size:[.85,.55,.55],color:'#68523d'}),material({kind:'box',size:[],color:'#68523d'}));body.position.y=.275;chest.add(body);}
       chest.scale.setScalar(.8); chest.traverse(o=>{if(o instanceof THREE.Mesh)o.castShadow=o.receiveShadow=true;});
-      shelter=createShelter(area.shelter,shelterRestored,chest); root.add(shelter.root);
+      shelter=createShelter(area.shelter,shelterRestored,chest); root.add(shelter.root); interactables.set('shelter',shelter.root); if(shelterRestored)interactables.set('stash',chest); shelter.root.traverse(object=>animated.add(object));
       root.userData.lightingProcedural.push({shelter:area.shelter,restored:shelterRestored});
     }
     await Promise.all(textureReady);
@@ -268,6 +272,6 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
     }
   }
   function dispose(): void { shelter?.dispose(); portals.forEach(p => p.dispose()); if (disposed) return; disposed = true; grass.dispose(); root.removeFromParent(); root.traverse(o => { if (o instanceof THREE.InstancedMesh) o.dispose(); if (o instanceof THREE.Light) o.dispose(); }); instances.forEach(i => i.release()); ownedGeometry.forEach(g => g.dispose()); ownedMaterial.forEach(m => m.dispose()); ownedTextures.forEach(t => t.dispose()); }
-  return { root, area, missing, fires, portals, trees, resources, pickResource, setResourceState, get shadow() { return shadow; }, update, setChestOpened, setTreeState, treeHit, activate, dispose };
+  return { root, area, missing, fires, portals, trees, interactables, resources, pickResource, setResourceState, get shadow() { return shadow; }, update, setChestOpened, setTreeState, treeHit, activate, dispose };
 }
 export type AreaInstance = Awaited<ReturnType<typeof buildArea>>;

@@ -1,8 +1,9 @@
 import { bindMenuDismissal } from './menu';
 import type { CharacterSave } from '../gameplay/adventure';
-import { emptyPosition, equipInstance, lootDefinitions, moveItem, sortedItems, transferItem, type InventoryItem } from '../gameplay/inventory';
+import { emptyPosition, equipInstance, lootDefinitions, moveItem, sortedItems, transferItem, itemLoadout, type InventoryItem } from '../gameplay/inventory';
 import { progression, shelterRecipe, skillProgress } from '../gameplay/skills';
 import { countItem } from '../gameplay/inventory';
+import type { WeaponSet } from '../gameplay/abilities';
 import { itemIcon } from './item-icons';
 
 export type TravelChoice = { name: string; available: boolean; travel(): void };
@@ -27,10 +28,14 @@ export class AdventureMenus {
   private character: CharacterSave | null = null;
   private characterKey = '';
   private busy = false;
+  private viewSet: WeaponSet = 0;
   private selected: string | null = null;
   private drag: Drag | null = null;
   private splitId: string | null = null;
   constructor(private clearInput: () => void, private focus: () => void, private cast: () => void, private context: InventoryMenuContext, private sound?: (cue: 'menuOpen' | 'menuClose') => void) {
+    const sets=document.createElement('div');sets.className='equipment-set-tabs';
+    for(const set of [0,1] as const){const button=document.createElement('button');button.type='button';button.textContent=`Weapon Set ${set===0 ? 'I' : 'II'}`;button.dataset.set=String(set);button.onclick=()=>{this.viewSet=set;this.selected=null;this.cancelDrag();this.refresh();};sets.append(button);}
+    this.inventory.querySelector('.equipment-slots')!.before(sets);
     for (const dialog of [this.inventory, this.travel, this.repair]) {
       dialog.querySelector('button[data-close]')!.addEventListener('click', () => this.close());
       bindMenuDismissal(dialog, () => this.close());
@@ -40,7 +45,7 @@ export class AdventureMenus {
     document.getElementById('inventory-transfer')!.onclick = () => { const entry=this.selectedItem();if(entry)void this.perform(()=>this.context.transfer(entry.id,entry.quantity,this.container(entry.id)==='bag')); };
     this.use.addEventListener('click', () => { if (this.busy || this.drag || !this.character?.scrolls) return; this.close(); this.cast(); });
     document.getElementById('inventory-sort')!.onclick = () => { this.cancelDrag(); void this.perform(() => this.context.change(sortedItems(this.character!.items))); };
-    document.getElementById('inventory-equip')!.onclick = () => { const item = this.selectedItem(); if (item) void this.perform(() => this.context.change(equipInstance(this.character!.items, item.id, item.item === 'shield' ? 'off' : 'main'))); };
+    document.getElementById('inventory-equip')!.onclick = () => { const item = this.selectedItem(); if (item) void this.perform(() => this.context.change(equipInstance(this.character!.items, item.id, item.item === 'shield' ? 'off' : 'main',this.viewSet))); };
     document.getElementById('inventory-remove')!.onclick = () => { const item = this.selectedItem(); if (!item) return; void this.perform(() => { const point = emptyPosition(this.character!.items, item.item); if (!point) throw new Error('Inventory full.'); return this.context.change(moveItem(this.character!.items, item.id, point.x, point.y, item.quantity, this.context.newId)); }); };
     document.getElementById('inventory-recover')!.onclick = () => { const item = this.selectedItem(); if (item) void this.perform(() => this.context.recover(item.id)); };
     document.getElementById('inventory-split')!.onclick = () => { const item = this.selectedItem(); if (item) this.openSplit(item); };
@@ -106,7 +111,7 @@ export class AdventureMenus {
     const definition = lootDefinitions[entry.item]; button.setAttribute('aria-label', `${definition.name}${definition.stackable ? `, ${entry.quantity}` : ''}`);
     button.title = definition.name; button.innerHTML = `${itemIcon(entry.item)}${entry.slot === 'main' || entry.slot === 'off' ? `<span class="equip-name">${definition.name}</span>` : ''}${definition.stackable ? `<span class="stack-count">${entry.quantity}</span>` : ''}`;
     button.onclick = () => { this.selected = entry.id; this.refreshSelection(); };
-    button.ondblclick = () => { if(this.stashMode && ['bag','overflow'].includes(entry.slot)){void this.perform(()=>this.context.transfer(entry.id,entry.quantity,this.container(entry.id)==='bag'));return;} if (!definition.stackable && entry.slot === 'bag') void this.perform(() => this.context.change(equipInstance(this.character!.items, entry.id, entry.item === 'shield' ? 'off' : 'main'))); };
+    button.ondblclick = () => { if(this.stashMode && ['bag','overflow'].includes(entry.slot)){void this.perform(()=>this.context.transfer(entry.id,entry.quantity,this.container(entry.id)==='bag'));return;} if (!definition.stackable && entry.slot === 'bag') void this.perform(() => this.context.change(equipInstance(this.character!.items, entry.id, entry.item === 'shield' ? 'off' : 'main',this.viewSet))); };
     button.disabled = this.busy; return button;
   }
   private refresh(): void {
@@ -121,10 +126,11 @@ export class AdventureMenus {
     }
     for (const slot of ['main', 'off'] as const) {
       const host = document.getElementById(`equipment-${slot}`)!; host.replaceChildren();
-      const entry = character.items.find(i => i.slot === slot);
+      const entry = character.items.find(i => i.slot === slot && (i.weaponSet ?? 0)===this.viewSet);
       if (entry) host.append(this.button(entry));
-      else host.textContent = slot === 'off' && ['bow', 'staff'].includes(character.loadout.main ?? '') ? 'Two-handed' : 'Empty';
+      else host.textContent = slot === 'off' && ['bow', 'staff'].includes(itemLoadout(character.items,this.viewSet).main ?? '') ? 'Two-handed' : 'Empty';
     }
+    this.inventory.querySelectorAll<HTMLElement>('[data-set]').forEach(button=>{button.setAttribute('aria-pressed',String(Number(button.dataset.set)===this.viewSet));button.title=Number(button.dataset.set)===character.activeSet ? 'Active weapon set' : 'Alternate weapon set';});
     const overflow = document.getElementById('inventory-overflow')!; overflow.replaceChildren();
     const pending = character.items.filter(i => i.slot === 'overflow'); overflow.hidden = !pending.length;
     if (pending.length) { const title = document.createElement('span'); title.textContent = 'Unpacked items'; overflow.append(title); for (const entry of pending) overflow.append(this.button(entry)); }
@@ -139,7 +145,7 @@ export class AdventureMenus {
   }
   private selectedItem(): InventoryItem | undefined { return this.entries().find(i => i.id === this.selected); }
   private refreshSelection(): void {
-    const entry = this.selectedItem(); this.detail.textContent = entry ? `${lootDefinitions[entry.item].name}${lootDefinitions[entry.item].stackable ? ` · ${entry.quantity}` : ''}` : '';
+    const entry = this.selectedItem(); this.inventory.classList.toggle('has-selection',!!entry); this.detail.textContent = entry ? `${lootDefinitions[entry.item].name}${lootDefinitions[entry.item].stackable ? ` · ${entry.quantity}` : ''}` : '';
     for (const [id, visible] of [['inventory-equip', entry && this.container(entry.id)==='bag' && entry.slot === 'bag' && !lootDefinitions[entry.item].stackable], ['inventory-remove', entry?.slot === 'main' || entry?.slot === 'off'], ['inventory-recover', entry?.slot === 'overflow'], ['inventory-transfer', this.stashMode && entry && ['bag','overflow'].includes(entry.slot)], ['inventory-split', entry && entry.quantity > 1]] as const) {
       const button = document.getElementById(id) as HTMLButtonElement; button.hidden = !visible; button.disabled = this.busy;
     }
@@ -176,7 +182,7 @@ export class AdventureMenus {
     await this.perform(()=>{
       if(x<panel.left || x>panel.right || y<panel.top || y>panel.bottom){if(drag.container==='stash')throw new Error('Take the item into your bag first.');return this.context.drop(entry.id,drag.quantity);}
       const slot=document.elementFromPoint(x,y)?.closest<HTMLElement>('[data-equipment-slot]')?.dataset.equipmentSlot;
-      if(slot==='main' || slot==='off'){if(drag.container==='stash')throw new Error('Take the item into your bag first.');return this.context.change(equipInstance(this.character!.items,entry.id,slot));}
+      if(slot==='main' || slot==='off'){if(drag.container==='stash')throw new Error('Take the item into your bag first.');return this.context.change(equipInstance(this.character!.items,entry.id,slot,this.viewSet));}
       if(!target || !point)throw new Error('Item does not fit.');
       if(target.container!==drag.container)return this.context.transfer(entry.id,drag.quantity,target.container==='stash',point);
       const next=moveItem(this.contents(drag.container),entry.id,point.x,point.y,drag.quantity,this.context.newId);

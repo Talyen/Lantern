@@ -1,8 +1,9 @@
+import type { WeaponSet } from './abilities';
 import { itemDefinitions, type ItemId, type Loadout } from './equipment';
 
 export const bagWidth = 12, bagHeight = 8, stackLimit = 99;
-export type LootItem = ItemId | 'scroll' | 'wood' | 'stone' | 'iron';
-export type InventoryItem = { id: string; item: LootItem; quantity: number; slot: 'bag' | 'main' | 'off' | 'overflow'; x: number; y: number };
+export type LootItem = ItemId | 'scroll' | 'wood' | 'potion' | 'stone' | 'iron';
+export type InventoryItem = { id: string; item: LootItem; quantity: number; slot: 'bag' | 'main' | 'off' | 'overflow'; weaponSet?: WeaponSet; x: number; y: number };
 export const lootDefinitions: Record<LootItem, { name: string; width: number; height: number; stackable: boolean }> = {
   axe: { name: 'Axe', width: 2, height: 3, stackable: false },
   sword: { name: 'Sword', width: 1, height: 3, stackable: false },
@@ -10,14 +11,15 @@ export const lootDefinitions: Record<LootItem, { name: string; width: number; he
   bow: { name: 'Bow', width: 2, height: 4, stackable: false },
   staff: { name: 'Staff', width: 2, height: 4, stackable: false },
   scroll: { name: 'Scroll of Return', width: 1, height: 1, stackable: true },
+  potion: { name: 'Health Potion', width: 1, height: 1, stackable: true },
   wood: { name: 'Wood', width: 1, height: 1, stackable: true },
   stone: { name: 'Stone', width: 1, height: 1, stackable: true },
   iron: { name: 'Iron', width: 1, height: 1, stackable: true },
 };
 export const lootIds = Object.keys(lootDefinitions) as LootItem[];
 export const countItem = (items: InventoryItem[], item: LootItem) => items.reduce((sum, entry) => sum + (entry.item === item ? entry.quantity : 0), 0);
-export function itemLoadout(items: InventoryItem[]): Loadout {
-  return { main: (items.find(i => i.slot === 'main')?.item as Loadout['main']) ?? null, off: items.some(i => i.slot === 'off') ? 'shield' : null };
+export function itemLoadout(items: InventoryItem[], set: WeaponSet = 0): Loadout {
+  return { main: (items.find(i => i.slot === 'main' && (i.weaponSet ?? 0) === set)?.item as Loadout['main']) ?? null, off: items.some(i => i.slot === 'off' && (i.weaponSet ?? 0) === set) ? 'shield' : null };
 }
 export function fits(items: InventoryItem[], item: LootItem, x: number, y: number, exclude?: string): boolean {
   const { width, height } = lootDefinitions[item];
@@ -45,6 +47,7 @@ export function receive(items: InventoryItem[], item: LootItem, quantity: number
 export function moveItem(items: InventoryItem[], id: string, x: number, y: number, quantity: number, makeId: () => string): InventoryItem[] {
   const next = structuredClone(items), entry = next.find(i => i.id === id);
   if (!entry || !Number.isInteger(quantity) || quantity < 1 || quantity > entry.quantity) throw new Error('Item is no longer available.');
+  const set = entry.weaponSet ?? 0;
   const target = next.find(i => i.slot === 'bag' && i.id !== id && i.x === x && i.y === y);
   if (target?.item === entry.item && lootDefinitions[entry.item].stackable) {
     const amount = Math.min(quantity, stackLimit - target.quantity);
@@ -57,34 +60,36 @@ export function moveItem(items: InventoryItem[], id: string, x: number, y: numbe
     // The source rectangle remains occupied when splitting.
     if (!fits(next, entry.item, x, y)) throw new Error('Item does not fit.');
     entry.quantity -= quantity; next.push({ ...entry, id: makeId(), quantity, slot: 'bag', x, y });
-  } else Object.assign(entry, { slot: 'bag', x, y });
-  if (entry.slot === 'bag' && !itemLoadout(next).main) for (const off of next.filter(i => i.slot === 'off')) {
+  } else { Object.assign(entry, { slot: 'bag', x, y }); delete entry.weaponSet; }
+  if (entry.slot === 'bag' && !itemLoadout(next,set).main) for (const off of next.filter(i => i.slot === 'off' && (i.weaponSet ?? 0) === set)) {
     const point = emptyPosition(next, off.item); if (!point) throw new Error('Inventory full.');
-    Object.assign(off, { slot: 'bag', ...point });
+    Object.assign(off, { slot: 'bag', ...point }); delete off.weaponSet;
   }
   return next;
 }
-export function equipInstance(items: InventoryItem[], id: string, slot: 'main' | 'off'): InventoryItem[] {
+export function equipInstance(items: InventoryItem[], id: string, slot: 'main' | 'off', set: WeaponSet = 0): InventoryItem[] {
   const next = structuredClone(items), entry = next.find(i => i.id === id);
   if (!entry || !['axe', 'sword', 'shield', 'bow', 'staff'].includes(entry.item)) throw new Error('That item cannot be equipped.');
-  if (slot === 'off' && (entry.item !== 'shield' || !['axe', 'sword'].includes(itemLoadout(next).main ?? ''))) throw new Error('Equip an Axe or Sword first.');
+  if (slot === 'off' && (entry.item !== 'shield' || !['axe', 'sword'].includes(itemLoadout(next,set).main ?? ''))) throw new Error('Equip an Axe or Sword first.');
   if (slot === 'main' && entry.item === 'shield') throw new Error('A Shield belongs in the off hand.');
-  const displace = next.filter(i => i.id !== id && (i.slot === slot || slot === 'main' && itemDefinitions[entry.item as ItemId].hands === 2 && i.slot === 'off'));
-  entry.slot = slot;
+  const sourceSet = entry.weaponSet ?? 0, sourceMain = entry.slot === 'main';
+  const displace = next.filter(i => i.id !== id && (i.weaponSet ?? 0) === set && (i.slot === slot || slot === 'main' && itemDefinitions[entry.item as ItemId].hands === 2 && i.slot === 'off' && (i.weaponSet ?? 0) === set));
+  if (sourceMain && sourceSet !== set) displace.push(...next.filter(i=>i.slot==='off' && (i.weaponSet ?? 0)===sourceSet));
+  entry.slot = slot; entry.weaponSet = set;
   for (const old of displace) {
     const point = emptyPosition(next, old.item); if (!point) throw new Error('Inventory full.');
-    Object.assign(old, { slot: 'bag', ...point });
+    Object.assign(old, { slot: 'bag', ...point }); delete old.weaponSet;
   }
   return next;
 }
 export function removeQuantity(items: InventoryItem[], id: string, quantity: number): InventoryItem[] {
   const next = structuredClone(items), entry = next.find(i => i.id === id);
   if (!entry || !Number.isSafeInteger(quantity) || quantity < 1 || quantity > entry.quantity) throw new Error('Item is no longer available.');
-  const main = entry.slot === 'main'; entry.quantity -= quantity;
+  const main = entry.slot === 'main', set = entry.weaponSet ?? 0; entry.quantity -= quantity;
   const remaining = next.filter(i => i.quantity > 0);
-  if (main) for (const off of remaining.filter(i => i.slot === 'off')) {
+  if (main) for (const off of remaining.filter(i => i.slot === 'off' && (i.weaponSet ?? 0) === set)) {
     const point = emptyPosition(remaining, off.item); if (!point) throw new Error('Inventory full.');
-    Object.assign(off, { slot: 'bag', ...point });
+    Object.assign(off, { slot: 'bag', ...point }); delete off.weaponSet;
   }
   return remaining;
 }
@@ -112,13 +117,13 @@ export function validItems(value: unknown): value is InventoryItem[] {
     if (!i || typeof i.id !== 'string' || !i.id || ids.has(i.id) || !lootIds.includes(i.item) || !Number.isSafeInteger(i.quantity) || i.quantity < 1 || i.quantity > (lootDefinitions[i.item as LootItem].stackable ? i.slot === 'overflow' ? Number.MAX_SAFE_INTEGER : stackLimit : 1) || !['bag', 'main', 'off', 'overflow'].includes(i.slot) || !Number.isInteger(i.x) || !Number.isInteger(i.y)) return false;
     ids.add(i.id);
     if (i.slot === 'main' || i.slot === 'off') {
-      if (slots.has(i.slot) || i.slot === 'main' && !['axe', 'sword', 'bow', 'staff'].includes(i.item) || i.slot === 'off' && i.item !== 'shield') return false;
-      slots.add(i.slot);
+      if (i.weaponSet !== undefined && i.weaponSet !== 0 && i.weaponSet !== 1) return false;
+      if (slots.has(`${i.weaponSet ?? 0}/${i.slot}`) || i.slot === 'main' && !['axe', 'sword', 'bow', 'staff'].includes(i.item) || i.slot === 'off' && i.item !== 'shield') return false;
+      slots.add(`${i.weaponSet ?? 0}/${i.slot}`);
     }
   }
   if (value.some(i => i.slot === 'bag' && !fits(value, i.item, i.x, i.y, i.id))) return false;
-  const loadout = itemLoadout(value);
-  return !loadout.off || loadout.main === 'axe' || loadout.main === 'sword';
+  return ([0,1] as const).every(set => { const loadout = itemLoadout(value,set); return !loadout.off || loadout.main === 'axe' || loadout.main === 'sword'; });
 }
 
 /** Both containers commit together. Partial transfers preserve the source remainder. */

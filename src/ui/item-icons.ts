@@ -1,5 +1,6 @@
 import type { LootItem } from '../gameplay/inventory';
 const icons: Record<LootItem, { view: string; shape: string }> = {
+  potion: { view: '0 0 40 52', shape: '<path class="icon-metal" d="M15 3h10v8H15z"/><path class="icon-potion" d="M14 12h12v8l8 9v16l-6 4H12l-6-4V29l8-9z"/><path d="M14 33h12M20 27v12"/>' },
   axe: { view: '0 0 40 60', shape: '<path class="icon-wood" d="m19 54 3-43 4 1-3 44z"/><path class="icon-metal" d="m24 10 11 5-2 17-10-7-12 3 3-15z"/><path d="m14 15 9-3M29 15l-2 10M18 53l6 1"/>' },
   sword: { view: '0 0 24 72', shape: '<path class="icon-metal" d="m12 3 5 9-3 40h-4L7 12z"/><path d="M12 12v36"/><path class="icon-metal" d="m2 51 10 2 10-2v4l-10 2-10-2z"/><path class="icon-wood" d="M10 57h4v10h-4z"/><path class="icon-metal" d="m12 66 4 3-4 2-4-2z"/>' },
   shield: { view: '0 0 40 60', shape: '<path class="icon-metal" d="M5 10 20 4l15 6v23c-2 9-8 15-15 21-7-6-13-12-15-21z"/><path d="M9 13 20 8l11 5v18c-2 7-6 12-11 17-5-5-9-10-11-17zM20 14v25M12 24h16"/>' },

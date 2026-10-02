@@ -11,6 +11,7 @@ type DropVisual = { root: THREE.Group; model: THREE.Group; instance?: AssetInsta
 /** Area-owned presentation; object motion follows simulation-owned landing clocks. */
 export class AdventureVisuals {
   private portal: Portal | null = null;
+  get portalTarget(): THREE.Object3D | null {return this.portal?.root ?? null;}
   private portalKey = '';
   private drops = new Map<string, DropVisual>();
   private geometry = new THREE.CylinderGeometry(.07, .07, .36, 8);
@@ -19,6 +20,7 @@ export class AdventureVisuals {
   private paper = new MeshStandardNodeMaterial({ color: '#eadbb4', roughness: .9 });
   private ribbon = new MeshStandardNodeMaterial({ color: '#a75830', roughness: .7 });
   private bark = new MeshStandardNodeMaterial({ color: '#866446', roughness: 1 });
+  private potionGlass = new MeshStandardNodeMaterial({color:'#8e3930',roughness:.35});
   private metal = new MeshStandardNodeMaterial({ color: '#b5aca0', roughness: .6, metalness: .4 });
   private oreGeometry = new THREE.DodecahedronGeometry(1,0);
   private stone = new MeshStandardNodeMaterial({color:'#898478',roughness:1});
@@ -46,6 +48,10 @@ export class AdventureVisuals {
         } else if (drop.item === 'stone' || drop.item === 'iron') {
           const rock = new THREE.Mesh(this.oreGeometry,drop.item === 'stone' ? this.stone : this.iron);
           rock.scale.set(.21,.14,.18); rock.position.y=.10; model.add(rock);
+        } else if(drop.item==='potion') {
+          const bottle=new THREE.Mesh(this.geometry,this.potionGlass);bottle.scale.set(1.45,.5,1.45);model.add(bottle);
+          const stopper=new THREE.Mesh(this.box,this.bark);stopper.scale.set(.08,.05,.08);stopper.position.y=.11;model.add(stopper);
+          void this.loadPotion(drop,visual);
         } else {
           // A compact silhouette remains collectible if optional prepared scenery is absent.
           const shaft = new THREE.Mesh(this.box, drop.item === 'sword' || drop.item === 'shield' ? this.metal : this.bark);
@@ -65,6 +71,12 @@ export class AdventureVisuals {
     }
     const selected = drops.find(d => d.id === hovered); this.highlight.visible = !!selected;
     if (selected) this.highlight.position.set(selected.position[0], selected.height + .035, selected.position[1]);
+  }
+  private async loadPotion(drop: GroundDrop, visual: DropVisual): Promise<void> {
+    let instance: AssetInstance | undefined;
+    try { instance=await assetLibrary.loadAsset('generic:model:sm-gen-prop-potion-01'); if(this.disposed || this.drops.get(drop.id)!==visual){instance.release();return;}
+      const object=instance.object;object.updateMatrixWorld(true);const size=new THREE.Box3().setFromObject(object).getSize(new THREE.Vector3());object.scale.multiplyScalar(.28/Math.max(size.x,size.y,size.z));object.updateMatrixWorld(true);const bounds=new THREE.Box3().setFromObject(object),center=bounds.getCenter(new THREE.Vector3());object.position.sub(new THREE.Vector3(center.x,bounds.min.y,center.z));visual.model.clear();visual.model.add(object);visual.instance=instance;
+    } catch { instance?.release(); }
   }
   private async loadGear(drop: GroundDrop, visual: DropVisual): Promise<void> {
     let instance: AssetInstance | undefined;
@@ -99,6 +111,6 @@ export class AdventureVisuals {
   dispose(): void {
     this.disposed = true; this.portal?.dispose(); this.sound.dispose(); this.highlight.removeFromParent();
     this.drops.forEach(v => { v.instance?.release(); v.root.removeFromParent(); }); this.drops.clear();
-    for (const resource of [this.oreGeometry, this.stone, this.iron, this.geometry, this.box, this.arc, this.paper, this.ribbon, this.bark, this.metal, this.markerGeometry, this.markerMaterial]) resource.dispose();
+    for (const resource of [this.oreGeometry, this.stone, this.iron, this.geometry, this.box, this.arc, this.paper, this.ribbon, this.bark, this.metal, this.potionGlass, this.markerGeometry, this.markerMaterial]) resource.dispose();
   }
 }

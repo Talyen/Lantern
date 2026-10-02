@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { attack, dodge, dodgeDistance, stepExploration, createEncounter, resetEncounter, stepEncounter, type Timings } from '../src/gameplay/encounter';
+import { useAbility, swapWeaponSet, attack, dodge, dodgeDistance, stepExploration, createEncounter, resetEncounter, stepEncounter, type Timings } from '../src/gameplay/encounter';
 const timing: Timings = { player: { attack: 1, hit: 0.5, contacts: [0.42] }, enemy: { attack: 1, hit: 0.5, contacts: [0.42] }, caster: {attack:1.6,hit:.35,contacts:[.8]} };
 const idle = { x: 0, z: 0, paused: false };
 function closeEncounter() {
@@ -416,4 +416,39 @@ test('accepted actions emit sound facts once; rejected attacks and replayed anim
   expect(contact.filter(e=>e.type==='action' && e.actor==='player' && e.action==='contact')).toHaveLength(1);
   expect(stepEncounter(state,.1,idle,timing).filter(e=>e.type==='action' && e.action==='contact')).toHaveLength(0);
   expect(resetEncounter(state).filter(e=>e.type==='action' || e.type==='impact')).toHaveLength(0);
+});
+
+test('Sword Basic is focused while Sweep covers the forward half-circle with one contact per enemy', () => {
+  const layout={boundary:{kind:'circle' as const,center:[0,0] as [number,number],radius:20},player:{position:[0,0] as [number,number],yaw:0},enemy:{position:[1.4,.3] as [number,number],yaw:0},caster:{position:[-1.4,.3] as [number,number],yaw:0}};
+  const make=()=>{const state=createEncounter('playing',layout);state.weaponSets=[{main:'sword',off:null},{main:'bow',off:null}];state.weapon='sword';return state;};
+  const clocks={...timing,player:{...timing.player,abilities:{sweep:{attack:.8,contacts:[.38]}}}};
+  const basic=make();attack(basic,timing.player,false);stepExploration(basic,.43,idle,undefined,timing);expect([basic.enemies.enemy.hp,basic.enemies.caster.hp]).toEqual([100,100]);
+  const sweep=make();useAbility(sweep,'sweep',clocks.player,false);stepExploration(sweep,.4,idle,undefined,clocks);stepExploration(sweep,.05,idle,undefined,clocks);
+  expect([sweep.enemies.enemy.hp,sweep.enemies.caster.hp]).toEqual([40,40]);expect(sweep.invulnerability).toBe(0);
+});
+
+test('Piercing Shot automatically equips Bow, crosses each enemy once, and stops at terrain', () => {
+  const layout={boundary:{kind:'circle' as const,center:[0,0] as [number,number],radius:20},player:{position:[0,0] as [number,number],yaw:0},enemy:{position:[0,2] as [number,number],yaw:0},caster:{position:[0,4] as [number,number],yaw:0}};
+  const clocks={...timing,player:{...timing.player,abilities:{'piercing-shot':{attack:1,contacts:[.7]}}}};
+  const make=()=>{const state=createEncounter('playing',layout);state.weaponSets=[{main:'sword',off:null},{main:'bow',off:null}];state.weapon='sword';return state;};
+  const state=make();expect(useAbility(state,'piercing-shot',clocks.player,false)).toContainEqual({type:'weaponSet',set:1});
+  stepExploration(state,.7,idle,undefined,clocks);for(let i=0;i<10;i++)stepExploration(state,.025,idle,undefined,clocks);
+  expect([state.enemies.enemy.hp,state.enemies.caster.hp]).toEqual([40,40]);expect(state.playerMana).toBeCloseTo(77.6);
+  const blocked=make();useAbility(blocked,'piercing-shot',clocks.player,false);
+  const world={move:()=>{},direction:()=>({x:0,z:0}),lineOfSight:()=>true,segmentHit:(from:{z:number},to:{z:number})=>from.z<3 && to.z>=3 ? (3-from.z)/(to.z-from.z) : null};
+  stepExploration(blocked,.7,idle,world,clocks);for(let i=0;i<10;i++)stepExploration(blocked,.025,idle,world,clocks);
+  expect([blocked.enemies.enemy.hp,blocked.enemies.caster.hp,blocked.projectiles.length]).toEqual([40,100,0]);
+});
+
+test('automatic swaps and repeated slot assignments preserve skill cooldowns and action locks', () => {
+  const state=createEncounter('won');state.weaponSets=[{main:'sword',off:'shield'},{main:'bow',off:null}];state.weapon='sword';state.shield=true;
+  const clocks={...timing,player:{...timing.player,abilities:{sweep:{attack:.8,contacts:[.38]},'piercing-shot':{attack:1,contacts:[.7]}}}};
+  useAbility(state,'sweep',clocks.player,false);const mana=state.playerMana;
+  expect(useAbility(state,'piercing-shot',clocks.player,false)).toEqual([]);expect(state.activeSet).toBe(0);expect(state.playerMana).toBe(mana);
+  stepExploration(state,.8,idle,undefined,clocks);expect(state.activeSet).toBe(0); // The early request expired.
+  useAbility(state,'piercing-shot',clocks.player,false);expect(state.activeSet).toBe(1);expect(state.abilityCooldowns.sweep).toBeCloseTo(4.2);
+  stepExploration(state,1,idle,undefined,clocks);swapWeaponSet(state,false);expect(state.activeSet).toBe(0);
+  const before=state.playerMana;expect(useAbility(state,'sweep',clocks.player,false)).toEqual([]);expect(state.playerMana).toBe(before);
+  const cooldown=state.abilityCooldowns.sweep;stepExploration(state,1,{...idle,paused:true},undefined,clocks);expect(state.abilityCooldowns.sweep).toBe(cooldown);
+  state.pending=null;useAbility(state,'shield-basic',clocks.player,false);expect(state.blocking).toBe(true);stepExploration(state,.05,{...idle,block:false},undefined,clocks);expect(state.blocking).toBe(false);
 });

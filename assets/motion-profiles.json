@@ -380,6 +380,34 @@
         2.05
       ],
       "contact": 0.36
+    },
+    "sword-sweep": {
+      "sourceId": "601fe909df8a",
+      "name": "Sword Sweep",
+      "category": "skill",
+      "duration": 0.8,
+      "trim": [
+        0.05,
+        2.0
+      ],
+      "contact": 0.33
+    },
+    "bow-overdraw": {
+      "sourceId": "0e01e003edfb",
+      "name": "Bow Overdraw",
+      "category": "skill",
+      "duration": 0.65,
+      "trim": [
+        0.05,
+        3.7
+      ]
+    },
+    "bow-recoil": {
+      "sourceId": "57f928ff818a",
+      "name": "Bow Recoil",
+      "category": "skill",
+      "duration": 0.35,
+      "contact": 0.08
     }
   },
   "player": {
@@ -453,7 +481,8 @@
         "blockBackward": "block-backward",
         "blockLeft": "block-left",
         "blockRight": "block-right",
-        "mine": "pickaxe-mine"
+        "mine": "pickaxe-mine",
+        "sweep": "sword-sweep"
       },
       "sword-shield": {
         "idle": "shield-idle",
@@ -471,7 +500,8 @@
         "blockBackward": "block-backward",
         "blockLeft": "block-left",
         "blockRight": "block-right",
-        "mine": "pickaxe-mine"
+        "mine": "pickaxe-mine",
+        "sweep": "sword-sweep"
       },
       "bow": {
         "idle": "bow-idle",
@@ -489,7 +519,9 @@
         "blockBackward": "block-backward",
         "blockLeft": "block-left",
         "blockRight": "block-right",
-        "mine": "pickaxe-mine"
+        "mine": "pickaxe-mine",
+        "pierceDraw": "bow-overdraw",
+        "pierceRelease": "bow-recoil"
       },
       "staff": {
         "idle": "staff-idle",
