@@ -6,8 +6,8 @@
       "area": "graveyard-ruins",
       "surfaces": "projected"
     },
-    "ce12c1dc23c271ad35420d1fc6839d1f1f2b557927f9a1b98863a1b3e4e6f4f8": {
-      "url": "/vendor/lighting/ce12c1dc23c271ad35420d1fc6839d1f1f2b557927f9a1b98863a1b3e4e6f4f8.json",
+    "0e791ae364dbad6463fd834b945e50507cc6e3164b99bfaa226d13c0369f9422": {
+      "url": "/vendor/lighting/0e791ae364dbad6463fd834b945e50507cc6e3164b99bfaa226d13c0369f9422.json",
       "area": "graveyard-crypt",
       "surfaces": "projected"
     }

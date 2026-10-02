@@ -95,8 +95,9 @@ def export(name, identity, config, motions_only=False):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--skeleton-only', action='store_true')
-    parser.add_argument('--player-only', action='store_true')
+    selection = parser.add_mutually_exclusive_group()
+    selection.add_argument('--skeleton-only', action='store_true')
+    selection.add_argument('--player-only', action='store_true')
     parser.add_argument('--motions-only', action='store_true')
     args = parser.parse_args(sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else [])
     for name, (identity, config) in CHARACTERS.items():

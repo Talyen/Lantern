@@ -1,7 +1,7 @@
 import type { EncounterLayout } from '../src/gameplay/area';
 import type { Movement } from '../src/gameplay/encounter';
 import { expect, test } from 'vitest';
-import { applyEquipment, useAbility, swapWeaponSet, attack, dodge, dodgeDistance, stepExploration, createEncounter, resetEncounter, stepEncounter, type Timings } from '../src/gameplay/encounter';
+import { applyEquipment, useAbility, swapWeaponSet, attack, dodge, dodgeDistance, stepExploration, createEncounter, resetEncounter, stepEncounter, enemyMaxHealth, type Timings } from '../src/gameplay/encounter';
 const timing: Timings = { player: { attack: 1, hit: 0.5, contacts: [0.42] }, enemy: { attack: 1, hit: 0.5, contacts: [0.42] }, caster: {attack:1.6,hit:.35,contacts:[.8]} };
 import type { Loadout, WeaponItem } from '../src/gameplay/equipment';
 import type { Encounter } from '../src/gameplay/encounter';
@@ -651,5 +651,5 @@ test('authored packs advance player clocks once and resolve sweeps, projectiles 
   attack(state,clocks.player,false);
   const last=stepEncounter(state,.43,idle,clocks);
   expect(state.phase).toBe('won');expect(last).toContainEqual({type:'outcome',won:true});
-  resetEncounter(state);expect(state.enemyIds.map(id=>state.enemies[id].hp)).toEqual([100,100,100]);
+  resetEncounter(state);expect(state.enemyIds.map(id=>state.enemies[id].hp)).toEqual(state.enemyIds.map(()=>enemyMaxHealth));
 });

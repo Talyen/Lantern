@@ -1,10 +1,10 @@
-import { cli, parseArgs, blender, root } from '../../lib/cli.mjs';
+import { cli, parseArgs, blender, root, UsageError } from '../../lib/cli.mjs';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { packCharacter } from './pack.mjs';
 await cli(async () => {
   const args = parseArgs(process.argv.slice(2), { '--blender': 'value', '--skeleton-only': 'boolean', '--player-only': 'boolean', '--motions-only': 'boolean' });
-  if (args['--player-only'] && args['--skeleton-only']) throw new Error('Choose only one character filter.');
+  if (args['--player-only'] && args['--skeleton-only']) throw new UsageError('Choose only one character filter.');
   if (args['--help']) { console.log('Usage: npm run assets:export-character -- [--blender PATH] [--player-only] [--skeleton-only] [--motions-only]\nPrepares authored Paladin, Goblin and Skeleton models with compatible Mixamo weapon motions.'); return; }
   await blender('assets/characters/playable.py', ['--player-only', '--skeleton-only', '--motions-only'].filter(flag => args[flag]), args['--blender']);
   const config = JSON.parse(readFileSync(resolve(root, 'assets/playable-characters.json'), 'utf8'));

@@ -420,6 +420,17 @@
       ],
       "contact": 0.44,
       "commitLead": 0.16
+    },
+    "skeleton-cast": {
+      "sourceId": "3d50ea4358fe",
+      "name": "Skeleton Cast",
+      "category": "attack",
+      "duration": 1.6,
+      "trim": [
+        0.15,
+        1.815
+      ],
+      "contact": 0.8
     }
   },
   "player": {
@@ -646,7 +657,7 @@
       "staff": {
         "idle": "staff-idle",
         "run": "axe-forward",
-        "attack": "staff-attack",
+        "attack": "skeleton-cast",
         "hit": "impact",
         "death": "death",
         "backward": "axe-backward",

@@ -3,7 +3,7 @@ import { isRecord, parseJson } from '../src/data/json';
 import { expect, test, vi } from 'vitest';
 import { characterBackupKey, decodeCharacter } from '../src/gameplay/character-save';
 import { Adventure, characterSaveKey } from '../src/gameplay/adventure';
-import { applyEquipment, createEncounter } from '../src/gameplay/encounter';
+import { applyEquipment, createEncounter, enemyMaxHealth } from '../src/gameplay/encounter';
 import homestead from '../src/levels/areas/homestead.json';
 import clearing from '../src/levels/areas/clearing.json';
 import type { AreaDefinition } from '../src/levels/types';
@@ -653,7 +653,7 @@ test('authored enemy IDs, all chest guards and supplies survive travel and death
   const drops=state.session().drops;
   state.enter(encounter,home,undefined,true);
   state.enter(encounter,crypt,{position:[0,0],yaw:0});
-  expect([encounter.enemies.first.hp,encounter.enemies.second.hp,encounter.enemies['bone-caster'].hp]).toEqual([0,40,100]);
+  expect([encounter.enemies.first.hp,encounter.enemies.second.hp,encounter.enemies['bone-caster'].hp]).toEqual([0,40,enemyMaxHealth]);
   expect(state.session().drops).toBe(drops);
   encounter.enemies.second.hp=0;encounter.enemies['bone-caster'].hp=0;
   expect(state.openChest(encounter,crypt,chest)).toBe(true);
