@@ -1,0 +1,14 @@
+# Sketch, compact slots and toolbar: exact prompt
+
+Built-in ImageGen edit, October 2, 2026. Input: original [40/60 refinement](05-split-refinement.png), SHA-256 `0cd5b87d941dfc1f291c567d592195ec07140ec74cf4b1a18fc9870e6ad080aa`. No licensed art.
+
+```text
+Use case: ui-mockup.
+Asset type: Lantern Inventory design refinement. Input image is an original generated UI-only mockup and is the edit target; no licensed source material.
+Primary request: refine the owner's preferred ONE LARGE 40/60 SPLIT PANEL, equipment left, spatial bag right. Keep original warm crafted iron/brass/charcoal treatment and quiet woodland margins.
+Change the LEFT equipment composition: replace the filled person silhouette with an ORIGINAL ARTISTIC SKETCH DRAWING of an adult person in a Vitruvian-inspired stance: arms out and slightly upward, legs apart, calm clear proportions. Fine hand-drawn warm gray/ivory graphite/ink lines on charcoal, restrained anatomical suggestion, faceless/no identifying character, no rendered model, no detailed nudity, one pair of arms/legs. The person is a quiet sketch beneath/among slots, not a hero portrait. Avoid a thick geometric halo or decorative lore.
+CLUSTER equipment slots MORE TIGHTLY around this drawing. Reduce empty distances and place receptacles anatomically around its outline with a clear compact rhythm. Exactly ten receptacles: helmet, body, one glove-pair, one boot-pair, two rings, amulet, belt, main/off hand. Items keep SAME physical artwork scale as in bag; do not shrink art to make the cluster tight. One shared ruler; the same sword and mail have equal pixel dimensions in bag and equipment. Use the bag item as canonical scale. Empty helmet icon must be a thin SUBTLE OUTLINE GLYPH, not solid fill.
+UNIFY HEADER into a useful slim toolbar: I and II become two compact weapon-set icon badges at the UPPER LEFT of the toolbar, not inside the equipment panel. Inventory title modest centered. Sort glyph moves into toolbar near UPPER RIGHT, immediately left of × close at far right. Remove the old sort glyph above bag and remove old I/II from left panel. No other buttons or text. These are icon controls, no labels Close/Sort/Weapon set.
+Right 60% is ONE continuous spatial bag with multi-cell item art and empty cells, existing original contents, same pixel ruler as equipment. A bag Guard Helm may show TEMPORARY hover outline/cursor and a small tooltip only Guard Helm / Armor +8. No selected-item inspector, no enlarged preview, no persistent selection, no comparison, no action row, no gathering/proficiency/footer/Rested, no separate scroll section, no instructions.
+Preserve clear 40/60 split, quiet live-text-like heading/tooltips/stack counts, equal grounded item scale and restrained frame. Refine spacing and sketch/slot relationship at desktop gameplay scale. One flat front-facing finished screen, no device, captions or contact sheet.
+```

@@ -1,39 +1,33 @@
-# First Inventory design brief
+# Inventory design brief
 
-Status: concept and proposed functional slice, October 2, 2026. The owner selected A — Crafted instrument as the lead material treatment. See [A/B/C concepts and critique](../README.md), [decisions](../../DESIGN_DECISIONS.md) and [shared foundations](../../../UI_DESIGN.md).
+Status: active first-principles design exploration, October 2, 2026. No prototype or runtime migration is authorized. The owner prefers A — Crafted instrument materials; organization remains open. See [current layout studies](../inventory-layouts/README.md), [decisions](../../DESIGN_DECISIONS.md), and [design exploration](../../DESIGN_EXPLORATION.md).
 
-## Player goal and visible effect
+## Player goal
 
-The player identifies an item in the spatial Bag, understands its properties and equipment tradeoff, and confidently equips it into the intended weapon set or shared slot. Quiet warm surfaces, deliberate spacing, small brass selection cues and coordinated item art create the feeling of a carefully crafted instrument. The selected item and its meaningful action receive emphasis; structural ornament stays subordinate.
+Prioritize understanding the equipped loadout and quickly exchanging gear, with equipment and carried items visible together. Design an intentional warm crafted interface from player needs, not the rough prototype layout or flows. Ask guiding questions with recommendations at every consequential design step.
 
-Owners: [AdventureMenus](../../../../src/ui/adventure.ts), [markup](../../../../index.html), [inventory controller](../../../../src/clearing/inventory.ts), [inventory model](../../../../src/gameplay/inventory.ts), [equipment catalog](../../../../src/gameplay/equipment.ts), and [menu controller](../../../../src/clearing/menu-controller.ts). Read their consumers before implementation. Current rules are in [inventory commits](../../../RUNTIME.md#inventory-commits) and [input ownership](../../../RUNTIME.md#action-bar-and-input-ownership).
+## Adopted constraints
 
-## Information hierarchy
+- Equipment slots use a tight, tidy grid-like organization relative to body regions. The Vitruvian-inspired person is only a faint rough background sketch, with minimal detail and no rendered-model quality. Slots/items are primary; tighten alignment/gaps without shrinking art.
+- Spatial bag with different item footprints. Each item's artwork scale remains identical across bag, equipment and carry. Accommodate its footprint instead of shrinking equipped art; no enlarged inspection copy.
+- Hover tooltips show the name and useful properties only; also available on keyboard focus. No automatic comparison, redundant category line or instructional text.
+- No persistent item selection or selected-item inspector. Carry/drag is an active temporary interaction.
+- Unified toolbar: actual main-hand weapon glyphs with tiny I/II badges upper left, Sort toward upper right and Close far right, with accessible names. Keep necessary identity/value text.
+- Direct right-click consumable use / bag gear equip / equipped gear unequip, plus drag placement. A ring fills an empty slot first, otherwise replaces left; drag explicitly replaces right. No ring-slot choice UI. Replaced gear returns to vacated/free bag space automatically; safely block when none exists. Set viewing/activation and keyboard equivalents remain guided questions.
+- No Woodcutting/Mining/Axe Combat footer, unrelated progression/status, separate Scroll of Return section, Equip/Use action rows or random instructions. Scrolls and potions live in the bag as items.
 
-1. Header: Inventory and a predictable Close action.
-2. Equipment: two weapon-set views, Main/Off hand and eight shared armor/accessory slots. Viewed set and currently active set remain distinct; inspecting a tab must not imply swapping combat equipment.
-3. Bag: exact 12 × 8 lattice, authored item footprints and quantities, visible selection; Sort is a secondary action.
-4. Detail: selected item identity/properties, comparison target and signed deltas, then only currently applicable actions. Use real catalog/save values, including two-handed and ring-destination rules.
-5. Secondary status: loadout summary, skill/Rested information, supplies and overflow recovery remain available with restrained emphasis. Their existing presence must not be erased because a concept omitted them.
+## Available data, not inherited UI requirements
 
-For the concept state, Guard Helm is selected in the Bag; its catalog bonus is Armor +8. The actual comparison is derived from the currently equipped helmet, so +8 is not automatically the loadout gain. Other mocked art is illustrative and must be mapped to real item IDs before runtime use.
+[Equipment catalog](../../../../src/gameplay/equipment.ts) and [inventory model](../../../../src/gameplay/inventory.ts) describe current items/properties/footprints. [Inventory controller](../../../../src/clearing/inventory.ts) and [adventure UI](../../../../src/ui/adventure.ts) show existing operations. Use this information to ground examples; do not preserve prototype UI or unintended behavior. Proposed changes to storage or gameplay rules are explicit questions.
 
-## Flow and states
+Representative examples: Sword 1×3, Bow 2×4, Shield/Mail 2×3, Guard Helm/Gloves/Boots 2×2, Ring/Amulet 1×1, Belt 2×1, supplies 1×1. Guard Helm has Armor +8. A 12×8 bag may serve as a representative study shape; its dimensions/capacity are not an adopted design requirement.
 
-Enter through the current Inventory binding or stash interaction, preserving pause and cleared input. Select, inspect, choose a legitimate destination and submit through the existing inventory owner. Confirm through actual equipment/model update; retain selection and recoverable error context on failure. Close consumes UI input and returns control to play through the existing controller.
+## Open design questions
 
-The first real slice exercises select → compare → equip → close. Shared cells/buttons must also define hover, visible keyboard focus, selection, equipped/empty slot, unavailable action and pending/failure treatment. Broader bag/stash migration retains transfer, split/carry/cancel, invalid placement, capacity/overflow recovery and drop semantics. Drafting these states does not claim current keyboard parity; alternate operations and return-focus behavior are implementation work.
+The owner preferred #1's family: one large split panel, 40% paper-doll/equipment left and 60% spatial inventory right, with subtle outline glyphs in empty slots. Continue body-slot association, art-scale/finish, weapon-set viewing, tooltip/direct-action behavior, overflow, responsive and stash studies without permanent information panels.
 
-Use click/keyboard item actions to complement dragging. Escape cancels the current split/carried interaction before closing where the current owner does so. Pending equipment work must retain the current duplicate-submit and commit safety. UI selection must not activate the world attack bound to the same input.
+After layout breadth, explore density/proportion, exact silhouette/art treatment, compact/short-window reflow at unchanged item scale, and static hover/right-click/drag/cancel/error storyboards. No layout is approved by selection of its material palette.
 
-## Layout study
+## Concept acceptance
 
-Wide: Equipment / Bag / Details, compact loadout/status rows, stable header. Starting review view is 1440 × 900; 1280 × 720 is the proposed minimum. Reflow the detail region below or into explicit inspection when three columns no longer fit. Keep actions reachable with a stable content-scroll area and readable labels; preserve selected item while resizing.
-
-Stash extends this same system with two exact grids and a clear destination. Use a Bag/Stash switch when simultaneous grids become cramped. This is a proposed UX behavior to implement and inspect, not an existing switch. Resolve 960 × 640 and enlarged UI as targeted compact studies before claiming support.
-
-## Decision and acceptance
-
-Refine A's material treatment, then resolve heading size, icon finish, detail placement and compact behavior. First implement a fixed-data specimen sharing the actual component code, then the real Inventory slice; document its entry point when created. Avoid a screenshot-shaped implementation or a second set of demo components.
-
-Acceptance evidence for that slice: one normal-settings owned preview, one real select/compare/equip/close flow, one relevant compact-layout concern if that behavior changes, refinement of the weakest visible detail, and the lean integration sanity gate. Preserve actual item rules and persistence. Record unresolved keyboard/gamepad, accessibility, window-size and platform limits in the coverage entry.
+Save original outputs, exact prompts/provenance and specific critique. Record useful elements, generated drift and unresolved questions; review documentation links/diffs and the lean integration sanity gate. No gameplay preview, measurements or prototype build. Do not claim precise artwork parity, functional usability, accessibility, controller or window support from a generated image.

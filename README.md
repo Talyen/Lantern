@@ -57,6 +57,7 @@ Agents use the [private task workflow](Docs/DEVELOPMENT.md#working-alongside-oth
 - [Art direction](Docs/ART_DIRECTION.md): visual identity and review criteria.
 - [UI design system](Docs/UI_DESIGN.md): shared direction, foundation specifications, interaction rules and staged adoption.
 - [UI design workflow](Docs/ui/WORKFLOW.md): briefs, original ImageGen concepts, functional prototypes and screen coverage.
+- [Active UI exploration](Docs/ui/DESIGN_EXPLORATION.md): first-principles design, guiding questions and layout/hierarchy studies; implementation is deferred.
 - [Graphics settings](Docs/GRAPHICS.md): current controls, defaults and comparison URLs.
 - [Lighting](Docs/LIGHTING.md): shared Golden preset, local lights and explicit bake preparation.
 - [Gameplay sound](Docs/AUDIO.md): event timing, sound controls and private preparation.

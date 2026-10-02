@@ -2,15 +2,19 @@
 
 This extends [the daily task workflow](../DEVELOPMENT.md); it does not add a second approval system, benchmark requirement or full local test gate. Read [the design system](../UI_DESIGN.md), [art workflow](../ART_DIRECTION.md#agent-visual-workflow), the affected runtime owner and its consumers before editing. One agent owns a task through local integration.
 
+**Current owner instruction: remain in design; do not build the prototype.** Follow [the active exploration plan](DESIGN_EXPLORATION.md). Sections 3–4 describe eventual implementation and only apply when the owner explicitly asks to enter that phase. A preferred material treatment is not approval of layout, hierarchy or behavior.
+
+Design from first principles. Do not carry forward rough prototype elements/flows by default. Ask guiding questions with recommendations at each consequential design step; use answers to direct layout/hierarchy exploration. Source owners inform available data and eventual integration, while existing UI organization remains replaceable.
+
 ## 1. Write the screen brief
 
-Use the [brief template](SCREEN_BRIEF_TEMPLATE.md). Record the player goal, entry/exit, information hierarchy, canonical content, relevant states, input and layout targets. Identify current behavior versus proposed UX behavior. Link the actual model for slots, values, costs and restrictions; do not invent mechanics to make a mockup attractive.
+Use the [brief template](SCREEN_BRIEF_TEMPLATE.md). Record the player goal, entry/exit, information hierarchy, useful content, relevant states, input and layout targets. Identify current behavior versus proposed UX behavior. Link the model for available data and explain proposed rule changes; do not preserve unrelated prototype content or invent mechanics to make a mockup attractive.
 
 State the intended visible effect in working commentary. Update the [screen catalog](SCREEN_CATALOG.md) as work advances. A major screen needs a layout concept; related primitives can share a component sheet. A small refinement does not require new ImageGen output or a ceremony.
 
 ## 2. Explore with original mockups
 
-For an unresolved direction, produce two or three intentionally distinct treatments of **the same screen, content and state**. Hold the player goal constant so differences can be judged. Name the variable being compared: material weight, hierarchy or composition. After selection, generate one focused layout concept per major screen and a family sheet for shared components. Generate the next screen just before its design work rather than a full speculative catalog.
+For an unresolved direction, produce multiple intentionally distinct treatments of **the same screen, content and state**. Hold the player goal constant so differences can be judged. Name the variable being compared: material weight, organization, hierarchy or composition. Explore genuinely different layout families; avoid repeating the same layout with cosmetic variations when organization is the question. Continue layout/hierarchy, responsive and interaction-storyboard rounds before consolidation, according to the owner's requested design phase. Major screens receive layout studies; shared components receive coordinated family sheets.
 
 Use the built-in ImageGen tool and original text descriptions by default. Never submit Synty/Mixamo models, textures, renders or private gameplay screenshots. An original generated UI-only image may be referenced in later ImageGen work after inspection. Study licensed captures locally and retain them privately; describe observations in text if needed.
 
@@ -21,12 +25,12 @@ Save retained concepts under `Docs/ui/concepts/<screen-or-round>/`, outside `pub
 ```text
 Use case: ui-mockup
 Asset type: Lantern [screen/component] direction or layout concept
-Player goal and state: [specific task, selection and availability]
+Player goal and state: [specific task, hover/focus/carry and availability]
 Identity: warm crafted fantasy, restrained ornament, iron/brass/smoky glass,
           quiet opaque reading surfaces, ivory text, amber action emphasis
 Viewport and composition: [target; regions; focal point; protected play area]
 Content: [real names, exact slots/footprints, labels, values and actions]
-Typography and states: [heading/reading roles; selected/focused/disabled cues]
+Typography and states: [heading/reading roles; hovered/focused/carried cues]
 Variable being explored: [one explicit change]
 Constraints: original text-only artwork; no invented mechanics, brands, lore,
              licensed art, flattened production text, or pervasive glow
@@ -36,13 +40,15 @@ Critique at the intended use size: first focus, task clarity, density, material 
 
 ## 3. Make the design functional
 
-Translate the chosen direction into the existing DOM UI. Keep text, hit areas, focus, responsive layout and state chrome in code; use raster art only for appropriate visual surfaces/icons. Keep native dialogs and current owner contracts unless the brief explicitly changes an interaction. All 3D routes continue using the shared native WebGPU pipeline.
+Deferred until the owner requests implementation; do not execute this section during the active design-only phase.
+
+Translate the chosen first-principles design into the DOM UI. Keep text, hit areas, focus, responsive layout and state chrome in code; use raster art only for appropriate visual surfaces/icons. Implement the documented chosen interaction rather than retaining unintended prototype behavior. Preserve mutation/data safety and document required model changes. All 3D routes continue using the shared native WebGPU pipeline.
 
 The first implementation should provide a development-only fixed-data specimen for concrete components and states, isolated from character saves, gameplay mutations, audio/haptics and production navigation. Reuse those components in a real Inventory slice; do not create a parallel design-demo implementation. Document how to open the specimen when it exists. No specimen route is implemented by this documentation task.
 
 Start with shell, type/spacing/color roles, buttons, focus/selection, item slots and detail/comparison. Extract shared code/CSS once a second concrete consumer needs it. Prefer one canonical token definition and small explicit functions/classes to a generic UI engine. Update the design system with the resulting code owner and actual values; delete superseded per-screen overrides only within the migration's scope.
 
-Complete ordinary, selected, focused, unavailable and pending/error behavior relevant to the task. Long labels, empty/full containers, carried items and invalid destinations matter when the component owns those cases. Display real progress and mutation results. Busy styling must reflect the owner's state and cannot manufacture success.
+Complete ordinary, hovered, focused, carried, unavailable and pending/error behavior relevant to the task. Persistent selection only applies to components that actually require it; Inventory has no selected-item inspector. Long labels, empty/full containers and invalid destinations matter where owned. Display real mutation results. Busy styling must reflect the owner's state and cannot manufacture success.
 
 ## 4. Inspect and refine
 

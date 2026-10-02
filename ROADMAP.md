@@ -173,13 +173,13 @@ SSR, local captures, snow, storms, dynamic weather/wetting/drying, visible sky/c
 
 ## UI design and polish
 
-The owner selected warm, crafted fantasy with restrained ornament and desktop keyboard/mouse first, with gamepad and smaller windows planned. The [UI design system](Docs/UI_DESIGN.md) owns shared rules; the [screen catalog](Docs/ui/SCREEN_CATALOG.md) records current/future surfaces and migration coverage. This is a staged presentation effort alongside gameplay milestones, preserving their existing mechanics and native WebGPU contract.
+The owner selected warm, crafted fantasy with restrained ornament and desktop keyboard/mouse first, with gamepad and smaller windows planned. A — Crafted instrument is the material lead. Inventory's preferred family is one large split panel, 40% paper-doll/equipment left and 60% spatial bag right, with outline glyphs in empty slots; detailed hierarchy remains open. Design from first principles with guiding questions/recommendations, consistent item-art scale, useful hover properties and direct icon-led interactions. The owner requested a longer [design-only exploration](Docs/ui/DESIGN_EXPLORATION.md) and no prototype until implementation is requested. The [UI design system](Docs/UI_DESIGN.md) and [screen catalog](Docs/ui/SCREEN_CATALOG.md) own the design. Keep native WebGPU/private-art rules; discuss model changes explicitly.
 
 - [x] Establish repository design direction, decision records, proposed foundation values, component contracts and an original ImageGen mockup workflow.
 - [x] Create original Inventory direction concepts with saved prompts/provenance and critique; runtime implementation remains outstanding.
-- [ ] Refine the selected A — Crafted instrument treatment and resolve layout, typography, icon finish, compact window and UI-scale choices through a functional prototype.
-- [ ] Build a development-only fixed-data component specimen and a real Inventory/Equipment/Stash vertical slice; extract shared tokens and menu/control patterns from concrete consumers.
-- [ ] Apply the shared language to HUD/action bar, Skills, Options and Keybindings, preserving readability, live settings/draft policies and input ownership.
+- [ ] Explore many organizational layouts, information hierarchy, density/proportion, responsive compositions and interaction/state storyboards within the selected material direction; record preferred and unresolved choices before implementation.
+- [ ] When explicitly requested by the owner, build a development-only fixed-data component specimen and a real Inventory/Equipment/Stash vertical slice; extract shared tokens and menu/control patterns from concrete consumers. Deferred during the current design phase.
+- [ ] Design and eventually implement HUD/action bar, Skills, Options and Keybindings from their player goals, with explicit navigation/input/settings choices and shared readability/state language. Implementation is deferred during design.
 - [ ] Finish travel, shelter, loot/context prompts, outcomes and startup/save-recovery presentation; cover shops, Smithing and future screens as gameplay requirements become available.
 - [ ] Observe unfamiliar players using representative menus and returning to play; refine specific hesitation and clarity problems. Record actual input/window/accessibility support and outstanding limits.
 

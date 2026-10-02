@@ -4,7 +4,9 @@ This is the canonical owner of Lantern's UI design direction and shared presenta
 
 ## Status and intent
 
-On October 2, 2026, the owner selected **warm, crafted fantasy with restrained ornament**, with **desktop keyboard/mouse first, gamepad and smaller windows planned**, then chose **A — Crafted instrument** to lead the first functional Inventory prototype. These choices guide new UI work. The foundation values below are proposed starting specifications, pending functional prototype review. Existing screens have not yet been migrated and this document does not certify their accessibility or quality.
+On October 2, 2026, the owner selected **warm, crafted fantasy with restrained ornament**, with **desktop keyboard/mouse first, gamepad and smaller windows planned**, then chose **A — Crafted instrument** as the preferred material treatment. The owner subsequently asked for substantially more layout/hierarchy exploration and explicitly instructed us not to build the prototype. **Stay in the [design-only phase](ui/DESIGN_EXPLORATION.md) until the owner requests implementation.** A's organization is not approved. The foundation values below remain proposals. Existing screens have not yet been migrated and this document does not certify their accessibility or quality.
+
+Design from first principles of player goals, meaningful information and simple interaction. Do not preserve prototype UI elements or flows merely because they exist; many are rough or unintended. Read current models to understand available data, then recommend the best design and ask focused guiding questions at every consequential design step. The latest owner decisions below take precedence over earlier concept composition.
 
 The quality ambition is the confidence, responsiveness and finish associated with excellent game and product interfaces. Achieve it through recognizable Lantern craft, readable decisions, predictable behavior and consistent feedback. A numerical quality score is not acceptance evidence. A still mockup cannot establish functional polish.
 
@@ -12,13 +14,13 @@ The player should know what matters, what they can do, what changed and how to l
 
 ## Visual language
 
-Use warm soot-charcoal reading surfaces, forged iron structure, worn brass accents, smoky glass and warm ivory type. Concentrate material character in resource orbs, item/ability art, selected details and a few panel joints. Keep text regions quiet and substantially opaque. Follow the existing [orb treatment](../assets/ui/orbs/PROMPTS.md); keep health crimson and mana blue as distinct resource identities.
+Use warm soot-charcoal reading surfaces, forged iron structure, worn brass accents, smoky glass and warm ivory type. Concentrate material character in useful item/ability art and a few panel joints. Keep text regions quiet and substantially opaque. The existing [orb artwork](../assets/ui/orbs/PROMPTS.md) is an optional material reference, not a requirement to preserve HUD shape or placement; discuss resource presentation from first principles.
 
-Hierarchy should come from proportion, spacing, type, contrast and placement before ornament. One strong focal point per panel: selected equipment, a consequential decision or the active settings section. Reserve the strongest amber emphasis for the main available action. Persistent selection, temporary hover and keyboard focus must remain distinguishable.
+Hierarchy should come from proportion, spacing, type, contrast and placement before ornament. One strong focal point per panel: the equipped loadout, carried items, a consequential decision or the active settings section. Inventory does not require persistent item selection or an inspector. Hover/focus, temporary carrying and valid destinations remain distinguishable.
 
 Avoid excessive gold borders, constant glow, noisy text backgrounds, tiny decorative labels and ornament around every control. Keep Gothic character in short headings; use highly readable mixed-case labels, descriptions and numerals. Use familiar player-facing names. Do not add lore, slogans, explanatory panels or new mechanics to fill a composition.
 
-The [initial Inventory concepts](ui/concepts/README.md) explore three treatments within this direction. Crafted instrument is the selected lead; exact material/layout details still require functional refinement, with B/C retained as comparison references. An image is never the source of truth for equipment slots, item data or interaction rules.
+The [initial Inventory concepts](ui/concepts/README.md) explore three material treatments. Crafted instrument is the material lead. After [layout exploration](ui/concepts/inventory-layouts/README.md), the owner preferred **one large split panel: 40% equipment/paper doll on the left, 60% inventory on the right**, with **subtle outline glyphs in empty equipment slots**. Detailed hierarchy, anatomical placement, art finish, interactions and responsive behavior remain under study. B/C remain material references. An image is never the source of truth for item data or interaction rules.
 
 ## Foundation specifications
 
@@ -55,9 +57,11 @@ These are seed values, not verified contrast pairs. Measure actual foreground/ba
 | Corners | 2–4 on controls, 4–6 on panels; art frames can differ without changing hit geometry |
 | Borders | Quiet 1px separators; stronger selection/focus treatments carry interaction meaning |
 | Menu control size | 40px minimum intended hit area, 44px for main actions; small visual icons may sit inside larger targets |
-| Inventory cells | Start at 32–40px; keep the exact 12 × 8 lattice and authored multi-cell footprints |
+| Inventory cells | Spatial bag with different footprints adopted; one shared item-art ruler across bag/equipment/carry; grid dimensions remain a design question |
 
-The inventory-cell target is provisional at compact sizes; do not silently shrink cells or text until they fit. Resolve the layout, scroll or supported minimum instead. Keep text live in the DOM. Generated typography and glyphs are visual reference only. Item and ability art should share silhouette, light direction, padding and edge treatment, with icon art distinct from actionable control chrome.
+The inventory-cell target and spatial organization remain proposals for discussion; do not inherit grid dimensions solely from prototype UI. Do not silently shrink cells or text until they fit. Resolve the layout, scroll or supported minimum instead. Keep text live in the DOM. Generated typography and glyphs are visual reference only. Item and ability art should share silhouette, light direction, padding and edge treatment, with icon art distinct from actionable control chrome.
+
+**Grounded item scale:** the same item retains the same artwork scale in the bag, equipment slot and carried/drag representation. Accommodate its bounds/footprint in the slot; do not shrink it to fit a smaller equipment icon or enlarge it for inspection. No enlarged item preview or duplicated inspector artwork. Responsive layouts reflow instead of independently resizing items; an explicitly chosen whole-UI accessibility scale applies uniformly.
 
 ### Motion and sound
 
@@ -71,9 +75,13 @@ Proposed first targets are desktop 1920 × 1080 and 1440 × 900, with 1280 × 72
 
 Use available CSS viewport space, including short windows, rather than a fixed image-sized canvas. Keep headers, close/back and consequential actions reachable; scroll the content region. Support longer labels and enlarged text through wrapping and reflow. Proposed UI-scale choices are 100%, 125% and 150%, to be decided after the compact Inventory study. Browser text enlargement must not lose access to menu actions; full accessibility scope remains separately tracked.
 
-For Inventory, start with Equipment / Bag / Details on a wide desktop. At narrower widths, keep Equipment and Bag usable and move Details below or into an explicit inspection view. Keep selection and comparison context stable while resizing. Stash uses the same grid semantics; side-by-side containers become an explicit Bag/Stash view on compact layouts, with a clear transfer destination. Never resize the underlying inventory or change item rules to fit a layout.
+For Inventory, develop the preferred **single 40/60 split panel: paper doll/equipment left, spatial bag right**. Equipment receptacles follow compact shared columns and row anchors while remaining relative to body regions. The Vitruvian-inspired person is a faint rough sketch used as background orientation only; no detailed anatomy, rendered model or dominant figure. Equipment/items are primary. Keep one item-art ruler while tightening spacing; empty slots use subtle outline glyphs. The unified toolbar holds actual main-hand glyphs with tiny I/II badges upper left, Sort toward upper right and Close far right. Continue detailed composition and responsive studies with guiding questions. Hover/focus supplies properties with no inspector/selection; carry is temporary. Stash and compact reflow need their own questions.
 
-HUD anchors should protect the central combat space. Preserve recognizable health/mana orbs, six action slots, supplies and weapon-set identity. Larger windows gain breathing room rather than larger empty bars. Compact layouts recompose around the combat area instead of stacking into it. Extra quest trackers, minimaps or meters need a gameplay requirement before design.
+Keep Inventory about carried and equipped items. Woodcutting, Mining and Axe Combat/proficiency do not belong in an Inventory footer. Scroll of Return and Health Potions are items in the bag, not separate menu sections. Remove redundant category copy such as “Helmet” below “Guard Helm,” instructional paragraphs and nonessential status. Prefer recognizable icon controls, including an × close affordance, with accessible names and concise hover/focus labels when useful. Use text when it provides necessary identity or meaning that an icon alone cannot communicate.
+
+The owner selected **loadout and quick gear exchange** as Inventory's priority, with equipped and carried items visible together; a **spatial bag with different footprints**; and **hover tooltips containing the name and useful properties only**. Do not automatically add comparison deltas, category labels or action instructions. Early layout studies may use 12 × 8 as a representative bag shape, not an adopted storage-size requirement.
+
+HUD design should protect the central combat space and make urgent state legible. Ask which information needs persistent visibility, then explore resource shape/grouping, action readiness, supplies and weapon-set identity from first principles; do not inherit the prototype's orb/bar arrangement. Larger windows gain breathing room rather than larger empty bars. Compact layouts recompose around combat. Extra quest trackers, minimaps or meters need a player goal before design.
 
 ## Shared component contracts
 
@@ -81,22 +89,24 @@ Build these as small DOM/CSS patterns in the existing `src/ui/` boundaries, driv
 
 | Family | Contract |
 | --- | --- |
-| Menu shell | Named heading, close/back, content region, stable actions; native dialog/top-layer behavior where appropriate |
+| Menu shell | Clear identity, recognizable close/back icon with accessible name, useful content region; choose behavior from player needs |
 | Button / icon button | Visible or accessible name; primary, secondary and consequential action roles; ordinary, hover, pressed, focus, disabled and pending states |
 | Tabs / view switch | Selected state separate from focus; stable content relationship; real tab semantics only for a tab interaction model |
-| Setting row | Label, value, control; live application or draft/Apply explicitly matches current owner; keyboard adjustments and visible errors |
-| Item cell / equipment slot | Shared footprint and icon rules; selected, equipped, hovered, focused, carried, valid/invalid placement and pending states |
-| Item detail / comparison | Stable identity, authored properties, signed numeric deltas and clear comparison target; action stays associated with selected item |
+| Setting row | Useful label/value/control; choose live application or draft/Apply deliberately from player needs; keyboard adjustments and visible errors |
+| Item cell / equipment slot | One artwork scale across bag/equipment/carry; equipped, hovered, focused, carried, valid/invalid destination and pending states; no persistent selection |
+| Item tooltip | Hover/focus name and useful properties only; no automatic comparison, enlarged art, redundant category, instruction text or persistent inspector |
 | Ability slot / skill choice | Assignment, lock reason, weapon compatibility, resource/cooldown state, binding label; readiness reflects gameplay |
 | Tooltip / context prompt | Brief useful content on hover and focus; no critical action hidden exclusively in a tooltip; keep within viewport |
 | Resource / progress | Name/value available without color; consistent number formatting; no distracting announcements every frame |
-| Feedback / confirmation | Local explanation and recovery action; retain selection and player data on failure; reserve confirmations for real consequences |
+| Feedback / confirmation | Local explanation and recovery action; retain interaction context and player data on failure; reserve confirmations for real consequences |
 
-Do not treat disabled, unavailable, locked and pending as one dimmed appearance. A pending mutation blocks duplicate submission, acknowledges the action and retains the correct selection; success and failure resolve from the real owner, never an animation timer. Avoid hiding needed context by fading the entire component.
+Do not treat disabled, unavailable, locked and pending as one dimmed appearance. A pending mutation blocks duplicate submission, acknowledges the action and retains the correct item/destination context; success and failure resolve from the real owner, never an animation timer. Avoid hiding needed context by fading the entire component.
 
 ## Interaction and accessibility
 
-Preserve current [input ownership](RUNTIME.md#action-bar-and-input-ownership), [inventory commits](RUNTIME.md#inventory-commits) and [save recovery](RUNTIME.md#save-recovery). Menus pause gameplay and clear movement/held actions. UI events are consumed before world attacks. Native dialog dismissal requires a click beginning and ending outside; it must not attack through the menu. Options applies settings live; Keybindings owns a draft and Apply/Cancel. A visual redesign does not change these policies accidentally.
+Current [input ownership](RUNTIME.md#action-bar-and-input-ownership), [inventory commits](RUNTIME.md#inventory-commits) and [save recovery](RUNTIME.md#save-recovery) describe implementation, not constraints to preserve rough UI. Design pause/dismissal, navigation and settings application from player needs, with guiding questions and documented proposed changes. Event consumption, truthful mutations and retained player data remain required implementation safety. Do not attack through menus or manufacture mutation success.
+
+The owner selected direct item actions plus drag: right-click a consumable to use; right-click bag gear to equip; right-click equipped gear to unequip. Drag moves items or equips at an explicit destination. Right-clicking a bag ring fills an empty slot first (left first when both empty), otherwise replaces left; drag can explicitly replace right. No ring-slot choice UI. Replaced gear automatically returns to vacated bag space when it fits, otherwise another free space; block the swap safely with brief local feedback if none exists. Quantities, weapon-set viewing, drop behavior and keyboard equivalents remain design questions. No persistent inspector or instructional prose.
 
 For new implementations, define initial focus, visible focus order, close/back behavior and return focus explicitly. Escape cancels the current transient interaction before leaving the owning screen where that behavior applies. Dragging retains a click/keyboard operation for the same player goal; provide clear destination/quantity and cancellation. Gamepad planning includes directional focus, confirm, back, scrolling and alternate operations, but does not add controller support until the input owner implements it.
 
@@ -104,13 +114,16 @@ Target WCAG 2.2 AA menu guidance: ordinary text contrast at least 4.5:1; large t
 
 Primary references: [text contrast](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html), [non-text contrast](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html), and [minimum target size](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html). Treat them as concrete design constraints, then inspect the actual implementation.
 
-## Adoption order and ownership
+## Design phase and eventual adoption
 
-1. Refine the selected Crafted instrument Inventory treatment and confirm its information hierarchy; study the same layout at compact size.
-2. Build a development-only DOM component specimen with fixed representative data, isolated from saves/gameplay, then one functional Inventory vertical slice. Show state variants beside the real components rather than approximating them in images.
-3. Extract the proven semantic tokens and shared menu/control patterns beside `src/ui/`; migrate Inventory and stash with existing operations intact.
-4. Apply those patterns to HUD/action bar and Skills, then Options/Keybindings. Refine at gameplay scale with one relevant interaction per task.
-5. Finish travel, shelter, loot/context prompts, outcomes, startup/loading and save-error/recovery presentation. Extend to shops/Smithing and future screens when their gameplay owners are ready.
+Current work follows [design exploration](ui/DESIGN_EXPLORATION.md): many organizational directions, information hierarchy, density/proportion, responsive compositions, interaction/state storyboards and cross-screen family studies. Keep preferred materials separate from layout/behavior decisions. Do not build a specimen or prototype during this phase.
+
+When the owner explicitly requests implementation, the proposed adoption sequence is:
+
+1. Translate the chosen layout/hierarchy/state specifications into a development-only DOM component specimen with fixed representative data, isolated from saves/gameplay, then one functional Inventory vertical slice.
+2. Extract proven semantic tokens and shared menu/control patterns beside `src/ui/`; implement the chosen Inventory/stash design with safe data operations and documented model changes.
+3. Apply those patterns to HUD/action bar and Skills, then Options/Keybindings. Refine at gameplay scale with one relevant interaction per task.
+4. Finish travel, shelter, loot/context prompts, outcomes, startup/loading and save-error/recovery presentation. Extend to shops/Smithing and future screens when their gameplay owners are ready.
 
 The [workflow](ui/WORKFLOW.md) defines the brief, mockup records and acceptance. New screen work updates its catalog row and relevant decisions. Shared tokens/components must have one code owner and documented consumers; avoid per-screen copies of foundation values. Keep developer authoring/labs identifiable and functional with shared readability primitives, while player screens receive the game treatment.
 

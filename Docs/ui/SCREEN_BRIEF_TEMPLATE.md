@@ -17,14 +17,14 @@ Copy only the relevant sections into a brief beside the screen's concepts or own
 - Entry condition and invocation:
 - Primary information and action:
 - Secondary/supporting information:
-- Selection/comparison/destination context:
+- Hover/focus/carry and destination context (Inventory has no persistent selection/inspector):
 - Exit/back/cancel and return focus:
-- Existing behavior that must be preserved:
+- Useful model data and proposed changes (do not inherit prototype UI by default):
 - Any proposed behavior change and why:
 
 ## State and input
 
-List states relevant to this component: ordinary, hover, press, focus, selected, empty, locked/unavailable, busy, success/error, overflow, drag/carry/cancel. Identify their real owner and the visible cue. Include keyboard operation and a non-drag path for drag interactions. Record gamepad design separately from implemented support. Define which action Escape cancels first.
+List states relevant to this component: ordinary, hover, press, focus, empty, locked/unavailable, busy, success/error, overflow, drag/carry/cancel; selection only where that component's interaction requires it. Inventory uses hover/focus tooltips and direct actions, not persistent item selection. Include keyboard operation and a non-drag path. Record gamepad design separately from implemented support. Define which action Escape cancels first.
 
 ## Layout and art
 
