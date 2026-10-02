@@ -28,7 +28,7 @@ import { buildArea, createWorld, disposeAreaCache, type AreaInstance } from '../
 import { areas } from '../levels/registry';
 import { validateAreas } from '../levels/validation';
 import { GateTravel } from '../gameplay/area';
-import { makeActor, play, attachCharacter, installMotions, updateActor, duration, type Actor } from './actors';
+import { makeActor, play, attachCharacter, installMotions, updateActor, type Actor } from './actors';
 import { createInput } from './input';
 import { createCamera } from './camera';
 import { createHud } from '../ui/hud';
@@ -47,6 +47,7 @@ import { FrameLoop } from './frame-loop';
 import { EquipmentSets } from './equipment-sets';
 import { InventoryController } from './inventory';
 import { CombatController } from './combat';
+import { EncounterPresentation } from './encounter-presentation';
 import { ClickApproach } from './click-approach';
 import { PointerAim } from './pointer-aim';
 import { WorldInteractions, interactionError as worldInteractionError, type WorldInteraction } from './world-interactions';
@@ -199,34 +200,21 @@ function inspect(): void {
   if (inspecting) cameraOwner.suspendFollow();
   else if (!fixedCamera) cameraOwner.resetFollow(player.root.position);
 }
-function present(events: EncounterEvent[]): void {
-  for (const id of actorIds) {
-    const actor = actors[id];
-    const state = id === 'player' ? encounter.player : encounter.enemies[id];
-    actor.root.position.set(state.x, state.y + .04, state.z);
-    actor.root.rotation.y = state.yaw;
-  }
-  for (const event of events) {
-    if (event.type === 'weaponSet') {
-      equipmentSets.activate(event.set);
-      adventure.setWeaponSet(event.set);
-      audio.play('equip');
-      menus.updateCharacter(adventure.character);
-    }
-    if (event.type === 'axeXp') adventure.grantAxeCombatXp();
-    if (event.type === 'hit' && event.actor === 'player') {
-      interruptApproach(false);
-      if (events.some(event => event.type === 'impact' && event.actor === 'player' && !event.blocked)) combat.releaseShield();
-    }
-    if (event.type === 'animation' || event.type === 'hit') {
-      const actor = actors[event.actor];
-      if (event.type === 'animation') play(actor, event.motion, event.actor === 'player' ? encounter.playerAction?.rate ?? 1 : 1);
-      else { const impact = events.find(e => e.type==='impact' && e.actor===event.actor); graphics?.effects.burst('hit', actor.root.position, impact?.type==='impact' && impact.blocked ? 5 : 8); }
-    }
-  }
-  gameplayAudio.encounter(events,encounter);
-  hud.update(encounter, events);
-}
+const presentation = new EncounterPresentation(encounter, actors, gameplayAudio, hud, {
+  effects: () => graphics?.effects,
+  weaponSet: set => {
+    equipmentSets.activate(set);
+    adventure.setWeaponSet(set);
+    audio.play('equip');
+    menus.updateCharacter(adventure.character);
+  },
+  axeXp: () => adventure.grantAxeCombatXp(),
+  playerHit: unblocked => {
+    interruptApproach(false);
+    if (unblocked) combat.releaseShield();
+  },
+});
+function present(events: EncounterEvent[]): void { presentation.present(events); }
 function resetPresentation(): void {
   gameplayAudio.reset();
   clearInput();
@@ -236,17 +224,8 @@ function resetPresentation(): void {
   movementWorld?.reset();
   active?.portals.forEach(p => p.reset());
   hud.reset();
-  for (const actor of Object.values(actors)) {
-    actor.mixer?.stopAllAction();
-    actor.current = null; actor.previous=null; actor.velocity.set(0,0);
-  }
   hud.setSafe(currentArea.kind === 'safe');
-  for (const id of enemyIds) actors[id].root.visible = currentArea.kind !== 'safe' && !!encounter.enemies[id].home;
-  present([{ type: 'animation', actor: 'player', motion: 'idle' }, ...enemyIds.map(id => ({type:'animation' as const,actor:id,motion:encounter.enemies[id].hp <= 0 ? 'death' as const : 'idle' as const}))]);
-  for (const id of enemyIds) {
-    const death = actors[id].actions.death;
-    if (encounter.enemies[id].hp <= 0 && death) death.time = duration(actors[id], 'death');
-  }
+  presentation.resetActors(currentArea.kind === 'safe');
   if (!fixedCamera && !inspecting) cameraOwner.resetFollow(player.root.position);
   else cameraOwner.suspendFollow();
   graphics?.resetHistory();
