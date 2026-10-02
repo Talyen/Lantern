@@ -2,7 +2,8 @@ import { mkdir, readFile, rm, rename } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { randomUUID, createHash } from 'node:crypto';
-import { git, tasks, taskPath, readJSON, saveTask, writeJSON, clean, reserveSpace, freeSpace } from './state.mjs';
+import { setTimeout as delay } from 'node:timers/promises';
+import { git, taskCapacity, taskPath, readJSON, saveTask, writeJSON, clean, reserveSpace, freeSpace } from './state.mjs';
 import { withResource } from './resources.mjs';
 import { privateTree } from './copy.mjs';
 import { snapshotAssets, prepareAssets, assetIndex, assetIdentity, retainSources } from './assets.mjs';
@@ -34,17 +35,33 @@ export async function recover(ctx) {
   await rm(path);
   await rm(journal.transaction, { recursive: true, force: true });
 }
-export async function startTask(ctx, id) {
+export async function startTask(ctx, id, { wait = true, signal } = {}) {
   if (!/^[a-z][a-z0-9-]{0,47}$/.test(id)) throw new Error('Task name must be a short lowercase slug starting with a letter.');
+  let announced = false;
+  for (;;) {
+    signal?.throwIfAborted();
+    const attempt = await admitTask(ctx, id);
+    if (attempt.task) return attempt.task;
+    const message = `All ${attempt.limit} task worktree slots are occupied.`;
+    if (!wait) throw new Error(`${message} Clean completed tasks or omit --no-wait to queue.`);
+    if (!announced) {
+      console.log(`${message} Waiting for capacity; agent:cleanup can free completed tasks. Ctrl+C cancels.`);
+      announced = true;
+    }
+    // Waiting must leave the promotion lock free for finish and cleanup.
+    await delay(1000, undefined, { signal });
+  }
+}
+async function admitTask(ctx, id) {
   return withResource('promotion', async () => {
     await recover(ctx);
     let task = await readJSON(taskPath(ctx, id), null);
     if (task?.status === 'cleaned') throw new Error('This task is archived; choose a new task slug.');
-    if (task && task.status !== 'preparing') return task;
+    if (task && task.status !== 'preparing') return { task };
     if (!task) {
       await clean(ctx.main);
-      const records = await tasks(ctx);
-      if (records.filter(task => task.status !== 'cleaned').length >= 4) throw new Error('Four task worktrees exist; run agent:cleanup for completed tasks before starting another.');
+      const capacity = await taskCapacity(ctx);
+      if (capacity.used >= capacity.limit) return { limit: capacity.limit };
       await reserveSpace(ctx.main);
       const path = join(ctx.main, '.local/worktrees', id), branch = `codex/${id}`;
       const head = await git(['rev-parse', 'HEAD'], ctx.main);
@@ -73,7 +90,7 @@ export async function startTask(ctx, id) {
       await writeJSON(join(task.path, '.local/agents/dependencies.json'), { signature: await dependencyIdentity(task.path) });
     }
     task.status = 'working'; task.setupMs = Date.now() - task.began; task.freeSpaceChange = task.available - await freeSpace(ctx.main);
-    await saveTask(ctx, task); return task;
+    await saveTask(ctx, task); return { task };
   }, { ctx });
 }
 export async function dependencyIdentity(cwd) {

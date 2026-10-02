@@ -7,7 +7,7 @@ import { createInterface } from 'node:readline';
 import { promisify } from 'node:util';
 import { once } from 'node:events';
 import { join } from 'node:path';
-import { git, context, writeJSON, readJSON, taskPath, spaceRequirement } from './state.mjs';
+import { git, context, writeJSON, readJSON, taskPath, taskCapacity, spaceRequirement } from './state.mjs';
 import { startTask, finishTask, cleanupTask, recover, installedDependenciesMatch } from './workflow.mjs';
 import { acquire, childEnvironment, withResource } from './resources.mjs';
 
@@ -48,12 +48,14 @@ test('dependency clones with missing or stale required packages are not ready', 
   } finally { await ctx.dispose(); }
 });
 
-test('four concurrent tasks land without lost work and completed cleanup preserves source archives', async () => {
+test('eight concurrent tasks land without lost work and completed cleanup preserves source archives', async () => {
   const ctx = await fixture();
   try {
     assert.equal(spaceRequirement(ctx.main, false), 20 * 1024 ** 3);
     assert.equal(spaceRequirement(ctx.main, true), 1024 ** 3);
-    const jobs = await Promise.all(['alpha', 'bravo', 'charlie', 'delta'].map(id => startTask(ctx, id)));
+    assert.deepEqual(await taskCapacity(ctx), { used: 0, limit: 8 });
+    const jobs = await Promise.all(['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot', 'golf', 'hotel'].map(id => startTask(ctx, id)));
+    assert.deepEqual(await taskCapacity(ctx), { used: 8, limit: 8 });
     await Promise.all(jobs.map(task => edit(task, `${task.id}.txt`, `${task.id}\n`)));
     await Promise.all(jobs.map(task => finishTask(ctx, task, { paths: [`${task.id}.txt`] })));
     for (const task of jobs) assert.equal(await readFile(join(ctx.main, `${task.id}.txt`), 'utf8'), `${task.id}\n`);
@@ -65,6 +67,51 @@ test('four concurrent tasks land without lost work and completed cleanup preserv
     assert.equal((await readJSON(taskPath(ctx, 'alpha'))).status, 'cleaned');
     assert.equal((await readJSON(taskPath(ctx, 'bravo'))).status, 'integrated');
   } finally { await ctx.dispose(); }
+});
+
+test('task capacity uses shared local configuration and full slots still allow resuming work', async () => {
+  const ctx = await fixture();
+  try {
+    await git(['config', '--local', 'lantern.maxWorktrees', '1'], ctx.main);
+    const first = await startTask(ctx, 'first');
+    assert.deepEqual(await taskCapacity(await context(first.path)), { used: 1, limit: 1 });
+    assert.equal((await startTask(ctx, 'first', { wait: false })).path, first.path);
+    await assert.rejects(startTask(ctx, 'second', { wait: false }), /All 1 task worktree slots are occupied/);
+    assert.equal(await readJSON(taskPath(ctx, 'second'), null), null);
+    for (const value of ['0', '1.5']) {
+      await git(['config', '--local', 'lantern.maxWorktrees', value], ctx.main);
+      await assert.rejects(taskCapacity(ctx), /positive integer/);
+    }
+    await git(['config', '--local', '--unset', 'lantern.maxWorktrees'], ctx.main);
+    assert.deepEqual(await taskCapacity(ctx), { used: 1, limit: 8 });
+  } finally { await ctx.dispose(); }
+});
+
+test('queued admission permits finish and cleanup and cancellation creates no task', async () => {
+  const ctx = await fixture(), canceled = new AbortController(), waiting = new AbortController();
+  let queued;
+  try {
+    await git(['config', '--local', 'lantern.maxWorktrees', '1'], ctx.main);
+    const first = await startTask(ctx, 'first');
+    const interrupted = startTask(ctx, 'canceled', { signal: canceled.signal });
+    const rejected = assert.rejects(interrupted, { name: 'AbortError' });
+    canceled.abort(); await rejected;
+    assert.equal(await readJSON(taskPath(ctx, 'canceled'), null), null);
+
+    queued = startTask(ctx, 'second', { signal: waiting.signal });
+    queued.catch(() => {}); // The original promise is awaited after capacity is released.
+    // Let the admission attempt reach the occupied slot before releasing it.
+    await new Promise(resolve => setTimeout(resolve, 150));
+    await finishTask(ctx, first);
+    await cleanupTask(ctx, await readJSON(taskPath(ctx, first.id)));
+    const second = await queued;
+    assert.equal(second.status, 'working');
+    assert.deepEqual(await taskCapacity(ctx), { used: 1, limit: 1 });
+  } finally {
+    canceled.abort(); waiting.abort();
+    if (queued) await Promise.allSettled([queued]);
+    await ctx.dispose();
+  }
 });
 
 test('conflicts return to the owner, failed checks and dirty main cannot promote', async () => {

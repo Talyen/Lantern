@@ -32,6 +32,19 @@ export async function tasks(ctx) {
   const names = await readdir(directory).catch(error => { if (error.code === 'ENOENT') return []; throw error; });
   return Promise.all(names.filter(name => name.endsWith('.json')).map(name => readJSON(join(directory, name))));
 }
+export const defaultTaskWorktreeLimit = 8;
+/** Local Git configuration is shared by every task worktree in this repository. */
+export async function taskCapacity(ctx, records) {
+  records ??= await tasks(ctx);
+  const configured = await git(['config', '--local', '--get', 'lantern.maxWorktrees'], ctx.main).catch(error => {
+    if (error.cause?.code === 1) return null;
+    throw error;
+  });
+  if (configured !== null && (!/^[1-9]\d*$/.test(configured) || !Number.isSafeInteger(Number(configured)))) {
+    throw new Error('lantern.maxWorktrees must be a positive integer.');
+  }
+  return { used: records.filter(task => task.status !== 'cleaned').length, limit: configured === null ? defaultTaskWorktreeLimit : Number(configured) };
+}
 export function taskPath(ctx, id) { return join(ctx.store, 'tasks', `${id}.json`); }
 export async function saveTask(ctx, task) { await writeJSON(taskPath(ctx, task.id), task); }
 export async function currentTask(ctx) {
