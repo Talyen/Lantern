@@ -45,6 +45,12 @@ export function createGrass(area: AreaDefinition, patches: GrassPatch[]) {
   for (let row = 0; row < segments; row++) for (let col = 0; col < 2; col++) {
     const a = row * 3 + col, b = a + 3; indices.push(a, a + 1, b, a + 1, b + 1, b);
   }
+  // Every cell uses the same immutable blade topology. Cell-specific instance
+  // attributes and bounds stay independent; the whole carpet retires together.
+  const bladeGeometry = new THREE.BufferGeometry();
+  bladeGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  bladeGeometry.setAttribute('bladeT', new THREE.Float32BufferAttribute(heights, 1));
+  bladeGeometry.setIndex(indices); bladeGeometry.computeVertexNormals();
   const terrain = area.props.find(p => p.terrain && p.primitive?.kind === 'box');
   const groundY = terrain ? terrain.position[1] + terrain.primitive!.size[1] * terrain.scale[1] / 2 : 0;
   const blades = generateGrass(area, patches), cells = new Map<string, GrassBlade[]>();
@@ -53,20 +59,25 @@ export function createGrass(area: AreaDefinition, patches: GrassPatch[]) {
     const cell = cells.get(key) ?? []; cell.push(blade); cells.set(key, cell);
   }
   const geometry: THREE.InstancedBufferGeometry[] = [], meshes: THREE.Mesh[] = [];
+  const boundPoint = new THREE.Vector3();
   for (const [key, cell] of cells) {
     const [cx, cz] = key.split(',').map(Number), x = (cx + .5) * grassCellSize, z = (cz + .5) * grassCellSize;
     const g = new THREE.InstancedBufferGeometry(); g.instanceCount = cell.length;
-    g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    g.setAttribute('bladeT', new THREE.Float32BufferAttribute(heights, 1)); g.setIndex(indices); g.computeVertexNormals();
+    g.setAttribute('position', bladeGeometry.getAttribute('position'));
+    g.setAttribute('bladeT', bladeGeometry.getAttribute('bladeT'));
+    g.setAttribute('normal', bladeGeometry.getAttribute('normal'));
+    g.setIndex(bladeGeometry.index);
     const origins = new Float32Array(cell.length * 3), shapes = new Float32Array(cell.length * 3), worlds = new Float32Array(cell.length * 2), blades = new Float32Array(cell.length * 2);
     const mesh = new THREE.Mesh(g, material); mesh.name = `grass-cell-${key}`; mesh.position.set(x, 0, z); mesh.receiveShadow = true; mesh.castShadow = false;
     const box = new THREE.Box3();
     cell.forEach((blade, i) => {
       // Root height follows the authored flat terrain; bury roots slightly to avoid floating blades.
-      origins.set([blade.x - x, groundY - .004, blade.z - z], i * 3);
-      worlds.set([blade.x, blade.z], i * 2); blades.set([blade.width, blade.yaw], i * 2);
-      box.expandByPoint(new THREE.Vector3(blade.x - x, groundY - .004, blade.z - z));
-      box.expandByPoint(new THREE.Vector3(blade.x - x, groundY + blade.height, blade.z - z)); shapes.set([blade.height, blade.phase, blade.shade], i * 3);
+      const xyz = i * 3, xy = i * 2;
+      origins[xyz] = blade.x - x; origins[xyz + 1] = groundY - .004; origins[xyz + 2] = blade.z - z;
+      worlds[xy] = blade.x; worlds[xy + 1] = blade.z; blades[xy] = blade.width; blades[xy + 1] = blade.yaw;
+      box.expandByPoint(boundPoint.set(blade.x - x, groundY - .004, blade.z - z));
+      box.expandByPoint(boundPoint.set(blade.x - x, groundY + blade.height, blade.z - z));
+      shapes[xyz] = blade.height; shapes[xyz + 1] = blade.phase; shapes[xyz + 2] = blade.shade;
     });
     g.setAttribute('grassOrigin', new THREE.InstancedBufferAttribute(origins, 3));
     g.setAttribute('grassShape', new THREE.InstancedBufferAttribute(shapes, 3));

@@ -13,11 +13,17 @@ export class PointerAim {
   private readonly hits: THREE.Intersection[] = [];
 
   constructor(private readonly canvas: HTMLCanvasElement, camera: THREE.OrthographicCamera) {
-    this.camera = camera.clone();
+    this.camera = new THREE.OrthographicCamera();
+    this.capture(camera);
   }
 
   capture(camera: THREE.OrthographicCamera): void {
-    this.camera.copy(camera);
+    // Picking and sprite raycasts consume these matrices only. Avoid copying
+    // scene children, userData and view records on every displayed frame.
+    this.camera.matrixWorld.copy(camera.matrixWorld);
+    this.camera.matrixWorldInverse.copy(camera.matrixWorldInverse);
+    this.camera.projectionMatrix.copy(camera.projectionMatrix);
+    this.camera.projectionMatrixInverse.copy(camera.projectionMatrixInverse);
   }
 
   resolve(pointer: PointerPosition | undefined, groundHeight: number): AimPoint | undefined {
