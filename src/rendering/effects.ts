@@ -17,7 +17,7 @@ interface Pool {
 }
 interface WaterOptions { width?: number; length?: number; flow?: number; shorelineMask?: THREE.Texture; }
 interface Water { mesh: THREE.Mesh<THREE.PlaneGeometry>; waves: ReturnType<typeof createWaterWaves>; options: WaterOptions; normal: THREE.Texture; shoreline: THREE.Texture; }
-interface Foliage { mesh: THREE.Mesh; original: THREE.Material | THREE.Material[]; depth?: THREE.Material; distance?: THREE.Material; owned: THREE.Material[]; }
+interface Foliage { mesh: THREE.Mesh; original: THREE.Material | THREE.Material[]; depth?: THREE.Material; distance?: THREE.Material; }
 const colors: Record<ParticleKind, THREE.Color> = { fire: new THREE.Color(2.8, 0.65, 0.08), smoke: new THREE.Color('#626d75'), sparks: new THREE.Color(3, 1.1, 0.2), hit: new THREE.Color(2.3, 1.2, 0.3), rain: new THREE.Color('#aec5d4'), snow: new THREE.Color('#dbe6ee'), dust: new THREE.Color('#a79879') };
 const sizes: Record<ParticleKind, number> = { fire: 0.22, smoke: 0.45, sparks: 0.035, hit: 0.075, rain: 0.04, snow: 0.065, dust: 0.025 };
 const atmosphericKinds = new Set<ParticleKind>(['dust', 'smoke', 'sparks', 'rain', 'snow']);
@@ -52,6 +52,9 @@ export class CoreEffects {
   private waters: Water[] = [];
   private foliage: Foliage[] = [];
   private readonly foliageMeshes = new Set<THREE.Mesh>();
+  // Wind depends only on source material and local geometry bounds. Repeated
+  // placements borrow one node graph; the area owns and retires it once.
+  private readonly foliageMaterials = new Map<THREE.BufferGeometry, Map<THREE.Material, MeshStandardNodeMaterial>>();
   private grass: GrassCarpets[] = [];
   private texture: THREE.CanvasTexture;
   private weather: ParticleKind | null = null;
@@ -147,9 +150,12 @@ export class CoreEffects {
     const material = new THREE.MeshStandardMaterial({ map: options.shorelineMask ?? shoreTexture, alphaTest: 0.1, color: '#335b65', roughness: 0.32, metalness: 0, normalMap: normal, normalScale: new THREE.Vector2(0.3, 0.3), side: THREE.DoubleSide });
     const mesh = new THREE.Mesh(geometry, material); mesh.position.set(x, 0.04, z); mesh.receiveShadow = true; mesh.name = 'water'; parent.add(mesh);
     // A separate shallow foam rim avoids scene-depth/refraction passes; callers can supply an authored shoreline mask.
-    // Both layers have exactly the same wave vertices. Share the dynamic buffer
-    // while retaining the foam's own colors, material and local height offset.
-    const foamGeometry = geometry.clone(); foamGeometry.setAttribute('position', geometry.getAttribute('position'));
+    // Both layers have exactly the same wave vertices and immutable topology/UVs.
+    // Retain the foam's original static normals, colors and local height offset.
+    const foamGeometry = new THREE.BufferGeometry();
+    foamGeometry.setIndex(geometry.index);
+    for (const name of ['position', 'uv']) foamGeometry.setAttribute(name, geometry.getAttribute(name));
+    foamGeometry.setAttribute('normal', geometry.getAttribute('normal').clone());
     const uv = foamGeometry.getAttribute('uv'); const foamColors = new Float32Array(uv.count * 3);
     for (let i = 0; i < uv.count; i++) { const edge = Math.min(uv.getX(i), 1 - uv.getX(i), uv.getY(i), 1 - uv.getY(i)); const foam = Math.max(0, 1 - edge * 28) * 0.55;
       foamColors[i * 3] = foam; foamColors[i * 3 + 1] = foam * 1.1; foamColors[i * 3 + 2] = foam * 1.15; }
@@ -163,16 +169,20 @@ export class CoreEffects {
     root.traverse((o) => {
       if (!isMesh(o) || o instanceof THREE.SkinnedMesh || this.foliageMeshes.has(o)) return;
       o.geometry.computeBoundingBox(); const box = o.geometry.boundingBox!; const height = Math.max(0.01, box.max.y - box.min.y);
-      const original = o.material; const sources = Array.isArray(original) ? original : [original]; const owned: THREE.Material[] = [];
+      const original = o.material; const sources = Array.isArray(original) ? original : [original];
+      let shared = this.foliageMaterials.get(o.geometry);
+      if (!shared) { shared = new Map(); this.foliageMaterials.set(o.geometry, shared); }
       const materials = sources.map((source) => {
         if (!(source instanceof THREE.MeshStandardMaterial) && !(source instanceof MeshStandardNodeMaterial)) return source;
+        const existing = shared.get(source);
+        if (existing) return existing;
         const m = copyStandardNodeMaterial(source);
         const anchor = pow(max(positionLocal.y.sub(float(box.min.y)).div(float(height)), float(0)), float(1.5));
         const gust = sin(this.clock.mul(1.4).add(positionLocal.x.mul(0.3))).mul(0.65).add(sin(this.clock.mul(0.47)).mul(0.35));
         m.positionNode = positionLocal.add(vec3(this.wind.x, float(0), this.wind.z).mul(anchor).mul(float(height)).mul(gust));
-        owned.push(m); return m;
+        shared.set(source, m); return m;
       });
-      const record: Foliage = { mesh: o, original, depth: o.customDepthMaterial, distance: o.customDistanceMaterial, owned };
+      const record: Foliage = { mesh: o, original, depth: o.customDepthMaterial, distance: o.customDistanceMaterial };
       o.material = Array.isArray(original) ? materials : materials[0];
       // Small displacement remains inside expanded culling bounds.
       o.geometry.computeBoundingSphere(); if (o.geometry.boundingSphere) o.geometry.boundingSphere.radius *= 1.12;
@@ -228,7 +238,9 @@ export class CoreEffects {
   }
   clear(): void { for (const p of this.pools.values()) { p.active = 0; p.object.visible = false; p.life.fill(0); p.positions.fill(1e6); uploadRange(p.object.geometry.getAttribute('position') as THREE.BufferAttribute, p.positionRange, 0, p.capacity - 1); } }
   clearArea(): void {
-    for (const f of this.foliage) { f.mesh.material = f.original; f.mesh.customDepthMaterial = f.depth; f.mesh.customDistanceMaterial = f.distance; f.owned.forEach((m) => m.dispose()); }
+    for (const f of this.foliage) { f.mesh.material = f.original; f.mesh.customDepthMaterial = f.depth; f.mesh.customDistanceMaterial = f.distance; }
+    for (const materials of this.foliageMaterials.values()) for (const material of materials.values()) material.dispose();
+    this.foliageMaterials.clear();
     for (const w of this.waters) { w.mesh.removeFromParent(); w.mesh.traverse((o) => { if (isMesh(o)) { o.geometry.dispose(); (o.material as THREE.Material).dispose(); } }); w.normal.dispose(); w.shoreline.dispose(); }
     this.emitters.length = 0; this.foliage.length = 0; this.foliageMeshes.clear(); this.grass.length = 0; this.waters.length = 0; this.time = 0; this.clock.value = 0; this.clear();
   }

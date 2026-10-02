@@ -267,3 +267,13 @@ Projectile stepping retains its input list while advancing shots and allocates a
 All 36 existing encounter tests passed. A private comparison matched complete state and events across 960 projectile/cooldown updates, including consumption, expiry, piercing, walls, first-step timing, dead owners, lethal hits, pauses and multiple cooldowns. Of the 360 projectile cases, 57 retained their input array because membership stayed unchanged. Evidence lives under `.local/projectile-parity/`, retained in the task archive after cleanup. These are correctness and allocation observations, not measured CPU-time, GPU-speed or process-memory savings. No benchmark or full local suite was run.
 
 Native gameplay inspection remains unverified because another task held the shared GPU-review slot. The owned queued preview was cancelled without disturbing that session. Rendering settings, materials, geometry and effects are unchanged; this pass does not establish pixel parity or cross-platform performance.
+
+## Area effect resource sharing — October 2, 2026
+
+`src/rendering/effects.ts` shares wind node materials by static geometry and original material within one active area. Distinct geometry or source materials keep separate wind copies. Mesh transforms, wind expressions, source textures and culling bounds stay unchanged. Area clearing restores all original mesh materials before disposing each shared copy once and dropping the lookup maps. Repeated registration remains idempotent.
+
+Water foam borrows the water mesh's position, UV and index buffers instead of cloning its entire geometry. Foam retains its original static normals, its own colors/material and local offset; dynamic water normals stay independent. Both layers retire together through the effects owner.
+
+A private comparison matched serialized wind expressions and material fields for 64 placements, reducing wind material copies from 64 to three in that fixture. It checked distinct source/geometry separation, duplicate registration, cleanup and re-registration. All water and foam attribute/index arrays matched the preceding implementation across 18 updates over three surface shapes; sharing avoided 15,816 bytes of static UV/index arrays per surface. Evidence lives under `.local/effects-sharing/` in the task archive. These are allocation and parity observations, not measured process-memory or frame-time gains; no benchmark or full suite was run. Current authored areas have no water effects.
+
+Native gameplay inspection remains unverified because another task held the shared GPU-review slot. The owned queued preview was stopped without disturbing that session; the focused checks do not establish rendered pixel parity or cross-platform performance.
