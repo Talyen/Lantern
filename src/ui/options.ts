@@ -28,15 +28,21 @@ export class Options {
     const bindings=document.createElement('button'); bindings.type='button'; bindings.textContent='Keybindings'; bindings.id='options-keybindings'; bindings.onclick=()=>{this.close();this.ctx.keybindings();};this.dialog.querySelector('#options-close')!.before(bindings);
     const error = document.createElement('p'); error.hidden = true; error.setAttribute('role', 'alert');
     document.getElementById('graphics-settings')!.append(error);
+    document.getElementById('scene')!.addEventListener('graphicsresolutionchange', () => this.updateResolution(), true);
+    this.updateResolution();
     document.getElementById('scene')!.addEventListener('graphicssettingschange', event => {
       const canvas = event.target as HTMLCanvasElement;
       error.textContent = canvas.dataset.settingsError ?? ''; error.hidden = !error.textContent;
     }, true);
   }
+  private updateResolution(): void {
+    const resolution = document.querySelector<HTMLCanvasElement>('#scene canvas')?.dataset.resolution;
+    document.getElementById('graphics-resolution')!.textContent = resolution ? `Scene → Output: ${resolution}` : '';
+  }
   private buildControls(): void {
     const mount = document.getElementById('graphics-settings')!;
     mount.innerHTML = `<label>Camera Distance<select id="option-cameraDistance">${cameraDistances.map(distance => `<option value="${distance}">${distance === 'default' ? 'Default' : 'Far'}</option>`).join('')}</select></label>
-      <label>Resolution Quality<select id="option-upscaleQuality">${upscaleQualities.map((quality) => `<option value="${quality}">${quality[0].toUpperCase() + quality.slice(1)}</option>`).join('')}</select></label>
+      <label>Resolution Quality<select id="option-upscaleQuality" aria-label="Resolution Quality">${upscaleQualities.map((quality) => `<option value="${quality}">${quality[0].toUpperCase() + quality.slice(1)}</option>`).join('')}</select><output id="graphics-resolution" class="graphics-resolution" aria-label="Scene and output resolution"></output></label>
       <label>Frame rate limit<select id="option-fpsLimit">${frameRateLimits.map((limit) => `<option value="${limit}">${limit || 'Unlimited'}</option>`).join('')}</select></label>
       ${(['shadowQuality', 'particleQuality'] as const).map(key => `<label>${key === 'shadowQuality' ? 'Shadow Quality' : 'Particle Effects'}<select id="option-${key}">${[...qualityLevels].reverse().map(value => `<option value="${value}">${value[0].toUpperCase() + value.slice(1)}</option>`).join('')}</select></label>`).join('')}
       <label>Depth of field<select id="option-dof">${depthOfFieldModes.map((mode) => `<option value="${mode}">${mode[0].toUpperCase() + mode.slice(1)}</option>`).join('')}</select></label>

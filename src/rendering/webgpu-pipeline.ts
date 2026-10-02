@@ -225,6 +225,7 @@ class PipelineGraph {
       outputWidth: this.renderer.domElement.width, outputHeight: this.renderer.domElement.height,
       reconstructionScale: this.scale, renderedFrames: this.successfulFrames,
       sampleOffset: this.fsr?.lastSampleOffset ?? null, cameraOffsetCleared: !this.camera.view?.enabled,
+      unjitteredMotionProjection: !!this.fsr?.upscaler && velocity.projectionMatrix === this.fsr.upscaler.unjitteredProjectionMatrix,
       gpuTimings: this.fsr?.upscaler ? Object.fromEntries(this.fsr.upscaler.gpuTimings) : null,
       gpuTimingScope: this.fsr ? 'FSR compute only; excludes scene, opaque pass and post effects' : null };
   }
@@ -238,6 +239,12 @@ class PipelineGraph {
     const outputColorSpace = this.renderer.outputColorSpace;
     try {
       this.post.render(); this.successfulFrames++;
+      const canvas = this.renderer.domElement, scene = this.scenePass!.renderTarget;
+      const resolution = `${scene.width}×${scene.height} → ${canvas.width}×${canvas.height}`;
+      if (canvas.dataset.resolution !== resolution) {
+        canvas.dataset.resolution = resolution;
+        canvas.dispatchEvent(new Event('graphicsresolutionchange'));
+      }
     } finally {
       // Includes failed setup/render paths, whose after-hook may not have run.
       this.camera.clearViewOffset();

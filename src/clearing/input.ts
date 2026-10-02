@@ -40,6 +40,8 @@ export function createInput(
   }, { signal });
   canvas.addEventListener('pointerleave', () => { pointer = undefined; }, { signal });
   canvas.addEventListener('pointercancel', clear, { signal });
+  // Camera distance belongs to Options; also prevent browser pinch/wheel zoom over play.
+  canvas.addEventListener('wheel', event => event.preventDefault(), { passive: false, signal });
   canvas.addEventListener('contextmenu', event => event.preventDefault(), { signal });
   canvas.addEventListener('auxclick', event => event.preventDefault(), { signal });
   canvas.addEventListener('pointerdown', event => {

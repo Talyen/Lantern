@@ -1,6 +1,6 @@
 import { UpscalerNode, type Upscaler } from '@pmndrs/upscaler';
 import type { Node, NodeBuilder, OrthographicCamera, PerspectiveCamera, TextureNode } from 'three/webgpu';
-import { OnAfterRenderPipeline, OnBeforeRenderPipeline, nodeObject } from 'three/tsl';
+import { OnAfterRenderPipeline, OnBeforeRenderPipeline, nodeObject, velocity } from 'three/tsl';
 import accumulationShader from './fsr-accumulate.wgsl?raw';
 
 // Pinned to @pmndrs/upscaler 0.2: reuse its pass bindings, dispatch, textures
@@ -71,6 +71,10 @@ class FSRTemporalNode extends UpscalerNode {
       context.renderPipelineState.viewOffsetOwner = this;
       OnBeforeRenderPipeline(() => {
         this.upscaler?.beginFrame(this.camera);
+        // Preparation/disposal clears this shared singleton, and cached graphs
+        // own different matrices. Rebind before any scene pass builds or updates
+        // velocity; a setup-only binding invents motion from raster jitter.
+        if (this.upscaler) velocity.setProjectionMatrix(this.upscaler.unjitteredProjectionMatrix);
         this.lastSampleOffset = [this.camera.view?.offsetX ?? 0, this.camera.view?.offsetY ?? 0];
         this.sampled?.(...this.lastSampleOffset, this.camera.view?.fullWidth ?? 1, this.camera.view?.fullHeight ?? 1);
       });

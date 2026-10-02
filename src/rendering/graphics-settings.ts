@@ -14,7 +14,7 @@ export type DepthOfFieldMode = typeof depthOfFieldModes[number];
 export const upscaleRatio = (quality: UpscaleQuality) => ({ native: 1, quality: 1.5, balanced: 1.7, performance: 2 })[quality];
 export const cameraDistances = ['default', 'far'] as const;
 export type CameraDistance = typeof cameraDistances[number];
-export const cameraDistanceMultipliers: Record<CameraDistance, number> = { default: 1.2, far: 1.4 };
+export const cameraDistanceMultipliers: Record<CameraDistance, number> = { default: 0.6, far: 0.78 };
 export const defaultCameraZoom = 1 / cameraDistanceMultipliers.default;
 export type GraphicsSettings = {
   cameraDistance: CameraDistance;
