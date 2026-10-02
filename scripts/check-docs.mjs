@@ -2,6 +2,7 @@ import { readFile, readdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { resolve, dirname, extname } from 'node:path';
 import { cli, parseArgs, root } from './lib/cli.mjs';
+import { readRoutes } from './agents/context.mjs';
 
 // GitHub-style heading IDs, including duplicate suffixes; fenced examples are not headings.
 function headingIds(text) {
@@ -33,6 +34,7 @@ function headingIds(text) {
 await cli(async () => {
   const args = parseArgs(process.argv.slice(2));
   if (args['--help']) { console.log('Usage: npm run docs:check'); return; }
+  await readRoutes();
   const files = (await readdir(root)).filter((file) => file.endsWith('.md')).map((file) => resolve(root, file));
   async function walk(dir) {
     for (const entry of await readdir(dir, { withFileTypes: true })) {

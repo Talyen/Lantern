@@ -4,6 +4,10 @@
 
 Lantern is a desktop-browser fantasy action RPG prototype using Vite, TypeScript, three.js, and locally converted licensed art. The current prototype connects Homestead and Forest Clearing, with a guarded camp, a separate caster fight, two weapon sets, assignable abilities, loot, Woodcutting, Mining, shelter restoration and a stash. [The roadmap](ROADMAP.md) owns the remaining milestones.
 
+## Load only relevant context
+
+Start with [the daily workflow](Docs/DEVELOPMENT.md) and [task routing](Docs/ARCHITECTURE.md#task-routing), or run `npm run agent:context -- --topic <topic>`. Follow the linked instructions for affected work and read owners/consumers before editing. Detailed runtime contracts, asset recipes and interaction flows are separate references; historical evidence is optional. Use `agent:inspect` for bounded area/motion/audio records rather than reading whole manifests. Tool help lists supported flags.
+
 ## Working style
 
 - Inspect `git status --short` and relevant diffs before editing. Complete the requested behavior and its blockers; fix small, understood adjacent issues and report substantial independent findings. Avoid broad cleanup outside the task.
@@ -11,25 +15,12 @@ Lantern is a desktop-browser fantasy action RPG prototype using Vite, TypeScript
 - Investigate failures with a specific hypothesis and focused evidence. Reassess unproductive approaches; do not change product behavior or raise timeouts merely to hide local contention.
 - Use plain language and player-facing names. Include implementation details when they explain a decision or risk.
 
-## Friction and lasting guidance
-
-- When friction occurs, consult [.agents/FRICTION_LOG.md](.agents/FRICTION_LOG.md). Record unresolved misleading guidance, workflow gaps, recurring problems, or significant first-time blockers; update an existing matching entry rather than duplicating it. Skip routine transient failures and issues fully resolved during the same task. No task-start review is required.
-- Agents may proactively fix small, understood, reversible independent friction issues in their owned task when the cause and focused verification are clear. Leave broad, uncertain, or consequential changes logged for a separate decision; avoid speculative cleanup.
-- Fix and verify the cause before archiving an open entry with a resolution link. A workaround alone leaves it open. Put lasting guidance in the canonical document or tool; the log records intake and history. Keep updates in the owned worktree and preserve concurrent entries during integration.
-
 ## Concurrent work and Git
 
-- Use `npm run agent:start -- --task <slug>` before task edits, including documentation, then use its returned worktree directory for every command. Eight tasks may work independently by default; the [task workflow](Docs/DEVELOPMENT.md#private-assets-and-resource-use) owns the shared configurable limit and queued admission. Do not edit main directly during ordinary task work.
-- The [task workflow](Docs/DEVELOPMENT.md#working-alongside-other-agents) authorizes private task branches, reviewed local task commits, and automatic integration into local main. Pushes, PRs and releases still require a user request.
-- One agent owns a task worktree through completion. Routine work requires no inter-agent messages, file reservations, or user-managed merges. Repair conflicts and failed sanity checks in the task, then retry `npm run agent:finish` until integrated.
-- Stage only explicitly reviewed task paths. Never reset, clean, stash, overwrite or terminate another task's work. Preserve private source archives and unexpected main edits.
-- Use managed previews and resource wrappers. Start rendering only for a relevant inspection, then close the owned session. The scripts automatically queue heavy operations and GPU reviews.
-
-## Owners and commands
-
-Read [architecture](Docs/ARCHITECTURE.md) and [development workflow](Docs/DEVELOPMENT.md) for affected owners, commands and asset preparation. [Level design](Docs/LEVEL_DESIGN.md) owns area conventions and the rapid visual authoring loop. [Performance](Docs/PERFORMANCE.md) owns measurement evidence; [roadmap](ROADMAP.md) owns milestones.
-
-Use `npm run check` for a fast sanity check; `agent:finish` runs it on the integration candidate. It runs relevant JavaScript/TypeScript, Python and CSS lint; existing lint-policy fixtures also run when lint configuration or rules change. Full unit/workflow suites, production builds, inventory and HTTP smoke run in CI. A user-requested local full gate uses `npm run check:full -- --allow-local`; routine handoff never runs it. Inspect the task diff and update the canonical owner when changing an invariant. Prepared-art tasks validate affected references; full playable validation is targeted, not a routine extra step.
+- Run `npm run agent:start -- --task <slug>` before any task edits, including documentation; use its returned worktree for every command. Do not edit main. The [task workflow](Docs/DEVELOPMENT_REFERENCE.md#private-assets-and-resource-use) owns shared capacity and queued admission.
+- One agent owns a task through completion. Private task branches, reviewed local commits and automatic local integration are authorized. Pushes, PRs and releases require a user request. Routine work needs no inter-agent messages, file reservations or user-managed merges.
+- Stage only reviewed task paths. Never reset, clean, stash, overwrite or terminate another task's work. Preserve unexpected main edits and private source archives.
+- Repair conflicts/check failures in the task and retry `npm run agent:finish` until integrated; then clean the completed worktree. Use managed previews/resource wrappers and close owned sessions after inspection.
 
 ## Asset boundaries
 
@@ -44,56 +35,22 @@ Use `npm run check` for a fast sanity check; `agent:finish` runs it on the integ
 - FSR Temporal is the only reconstruction method, with Balanced resolution quality and sharpening 0.50 as fresh/reset defaults. Output pixel ratio is always 1. There are no reconstruction fallbacks; unavailable WebGPU or FSR preparation must produce an actionable startup error. Shadows and particles use independent shared Low/Medium/High presets; atmosphere uses preset distance fog, with no volume buffer or ray marching.
 - Build new materials/effects with TSL/node materials. `npm run check` enforces the runtime rendering policy. Revalidate the pinned three.js native-only initialization and temporal adapters on dependency upgrades; never weaken the guard to accommodate a second backend.
 
-## Lighting authoring
+## Topic invariants and visual work
 
-- All routes use the shared Golden lighting preset and small area overrides through `src/levels/lighting.ts`; see [lighting authoring](Docs/LIGHTING.md). Do not duplicate scene lighting constants or apply outdoor moods globally.
-- Local flame lights use the shared campfire/torch/lantern recipes. Gameplay campfire eligibility remains independent of cosmetic lighting.
-- Prepare stable irradiance bakes explicitly with `npm run lighting:bake` in an owned native authoring session. Keep derived data private; routine checks/builds never regenerate it.
-- Extend the small visual reference set when the first interior or enclosed dark area is introduced. Review character readability under the shared Golden preset when lighting changes.
+- All routes use shared Golden lighting and local flame recipes through `src/levels/lighting.ts`. Read [lighting authoring](Docs/LIGHTING.md#agent-lighting-workflow) before lighting changes; bakes remain explicit and private.
+- Gameplay and presentation stay explicit in TypeScript. Follow [prototype conventions](Docs/RUNTIME.md#prototype-conventions) for controls, tool-free gathering, optional scenery and rig-compatible Mixamo clips. Preserve authored playable textures and private source catalogs.
+- Before any player-facing visual change, read [art direction and visual workflow](Docs/ART_DIRECTION.md#agent-visual-workflow). State the intended visible effect in working notes/commentary, finish the composition and interaction details, then inspect and refine at gameplay scale. Keep implementation details and unrequested flavor/status copy out of the game.
 
-## Prototype conventions
+## Validation and handoff
 
-- Keep gameplay and render state explicit in TypeScript. The camera is fixed isometric with follow and scroll zoom; WASD or arrows move, six assignable action slots default to Q/E/R/G/LMB/RMB, Shift dodges, F uses a Health Potion, T uses a Scroll of Return, Tab swaps weapon sets, K opens Skills, B toggles Inventory, and Escape toggles Options or closes a menu. Click world objects to approach and interact; all gameplay controls are remappable through Keybindings.
-- Gathering never requires owned or equipped tools. Show presentation-only basic tools with compatible Mixamo gathering motions, and restore combat presentation without changing inventory or weapon sets.
-- Keep the encounter runnable when optional scenery is absent; report missing playable character art clearly.
-- Select animation clips only from a verified compatible rig. Gameplay uses Paladin J Nordstrom for the player and Goblin D Shareyko for the enemy, with curated Mixamo clips baked independently to each rig. The playable Paladin uses its original authored textures; retired palette experiments remain privately archived. Original text-prompted surfaces are projected and baked locally. Use Mixamo exclusively for both the clearing and the comparison lab. Do not reintroduce the discarded animation providers. Preserve the full source catalog privately, and lazy-load only selected GLB clips.
-- After gameplay edits, use one short browser interaction flow demonstrating the changed behavior. Choose the relevant portion of the optional smoke references; do not replay the entire game checklist.
+Use `npm run check`; `agent:finish` runs the change-aware sanity gate on its integration candidate. Full suites/builds/HTTP smoke remain CI-first; requested local full validation uses `npm run check:full -- --allow-local`. Follow [prototype acceptance policy](Docs/DEVELOPMENT_REFERENCE.md#testing-during-the-prototype-phase): do not add tests by default or repeatedly run unchanged checks. Prepared-art work validates affected output/references.
 
-## Artistic responsibility
+After gameplay edits, exercise one short relevant interaction in one owned normal-settings preview; [smoke references](Docs/SMOKE_REFERENCES.md) are a menu, not a checklist. Documentation needs links/diff review; tooling needs one observable outcome. Broaden inspection only for a concrete failure, consequential save migration or renderer/dependency initialization change. Leave the user's play session alone; automated Electron uses hidden non-focusable `desktop:check` and CDP.
 
-Follow [the art direction](Docs/ART_DIRECTION.md) for Lantern's visual identity and review criteria.
+Performance testing requires a specific user request or evidenced defect, recorded with `levels:measure --reason "request or defect evidence"`; it borrows the owned preview's GPU lease. Routine work, audits, release readiness and automation do not authorize benchmarks or full local suites. Do not schedule tests or measurements by default. [Performance](Docs/PERFORMANCE.md) owns measurement evidence.
 
-- Treat player-facing visual work as authored design. A functional first pass is a starting point; finish the composition, hierarchy, material treatment, and interaction details.
-- Make a clear artistic choice within Lantern's established direction. Choose and iterate independently within the requested scope; ask when a choice would change the project's identity or gameplay.
-- Before implementing, state the intended visual effect in one or two concrete sentences. Describe what the player will see and feel, and which visual decisions will create it. Keep this in working notes or commentary, never in the game.
-- Establish a focal point and supporting hierarchy. Use deliberate silhouette, proportion, spacing, value contrast, lighting, and motion. Give important elements character; let supporting elements stay quiet.
-- Prefer a few distinctive, coordinated decisions over many decorative additions. Default component styling, uniform prop distribution, and indiscriminate glow are unfinished when they undermine the intended composition.
-- Inspect the actual result at gameplay scale. Identify the weakest visible part, revise it, and inspect again when needed. Passing checks or producing a screenshot does not establish visual quality.
-- Communicate through the design before adding words. Do not compensate for weak visuals with slogans, descriptive headings, explanatory panels, or ornamental lore.
+Review the task diff and local integration; briefly report completed behavior, sanity check and material limits. Checks/builds do not establish visual quality or cross-platform performance. Update the canonical owner when changing an invariant.
 
-## Player-facing UI
+## Friction
 
-- Use familiar menu names and predictable interactions, with compact layouts and a visual treatment specific to Lantern. Familiar behavior does not require default styling. Keep settings labels and values concise.
-- Do not add slogans, narrative flavor text, prototype/lab branding, explanatory paragraphs, or instructional/status panels unless the user requests them or they are necessary for an actionable error.
-- Keep the gameplay HUD limited to useful game state. Put settings and controls inside menus rather than around the scene.
-- Keep implementation details out of player-facing text. Use short tooltips only when they help the player choose a setting.
-
-## Testing during the prototype phase
-
-- Aim for roughly 80% of effort on feature design, implementation and refinement. Sanity checks should take a small share of ordinary work; observed failures still need repair.
-- Player-facing work normally needs one representative preview session, one relevant route and normal settings. Screenshots are optional. Improve an obvious visible weakness in the same session rather than collecting a review matrix.
-- Documentation needs links and diff inspection, no browser. Internal tooling needs fast checks and one relevant observable outcome. Asset changes need inspection of the affected output and its required references.
-- Do not add tests by default. Extend an existing test only for an important established behavior that warrants lasting protection. Avoid speculative edge cases, coverage targets, elaborate fixtures, implementation assertions and new gameplay test infrastructure.
-- Run relevant checks once after the final edit. Repeat only after relevant changes or observed failures. Unrelated integration changes do not automatically invalidate visual acceptance.
-- Broad gameplay flows, alternate moods/zooms/platforms, full catalogs, benchmarks and contact sheets are optional targeted tools. Expand local functional inspection only for a concrete failure, consequential save migration or renderer/dependency initialization change; briefly state why. Full local suites require a user request. Audits and release readiness do not automatically authorize benchmarks.
-- `npm run check` is the lean default. `npm run check:full` retains the full production gate. Neither automatically downloads, exports, bakes lighting, benchmarks, or runs browser matrices.
-- Automated Electron uses hidden non-focusable `desktop:check` and CDP. Resource leases allow one check job, one heavy operation and one agent GPU inspection. Explicit local unit runs use one Vitest worker; CI may use two. Leave the user's play session alone.
-- Revisit this policy when Lantern moves beyond the prototype phase or gains public release requirements.
-
-## Review and handoff
-
-Review the task diff and its integration, finish through automatic local promotion, and report completed behavior, the sanity check performed, and material limitations briefly. Do not claim exhaustive coverage or cross-platform performance from a sanity check.
-
-Performance testing is allowed only for a specific user request or an evidenced performance defect; record the request or defect with `levels:measure --reason "request or defect evidence"`. Measurements borrow the owned preview's single GPU lease. Routine feature work, audits, release-readiness gates and scheduled automation must not benchmark. Passive diagnostics and short visual reviews remain available.
-
-Local handoff runs change-aware static checks: types, rendering policy, documentation links, structural levels and whitespace. Full unit/workflow tests, builds and automated E2E are CI-first. A focused local test may investigate a concrete failure; prepared-art tasks validate affected output/references and may build when staging is necessary. Full local suites require a user request. Future automation follows these same limits and exclusions; do not schedule tests or measurements by default. Local promotion may precede CI; pushes still require a user request.
+When friction occurs, consult [.agents/FRICTION_LOG.md](.agents/FRICTION_LOG.md) and follow its intake/resolution rules. Fix small, understood, reversible issues in scope; log broad or uncertain problems. Verify the cause before archiving a resolution. Preserve concurrent entries. No task-start review or routine transient-failure entry is required.

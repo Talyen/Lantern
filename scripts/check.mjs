@@ -2,10 +2,26 @@ import { mkdir, open, readFile, readdir, rm } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createHash } from 'node:crypto';
+import { stripVTControlCharacters } from 'node:util';
 import { cli, parseArgs, run, root } from './lib/cli.mjs';
 import { git, readJSON, writeJSON } from './agents/state.mjs';
 import { withResource } from './agents/resources.mjs';
 import { assetIndex, assetIdentity } from './agents/assets.mjs';
+
+export function diagnosticExcerpt(text) {
+  const lines = stripVTControlCharacters(text).split(/\r?\n/).filter(line => line.trim());
+  const first = lines.findIndex(line => /\berror\b|\bfailed\b|missing|invalid|unsupported|unexpected/i.test(line));
+  return lines.slice(Math.max(0, first - 1), Math.max(0, first - 1) + 6).map(line => line.slice(0, 240)).join('\n').slice(0, 1200);
+}
+
+async function failureDiagnostic(path) {
+  const handle = await open(path, 'r');
+  try {
+    const buffer = Buffer.alloc(64 * 1024);
+    const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
+    return diagnosticExcerpt(buffer.toString('utf8', 0, bytesRead));
+  } finally { await handle.close(); }
+}
 
 export async function checkInputs(base) {
   const head = await git(['rev-parse', 'HEAD']);
@@ -90,6 +106,12 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
         failed = true; summary.push({ name, status: 'failed', error: error.message, ms: Date.now() - start, waitingMs });
         console.error(`FAIL ${name}: ${error.message}; log: ${resolve(dir, `${name}.log`)}`);
       } finally { await log.close(); }
+      if (failed) {
+        try {
+          const diagnostic = await failureDiagnostic(resolve(dir, `${name}.log`));
+          if (diagnostic) console.error(diagnostic);
+        } catch (error) { console.error(`Diagnostic excerpt unavailable: ${error.message}; see the complete stage log.`); }
+      }
     }
     const after = await checkInputs(args['--base']);
     if (after.signature !== inputs.signature) { failed = true; summary.push({ name: 'stable-inputs', status: 'failed', error: 'Inputs changed during checks.' }); }

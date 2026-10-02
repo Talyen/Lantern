@@ -130,3 +130,25 @@ Matched native WebGPU views cover both areas in golden and silver at zoom 0.9, 1
 ## Shared lighting preset
 
 The approved Golden preset is resolved centrally on every route. Keep shared tuning in `src/levels/lighting-preset.ts` and small placement/coverage differences in area overrides. See [lighting authoring](LIGHTING.md) for recipes, probe preparation, reference views and cache ownership.
+
+
+## Agent visual workflow
+
+Read this section before any player-facing visual change.
+
+### Artistic responsibility
+
+- Treat player-facing visual work as authored design. A functional first pass is a starting point; finish the composition, hierarchy, material treatment, and interaction details.
+- Make a clear artistic choice within Lantern's established direction. Choose and iterate independently within the requested scope; ask when a choice would change the project's identity or gameplay.
+- Before implementing, state the intended visual effect in one or two concrete sentences. Describe what the player will see and feel, and which visual decisions will create it. Keep this in working notes or commentary, never in the game.
+- Establish a focal point and supporting hierarchy. Use deliberate silhouette, proportion, spacing, value contrast, lighting, and motion. Give important elements character; let supporting elements stay quiet.
+- Prefer a few distinctive, coordinated decisions over many decorative additions. Default component styling, uniform prop distribution, and indiscriminate glow are unfinished when they undermine the intended composition.
+- Inspect the actual result at gameplay scale. Identify the weakest visible part, revise it, and inspect again when needed. Passing checks or producing a screenshot does not establish visual quality.
+- Communicate through the design before adding words. Do not compensate for weak visuals with slogans, descriptive headings, explanatory panels, or ornamental lore.
+
+### Player-facing UI
+
+- Use familiar menu names and predictable interactions, with compact layouts and a visual treatment specific to Lantern. Familiar behavior does not require default styling. Keep settings labels and values concise.
+- Do not add slogans, narrative flavor text, prototype/lab branding, explanatory paragraphs, or instructional/status panels unless the user requests them or they are necessary for an actionable error.
+- Keep the gameplay HUD limited to useful game state. Put settings and controls inside menus rather than around the scene.
+- Keep implementation details out of player-facing text. Use short tooltips only when they help the player choose a setting.

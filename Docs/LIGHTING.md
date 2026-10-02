@@ -84,3 +84,12 @@ Graphics offers **Shadow Quality**, **Particle Effects** and an independent **At
 Fresh/reset settings use FSR Temporal Balanced, sharpening 0.50, pixel ratio 1, High shadows/particles and Cinematic DOF. [Graphics settings](GRAPHICS.md#temporary-comparisons-and-persistence) owns the current save revision and quality-preset migration. Author with DOF Off when useful, then review with Cinematic and the shipping reconstruction settings. Temporary comparison URLs such as `?shadowQuality=low&particleQuality=low&atmosphericParticles=off&dof=off` do not persist through unrelated menu edits.
 
 DOF runs after FSR reconstruction with aligned depth: Soft uses focus range 24 and bokeh 0.8; Cinematic uses 16 and 1.6. Both track the camera target. Review thin foliage while moving and at both zoom extremes; shader readiness alone does not establish visual quality.
+
+
+## Agent lighting workflow
+
+
+- All routes use the shared Golden lighting preset and small area overrides through `src/levels/lighting.ts`; see [lighting authoring](#one-preset-and-area-overrides). Do not duplicate scene lighting constants or apply outdoor moods globally.
+- Local flame lights use the shared campfire/torch/lantern recipes. Gameplay campfire eligibility remains independent of cosmetic lighting.
+- Prepare stable irradiance bakes explicitly with `npm run lighting:bake` in an owned native authoring session. Keep derived data private; routine checks/builds never regenerate it.
+- Extend the small visual reference set when the first interior or enclosed dark area is introduced. Review character readability under the shared Golden preset when lighting changes.

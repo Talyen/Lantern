@@ -48,8 +48,12 @@ Agents use the [private task workflow](Docs/DEVELOPMENT.md#working-alongside-oth
 
 ## Documentation
 
-- [Architecture](Docs/ARCHITECTURE.md): runtime owners and simulation boundaries.
-- [Development](Docs/DEVELOPMENT.md): commands, private assets, validation, and smoke flows.
+- [Architecture](Docs/ARCHITECTURE.md): task routing and simulation boundaries.
+- [Development](Docs/DEVELOPMENT.md): daily workflow and read-only agent tools.
+- [Runtime reference](Docs/RUNTIME.md): detailed owner contracts.
+- [Development reference](Docs/DEVELOPMENT_REFERENCE.md): resource rules, commands and acceptance policy.
+- [Asset preparation](Docs/ASSET_PREPARATION.md): explicit private imports and surface recipes.
+- [Interaction references](Docs/SMOKE_REFERENCES.md): optional targeted gameplay flows.
 - [Art direction](Docs/ART_DIRECTION.md): visual identity and review criteria.
 - [Graphics settings](Docs/GRAPHICS.md): current controls, defaults and comparison URLs.
 - [Lighting](Docs/LIGHTING.md): shared Golden preset, local lights and explicit bake preparation.
