@@ -77,7 +77,7 @@ export class InventoryPanel {
     }
     for (const set of [0, 1] as const) {
       const button = document.createElement('button'); button.type = 'button'; button.dataset.set = String(set);
-      button.onclick = () => { this.cancelDrag(); void this.perform(() => { this.ctx.activateSet(set); this.viewSet = set; }); };
+      button.onclick = () => { this.cancelDrag(); void this.perform(() => { this.ctx.activateSet(set); this.viewSet = set; }).catch(this.failed); };
       el('.inv-sets').append(button);
     }
     el('[data-close]').onclick = () => this.close(); bindMenuDismissal(this.dialog, () => this.close());
@@ -85,14 +85,14 @@ export class InventoryPanel {
       button.onclick = () => { this.cancelDrag(); void this.perform(() => {
         const container = button.dataset.sort as Container, next = sortedItems(this.contents(container));
         return container === 'stash' ? this.ctx.changeContainers(this.character!.items, next) : this.ctx.change(next);
-      }); };
+      }).catch(this.failed); };
     });
     el('[data-cancel]').onclick = () => this.cancelDrag(); el('[data-confirm]').onclick = () => this.confirmSplit();
     this.dialog.addEventListener('contextmenu', event => {
       event.preventDefault(); event.stopPropagation();
       if (this.drag) { this.cancelDrag(); return; }
       const entry = this.entry((event.target as Element).closest<HTMLElement>('[data-instance]')?.dataset.instance);
-      if (entry && !this.drag && this.split.hidden) void this.primary(entry);
+      if (entry && !this.drag && this.split.hidden) void this.primary(entry).catch(this.failed);
     });
     this.dialog.addEventListener('pointerdown', event => this.pointerDown(event));
     this.dialog.addEventListener('pointerover', event => this.showTooltip((event.target as Element).closest<HTMLElement>('[data-instance],[data-empty]')));
@@ -112,7 +112,7 @@ export class InventoryPanel {
           const slot = (event.target as Element).closest<HTMLElement>('[data-equipment-slot]');
           const target = (event.target as HTMLElement).dataset.instance;
           const rect = slot && target !== this.drag.id ? slot.getBoundingClientRect() : null;
-          void this.release(rect ? rect.left + rect.width / 2 : this.pointer.x, rect ? rect.top + rect.height / 2 : this.pointer.y); return;
+          void this.release(rect ? rect.left + rect.width / 2 : this.pointer.x, rect ? rect.top + rect.height / 2 : this.pointer.y).catch(this.failed); return;
         }
         const delta: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
         if (delta[event.key]) {
@@ -124,7 +124,7 @@ export class InventoryPanel {
       }
       const entry = this.entry((event.target as Element).closest<HTMLElement>('[data-instance]')?.dataset.instance);
       if (!entry || this.busy || !this.split.hidden) return;
-      if (event.key === 'Enter') { event.preventDefault(); event.stopPropagation(); if (!event.repeat) void this.primary(entry); }
+      if (event.key === 'Enter') { event.preventDefault(); event.stopPropagation(); if (!event.repeat) void this.primary(entry).catch(this.failed); }
       else if (event.key === ' ' && !event.repeat) {
         event.preventDefault(); event.stopPropagation();
         if (event.shiftKey && entry.quantity > 1) this.openSplit(entry);
@@ -138,7 +138,7 @@ export class InventoryPanel {
       }
     });
     window.addEventListener('pointermove', event => this.pointerMove(event));
-    window.addEventListener('pointerup', event => { if (event.button === 0 && this.drag && !this.drag.carried && this.drag.pointer === event.pointerId) void this.release(event.clientX, event.clientY); });
+    window.addEventListener('pointerup', event => { if (event.button === 0 && this.drag && !this.drag.carried && this.drag.pointer === event.pointerId) void this.release(event.clientX, event.clientY).catch(this.failed); });
     window.addEventListener('pointercancel', event => { if (this.drag?.carried || this.drag?.pointer === event.pointerId) this.cancelDrag(); });
     window.addEventListener('blur', () => this.cancelDrag());
     window.addEventListener('resize', () => { this.cancelDrag(); this.hideTooltip(); });
@@ -258,7 +258,7 @@ export class InventoryPanel {
   private pointerDown(event: PointerEvent): void {
     if (event.button !== 0 || this.busy || !this.split.hidden) return;
     if (this.drag && !this.drag.carried && this.drag.pointer !== event.pointerId) return;
-    if (this.drag?.carried) { event.preventDefault(); event.stopPropagation(); void this.release(event.clientX, event.clientY); return; }
+    if (this.drag?.carried) { event.preventDefault(); event.stopPropagation(); void this.release(event.clientX, event.clientY).catch(this.failed); return; }
     const target = (event.target as Element).closest<HTMLElement>('[data-instance]'), entry = this.entry(target?.dataset.instance);
     if (!entry || !target) return;
     if (event.shiftKey && entry.quantity > 1) { event.preventDefault(); this.openSplit(entry); return; }
@@ -345,6 +345,7 @@ export class InventoryPanel {
     this.drag = null; this.ghost.hidden = true; this.marker.hidden = true; this.split.hidden = true; this.splitId = null;
     this.dialog.querySelectorAll('.inv-carried,.inv-drop-target').forEach(el => el.classList.remove('inv-carried', 'inv-drop-target'));
   }
+  private failed = (error: unknown): void => { this.error.textContent = error instanceof Error ? error.message : 'Unable to update Inventory.'; };
   private async perform(operation: () => Promise<void> | void): Promise<void> {
     if (this.busy || !this.character) return;
     const focused = (document.activeElement as HTMLElement)?.dataset.instance;
