@@ -1,8 +1,9 @@
+import { SceneCache } from '../assets/scene-cache';
 import { MeshStandardNodeMaterial } from 'three/webgpu';
 import { texture, mix, vec2, vec3, positionWorld, color, sin, smoothstep } from 'three/tsl';
 import environmentManifest from '../../assets/textures/environment/manifest.json';
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { sceneryLoader as loader, disposeSceneryLoader } from '../assets/scenery-loader';
 import { environmentOutlineEligible, environmentSurface, prepareEnvironmentMaterials, type SurfaceMode } from '../assets/environment-surfaces';
 import { markOutline } from '../rendering/outlines';
 import { assetLibrary, updateAssetLods, type AssetInstance } from '../assets/asset-library';
@@ -16,14 +17,8 @@ import { createShelter } from '../rendering/shelter';
 import { resourceDefinitions } from './resources';
 import { treeDefinitions } from './trees';
 import type { AreaDefinition, AssetRef, Placement, Primitive, GroundPatch } from './types';
-const loader = new GLTFLoader();
-const cache = new Map<string, Promise<THREE.Group>>();
-const shared = new Set<THREE.Object3D>();
-export async function disposeAreaCache(): Promise<void> {
-  await Promise.allSettled(cache.values()); const geometry = new Set<THREE.BufferGeometry>(), materials = new Set<THREE.Material>(), textures = new Set<THREE.Texture>();
-  shared.forEach(root => root.traverse(o => { if (o instanceof THREE.Mesh) { geometry.add(o.geometry); for (const m of Array.isArray(o.material) ? o.material : [o.material]) { materials.add(m); Object.values(m).forEach(v => { if (v instanceof THREE.Texture) textures.add(v); }); } } }));
-  geometry.forEach(g => g.dispose()); materials.forEach(m => m.dispose()); textures.forEach(t => t.dispose()); shared.clear(); cache.clear(); await assetLibrary.dispose();
-}
+const cache = new SceneCache();
+export async function disposeAreaCache(): Promise<void> { await cache.dispose(); await assetLibrary.dispose(); disposeSceneryLoader(); }
 export function createWorld() {
   const scene = new THREE.Scene();
   const ambient = new THREE.HemisphereLight(); const sun = new THREE.DirectionalLight(); sun.castShadow = true; sun.shadow.mapSize.set(4096, 4096); sun.shadow.camera.near = .5; sun.shadow.camera.far = 80; sun.shadow.normalBias = .025; sun.shadow.bias = -.00015; sun.shadow.radius = 3;
@@ -36,6 +31,7 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
   root.userData.lightingProcedural = [];
   const ownedTextures = new Set<THREE.Texture>();
   const ownedGeometry = new Set<THREE.BufferGeometry>(), ownedMaterial = new Set<THREE.Material>(), instances: AssetInstance[] = [];
+  const sceneLeases: (() => void)[] = [];
   let disposed = false;
   const grass = createGrass(area, area.grass ?? []); root.add(grass.root);
   const animated = new Set<THREE.Object3D>();
@@ -114,9 +110,9 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
       const source = (id: string) => { if (visited.has(id)) return; visited.add(id); const entry = catalog.assets[id]; if (entry) { lightingSources.add(entry.url); entry.dependencies.forEach(source); } };
       source(instance.asset.id); return instance.object;
     }
-    let pending = cache.get(ref.url);
-    if (!pending) { pending = loader.loadAsync(ref.url).then(async gltf => { if (ref.url.startsWith('/vendor/synty/environment/')) await prepareEnvironmentMaterials(gltf.scene); shared.add(gltf.scene); return gltf.scene; }); cache.set(ref.url, pending); pending.catch(() => cache.delete(ref.url)); }
-    const object = (await pending).clone(true); lightingSources.add(ref.url);
+    const lease = cache.acquire(ref.url, () => loader.loadAsync(ref.url).then(async gltf => { if (ref.url.startsWith('/vendor/synty/environment/')) await prepareEnvironmentMaterials(gltf.scene); return gltf.scene; }));
+    sceneLeases.push(lease.release);
+    const object = (await lease.scene).clone(true); lightingSources.add(ref.url);
     for (const url of object.userData.surfaceSources ?? []) lightingSources.add(url);
     for (const url of object.userData.surfaceMissing ?? []) if (!missing.includes(url)) missing.push(url);
     return object;
@@ -271,7 +267,7 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
       effects.addEmitter('sparks', new THREE.Vector3(fire.position[0], (recipe.emitterHeight) + .15, fire.position[1]), root, 4);
     }
   }
-  function dispose(): void { shelter?.dispose(); portals.forEach(p => p.dispose()); if (disposed) return; disposed = true; grass.dispose(); root.removeFromParent(); root.traverse(o => { if (o instanceof THREE.InstancedMesh) o.dispose(); if (o instanceof THREE.Light) o.dispose(); }); instances.forEach(i => i.release()); ownedGeometry.forEach(g => g.dispose()); ownedMaterial.forEach(m => m.dispose()); ownedTextures.forEach(t => t.dispose()); }
+  function dispose(): void { shelter?.dispose(); portals.forEach(p => p.dispose()); if (disposed) return; disposed = true; grass.dispose(); root.removeFromParent(); root.traverse(o => { if (o instanceof THREE.InstancedMesh) o.dispose(); if (o instanceof THREE.Light) o.dispose(); }); instances.forEach(i => i.release()); sceneLeases.forEach(release => release()); ownedGeometry.forEach(g => g.dispose()); ownedMaterial.forEach(m => m.dispose()); ownedTextures.forEach(t => t.dispose()); }
   return { root, area, missing, fires, portals, trees, interactables, resources, pickResource, setResourceState, get shadow() { return shadow; }, update, setChestOpened, setTreeState, treeHit, activate, dispose };
 }
 export type AreaInstance = Awaited<ReturnType<typeof buildArea>>;

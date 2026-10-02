@@ -1,4 +1,4 @@
-import { ACESFilmicToneMapping, RenderPipeline, BlendMode, NormalBlending, Color, Vector2, Vector3, type Node, type OrthographicCamera, type PerspectiveCamera, type Scene, type WebGPURenderer, type TextureNode, type QuadMesh, type Texture } from 'three/webgpu';
+import { ACESFilmicToneMapping, RedFormat, RenderPipeline, BlendMode, NormalBlending, Color, Vector2, Vector3, type Node, type OrthographicCamera, type PerspectiveCamera, type Scene, type WebGPURenderer, type TextureNode, type QuadMesh, type Texture } from 'three/webgpu';
 import { Fn, context, dot, float, mix, mrt, normalView, orthographicDepthToViewZ, perspectiveDepthToViewZ, output, pass, rtt, screenUV, smoothstep, toneMapping, uniform, uv, vec2, vec3, vec4, velocity } from 'three/tsl';
 import { ao } from 'three/addons/tsl/display/GTAONode.js';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
@@ -64,7 +64,7 @@ class PipelineGraph {
     scenePass.setResolutionScale(this.scale);
     const surfaceContext = { materialMipBias: this.materialMipBias, textureDepth: settings.textureDepth };
     scenePass.contextNode = context(surfaceContext);
-    const sceneMRT = settings.outlines ? mrt({ output, normal: normalView, velocity, outline: vec4(outlineStrength(), 0, 0, output.a) }) : mrt({ output, normal: normalView, velocity });
+    const sceneMRT = settings.outlines ? mrt({ output, velocity, outline: vec4(outlineStrength(), 0, 0, output.a) }) : mrt({ output, velocity });
     if (settings.outlines) {
       sceneMRT.setClearColor('outline', 0, 0);
       // Transparent effects soften the mask by their actual opacity instead of erasing whole quads.
@@ -76,8 +76,8 @@ class PipelineGraph {
     const color = scenePass.getTextureNode('output');
     const depth = scenePass.getTextureNode('depth');
     // Materialize composite color at scene resolution, never implicitly at output size.
-    const sceneTexture = (node: Node): TextureNode => {
-      const texture = rtt(node, null, null, { resolutionScale: this.scale });
+    const sceneTexture = (node: Node, scalar = false): TextureNode => {
+      const texture = rtt(node, null, null, { resolutionScale: this.scale, depthBuffer: false, ...(scalar ? { format: RedFormat } : {}) });
       this.resources.push(texture); this.sceneResources.push(texture);
       return texture;
     };
@@ -91,9 +91,9 @@ class PipelineGraph {
       // the beauty pass, through the material's native indirect-light occlusion.
       const geometry = pass(this.scene, this.camera, { samples: 0 });
       geometry.transparent = false; geometry.setResolutionScale(this.scale);
-      geometry.setMRT(mrt({ output, normal: normalView }));
+      geometry.setMRT(mrt({ output: normalView }));
       geometry.contextNode = context({ materialMipBias: this.materialMipBias, textureDepth: false });
-      const contact = ao(geometry.getTextureNode('depth'), geometry.getTextureNode('normal'), this.camera);
+      const contact = ao(geometry.getTextureNode('depth'), geometry.getTextureNode('output'), this.camera);
       contact.resolutionScale = 0.5; contact.samples.value = 8;
       contact.radius.value = 0.18; contact.thickness.value = 0.3;
       this.resources.push(geometry, contact); this.sceneResources.push(geometry);
@@ -107,7 +107,7 @@ class PipelineGraph {
     this.resources.push(opaque); this.sceneResources.push(opaque);
     // Compare raw, matched-domain colors, not AO/DOF-treated final color.
     const difference = color.rgb.sub(opaque.getTextureNode('output').rgb).abs();
-    const reactive = sceneTexture(vec4(dot(difference, vec3(1 / 3)).mul(2).clamp(0, 1)));
+    const reactive = sceneTexture(vec4(dot(difference, vec3(1 / 3)).mul(2).clamp(0, 1)), true);
     const temporal = fsrTemporal(sceneTexture(beauty), depth, scenePass.getTextureNode('velocity'), this.camera, reactive, 1 / this.scale, (x, y, width, height) => {
       this.depthJitter.value.set(x, y); this.depthTexel.value.set(1 / width, 1 / height);
     });

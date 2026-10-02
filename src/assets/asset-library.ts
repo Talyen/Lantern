@@ -1,6 +1,7 @@
+import { ownTexture, sceneTextures } from './resource-ownership';
 import * as THREE from 'three';
 import { prepareStandardMaterials, filterMaterialTexture } from '../rendering/surface-detail';
-import { GLTFLoader, type GLTF } from 'three/addons/loaders/GLTFLoader.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
 
 export interface LibraryAsset {
@@ -27,7 +28,7 @@ interface AssemblySpec { nodes: AssemblyNode[]; warnings: string[] }
 /** A library owns shared resources. Instances release skeletons; dispose the library after all instances. */
 export class AssetLibrary {
   private catalog?: Promise<AssetCatalog>;
-  private gltfs = new Map<string, Promise<GLTF>>();
+  private gltfs = new Map<string, Promise<{ scene: THREE.Group; bindposes?: number[] }>>();
   private json = new Map<string, Promise<unknown>>();
   private textures = new Map<string, Promise<THREE.Texture>>();
   private materials = new Map<string, Promise<THREE.MeshStandardMaterial>>();
@@ -58,16 +59,16 @@ export class AssetLibrary {
     if (!this.json.has(id)) this.json.set(id, this.track(this.fetchJson(asset.url)));
     return this.json.get(id)! as Promise<T>;
   }
-  private async gltf(id: string): Promise<GLTF> {
+  private async gltf(id: string): Promise<{ scene: THREE.Group; bindposes?: number[] }> {
     const asset = await this.entry(id);
-    if (!this.gltfs.has(id)) this.gltfs.set(id, this.track(this.loader.loadAsync(asset.url).then(gltf => { prepareStandardMaterials(gltf.scene); return gltf; })));
+    if (!this.gltfs.has(id)) this.gltfs.set(id, this.track(this.loader.loadAsync(asset.url).then(gltf => { prepareStandardMaterials(gltf.scene); sceneTextures(gltf.scene); return { scene: gltf.scene, bindposes: gltf.parser.json.meshes?.[0]?.extras?.bindposes as number[] | undefined }; })));
     return this.gltfs.get(id)!;
   }
   private async texture(id: string, color: boolean): Promise<THREE.Texture> {
     const key = `${id}:${color}`;
     if (!this.textures.has(key)) this.textures.set(key, this.track(this.entry(id).then((asset) => new THREE.TextureLoader().loadAsync(asset.url)).then((texture) => {
       texture.colorSpace = color ? THREE.SRGBColorSpace : THREE.NoColorSpace; texture.flipY = false;
-      filterMaterialTexture(texture); texture.wrapS = texture.wrapT = THREE.RepeatWrapping; this.ownedTextures.add(texture); return texture;
+      filterMaterialTexture(texture); texture.wrapS = texture.wrapT = THREE.RepeatWrapping; ownTexture(texture); this.ownedTextures.add(texture); return texture;
     })));
     return this.textures.get(key)!;
   }
@@ -81,7 +82,7 @@ export class AssetLibrary {
       for (const channel of ['baseColor', 'normal', 'emissive'] as const) {
         const mapping = spec.textures[channel]; if (!mapping) continue;
         // UV transforms belong to this material; do not mutate the cached texture.
-        const texture = (await this.texture(mapping.id, channel !== 'normal')).clone(); this.ownedTextures.add(texture);
+        const texture = ownTexture((await this.texture(mapping.id, channel !== 'normal')).clone()); this.ownedTextures.add(texture);
         texture.repeat.fromArray(mapping.scale); texture.offset.set(mapping.offset[0], 1 - mapping.scale[1] - mapping.offset[1]);
         if (channel === 'baseColor') material.map = texture; else if (channel === 'normal') material.normalMap = texture; else material.emissiveMap = texture;
       }
@@ -101,7 +102,7 @@ export class AssetLibrary {
       const gltf = await this.gltf(node.mesh.assetId); const primitives: THREE.Mesh[] = [];
       gltf.scene.traverse((o) => { if (o instanceof THREE.Mesh) primitives.push(o); });
       const materials = await Promise.all(node.materials.map((id) => id ? this.material(id) : Promise.resolve(null)));
-      const bindposes = gltf.parser.json.meshes?.[0]?.extras?.bindposes as number[] | undefined;
+      const bindposes = gltf.bindposes;
       for (let i = 0; i < primitives.length; i++) {
         const source = primitives[i]; let mesh: THREE.Mesh;
         const material = materials[i] ?? source.material;
@@ -131,6 +132,7 @@ export class AssetLibrary {
     if (this.disposed) { this.releaseSkeletons(object); throw new Error('Asset library disposed during load'); }
     object.traverse((o) => { if (o instanceof THREE.Mesh) { o.castShadow = o.receiveShadow = options.shadows ?? true; if (variants) o.material = variants.length === 1 ? variants[0] : variants; } });
     prepareStandardMaterials(object);
+    object.traverse(node => { if (node instanceof THREE.SkinnedMesh) object.userData.lodSkinned = true; });
     let released = false;
     const release = () => { if (released) return; released = true; object.removeFromParent(); this.releaseSkeletons(object); this.instances.delete(release); };
     this.instances.add(release); return { object, asset, release };
@@ -151,18 +153,28 @@ export class AssetLibrary {
 export const assetLibrary = new AssetLibrary();
 export const loadAsset = (id: string, options?: LoadAssetOptions): Promise<AssetInstance> => assetLibrary.loadAsset(id, options);
 
+const lodBounds = new WeakMap<THREE.Object3D, { matrix: THREE.Matrix4; groups: { size: number; center: THREE.Vector3 }[] }>();
+const lodEye = new THREE.Vector3();
 /** Call once per frame for placed library assemblies; native screen-height thresholds remain intact. */
 export function updateAssetLods(root: THREE.Object3D, camera: THREE.Camera): void {
   const groups = root.userData.lods as { levels: { height: number; nodes: THREE.Object3D[] }[] }[] | undefined;
   if (!groups?.length) return;
-  root.updateMatrixWorld(true);
-  const box = new THREE.Box3(); const size = new THREE.Vector3(); const center = new THREE.Vector3(); const eye = new THREE.Vector3();
-  camera.getWorldPosition(eye);
-  for (const group of groups) {
-    box.makeEmpty(); for (const node of group.levels[0].nodes) box.expandByObject(node);
-    box.getSize(size); box.getCenter(center);
-    const fraction = camera instanceof THREE.OrthographicCamera ? size.length() / ((camera.top - camera.bottom) / camera.zoom)
-      : camera instanceof THREE.PerspectiveCamera ? size.length() / (2 * Math.max(0.01, eye.distanceTo(center)) * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2)) : 1;
+  root.updateWorldMatrix(true, false);
+  let cached = lodBounds.get(root);
+  if (!cached || root.userData.lodSkinned || !cached.matrix.equals(root.matrixWorld)) {
+    root.updateMatrixWorld(true);
+    const box = new THREE.Box3(), size = new THREE.Vector3();
+    cached = { matrix: root.matrixWorld.clone(), groups: groups.map(group => {
+      box.makeEmpty(); for (const node of group.levels[0].nodes) box.expandByObject(node);
+      return { size: box.getSize(size).length(), center: box.getCenter(new THREE.Vector3()) };
+    }) };
+    lodBounds.set(root, cached);
+  }
+  camera.getWorldPosition(lodEye);
+  for (const [index, group] of groups.entries()) {
+    const { size, center } = cached.groups[index];
+    const fraction = camera instanceof THREE.OrthographicCamera ? size / ((camera.top - camera.bottom) / camera.zoom)
+      : camera instanceof THREE.PerspectiveCamera ? size / (2 * Math.max(0.01, lodEye.distanceTo(center)) * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2)) : 1;
     const selected = group.levels.findIndex((level) => fraction >= level.height);
     for (let i = 0; i < group.levels.length; i++) for (const node of group.levels[i].nodes) node.visible = i === selected;
   }

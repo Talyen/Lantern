@@ -1,3 +1,4 @@
+import { disposeSceneResources, sceneTextures } from '../assets/resource-ownership';
 import { resolveAreaLighting as lightingFor } from '../levels/lighting';
 import type { SurfaceMode } from '../assets/environment-surfaces';
 import type { AreaDefinition, AreaLighting } from '../levels/types';
@@ -21,8 +22,9 @@ import { readSettings } from '../rendering/graphics-settings';
 import { FramePacer } from '../rendering/frame-pacer';
 import { createRenderer } from '../rendering/renderer';
 import { PlayerLantern } from '../rendering/player-lantern';
-import type { Graphics } from '../rendering/graphics';
-import type { Options } from '../ui/options';
+import { Graphics } from '../rendering/graphics';
+import { CoreEffects } from '../rendering/effects';
+import { Options } from '../ui/options';
 import { buildArea, createWorld, disposeAreaCache, type AreaInstance } from '../levels/builder';
 import { areas } from '../levels/registry';
 import { validateAreas } from '../levels/validation';
@@ -57,6 +59,23 @@ window.addEventListener('error', (event) => {
 });
 let graphics: Graphics | undefined;
 let options: Options | undefined;
+// Explicit hidden rendering checks opt in; ordinary hidden gameplay never advances.
+const renderingInspection = renderQuery.get('inspection') === 'render';
+let ticking = false, frameRequest = 0, settleFrames = 64, lastTick: number | undefined;
+let previouslyPaused = true;
+function hidden(): boolean { return !renderingInspection && (document.hidden || document.documentElement.hasAttribute('data-window-hidden')); }
+function requestFrame(): void { if (ticking && !frameRequest && !hidden()) frameRequest = requestAnimationFrame(tick); }
+function invalidateFrame(): void { settleFrames = 64; requestFrame(); }
+function visibilityChanged(): void {
+  if (!ticking) return;
+  clearInput(); lastTick = undefined; cameraOwner.suspendFollow();
+  if (hidden()) { cancelAnimationFrame(frameRequest); frameRequest = 0; audio.update(encounter.player, true); }
+  else { graphics?.resetMeasurements(); invalidateFrame(); }
+}
+document.addEventListener('visibilitychange', visibilityChanged);
+window.addEventListener('lanternvisibilitychange', visibilityChanged);
+for (const event of ['pointerdown', 'pointerup', 'pointermove', 'keydown', 'keyup', 'wheel', 'input', 'change']) window.addEventListener(event, () => { if (ticking && paused()) invalidateFrame(); });
+
 
 const fade = document.createElement('div');
 fade.style.cssText = 'position:fixed;inset:0;background:#111e24;opacity:0;pointer-events:none;transition:opacity 150ms;z-index:90'; document.body.append(fade);
@@ -85,13 +104,14 @@ if (!storage) adventure.saveError = 'Unable to save progress. Allow local storag
 else if (!adventure.saveError) adventure.save();
 let adventureVisuals: AdventureVisuals | undefined;
 const frames: { left: number; resolve: () => void }[] = [];
-const waitFrames = (count = 16) => new Promise<void>(resolve => frames.push({ left: count, resolve }));
+const waitFrames = (count = 16) => new Promise<void>(resolve => { frames.push({ left: count, resolve }); invalidateFrame(); });
 const renderer = await createRenderer(mount);
 renderer.domElement.setAttribute('aria-label', 'Lantern. Move and use abilities with your configured controls. Click objects to interact.');
 renderer.info.autoReset = false;
 let renderedFrames = 0;
 const cameraOwner = createCamera(renderer.domElement);
 const { camera, controls } = cameraOwner;
+controls.addEventListener('change', invalidateFrame);
 const encounter = createEncounter('loading', currentArea.layout);
 const player = makeActor(scene, encounter.player);
 const enemy = makeActor(scene, encounter.enemies.enemy);
@@ -327,7 +347,7 @@ function syncAdventure(): void {
   menus.update(adventure.character.scrolls, currentArea.id !== homeArea && encounter.player.hp > 0 && adventure.character.scrolls > 0 && adventure.castRemaining === 0, prompt, adventure.castRemaining);
   document.getElementById('save-status')!.textContent = adventure.saveError || preferences.error;combatUI?.update();
 }
-function paused(): boolean { return Boolean(characterMissing || options?.paused || menus.paused || combatUI?.paused || bindingsMenu.paused || equipmentLoading || inspecting || graphics?.preparingSettings || frozen || transitioning); }
+function paused(): boolean { return Boolean(hidden() || characterMissing || options?.paused || menus.paused || combatUI?.paused || bindingsMenu.paused || equipmentLoading || inspecting || graphics?.preparingSettings || frozen || transitioning); }
 function timings(): Timings {
   const timing = (actor: Actor) => ({ attack: duration(actor, 'attack'), hit: duration(actor, 'hit'), contacts: actor.contacts, commitLead: actor.commitLead });
   const abilityTimings: NonNullable<Timings['player']['abilities']>={};
@@ -389,7 +409,6 @@ function beginChop(tree: ResourceDefinition): void {
 
 function updateGame(dt: number): void {
   const isPaused = paused();
-  if (isPaused) input.clear();
   let movement = input.movement();
   const block=holdingShield();
   if(encounter.pending?.kind==='ability' && encounter.pending.ability==='shield-basic' && !block)encounter.pending=null;
@@ -473,18 +492,21 @@ function updateGame(dt: number): void {
 }
 function resize(): void {
   cameraOwner.resize(mount.clientWidth, mount.clientHeight);
-  renderer.setSize(mount.clientWidth, mount.clientHeight); graphics?.resize();
+  renderer.setSize(mount.clientWidth, mount.clientHeight); graphics?.resize(); invalidateFrame();
 }
 window.addEventListener('resize', resize);
 resize();
-const clock = new THREE.Timer();
 const framePacer = new FramePacer();
 const initialFpsLimit = readSettings().fpsLimit;
 function tick(now: number): void {
-  requestAnimationFrame(tick);
-  if (!framePacer.shouldRender(now, options?.settings.fpsLimit ?? initialFpsLimit)) return;
-  clock.update(now);
-  const dt = Math.min(clock.getDelta(), 0.05);
+  frameRequest = 0;
+  if (hidden()) { lastTick = undefined; return; }
+  if (!framePacer.shouldRender(now, options?.settings.fpsLimit ?? initialFpsLimit)) { requestFrame(); return; }
+  const isPaused = paused();
+  if (isPaused && !previouslyPaused) { clearInput(); settleFrames = 64; }
+  const dt = !isPaused && !previouslyPaused && lastTick !== undefined ? Math.min((now - lastTick) / 1000, .05) : 0;
+  lastTick = now; previouslyPaused = isPaused;
+  if (isPaused && settleFrames === 0 && !frames.length) { lastTick = undefined; return; }
   audio.update(encounter.player,paused() || encounter.phase==='loading');
   updateGame(dt);
   if (!inspecting && !paused() && !fixedCamera && encounter.player.hp > 0) {
@@ -509,13 +531,15 @@ function tick(now: number): void {
   hud.positionEnemy(encounter, camera, mount, paused() ? 0 : dt, inspecting || transitioning);
   active?.update(camera, paused() ? 0 : dt);
   renderer.info.reset();
-  if (graphics) graphics.render(dt, paused());
-  renderedFrames++;
-  if (active && !transitioning) renderedRevision = revision;
-  for (const frame of [...frames]) if (--frame.left <= 0) { frames.splice(frames.indexOf(frame), 1); frame.resolve(); }
+  const rendered = graphics?.render(dt, paused()) ?? false;
+  if (rendered) { renderedFrames++; if (isPaused) settleFrames = Math.max(0, settleFrames - 1); else settleFrames = 64; }
+  if (rendered && active && !transitioning) renderedRevision = revision;
+  if (rendered) for (const frame of [...frames]) if (--frame.left <= 0) { frames.splice(frames.indexOf(frame), 1); frame.resolve(); }
+  if (!paused() || settleFrames || frames.length) requestFrame();
 }
 try {
   const [paladin, goblin] = await Promise.all([loader.loadAsync(characters.player.model), loader.loadAsync(characters.enemy.model)]);
+  sceneTextures(paladin.scene); sceneTextures(goblin.scene);
   attachCharacter(player, paladin.scene, paladin.animations, characters.player.height);
   attachCharacter(enemy, goblin.scene, goblin.animations, characters.enemy.height);
   attachCharacter(caster, goblin.scene, goblin.animations, characters.enemy.height);
@@ -534,9 +558,6 @@ try {
 }
 
 {
-  const [{ Graphics }, { CoreEffects }, { Options }] = await Promise.all([
-    import('../rendering/graphics'), import('../rendering/effects'), import('../ui/options'),
-  ]);
   personalLantern = new PlayerLantern(player.root, lanternEnabled); await personalLantern.initialize();
   const effects = new CoreEffects(); scene.add(effects.root);
   const lighting = { get definition() { return committedLighting; }, get fires() { return active?.fires ?? []; }, get shadow() { return active?.shadow ?? null; } };
@@ -545,15 +566,18 @@ try {
     resetMeasurements: () => graphics?.resetMeasurements(), clearInput,
     focus: () => renderer.domElement.focus(), keybindings:()=>bindingsMenu.open(), audio: {apply:settings=>audio.applySettings(settings),play:cue=>audio.play(cue)},
   });
-  graphics = new Graphics({ scene, camera, renderer, controls, sun, ambient, mount, lighting }, options.settings, effects);
-  window.addEventListener('pagehide', () => { adventure.save(); gatheringTools.dispose(); audio.dispose(); graphics?.dispose(); personalLantern?.dispose(); playerEquipment.dispose(); interactionHighlight.dispose(); enemyEquipment.dispose(); casterEquipment.dispose(); projectileVisuals.dispose(); casterVisuals.dispose(); adventureVisuals?.dispose(); lootLabels.dispose(); active?.dispose(); movementWorld?.dispose(); renderer.dispose(); void disposeAreaCache(); }, { once: true });
+  graphics = new Graphics({ scene, camera, renderer, controls, sun, ambient, mount, lighting, invalidate: invalidateFrame }, options.settings, effects);
+  const menusChanged = new MutationObserver(invalidateFrame);
+  document.querySelectorAll('dialog').forEach(dialog => menusChanged.observe(dialog, { attributes: true, attributeFilter: ['open'] }));
+  mount.addEventListener('graphicssettingschange', invalidateFrame, true);
+  window.addEventListener('pagehide', () => { ticking = false; cancelAnimationFrame(frameRequest); menusChanged.disconnect(); adventure.save(); gatheringTools.dispose(); audio.dispose(); graphics?.dispose(); personalLantern?.dispose(); playerEquipment.dispose(); interactionHighlight.dispose(); enemyEquipment.dispose(); casterEquipment.dispose(); projectileVisuals.dispose(); casterVisuals.dispose(); adventureVisuals?.dispose(); lootLabels.dispose(); active?.dispose(); movementWorld?.dispose(); for (const actor of Object.values(actors)) { actor.mixer?.stopAllAction(); actor.mixer?.uncacheRoot(actor.mixer.getRoot()); disposeSceneResources(actor.root); } renderer.dispose(); void disposeAreaCache(); }, { once: true });
   resize();
   await graphics.initialize();
-  requestAnimationFrame(tick);
+  ticking = true; requestFrame();
   await changeArea({ kind: 'travel', area: currentArea.id });
   if (import.meta.env.DEV && renderQuery.get('author') === 'levels') {
     const { attachAuthoring } = await import('../levels/authoring');
-    attachAuthoring({ scene, camera, renderer, definitions: () => definitions, area: () => currentArea, encounter,
+    attachAuthoring({ invalidate: invalidateFrame, scene, camera, renderer, definitions: () => definitions, area: () => currentArea, encounter,
       exportLighting: () => graphics!.exportLighting(), lighting: () => graphics!.lightingDiagnostics(),
       changeArea: id => changeArea({ kind: 'travel', area: id }), restart: reset, inspect: () => { inspect(); return inspecting; }, waitFrames, setFrozen: freezePreview, setView: previewView,
       appearance: () => ({ lantern: lanternEnabled, surfaces: surfaceMode }),

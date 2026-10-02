@@ -1,3 +1,4 @@
+import { prepareSceneryLoader } from '../assets/scenery-loader';
 import * as THREE from 'three';
 import { WebGPURenderer } from 'three/webgpu';
 
@@ -40,6 +41,7 @@ export async function createRenderer(mount: HTMLElement): Promise<WebGPURenderer
     mount.dataset.renderError = message; renderer.domElement.dataset.renderError = message;
     console.error(message);
   });
+  prepareSceneryLoader(renderer);
   renderer.setPixelRatio(1);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;

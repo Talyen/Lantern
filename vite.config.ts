@@ -29,5 +29,5 @@ export default defineConfig(({ command }) => ({
   build: { copyPublicDir: false }, // The build wrapper privately clones the staged public files once.
   // Scope exclusions to this checkout: task source lives beneath main's .local/worktrees.
   server: { watch: { ignored: [resolve('.local') + '/**', resolve('public/vendor') + '/**'] } },
-  optimizeDeps: { include: ['three', 'three/webgpu', 'three/tsl'] },
+  optimizeDeps: { include: ['three', 'three/webgpu', 'three/tsl'], exclude: ['three/addons/loaders/KTX2Loader.js'] },
 }));

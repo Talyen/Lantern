@@ -1,3 +1,4 @@
+import { sceneTextures } from '../../assets/resource-ownership';
 import { applyShadowQuality } from '../../rendering/quality-presets';
 import * as THREE from 'three';
 import { MeshStandardNodeMaterial } from 'three/webgpu';
@@ -86,6 +87,7 @@ let playing = true;
 let capturing = false;
 let disposed = false;
 function disposeModel(model: THREE.Object3D): void {
+  sceneTextures(model);
   const textures = new Set<THREE.Texture>(), materials = new Set<THREE.Material>(), geometries = new Set<THREE.BufferGeometry>();
   model.traverse(object => { if (object instanceof THREE.Mesh) {
     geometries.add(object.geometry); if (object instanceof THREE.SkinnedMesh) object.skeleton.dispose();

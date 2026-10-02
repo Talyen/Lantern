@@ -1,3 +1,4 @@
+import { ownTexture, sceneTextures } from './resource-ownership';
 import * as THREE from 'three';
 import { MeshStandardNodeMaterial } from 'three/webgpu';
 import manifest from '../../assets/textures/environment/manifest.json';
@@ -35,18 +36,19 @@ export async function prepareEnvironmentMaterials(root: THREE.Object3D): Promise
     object.material = Array.isArray(object.material) ? object.material.map(convert) : convert(object.material);
   });
   await Promise.all([...materials.values()].map(async material => {
-    const descriptor = material.userData.lanternSurface as { url: string; depth: number; version: number } | undefined;
+    const descriptor = material.userData.lanternSurface as { url?: string; depth: number; version: number } | undefined;
     let data: THREE.Texture | undefined;
-    if (descriptor && [1, 2].includes(descriptor.version) && descriptor.url.startsWith('/vendor/synty/environment/') && !descriptor.url.includes('..')) {
+    if (descriptor?.version === 3) data = material.roughnessMap ?? undefined;
+    else if (descriptor?.url && [1, 2].includes(descriptor.version) && descriptor.url.startsWith('/vendor/synty/environment/') && !descriptor.url.includes('..')) {
       try {
         const loader = new THREE.ImageBitmapLoader().setOptions({ premultiplyAlpha: 'none', colorSpaceConversion: 'none' });
-        const bitmap = await loader.loadAsync(descriptor.url); data = new THREE.Texture(bitmap); data.needsUpdate = true; data.flipY = false;
-        data.addEventListener('dispose', () => bitmap.close());
+        const bitmap = await loader.loadAsync(descriptor.url); data = ownTexture(new THREE.Texture(bitmap)); data.needsUpdate = true; data.flipY = false;
         data.channel = material.map?.channel ?? 0; data.colorSpace = THREE.NoColorSpace; sources.push(descriptor.url);
       } catch { missing.push(descriptor.url); }
     }
-    prepareSurfaceMaterial(material, data, descriptor?.depth ?? 0, descriptor?.version === 1 ? 1 : 2);
+    prepareSurfaceMaterial(material, data, descriptor?.depth ?? 0, descriptor?.version === 3 ? 3 : descriptor?.version === 1 ? 1 : 2);
   }));
   root.userData.surfaceSources = sources; root.userData.surfaceMissing = missing;
   materials.forEach((_material, source) => source.dispose());
+  sceneTextures(root);
 }

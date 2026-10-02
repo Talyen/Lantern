@@ -5,7 +5,7 @@ import type { SurfaceMode } from '../assets/environment-surfaces';
 import type { AreaDefinition } from './types';
 type Diagnostics = { area: string; revision: number; renderedRevision: number; ready: boolean; errors: string[]; missing: string[]; contentHash: string; camera: unknown; renderedFrames: number; phase: string; updateMs: number; objects: number; resources: unknown; graphics: unknown };
 type Appearance = { lantern: boolean; surfaces: SurfaceMode };
-type Context = { exportLighting(): Promise<PreparedProbeBake>; lighting(): unknown; appearance(): Appearance; setAppearance(appearance: { surfaces?: SurfaceMode; lantern?: boolean }): Promise<boolean>; scene: THREE.Scene; camera: THREE.OrthographicCamera; renderer: { domElement: HTMLCanvasElement }; definitions(): Record<string, AreaDefinition>; area(): AreaDefinition; encounter: Encounter; changeArea(id: string): Promise<boolean>; restart(): void; inspect(): boolean; waitFrames(count?: number): Promise<void>; setFrozen(value: boolean): void; setView(id: string): void; diagnostics(): Diagnostics };
+type Context = { invalidate(): void; exportLighting(): Promise<PreparedProbeBake>; lighting(): unknown; appearance(): Appearance; setAppearance(appearance: { surfaces?: SurfaceMode; lantern?: boolean }): Promise<boolean>; scene: THREE.Scene; camera: THREE.OrthographicCamera; renderer: { domElement: HTMLCanvasElement }; definitions(): Record<string, AreaDefinition>; area(): AreaDefinition; encounter: Encounter; changeArea(id: string): Promise<boolean>; restart(): void; inspect(): boolean; waitFrames(count?: number): Promise<void>; setFrozen(value: boolean): void; setView(id: string): void; diagnostics(): Diagnostics };
 export function attachAuthoring(ctx: Context): void {
   const runtimeId = crypto.randomUUID();
   const diagnostics = () => ({ ...ctx.diagnostics(), runtimeId });
@@ -33,9 +33,9 @@ export function attachAuthoring(ctx: Context): void {
     selects[0].replaceChildren(...Object.values(ctx.definitions()).map(a=>new Option(a.name,a.id))); selects[0].value=area.id;
     selects[1].replaceChildren(...['overview',...area.views.map(v=>v.id)].map(id=>new Option(id,id))); selects[1].value=selectedView;
   }
-  function setView(id: string): void { selectedView=id;ctx.setView(id);selects[1].value=id; }
-  function freeze(value: boolean): void { frozen=value;ctx.setFrozen(value);play.textContent=value?'Play':'Freeze'; }
-  selects[0].onchange=async()=>{await ctx.changeArea(selects[0].value);setView(selectedView);}; selects[1].onchange=()=>setView(selects[1].value); play.onclick=()=>freeze(!frozen); guides.onchange=()=>overlay.visible=guides.checked;
+  function setView(id: string): void { selectedView=id;ctx.setView(id);ctx.invalidate();selects[1].value=id; }
+  function freeze(value: boolean): void { frozen=value;ctx.setFrozen(value);ctx.invalidate();play.textContent=value?'Play':'Freeze'; }
+  selects[0].onchange=async()=>{await ctx.changeArea(selects[0].value);setView(selectedView);}; selects[1].onchange=()=>setView(selects[1].value); play.onclick=()=>freeze(!frozen); guides.onchange=()=>{overlay.visible=guides.checked;ctx.invalidate();};
   panel.querySelector<HTMLButtonElement>('[data-restart]')!.onclick = ctx.restart;
   const inspect = () => { panel.querySelector<HTMLButtonElement>('[data-inspect]')!.textContent = ctx.inspect() ? 'Return' : 'Inspect rock'; };
   panel.querySelector<HTMLButtonElement>('[data-inspect]')!.onclick = inspect;
@@ -53,12 +53,12 @@ export function attachAuthoring(ctx: Context): void {
     area: () => ctx.area(),
     selectArea: async(id:string) => {const result=await ctx.changeArea(id);setView(selectedView);return result;},
     setView, freeze,
-    overlays: (value:boolean) => {overlay.visible=value;guides.checked=value;},
-    clean: (value:boolean) => { if (value && document.querySelector<HTMLDialogElement>('#options-dialog')?.open) document.querySelector<HTMLButtonElement>('#options-close')?.click(); panel.hidden=value;document.querySelectorAll<HTMLElement>('.resource-orb, .enemy-health, #result-panel, #asset-status, #interaction-prompt, #save-status, #action-bar, #hud-options').forEach(e=>{e.style.visibility=value?'hidden':'';});},
+    overlays: (value:boolean) => {overlay.visible=value;guides.checked=value;ctx.invalidate();},
+    clean: (value:boolean) => { if (value && document.querySelector<HTMLDialogElement>('#options-dialog')?.open) document.querySelector<HTMLButtonElement>('#options-close')?.click(); panel.hidden=value;document.querySelectorAll<HTMLElement>('.resource-orb, .enemy-health, #result-panel, #asset-status, #interaction-prompt, #save-status, #action-bar, #hud-options').forEach(e=>{e.style.visibility=value?'hidden':'';});ctx.invalidate();},
     settle: async(count=16, expected=ctx.diagnostics().revision) => {await ctx.waitFrames(count);const d=ctx.diagnostics();if(!d.ready||d.revision!==expected||d.errors.length)throw new Error('Scene revision changed or is not ready');return d;},
     // Deterministic inspection setup; normal smoke tests still exercise keyboard movement/combat.
-    placePlayer: (x:number,z:number,yaw:number) => {ctx.encounter.player.x=x;ctx.encounter.player.z=z;ctx.encounter.player.yaw=yaw;},
-    zoom: (value:number) => {ctx.camera.zoom=value;ctx.camera.updateProjectionMatrix();},
+    placePlayer: (x:number,z:number,yaw:number) => {ctx.encounter.player.x=x;ctx.encounter.player.z=z;ctx.encounter.player.yaw=yaw;ctx.invalidate();},
+    zoom: (value:number) => {ctx.camera.zoom=value;ctx.camera.updateProjectionMatrix();ctx.invalidate();},
   };
   Object.assign(window,{lanternAuthoring:bridge}); refresh(); setView(ctx.appearance().surfaces === 'showcase' && ctx.area().id === 'clearing' ? 'entrance' : 'center');
   const timer=setInterval(refresh,100);window.addEventListener('pagehide',()=>{clearInterval(timer);clearOverlay();overlay.removeFromParent();panel.remove();},{once:true});

@@ -19,7 +19,7 @@ if (debugPort) {
   app.commandLine.appendSwitch('remote-debugging-address', '127.0.0.1');
   app.commandLine.appendSwitch('remote-debugging-port', debugPort);
 }
-const mime = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.ogg': 'audio/ogg', '.glb': 'model/gltf-binary', '.woff2': 'font/woff2' };
+const mime = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.ogg': 'audio/ogg', '.glb': 'model/gltf-binary', '.woff2': 'font/woff2', '.wasm': 'application/wasm' };
 app.whenReady().then(async () => {
   if (background && process.platform === 'darwin') app.dock.hide();
   await fs.access(path.join(root, 'index.html'));
@@ -45,7 +45,13 @@ app.whenReady().then(async () => {
   window.webContents.on('will-navigate', (event, url) => { if (new URL(url).protocol !== 'lantern:' || new URL(url).host !== 'app') event.preventDefault(); });
   window.webContents.on('console-message', (details) => { if (['warning', 'error'].includes(details.level)) console.error(`[renderer] ${details.message}`); });
   if (!background) window.on('ready-to-show', () => window.show());
+  const setHidden = hidden => { void window.webContents.executeJavaScript(`document.documentElement.toggleAttribute('data-window-hidden', ${hidden}); window.dispatchEvent(new Event('lanternvisibilitychange'));`).catch(() => {}); };
+  if (!background) {
+    window.on('minimize', () => setHidden(true)); window.on('hide', () => setHidden(true));
+    window.on('restore', () => setHidden(false)); window.on('show', () => setHidden(false));
+  }
   const query = new URLSearchParams();
+  if (background) query.set('inspection', 'render');
   if (Number.isFinite(display.displayFrequency) && display.displayFrequency > 0) query.set('displayHz', String(display.displayFrequency));
   await window.loadURL(`${origin}/?${query}`);
   console.log('Desktop window', JSON.stringify({ background, visible: window.isVisible(), focused: window.isFocused(), bounds: window.getBounds(), workArea: area }));

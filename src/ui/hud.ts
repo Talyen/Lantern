@@ -17,8 +17,12 @@ export function createHud(onRetry: () => void) {
   const anchor = new THREE.Vector3();
   const damagedFor: Record<EnemyId,number> = {enemy:0,caster:0};
   let safe = false;
+  const resources = new WeakMap<HTMLElement, number>();
+  const enemyValues: Partial<Record<EnemyId, number>> = {};
   function resource(orb: HTMLElement, name: string, value: number, max: number): void {
     const count = Math.max(0, Math.min(max, value));
+    if (resources.get(orb) === count) return;
+    resources.set(orb, count);
     orb.style.setProperty('--fill', String(count / max));
     orb.dataset.empty = String(count === 0);
     orb.setAttribute('aria-valuenow', String(count));
@@ -40,8 +44,11 @@ export function createHud(onRetry: () => void) {
       resource(playerMana, 'Mana', encounter.playerMana, playerMaxMana);
       for (const id of enemyIds) {
         const enemy=encounter.enemies[id], bar=healthBars[id];
-        bar.setAttribute('aria-valuenow', String(Math.max(0, enemy.hp)));
-        bar.firstElementChild!.setAttribute('style', `width:${Math.max(0, enemy.hp) / enemyMaxHealth * 100}%`);
+        if (enemyValues[id] !== enemy.hp) {
+          enemyValues[id] = enemy.hp;
+          bar.setAttribute('aria-valuenow', String(Math.max(0, enemy.hp)));
+          bar.firstElementChild!.setAttribute('style', `width:${Math.max(0, enemy.hp) / enemyMaxHealth * 100}%`);
+        }
         if (enemy.hp <= 0) { damagedFor[id]=0; bar.hidden=true; }
       }
     },

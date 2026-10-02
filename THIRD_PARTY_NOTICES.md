@@ -6,6 +6,8 @@ Original Lantern code, documentation and original surface studies use [CC BY-NC 
 
 Dependencies are declared in `package.json` and locked in `package-lock.json`; included license files and package metadata govern those distributions. Preserve required notices in any future packaged application, including Electron/Chromium/Node.js.
 
+The Basis Universal JavaScript/WASM texture transcoder bundled with three.js retains its Apache-2.0 notice in the supplied wrapper. Lantern uses it unchanged for prepared UASTC KTX2 scenery.
+
 three.js is MIT licensed; preserve its package license and the [full notice](src/rendering/LICENSE-three.txt) in distributed applications.
 
 `@pmndrs/upscaler` 0.2.0 is an independent MIT-licensed FSR-style WebGPU implementation and includes AMD FidelityFX EASU/RCAS attribution. Preserve its package LICENSE and AMD notice in any distributed application. Lantern’s `src/rendering/fsr-temporal.ts` adapts its integration callbacks for three.js r186. `src/rendering/fsr-accumulate.wgsl` adapts its MIT-licensed accumulation shader to preserve converged stationary history; retain the [full notice](src/rendering/LICENSE-upscaler.txt). The other FSR passes remain package-owned. No official AMD FSR4 binaries or frame-generation SDK are included.

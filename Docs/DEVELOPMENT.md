@@ -127,6 +127,16 @@ New characters start with an Axe; Axe, Sword, Shield, Bow and Staff select coher
 
 Run `python3 scripts/assets/mixamo/verify-mixamo-library.py --complete` when checking full catalog coverage and source hashes. Full-catalog verification is explicit, not a routine handoff step.
 
+### Lossless surface channel packing
+
+Run `node scripts/agents/run.mjs --resource heavy -- node scripts/assets/surfaces/pack.mjs` explicitly after preparing environment surfaces; `--only pine,rock,chest` limits families. It preserves color, normal RGB, roughness and metalness bytes and folds height into metallic/roughness red, eligibility into its alpha, and cavity into normal alpha. Version-3 material metadata selects those channels; legacy versions 1/2 remain supported. The separate relief texture is no longer a runtime dependency. Source GLBs and relief PNGs are hash-archived under `.local/synty-library/Archives/packed-surfaces/`; task cleanup preserves them. Routine checks/builds never repack art.
+
+### GPU-compressed scenery
+
+The optional chest, tent and pine preparation trial embeds UASTC KTX2 textures, with original dimensions, full mip chains and unchanged 16× material filtering. The default prepared art retains its original PNG textures: the local trial reduced logical GPU allocations, but concurrent work in other projects prevented a reliable system-memory comparison. Compressed candidates remain private and opt-in pending controlled acceptance. The stock pinned three.js decoder is bundled by Vite; the prototype permits generated JavaScript for its local scripts while retaining CSP resource restrictions and Electron isolation. No renderer fallback is introduced.
+
+Preparation is explicit: `node scripts/agents/run.mjs --resource heavy -- node scripts/assets/surfaces/compress.mjs --encoder /absolute/path/to/toktx`. Optional `--only chest,tent,pine` narrows the selected families. KTX-Software's local encoder uses UASTC quality 3 and lossless Zstandard level 9, with two threads. Original prepared GLBs are hash-archived under `.local/synty-library/Archives/compressed-surfaces/originals/`; task cleanup preserves that source archive. Re-exporting surfaces restores ordinary PNG GLBs until compression is explicitly run again. Checks/builds never encode textures.
+
 ### Optional scenery and surface studies
 
 The default Clearing/Homestead material treatment uses normal maps and spatial roughness/cavity fields on the prepared environment set. Texture Depth controls POM, defaults to On and preserves existing saved preferences. Fixed 16× material filtering has no menu control. Character maps remain authored.

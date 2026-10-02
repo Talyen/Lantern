@@ -1,3 +1,4 @@
+import { sceneTextures } from '../assets/resource-ownership';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { resolveLocalLight } from '../levels/local-lighting';
@@ -26,7 +27,7 @@ export class PlayerLantern {
   async initialize(): Promise<void> {
     const url = '/vendor/synty/environment/sm-prop-lantern-01.glb';
     try {
-      const { scene } = await new GLTFLoader().loadAsync(url);
+      const { scene } = await new GLTFLoader().loadAsync(url); sceneTextures(scene);
       this.model = scene;
       const height = new THREE.Box3().setFromObject(scene).getSize(new THREE.Vector3()).y;
       if (height > 0) scene.scale.multiplyScalar(.22 / height);

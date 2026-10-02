@@ -1,3 +1,4 @@
+import { disposeSceneResources, sceneTextures } from '../../assets/resource-ownership';
 import { applyShadowQuality } from '../../rendering/quality-presets';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -119,7 +120,7 @@ const previews = lanes.map((lane, i) => {
 });
 await Promise.all(previews.map((preview) => preview.pipeline.ready()));
 const resetHistories = () => previews.forEach((preview) => preview.pipeline.resetHistory());
-window.addEventListener('pagehide', () => { disposed = true; controls.dispose(); lanes.forEach(clearLane); void assetLibrary.dispose(); previews.forEach(({ pipeline, renderer, lighting }) => { pipeline.dispose(); lighting.dispose(); renderer.dispose(); }); }, { once: true });
+window.addEventListener('pagehide', () => { disposed = true; controls.dispose(); lanes.forEach(clearLane); void Promise.allSettled(characterCache.values()).then(results => results.forEach(result => { if (result.status === 'fulfilled') disposeSceneResources(result.value); })); void assetLibrary.dispose(); previews.forEach(({ pipeline, renderer, lighting }) => { pipeline.dispose(); lighting.dispose(); renderer.dispose(); }); }, { once: true });
 const loader = new GLTFLoader();
 const cache = new Map<string, Promise<THREE.AnimationClip>>();
 const characterCache = new Map<string, Promise<THREE.Group>>();
@@ -247,7 +248,7 @@ async function selectRig(lane: Lane, rig: RigId): Promise<void> {
   lane.rigSelect.disabled = lane.loadoutSelect.disabled = lane.packSelect.disabled = lane.clipSelect.disabled = lane.search.disabled = true;
   try {
     const catalog = await getMotionCatalog(rig) as Catalog;
-    if (!characterCache.has(catalog.character)) characterCache.set(catalog.character, loader.loadAsync(catalog.character).then(gltf => gltf.scene).catch(error => { characterCache.delete(catalog.character); throw error; }));
+    if (!characterCache.has(catalog.character)) characterCache.set(catalog.character, loader.loadAsync(catalog.character).then(gltf => { sceneTextures(gltf.scene); return gltf.scene; }).catch(error => { characterCache.delete(catalog.character); throw error; }));
     const source = await characterCache.get(catalog.character)!;
     if (disposed || generation !== lane.generation) return;
     lane.rig = rig; lane.catalog = catalog; lane.source = source; lane.rigSelect.value = rig; lane.rigLoading = false;

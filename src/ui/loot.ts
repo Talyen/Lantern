@@ -14,6 +14,7 @@ export class LootLabels {
     for (const [id, label] of this.labels) if (!drops.some(d => d.id === id)) { label.remove(); this.labels.delete(id); if (this.hovered === id) this.hovered = null; }
     const rows: { left: number; right: number; top: number; bottom: number }[] = [];
     const width = this.host.clientWidth, height = this.host.clientHeight;
+    const visible: { label: HTMLButtonElement; x: number; y: number }[] = [];
     for (const drop of [...drops].sort((a, b) => a.id.localeCompare(b.id))) {
       let label = this.labels.get(drop.id);
       if (!label) {
@@ -27,9 +28,14 @@ export class LootLabels {
       const onScreen = this.position.z >= -1 && this.position.z <= 1 && Math.abs(this.position.x) <= 1 && Math.abs(this.position.y) <= 1;
       label.hidden = hidden || !onScreen || Math.hypot(point[0] - drop.position[0], point[1] - drop.position[1]) > 12;
       if (label.hidden) continue;
-      const w = label.offsetWidth, h = label.offsetHeight;
-      const x = Math.max(w / 2 + 2, Math.min(width - w / 2 - 2, (this.position.x + 1) * width / 2));
-      const anchorY = Math.max(h + 2, Math.min(height - 2, (1 - this.position.y) * height / 2));
+      visible.push({ label, x: (this.position.x + 1) * width / 2, y: (1 - this.position.y) * height / 2 });
+    }
+    // Finish DOM visibility writes before measuring, then batch all position writes.
+    const measured = visible.map(row => ({ ...row, w: row.label.offsetWidth, h: row.label.offsetHeight }));
+    const placements: { label: HTMLButtonElement; x: number; y: number }[] = [];
+    for (const { label, x: screenX, y: screenY, w, h } of measured) {
+      const x = Math.max(w / 2 + 2, Math.min(width - w / 2 - 2, screenX));
+      const anchorY = Math.max(h + 2, Math.min(height - 2, screenY));
       let y = anchorY;
       // Try nearby rows on both sides of the anchor, including near the top edge.
       for (let attempt = 0; attempt <= rows.length * 2 + 2; attempt++) {
@@ -40,7 +46,10 @@ export class LootLabels {
         if (!collision) { y = candidate; break; }
       }
       rows.push({ left: x - w / 2, right: x + w / 2, top: y - h, bottom: y });
-      label.style.left = `${x}px`; label.style.top = `${y}px`; label.classList.toggle('hovered', this.hovered === drop.id);
+      placements.push({ label, x, y });
+    }
+    for (const { label, x, y } of placements) {
+      label.style.left = `${x}px`; label.style.top = `${y}px`; label.classList.toggle('hovered', this.hovered === label.dataset.drop);
     }
   }
   dispose(): void { this.root.remove(); this.labels.clear(); }

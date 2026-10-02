@@ -5,7 +5,7 @@ import { MeshStandardNodeMaterial, type Node, type NodeBuilder } from 'three/web
 type SurfaceContext = { materialMipBias?: Node<'float'>; textureDepth?: boolean };
 /** Material textures only: depth, data buffers and reconstruction samplers keep their own policy. */
 export function filterMaterialTexture(map: THREE.Texture): THREE.Texture {
-  if (!map.isRenderTargetTexture && !(map instanceof THREE.DepthTexture) && map.generateMipmaps) {
+  if (!map.isRenderTargetTexture && !(map instanceof THREE.DepthTexture) && (map.generateMipmaps || map.mipmaps.length > 1)) {
     map.anisotropy = 16; map.magFilter = THREE.LinearFilter; map.minFilter = THREE.LinearMipmapLinearFilter;
   }
   return map;
@@ -68,7 +68,7 @@ export function reliefSample(map: THREE.Texture, base: Node<'vec2'>, displaced: 
     return texture(map, displaced).grad(dFdx(base).mul(scale), dFdy(base).mul(scale));
   })();
 }
-export function prepareSurfaceMaterial(material: MeshStandardNodeMaterial, data?: THREE.Texture, depth = 0, format: 1 | 2 = 2): void {
+export function prepareSurfaceMaterial(material: MeshStandardNodeMaterial, data?: THREE.Texture, depth = 0, format: 1 | 2 | 3 = 2): void {
   for (const key of ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'emissiveMap', 'alphaMap'] as const) if (material[key]) filterMaterialTexture(material[key]!);
   const base = uv(material.map?.channel ?? 0), displaced = data ? reliefUV(data, base, depth, float(1), format === 2 ? 'b' : 'a').toVar() : base;
   const sample = (map: THREE.Texture) => data ? reliefSample(map, base, displaced) : surfaceSample(map, uv(map.channel));
@@ -90,7 +90,7 @@ export function prepareSurfaceMaterial(material: MeshStandardNodeMaterial, data?
     Object.assign(material, { surfaceDataMap: data });
     const field = sample(data);
     if (format === 1) material.roughnessNode = field.g;
-    material.aoNode = (format === 2 ? field.g : field.b).max(.86);
+    material.aoNode = (format === 3 && material.normalMap ? sample(material.normalMap).a : format === 2 ? field.g : field.b).max(.86);
   }
 }
 
