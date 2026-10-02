@@ -214,4 +214,4 @@ const bridge = {
   },
 };
 if (import.meta.env.DEV) Object.assign(window, { lanternCharacters: bridge });
-window.addEventListener('pagehide', () => { disposed = true; observer.disconnect(); controls.dispose(); for (const stage of stages) { stage.generation++; stage.release(); stage.pipeline.dispose(); stage.lighting.dispose(); disposeModel(stage.scene); stage.renderer.dispose(); } }, { once: true });
+window.addEventListener('pagehide', () => { disposed = true; observer.disconnect(); controls.dispose(); for (const stage of stages) { stage.generation++; stage.release(); stage.pipeline.dispose(); stage.lighting.dispose(); disposeModel(stage.scene); void stage.renderer.dispose().catch(error => console.error('Unable to release graphics.', error)); } }, { once: true });

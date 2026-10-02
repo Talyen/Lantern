@@ -8,7 +8,7 @@ import { root } from '../lib/cli.mjs';
 const execute = promisify(execFile);
 export async function git(args, cwd = root) {
   try { return (await execute('git', args, { cwd, maxBuffer: 16 * 1024 * 1024 })).stdout.trimEnd(); }
-  catch (error) { throw new Error(error.stderr?.trim() || error.message); }
+  catch (error) { throw new Error(error.stderr?.trim() || error.message, { cause: error }); }
 }
 export async function context(cwd = root) {
   const common = resolve(cwd, await git(['rev-parse', '--git-common-dir'], cwd));

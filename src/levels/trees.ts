@@ -8,8 +8,8 @@ export type TreeDefinition = { id: string; position: [number, number, number]; r
 export function standingTreeAsset(asset: AssetRef | undefined): boolean {
   if (!asset) return false;
   const name = ('libraryId' in asset ? asset.libraryId : asset.url).toLowerCase();
-  if (/(?:^|[-_/])(bush|stump|treestump|log|fallen|felled)(?:[-_.\/]|$)/.test(name)) return false;
-  return /(?:^|[-_/])(tree|treedead|pine)(?:[-_.\/]|$)/.test(name);
+  if (/(?:^|[-_/])(bush|stump|treestump|log|fallen|felled)(?:[-_./]|$)/.test(name)) return false;
+  return /(?:^|[-_/])(tree|treedead|pine)(?:[-_./]|$)/.test(name);
 }
 
 export function harvestableTree(placement: Placement): boolean {

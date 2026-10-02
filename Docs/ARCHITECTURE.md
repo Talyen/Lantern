@@ -2,6 +2,8 @@
 
 Lantern keeps simulation and presentation explicit. This is a small prototype, not a general game engine.
 
+[ESLint](../eslint.config.js) enforces the direct import boundaries: gameplay cannot import three.js, rendering or UI, and rendering cannot import UI. Gameplay may consume level data and its physics/navigation libraries; presentation may consume gameplay types and definitions. [Storage ownership](../eslint/rules.mjs) reserves browser storage globals for the clearing boot seam, graphics/audio preference owners and the two existing labs. Gameplay persistence continues receiving injected storage rather than reaching for browser globals. New storage access must use those owners or deliberately update the named policy and its fixtures. The separate rendering-policy check remains authoritative for native WebGPU and the shared pipeline.
+
 ## Owners and data flow
 
 `src/levels/` owns typed area definitions, validation, seeded decoration and shared runtime construction. See [level design](LEVEL_DESIGN.md). Named area-change requests distinguish travel from appearance refresh; both prepare resources before commit. Area construction uses one guarded cleanup path across initial allocation, asynchronous loading and final batching; pending texture callbacks settle before failed candidates release their resources. The coordinator's area candidate owns geometry, movement and prepared lighting until eligibility and precommit callbacks succeed, releasing rejected, superseded or throwing candidates exactly once. Area replacement releases its effects/instances and keeps renderer/shared asset caches; gameplay owns numeric boundaries, spawn/reset and gate state. Development-only authoring consumes this same runtime through a narrow automation bridge.

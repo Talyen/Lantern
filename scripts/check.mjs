@@ -35,6 +35,8 @@ export function checkStages(files, args = {}) {
     ...(!docsOnly || full ? [['rendering', node, ['scripts/check-rendering.mjs']]] : []),
     ...(docs ? [['docs', node, ['scripts/check-docs.mjs']]] : []),
     ...(code || full ? [['types', node, ['node_modules/typescript/bin/tsc', '--noEmit']]] : []),
+    ...(code || full ? [['lint', node, ['node_modules/eslint/bin/eslint.js', '.', '--max-warnings=0']]] : []),
+    ...(full ? [['lint-policy', node, ['--test', 'eslint/rules.test.mjs']]] : []),
     ...(full ? [['workflow', node, ['--test', 'scripts/agents/workflow.test.mjs']]] : []),
     ...(full ? [['tests', node, ['node_modules/vitest/vitest.mjs', 'run']]] : []),
     ...(levels ? [['levels', node, ['scripts/levels/check.mjs']]] : []),
@@ -56,7 +58,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     const stages = checkStages(files, args);
     const build = full;
     const mode = full ? 'full' : 'light';
-    const key = `ci-first-v1-${inputs.signature}-${mode}-${!!args['--assets']}`;
+    const key = `ci-first-v2-${inputs.signature}-${mode}-${!!args['--assets']}`;
     const cachePath = resolve(root, `.local/checks/cache${full ? '-full' : ''}.json`);
     const cache = await readJSON(cachePath, null);
     if (cache?.key === key && cache.passed) {

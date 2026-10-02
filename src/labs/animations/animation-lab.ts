@@ -120,7 +120,7 @@ const previews = lanes.map((lane, i) => {
 });
 await Promise.all(previews.map((preview) => preview.pipeline.ready()));
 const resetHistories = () => previews.forEach((preview) => preview.pipeline.resetHistory());
-window.addEventListener('pagehide', () => { disposed = true; controls.dispose(); lanes.forEach(clearLane); void Promise.allSettled(characterCache.values()).then(results => results.forEach(result => { if (result.status === 'fulfilled') disposeSceneResources(result.value); })); void assetLibrary.dispose(); previews.forEach(({ pipeline, renderer, lighting }) => { pipeline.dispose(); lighting.dispose(); renderer.dispose(); }); }, { once: true });
+window.addEventListener('pagehide', () => { disposed = true; controls.dispose(); lanes.forEach(clearLane); void Promise.allSettled(characterCache.values()).then(results => results.forEach(result => { if (result.status === 'fulfilled') disposeSceneResources(result.value); })); void assetLibrary.dispose().catch(error => console.error('Unable to release lab assets.', error)); previews.forEach(({ pipeline, renderer, lighting }) => { pipeline.dispose(); lighting.dispose(); void renderer.dispose().catch(error => console.error('Unable to release graphics.', error)); }); }, { once: true });
 const loader = new GLTFLoader();
 const cache = new Map<string, Promise<THREE.AnimationClip>>();
 const characterCache = new Map<string, Promise<THREE.Group>>();

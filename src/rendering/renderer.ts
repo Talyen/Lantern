@@ -14,7 +14,7 @@ export async function createRenderer(mount: HTMLElement): Promise<WebGPURenderer
     await renderer.init();
     if (!Reflect.get(renderer.backend, 'isWebGPUBackend')) throw new Error('Native WebGPU backend unavailable.');
   } catch (error) {
-    if (Reflect.get(renderer, '_initialized')) renderer.dispose();
+    if (Reflect.get(renderer, '_initialized')) await renderer.dispose().catch(cleanupError => console.error('Unable to release failed graphics.', cleanupError));
     throw error;
   }
   // r186 resolves asynchronous shader compilation even when backend creation

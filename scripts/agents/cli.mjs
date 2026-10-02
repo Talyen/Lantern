@@ -1,5 +1,5 @@
 import { resolve, join } from 'node:path';
-import { cli, parseArgs, root, UsageError } from '../lib/cli.mjs';
+import { cli, parseArgs, UsageError } from '../lib/cli.mjs';
 import { context, currentTask, readJSON, tasks, freeSpace, liveLeases, lastSuccessfulCheck } from './state.mjs';
 import { startTask, finishTask, cleanupTask, prepareSources, ensureDependencies, recover } from './workflow.mjs';
 import { startPreview, stopPreview, livePreview } from './preview.mjs';

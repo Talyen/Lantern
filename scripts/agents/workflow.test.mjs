@@ -9,7 +9,6 @@ import { once } from 'node:events';
 import { join } from 'node:path';
 import { git, context, writeJSON, readJSON, taskPath, spaceRequirement } from './state.mjs';
 import { startTask, finishTask, cleanupTask, recover } from './workflow.mjs';
-import { privateTree } from './copy.mjs';
 import { acquire, childEnvironment, withResource } from './resources.mjs';
 
 import { checkStages } from '../check.mjs';
@@ -121,12 +120,14 @@ test('light handoff excludes suites and builds even for packaging and workflow c
   for (const file of ['package.json', 'package-lock.json', 'vite.config.ts', 'scripts/build.mjs', 'scripts/agents/resources.mjs', 'assets/playable-characters.json']) {
     const light = names([file]);
     assert.ok(light.includes('types'));
-    for (const stage of ['tests', 'workflow', 'build', 'inventory', 'preview']) assert.ok(!light.includes(stage), `${file}: ${stage}`);
+    assert.ok(light.includes('lint'));
+    for (const stage of ['lint-policy', 'tests', 'workflow', 'build', 'inventory', 'preview']) assert.ok(!light.includes(stage), `${file}: ${stage}`);
   }
   assert.deepEqual(names(['AGENTS.md']), ['docs', 'index-diff', 'diff']);
+  for (const file of ['src/entry.ts', 'eslint.config.js', 'eslint/rules.mjs', 'eslint/rules.test.mjs']) assert.ok(names([file]).includes('lint'), file);
   assert.ok(names(['src/levels/lighting.ts']).includes('levels'));
   const full = names([], { '--full': true });
-  for (const stage of ['tests', 'workflow', 'build', 'inventory', 'preview']) assert.ok(full.includes(stage));
+  for (const stage of ['lint', 'lint-policy', 'tests', 'workflow', 'build', 'inventory', 'preview']) assert.ok(full.includes(stage));
   const assets = names(['assets/playable-characters.json'], { '--assets': true });
   assert.ok(assets.includes('assets'));
   assert.ok(!assets.includes('build'));

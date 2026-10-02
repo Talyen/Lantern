@@ -617,8 +617,8 @@ function dispose(): void {
     actor.mixer?.uncacheRoot(actor.mixer.getRoot());
     disposeSceneResources(actor.root);
   }
-  renderer.dispose();
-  void disposeAreaCache();
+  void renderer.dispose().catch(error => console.error('Unable to release graphics.', error));
+  void disposeAreaCache().catch(error => console.error('Unable to release area assets.', error));
 }
 
 function diagnostics() {
@@ -733,25 +733,25 @@ async function changeArea(change: AreaChange): Promise<boolean> {
   } catch (error) { if (request === generation) { areaErrors = [error instanceof Error ? error.message : String(error)]; hud.setAssetStatus(`Unable to travel. ${areaErrors[0]}`); } return false; }
   finally { candidateOwner?.dispose(); if (request === generation) { transitioning = false; fade.style.opacity = '0'; clearInput(); } }
 }
-if (import.meta.hot) import.meta.hot.accept('../levels/registry', async module => {
+if (import.meta.hot) import.meta.hot.accept('../levels/registry', module => {
   if (!module) return;
   const errors = validateDefinitions(module.areas);
   if (errors.length) { generation++; transitioning = false; fade.style.opacity = '0'; areaErrors = errors; return; }
-  definitions = module.areas; await changeArea({ kind: 'refresh' });
+  definitions = module.areas; void changeArea({ kind: 'refresh' }).catch(error => console.error('Unable to refresh area definitions.', error));
 });
 
 if (import.meta.hot) import.meta.hot.on('vite:error', payload => { generation++; transitioning = false; fade.style.opacity = '0'; areaErrors = [payload.err.message]; });
 
-if (import.meta.hot) import.meta.hot.accept('../levels/lighting', async module => {
+if (import.meta.hot) import.meta.hot.accept('../levels/lighting', module => {
   if (!module) return;
   resolveLightingFor = module.resolveAreaLighting;
-  await changeArea({ kind: 'refresh' });
+  void changeArea({ kind: 'refresh' }).catch(error => console.error('Unable to refresh lighting.', error));
 });
 
-if (import.meta.hot) import.meta.hot.accept('../levels/validation', async module => {
+if (import.meta.hot) import.meta.hot.accept('../levels/validation', module => {
   if (!module) return;
   validateDefinitions = module.validateAreas;
-  await changeArea({ kind: 'refresh' });
+  void changeArea({ kind: 'refresh' }).catch(error => console.error('Unable to refresh area validation.', error));
 });
 
 if (import.meta.hot) window.addEventListener('lightingpresetchanged', () => {

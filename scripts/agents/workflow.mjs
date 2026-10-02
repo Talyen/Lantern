@@ -1,8 +1,8 @@
-import { mkdir, readFile, rm, rename, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, rename } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { randomUUID, createHash } from 'node:crypto';
-import { git, context, tasks, taskPath, readJSON, saveTask, writeJSON, clean, reserveSpace, freeSpace } from './state.mjs';
+import { git, tasks, taskPath, readJSON, saveTask, writeJSON, clean, reserveSpace, freeSpace } from './state.mjs';
 import { withResource } from './resources.mjs';
 import { privateTree } from './copy.mjs';
 import { snapshotAssets, prepareAssets, assetIndex, assetIdentity, retainSources } from './assets.mjs';
@@ -126,7 +126,7 @@ export async function finishTask(ctx, task, { paths = [], message = `feat: ${tas
       try { await git(['rebase', base], task.path); }
       catch (error) {
         task.status = 'needs-code-repair'; await saveTask(ctx, task);
-        throw new Error(`Resolve the rebase in ${task.path}, run git rebase --continue, then retry agent:finish. ${error.message}`);
+        throw new Error(`Resolve the rebase in ${task.path}, run git rebase --continue, then retry agent:finish. ${error.message}`, { cause: error });
       }
       task.base = base; task.status = 'checking'; await saveTask(ctx, task);
       const assets = await withResource('promotion', async () => {

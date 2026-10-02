@@ -75,7 +75,7 @@ export function character(
 
 /** Decode into an unpublished candidate; a failed migration never changes gameplay state. */
 export function decodeCharacter(raw: string): CharacterSave {
-  let result = character(),
+  let result: CharacterSave,
     sequence = 3;
   const newId = () => `item-${++sequence}`;
   const value = JSON.parse(raw),

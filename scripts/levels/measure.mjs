@@ -1,6 +1,6 @@
 import { writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { cli,parseArgs,root } from '../lib/cli.mjs';
+import { cli,parseArgs } from '../lib/cli.mjs';
 import { reserveGpuMeasurement } from '../agents/resources.mjs';
 import { readAreas,readState,evaluate,ready,outputDir,command } from './common.mjs';
 await cli(async()=>{
