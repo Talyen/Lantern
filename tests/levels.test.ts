@@ -6,6 +6,10 @@ import type { NavMesh } from 'navcat';
 import type { buildArea as BuildArea } from '../src/levels/builder';
 import type { PreparedLighting } from '../src/rendering/area-lighting';
 import { expect, test, vi } from 'vitest';
+import * as THREE from 'three';
+import { GLTFLoader, type GLTF } from 'three/addons/loaders/GLTFLoader.js';
+import { AssetLibrary, type AssetCatalog, type LibraryAsset } from '../src/assets/asset-library';
+import { isMesh } from '../src/assets/resource-ownership';
 import homestead from '../src/levels/areas/homestead.json';
 import clearing from '../src/levels/areas/clearing.json';
 import type { AreaDefinition } from '../src/levels/types';
@@ -288,4 +292,90 @@ test('temporary catalog and model failures can be retried without reopening the 
     expect(fetcher).toHaveBeenCalledTimes(2); expect(load).toHaveBeenCalledTimes(2);
     instance.release();
   } finally { await library.dispose(); load.mockRestore(); vi.unstubAllGlobals(); }
+});
+
+function mockAssetLibrary(kinds: Record<string, LibraryAsset['kind']>, files: Record<string, unknown> = {}): AssetLibrary {
+  const assets: Record<string, LibraryAsset> = {};
+  for (const [id, kind] of Object.entries(kinds)) {
+    assets[id] = { id, kind, pack: 'fixture', name: id, url: `/${id}`, sourceHash: 'fixture', dependencies: [], status: 'converted', warnings: [] };
+  }
+  const catalog: AssetCatalog = { version: 1, complete: true, assets };
+  const responses: Record<string, unknown> = { '/catalog': catalog, ...files };
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(JSON.stringify(responses[url]), { status: url in responses ? 200 : 404 })));
+  return new AssetLibrary('/catalog');
+}
+function modelFixture(scene: THREE.Group, bindposes?: number[]): GLTF {
+  return { scene, parser: { json: { meshes: [{ extras: { bindposes } }] } } } as unknown as GLTF;
+}
+function assemblyNode(mesh: string, materials: (string | null)[] = [], bones?: number[]) {
+  return { name: mesh, parent: -1, position: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1], enabled: true,
+    mesh: { assetId: mesh, name: mesh }, materials, bones, rootBone: 0, colliders: [], lods: [], unsupported: [] };
+}
+function firstMaterial(root: THREE.Object3D): THREE.Material {
+  let result: THREE.Material | undefined;
+  root.traverse(node => { if (isMesh(node)) result ??= Array.isArray(node.material) ? node.material[0] : node.material; });
+  if (!result) throw new Error('Fixture has no material.');
+  return result;
+}
+
+test('asset library shares prepared node materials and disposes shared art once at shutdown', async () => {
+  const { MeshStandardNodeMaterial } = await import('three/webgpu');
+  const library = mockAssetLibrary({ assembly: 'assembly', mesh: 'mesh', material: 'material' }, {
+    '/assembly': { nodes: [assemblyNode('mesh', ['material'])], warnings: [] },
+    '/material': { name: 'surface', roughness: .6, metalness: .2, color: [.3, .4, .5, .75], alphaMode: 'BLEND', doubleSided: true, textures: {} },
+  });
+  const geometry = new THREE.BoxGeometry(), source = new THREE.Group().add(new THREE.Mesh(geometry, new THREE.MeshBasicMaterial()));
+  const loading = vi.spyOn(GLTFLoader.prototype, 'loadAsync').mockResolvedValue(modelFixture(source));
+  const geometryDisposal = vi.spyOn(geometry, 'dispose');
+  try {
+    const first = await library.loadAsset('assembly'), second = await library.loadAsset('assembly');
+    const material = firstMaterial(first.object);
+    expect(material).toBeInstanceOf(MeshStandardNodeMaterial);
+    expect(material).toBe(firstMaterial(second.object));
+    const prepared = material as InstanceType<typeof MeshStandardNodeMaterial>;
+    expect(prepared.color.toArray()).toEqual([.3, .4, .5]);
+    expect([prepared.roughness, prepared.metalness, prepared.opacity, prepared.transparent, prepared.side]).toEqual([.6, .2, .75, true, THREE.DoubleSide]);
+    const materialDisposal = vi.spyOn(material, 'dispose');
+    first.release();
+    expect(materialDisposal).not.toHaveBeenCalled(); expect(geometryDisposal).not.toHaveBeenCalled();
+    await Promise.all([library.dispose(), library.dispose()]);
+    expect(materialDisposal).toHaveBeenCalledTimes(1); expect(geometryDisposal).toHaveBeenCalledTimes(1);
+  } finally { await library.dispose(); loading.mockRestore(); vi.unstubAllGlobals(); }
+});
+
+test('asset library releases an unpublished skinned instance when a material variant fails', async () => {
+  const library = mockAssetLibrary({ model: 'model' });
+  const bone = new THREE.Bone(), geometry = new THREE.BoxGeometry(), material = new THREE.MeshBasicMaterial();
+  const skin = new THREE.SkinnedMesh(geometry, material);
+  skin.bind(new THREE.Skeleton([bone], [new THREE.Matrix4()]), new THREE.Matrix4());
+  const source = new THREE.Group().add(bone, skin);
+  const loading = vi.spyOn(GLTFLoader.prototype, 'loadAsync').mockResolvedValue(modelFixture(source));
+  const skeletonDisposal = vi.spyOn(THREE.Skeleton.prototype, 'dispose'), geometryDisposal = vi.spyOn(geometry, 'dispose');
+  try {
+    await expect(library.loadAsset('model', { materialVariant: ['missing'] })).rejects.toThrow('Asset not converted: missing');
+    expect(skeletonDisposal).toHaveBeenCalledTimes(1);
+    expect(geometryDisposal).not.toHaveBeenCalled();
+  } finally { await library.dispose(); loading.mockRestore(); skeletonDisposal.mockRestore(); vi.unstubAllGlobals(); }
+});
+
+test('asset library waits for sibling assembly loads before releasing a failed partial rig', async () => {
+  const library = mockAssetLibrary({ assembly: 'assembly', mesh: 'mesh' }, {
+    '/assembly': { nodes: [assemblyNode('mesh', [], [0]), assemblyNode('missing')], warnings: [] },
+  });
+  const geometry = new THREE.BoxGeometry(), source = new THREE.Group().add(new THREE.Mesh(geometry, new THREE.MeshBasicMaterial()));
+  let finish!: (model: GLTF) => void;
+  const ready = new Promise<GLTF>(resolve => { finish = resolve; });
+  const loading = vi.spyOn(GLTFLoader.prototype, 'loadAsync').mockReturnValue(ready);
+  const skeletonDisposal = vi.spyOn(THREE.Skeleton.prototype, 'dispose'), geometryDisposal = vi.spyOn(geometry, 'dispose');
+  try {
+    const request = library.loadAsset('assembly');
+    const rejected = expect(request).rejects.toThrow('Asset not converted: missing');
+    await vi.waitFor(() => expect(loading).toHaveBeenCalledTimes(1));
+    finish(modelFixture(source, new THREE.Matrix4().elements));
+    await rejected;
+    expect(skeletonDisposal).toHaveBeenCalledTimes(1); expect(geometryDisposal).not.toHaveBeenCalled();
+  } finally {
+    finish(modelFixture(source, new THREE.Matrix4().elements));
+    await library.dispose(); loading.mockRestore(); skeletonDisposal.mockRestore(); vi.unstubAllGlobals();
+  }
 });
