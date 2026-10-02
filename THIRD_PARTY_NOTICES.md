@@ -12,6 +12,10 @@ three.js is MIT licensed; preserve its package license and the [full notice](src
 
 navcat 0.4.1 and its mathcat dependency are MIT licensed. `@dimforge/rapier3d-compat` 0.21.0 is Apache-2.0 licensed and includes its WebAssembly physics runtime. Preserve their distributed licenses/notices in packaged builds. The weapon ribbon and portal composition are original Lantern code; no drei-vanilla/meshline code is copied or shipped. The portal rune is drawn locally, without third-party artwork.
 
+## Fonts
+
+Pirata One by Rodrigo Fuenzalida is bundled locally for loot labels and Inventory under the SIL Open Font License 1.1. Preserve [its license](public/fonts/OFL-pirata-one.txt) with the [font](public/fonts/pirata-one.ttf).
+
 ## Asset provenance
 
 | Group | Source | Handling |

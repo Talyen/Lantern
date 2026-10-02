@@ -1,84 +1,165 @@
 import { bindMenuDismissal } from './menu';
 import type { CharacterSave } from '../gameplay/adventure';
-import { equipItem, itemDefinitions, supportsShield, type ItemId, type Loadout } from '../gameplay/equipment';
+import { emptyPosition, equipInstance, lootDefinitions, moveItem, sortedItems, type InventoryItem } from '../gameplay/inventory';
+import { itemIcon } from './item-icons';
 
 export type TravelChoice = { name: string; available: boolean; travel(): void };
-export type EquipmentMenuContext = { change(loadout: Loadout): Promise<void> };
-const itemMarks: Record<ItemId, string> = {
-  axe: '<path d="M14 29 21 5M21 5l9 4-3 10-8-4-6 2 2-10z"/>',
-  sword: '<path d="m12 29 3-7M9 21l11 4M16 22 23 5l5-2 1 5-10 16M10 30l4 2"/>',
-  shield: '<path d="M9 6 20 3l11 3v13c-2 6-6 10-11 13-5-3-9-7-11-13zM20 7v20M12 14h16"/>',
-  bow: '<path d="M13 3c21 9 21 21 0 30l10-15zM7 18h25M28 14l5 4-5 4"/>',
-  staff: '<path d="m13 32 10-22M23 10l-5-5 6-3 5 5zM19 12l8 3"/>',
-};
-/** Compact menus. Coordinator owns travel, casting, pause and save behavior. */
+export type InventoryMenuContext = { change(items: InventoryItem[]): Promise<void>; drop(id: string, quantity: number): Promise<void>; recover(id: string): void; newId(): string };
+type Drag = { id: string; quantity: number; startX: number; startY: number; offsetX: number; offsetY: number; active: boolean; carried: boolean };
+/** Menus submit complete inventory operations; simulation remains the owner of transfers. */
 export class AdventureMenus {
   private inventory = document.getElementById('inventory-dialog') as HTMLDialogElement;
   private travel = document.getElementById('travel-dialog') as HTMLDialogElement;
-  private count = document.getElementById('scroll-count')!;
+  private grid = document.getElementById('inventory-grid')!;
   private use = document.getElementById('scroll-use') as HTMLButtonElement;
   private prompt = document.getElementById('interaction-prompt')!;
+  private error = document.getElementById('equipment-error')!;
+  private detail = document.getElementById('inventory-selection')!;
+  private split = document.getElementById('stack-split')!;
+  private ghost = document.getElementById('inventory-ghost')!;
+  private marker = document.getElementById('inventory-placement')!;
   private character: CharacterSave | null = null;
   private characterKey = '';
-  private equipmentBusy = false;
-  private equipmentError = document.getElementById('equipment-error')!;
-  constructor(private clearInput: () => void, private focus: () => void, private cast: () => void, private equipment?: EquipmentMenuContext) {
+  private busy = false;
+  private selected: string | null = null;
+  private drag: Drag | null = null;
+  private splitId: string | null = null;
+  constructor(private clearInput: () => void, private focus: () => void, private cast: () => void, private context: InventoryMenuContext) {
     for (const dialog of [this.inventory, this.travel]) {
       dialog.querySelector('button[data-close]')!.addEventListener('click', () => this.close());
       bindMenuDismissal(dialog, () => this.close());
     }
-    this.use.addEventListener('click', () => { this.close(); this.cast(); });
-    document.getElementById('equipment-main-remove')!.addEventListener('click', () => { if (this.character) void this.changeEquipment({ main: null, off: null }); });
-    document.getElementById('equipment-off-remove')!.addEventListener('click', () => { if (this.character) void this.changeEquipment({ ...this.character.loadout, off: null }); });
+    this.use.addEventListener('click', () => { if (this.busy || this.drag || !this.character?.scrolls) return; this.close(); this.cast(); });
+    document.getElementById('inventory-sort')!.onclick = () => { this.cancelDrag(); void this.perform(() => this.context.change(sortedItems(this.character!.items))); };
+    document.getElementById('inventory-equip')!.onclick = () => { const item = this.selectedItem(); if (item) void this.perform(() => this.context.change(equipInstance(this.character!.items, item.id, item.item === 'shield' ? 'off' : 'main'))); };
+    document.getElementById('inventory-remove')!.onclick = () => { const item = this.selectedItem(); if (!item) return; void this.perform(() => { const point = emptyPosition(this.character!.items, item.item); if (!point) throw new Error('Inventory full.'); return this.context.change(moveItem(this.character!.items, item.id, point.x, point.y, item.quantity, this.context.newId)); }); };
+    document.getElementById('inventory-recover')!.onclick = () => { const item = this.selectedItem(); if (item) void this.perform(() => this.context.recover(item.id)); };
+    document.getElementById('inventory-split')!.onclick = () => { const item = this.selectedItem(); if (item) this.openSplit(item); };
+    document.getElementById('split-cancel')!.onclick = () => { this.split.hidden = true; this.splitId = null; };
+    document.getElementById('split-confirm')!.onclick = () => {
+      const entry = this.character?.items.find(i => i.id === this.splitId), input = document.getElementById('split-amount') as HTMLInputElement, quantity = Number(input.value);
+      if (!entry || !Number.isSafeInteger(quantity) || quantity < 1 || quantity >= entry.quantity) { input.reportValidity(); return; }
+      this.split.hidden = true; this.splitId = null;
+      const rect = this.grid.getBoundingClientRect();
+      this.drag = { id: entry.id, quantity, startX: rect.left, startY: rect.top, offsetX: 0, offsetY: 0, active: true, carried: true };
+      this.showGhost(entry); this.ghost.style.left = `${rect.left}px`; this.ghost.style.top = `${rect.top}px`;
+    };
+    this.inventory.addEventListener('pointerdown', event => {
+      if (event.button !== 0 || this.busy || !this.split.hidden) return;
+      if (this.drag?.carried) { event.preventDefault(); event.stopPropagation(); void this.release(event.clientX, event.clientY); return; }
+      const target = (event.target as HTMLElement).closest<HTMLElement>('[data-instance]'); if (!target) return;
+      const entry = this.character?.items.find(i => i.id === target.dataset.instance); if (!entry) return;
+      this.selected = entry.id; this.refreshSelection();
+      if (event.shiftKey && entry.quantity > 1) { event.preventDefault(); this.openSplit(entry); return; }
+      const rect = target.getBoundingClientRect();
+      target.setPointerCapture(event.pointerId);
+      this.drag = { id: entry.id, quantity: entry.quantity, startX: event.clientX, startY: event.clientY, offsetX: event.clientX - rect.left, offsetY: event.clientY - rect.top, active: false, carried: false };
+    });
+    window.addEventListener('pointermove', event => {
+      const drag = this.drag; if (!drag) return;
+      if (!drag.active && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) > 5) {
+        drag.active = true; const entry = this.character?.items.find(i => i.id === drag.id); if (entry) this.showGhost(entry);
+      }
+      if (!drag.active) return;
+      this.ghost.style.left = `${event.clientX - drag.offsetX}px`; this.ghost.style.top = `${event.clientY - drag.offsetY}px`;
+      this.previewPlacement(event.clientX, event.clientY);
+    });
+    window.addEventListener('pointerup', event => { if (event.button === 0 && this.drag && !this.drag.carried) void this.release(event.clientX, event.clientY); });
+    window.addEventListener('pointercancel', () => this.cancelDrag());
+    window.addEventListener('blur', () => this.cancelDrag());
+    this.inventory.addEventListener('keydown', event => { if (event.key === 'Escape' && (this.drag || !this.split.hidden)) { event.preventDefault(); event.stopPropagation(); this.cancelDrag(); } });
   }
   get paused(): boolean { return this.inventory.open || this.travel.open; }
-  close(): void { this.inventory.close(); this.travel.close(); this.clearInput(); this.focus(); }
-  openInventory(): void { this.clearInput(); this.inventory.showModal(); }
+  close(): void { if (this.busy) return; this.cancelDrag(); this.inventory.close(); this.travel.close(); this.clearInput(); this.focus(); }
+  openInventory(): void { this.clearInput(); this.error.textContent = ''; this.inventory.showModal(); }
   openTravel(choices: TravelChoice[]): void {
-    this.clearInput();
-    const list = document.getElementById('travel-destinations')!;
+    this.clearInput(); const list = document.getElementById('travel-destinations')!;
     list.replaceChildren(...choices.map(choice => { const button = document.createElement('button'); button.textContent = choice.available ? choice.name : `${choice.name} · Enemies nearby`; button.disabled = !choice.available; button.onclick = () => { this.close(); choice.travel(); }; return button; }));
-    if (!choices.length) list.textContent = 'No destinations available.';
-    this.travel.showModal();
+    if (!choices.length) list.textContent = 'No destinations available.'; this.travel.showModal();
   }
   update(scrolls: number, canUse: boolean, prompt: string, casting: number): void {
-    this.count.textContent = `${scrolls} / 99`; this.use.disabled = !canUse;
+    document.getElementById('scroll-count')!.textContent = String(scrolls); this.use.disabled = !canUse || this.busy;
     this.prompt.textContent = casting > 0 ? `Scroll of Return · ${casting.toFixed(1)}s` : prompt;
   }
   updateCharacter(character: CharacterSave): void {
-    const key = JSON.stringify([character.equipment, character.loadout, character.wood, character.xp]);
-    if (key === this.characterKey) return;
-    this.characterKey = key; this.character = structuredClone(character); this.refreshEquipment();
+    const key = JSON.stringify(character); if (key === this.characterKey) return;
+    this.characterKey = key; this.character = character; this.refresh();
   }
-  private refreshEquipment(): void {
+  private button(entry: InventoryItem): HTMLButtonElement {
+    const button = document.createElement('button'); button.type = 'button'; button.className = 'bag-item'; button.dataset.instance = entry.id;
+    const definition = lootDefinitions[entry.item]; button.setAttribute('aria-label', `${definition.name}${definition.stackable ? `, ${entry.quantity}` : ''}`);
+    button.title = definition.name; button.innerHTML = `${itemIcon(entry.item)}${definition.stackable ? `<span class="stack-count">${entry.quantity}</span>` : ''}`;
+    button.onclick = () => { this.selected = entry.id; this.refreshSelection(); };
+    button.ondblclick = () => { if (!definition.stackable && entry.slot === 'bag') void this.perform(() => this.context.change(equipInstance(this.character!.items, entry.id, entry.item === 'shield' ? 'off' : 'main'))); };
+    button.disabled = this.busy; return button;
+  }
+  private refresh(): void {
     const character = this.character; if (!character) return;
-    const { loadout } = character;
-    document.getElementById('equipment-main')!.textContent = loadout.main ? itemDefinitions[loadout.main].name : 'Empty';
-    document.getElementById('equipment-off')!.textContent = loadout.off ? 'Shield' : loadout.main && itemDefinitions[loadout.main].hands === 2 ? 'Two-handed' : 'Empty';
-    (document.getElementById('equipment-main-remove') as HTMLButtonElement).disabled = !loadout.main || this.equipmentBusy || !this.equipment;
-    (document.getElementById('equipment-off-remove') as HTMLButtonElement).disabled = !loadout.off || this.equipmentBusy || !this.equipment;
-    document.getElementById('equipment-items')!.replaceChildren(...character.equipment.map(item => {
-      const button = document.createElement('button'), definition = itemDefinitions[item];
-      const equipped = loadout.main === item || loadout.off === item;
-      button.type = 'button'; button.className = 'equipment-item'; button.dataset.item = item;
-      button.setAttribute('aria-pressed', String(equipped));
-      button.innerHTML = `<svg viewBox="0 0 40 36" aria-hidden="true">${itemMarks[item]}</svg><span class="equipment-item-name">${definition.name}</span><span class="equipment-item-action">${equipped ? 'Equipped' : 'Equip'}</span>`;
-      button.disabled = this.equipmentBusy || !this.equipment || equipped || item === 'shield' && !supportsShield(loadout.main);
-      if (item === 'shield' && !supportsShield(loadout.main)) button.title = 'Equip an Axe or Sword first.';
-      else if (definition.hands === 2) button.title = 'Uses both hands.';
-      button.onclick = () => { if (this.character) void this.changeEquipment(equipItem(this.character.loadout, item)); };
-      return button;
-    }));
-    document.getElementById('wood-count')!.textContent = String(character.wood);
+    this.grid.querySelectorAll('[data-instance]').forEach(el => el.remove());
+    for (const entry of character.items.filter(i => i.slot === 'bag')) {
+      const button = this.button(entry), definition = lootDefinitions[entry.item];
+      Object.assign(button.style, { gridColumn: `${entry.x + 1} / span ${definition.width}`, gridRow: `${entry.y + 1} / span ${definition.height}` }); this.grid.append(button);
+    }
+    for (const slot of ['main', 'off'] as const) {
+      const host = document.getElementById(`equipment-${slot}`)!; host.replaceChildren();
+      const entry = character.items.find(i => i.slot === slot);
+      if (entry) host.append(this.button(entry));
+      else host.textContent = slot === 'off' && ['bow', 'staff'].includes(character.loadout.main ?? '') ? 'Two-handed' : 'Empty';
+    }
+    const overflow = document.getElementById('inventory-overflow')!; overflow.replaceChildren();
+    const pending = character.items.filter(i => i.slot === 'overflow'); overflow.hidden = !pending.length;
+    if (pending.length) { const title = document.createElement('span'); title.textContent = 'Unpacked items'; overflow.append(title); for (const entry of pending) overflow.append(this.button(entry)); }
     document.getElementById('woodcutting-xp')!.textContent = `${character.xp.woodcutting} XP`;
     document.getElementById('axe-combat-xp')!.textContent = `${character.xp.axeCombat} XP`;
-    this.inventory.setAttribute('aria-busy', String(this.equipmentBusy));
+    (document.getElementById('inventory-sort') as HTMLButtonElement).disabled = this.busy;
+    this.inventory.setAttribute('aria-busy', String(this.busy)); this.refreshSelection();
   }
-  private async changeEquipment(loadout: Loadout): Promise<void> {
-    if (!this.equipment || this.equipmentBusy) return;
-    this.equipmentBusy = true; this.equipmentError.textContent = ''; this.refreshEquipment();
-    try { await this.equipment.change(loadout); }
-    catch (error) { this.equipmentError.textContent = error instanceof Error ? error.message : 'Unable to equip this item. Try again.'; }
-    finally { this.equipmentBusy = false; this.refreshEquipment(); }
+  private selectedItem(): InventoryItem | undefined { return this.character?.items.find(i => i.id === this.selected); }
+  private refreshSelection(): void {
+    const entry = this.selectedItem(); this.detail.textContent = entry ? `${lootDefinitions[entry.item].name}${lootDefinitions[entry.item].stackable ? ` · ${entry.quantity}` : ''}` : '';
+    for (const [id, visible] of [['inventory-equip', entry?.slot === 'bag' && !lootDefinitions[entry.item].stackable], ['inventory-remove', entry?.slot === 'main' || entry?.slot === 'off'], ['inventory-recover', entry?.slot === 'overflow'], ['inventory-split', entry && entry.quantity > 1]] as const) {
+      const button = document.getElementById(id) as HTMLButtonElement; button.hidden = !visible; button.disabled = this.busy;
+    }
+    this.inventory.querySelectorAll<HTMLElement>('[data-instance]').forEach(el => el.classList.toggle('selected', el.dataset.instance === this.selected));
+  }
+  private openSplit(entry: InventoryItem): void {
+    this.cancelDrag(); this.splitId = entry.id; this.split.hidden = false;
+    const input = document.getElementById('split-amount') as HTMLInputElement; input.max = String(Math.min(99, entry.quantity - 1)); input.value = String(Math.min(99, Math.floor(entry.quantity / 2))); input.focus(); input.select();
+  }
+  private showGhost(entry: InventoryItem): void {
+    const cell = this.grid.getBoundingClientRect().width / 12, definition = lootDefinitions[entry.item];
+    this.ghost.innerHTML = `${itemIcon(entry.item)}<span class="stack-count">${this.drag!.quantity > 1 ? this.drag!.quantity : ''}</span>`;
+    this.ghost.style.width = `${cell * definition.width}px`; this.ghost.style.height = `${cell * definition.height}px`; this.ghost.hidden = false;
+  }
+  private destination(x: number, y: number): { x: number; y: number } {
+    const rect = this.grid.getBoundingClientRect(), cell = rect.width / 12;
+    return { x: Math.floor((x - (this.drag?.offsetX ?? 0) - rect.left + cell * .3) / cell), y: Math.floor((y - (this.drag?.offsetY ?? 0) - rect.top + cell * .3) / cell) };
+  }
+  private previewPlacement(x: number, y: number): void {
+    const entry = this.character?.items.find(i => i.id === this.drag?.id); if (!entry) return;
+    const point = this.destination(x, y), definition = lootDefinitions[entry.item];
+    Object.assign(this.marker.style, { gridColumn: `${Math.max(0, point.x) + 1} / span ${definition.width}`, gridRow: `${Math.max(0, point.y) + 1} / span ${definition.height}` });
+    const rect = this.grid.getBoundingClientRect(); this.marker.hidden = x < rect.left || x > rect.right || y < rect.top || y > rect.bottom || point.x < 0 || point.y < 0 || point.x + definition.width > 12 || point.y + definition.height > 8;
+    try { moveItem(this.character!.items, entry.id, point.x, point.y, this.drag!.quantity, () => 'preview'); this.marker.dataset.valid = 'true'; } catch { this.marker.dataset.valid = 'false'; }
+  }
+  private async release(x: number, y: number): Promise<void> {
+    const drag = this.drag; if (!drag) return;
+    const point = this.destination(x, y), entry = this.character?.items.find(i => i.id === drag.id), active = drag.active;
+    this.cancelDrag(); if (!active || !entry) return;
+    const panel = this.inventory.getBoundingClientRect();
+    await this.perform(() => {
+      if (x < panel.left || x > panel.right || y < panel.top || y > panel.bottom) return this.context.drop(entry.id, drag.quantity);
+      const slot = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-equipment-slot]')?.dataset.equipmentSlot;
+      if (slot === 'main' || slot === 'off') return this.context.change(equipInstance(this.character!.items, entry.id, slot));
+      const rect = this.grid.getBoundingClientRect(); if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) throw new Error('Item does not fit.');
+      return this.context.change(moveItem(this.character!.items, entry.id, point.x, point.y, drag.quantity, this.context.newId));
+    });
+  }
+  private cancelDrag(): void { this.drag = null; this.ghost.hidden = true; this.marker.hidden = true; this.split.hidden = true; this.splitId = null; }
+  private async perform(operation: () => Promise<void> | void): Promise<void> {
+    if (this.busy || !this.character) return; this.busy = true; this.error.textContent = ''; this.refresh();
+    try { await operation(); }
+    catch (error) { this.error.textContent = error instanceof Error ? error.message : 'Unable to move item.'; }
+    finally { this.busy = false; this.refresh(); }
   }
 }

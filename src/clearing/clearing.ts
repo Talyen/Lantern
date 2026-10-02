@@ -1,9 +1,11 @@
 import { resolveAreaLighting as lightingFor } from '../levels/lighting';
 import type { SurfaceMode } from '../assets/environment-surfaces';
 import type { AreaDefinition, AreaLighting } from '../levels/types';
-import { Adventure, homeArea, near, scrollLimit, chestUnlocked } from '../gameplay/adventure';
+import { Adventure, homeArea, near, chestUnlocked } from '../gameplay/adventure';
 import { AdventureMenus } from '../ui/adventure';
 import { AdventureVisuals } from '../rendering/adventure';
+import { LootLabels } from '../ui/loot';
+import { itemLoadout, lootDefinitions, removeQuantity, validItems, type InventoryItem } from '../gameplay/inventory';
 import type { Spawn, Point } from '../gameplay/area';
 import { MovementWorld } from '../gameplay/movement';
 import { cameraOffset } from './projection';
@@ -96,9 +98,9 @@ function cancelChop(releaseLock = true): void {
   chopping = null; if (releaseLock) encounter.player.lock = 0;
   if (player.current === 'chop') play(player,'idle');
 }
-function clearInput(): void { input.clear(); encounter.pending = null; encounter.blocking = false; cancelChop(); }
+function clearInput(): void { adventure.cancelPickup(); pickupRoute = null; input.clear(); encounter.pending = null; encounter.blocking = false; cancelChop(); }
 function applyLoadoutState(): void { encounter.weapon = adventure.character.loadout.main; encounter.shield = !!adventure.character.loadout.off; }
-async function changeEquipment(requested: Loadout, save = true): Promise<void> {
+async function changeEquipment(requested: Loadout, save = false, items?: InventoryItem[]): Promise<void> {
   if (equipmentLoading || !player.mixer) throw new Error('Character equipment is still loading.');
   const loadout = normalizeLoadout(requested);
   if ([loadout.main,loadout.off].some(item=>item && !adventure.character.equipment.includes(item))) throw new Error('That item is not in your Inventory.');
@@ -109,7 +111,7 @@ async function changeEquipment(requested: Loadout, save = true): Promise<void> {
     candidate = await playerEquipment.stage(loadout);
     const prepared = await loadEquipmentMotions(loader,'player',loadout);
     installMotions(player,prepared); playerEquipment.commit(candidate); candidate=undefined;
-    if (save) adventure.commitEquipment(loadout);
+    if (save && items) adventure.replaceItems(items);
     applyLoadoutState(); encounter.player.lock=0; encounter.player.attackTime=-1; encounter.attackCooldown=0;
     play(player,'idle'); menus.updateCharacter(adventure.character);
   } catch(error) { if (candidate) playerEquipment.discard(candidate); throw error; }
@@ -117,7 +119,41 @@ async function changeEquipment(requested: Loadout, save = true): Promise<void> {
 }
 let inspecting = false;
 const input = createInput(renderer.domElement, startAttack, startDodge, interact, openInventory, toggleOptions, () => { encounter.pending=null; encounter.blocking=false; cancelChop(); });
-const menus = new AdventureMenus(clearInput, () => renderer.domElement.focus(), () => { if (!paused()) adventure.beginCast(encounter.player.hp > 0); }, { change: changeEquipment });
+async function changeInventory(items: InventoryItem[]): Promise<void> {
+  if (!validItems(items)) throw new Error('Item does not fit.');
+  const loadout = itemLoadout(items);
+  if (JSON.stringify(loadout) !== JSON.stringify(adventure.character.loadout)) await changeEquipment(loadout, true, items);
+  else { adventure.replaceItems(items); menus.updateCharacter(adventure.character); }
+}
+const menus = new AdventureMenus(clearInput, () => renderer.domElement.focus(), () => { if (!paused()) adventure.beginCast(encounter.player.hp > 0); }, {
+  change: changeInventory, newId: adventure.newId,
+  recover: id => { adventure.recoverItem(id); menus.updateCharacter(adventure.character); },
+  drop: async (id, quantity) => {
+    const entry = adventure.character.items.find(i => i.id === id); if (!entry) throw new Error('Item is no longer available.');
+    if (entry.item === 'scroll' && adventure.castRemaining > 0 && adventure.character.scrolls - quantity < 1) throw new Error('Scroll is in use.');
+    const next = removeQuantity(adventure.character.items, id, quantity);
+    await changeInventory(next);
+    adventure.spawnDrop(entry.item, quantity, [encounter.player.x, encounter.player.z], { blocked: lootDefinitions[entry.item].stackable, instanceId: lootDefinitions[entry.item].stackable ? undefined : entry.id });
+    syncAdventure();
+  },
+});
+let pickupRoute: { id: string; points: Point[]; elapsed: number; stalled: number; last: Point } | null = null;
+const lootLabels = new LootLabels(mount, selectLoot);
+function selectLoot(id: string): void {
+  if (paused() || encounter.player.hp <= 0) return;
+  const drop = adventure.session().drops.find(d => d.id === id); if (!drop) return;
+  cancelChop(); encounter.pending = null; adventure.cancelPickup(); pickupRoute = null;
+  const point: Point = [encounter.player.x, encounter.player.z];
+  if (near(point, drop.position, 1.5) && adventure.canCollectGround(drop)) {
+    if (drop.age >= .55) adventure.pickup(id, point, true);
+    else { adventure.pickupTarget = id; pickupRoute = { id, points: [], elapsed: 0, stalled: 0, last: point }; }
+    return;
+  }
+  const points = movementWorld?.pickupPath(encounter.player, drop.position, drop.height);
+  if (!points) { adventure.message('Can’t reach item'); return; }
+  adventure.pickupTarget = id; pickupRoute = { id, points, elapsed: 0, stalled: 0, last: point };
+}
+
 const hud = createHud(() => { if (!equipmentLoading && !transitioning) void changeArea({ kind: 'travel', area: homeArea, transition: true, spawn: definitions.homestead.layout.player, recover: true }); });
 const loader = new GLTFLoader();
 function inspect(): void {
@@ -165,7 +201,7 @@ function resetPresentation(): void {
   else cameraOwner.suspendFollow();
   graphics?.resetHistory();
 }
-function reset(): void { resetEncounter(encounter); applyLoadoutState(); resetPresentation(); }
+function reset(): void { clearInput(); resetEncounter(encounter); applyLoadoutState(); resetPresentation(); }
 function toggleOptions(): void {
   if (options?.paused) options.close();
   else if (menus.paused) menus.close();
@@ -206,10 +242,10 @@ function interact(): void {
   }
 }
 function syncAdventure(): void {
-  adventureVisuals?.sync(adventure.session(currentArea.id).drops, adventure.portalPosition(currentArea));
+  adventureVisuals?.sync(adventure.session(currentArea.id).drops, adventure.portalPosition(currentArea), lootLabels.hovered);
   for (const chest of currentArea.chests ?? []) active?.setChestOpened(chest.id, adventure.chest(currentArea, chest).opened);
   const target = interaction();
-  const prompt = paused() || encounter.player.hp <= 0 ? '' : target?.type === 'portal' ? (currentArea.id === homeArea ? 'E · Return to adventure' : 'E · Homestead') : target?.type === 'chest' ? (adventure.character.scrolls >= scrollLimit ? 'Inventory full' : adventure.chest(currentArea, target.chest).opened ? 'E · Collect scrolls' : 'E · Open chest') : target?.type === 'tree' ? (encounter.weapon === 'axe' ? 'Hold E · Chop' : 'Equip an Axe') : target ? 'E · Travel' : '';
+  const prompt = paused() || encounter.player.hp <= 0 ? '' : adventure.notice || (target?.type === 'portal' ? (currentArea.id === homeArea ? 'E · Return to adventure' : 'E · Homestead') : target?.type === 'chest' ? 'E · Open chest' : target?.type === 'tree' ? (encounter.weapon === 'axe' ? 'Hold E · Chop' : 'Equip an Axe') : target ? 'E · Travel' : '');
   menus.updateCharacter(adventure.character);
   menus.update(adventure.character.scrolls, currentArea.id !== homeArea && encounter.player.hp > 0 && adventure.character.scrolls > 0 && adventure.castRemaining === 0, prompt, adventure.castRemaining);
   document.getElementById('save-status')!.textContent = adventure.saveError;
@@ -248,12 +284,16 @@ function resolveAttackAim(pointer: {x:number;y:number}): AimPoint | undefined {
   return ground;
 }
 function startAttack(clientX: number, clientY: number): void {
-  if (!paused()) cancelChop();
+  if (!paused()) {
+    resolveAim({ x: clientX, y: clientY });
+    const loot = adventureVisuals?.pick(aimRay); if (loot) { selectLoot(loot); return; }
+    adventure.cancelPickup(); pickupRoute = null; cancelChop();
+  }
   present(attack(encounter, timings().player, paused(), resolveAttackAim({ x: clientX, y: clientY })));
 }
 function startDodge(): void {
   if (!player.actions.dodge) return;
-  if (!paused()) cancelChop();
+  if (!paused()) { adventure.cancelPickup(); pickupRoute = null; cancelChop(); }
   present(dodge(encounter, input.movement(), paused(), resolveAim()));
 }
 function beginChop(tree: TreeDefinition): void {
@@ -270,6 +310,27 @@ function updateGame(dt: number): void {
   let movement = input.movement();
   if (chopping && (!input.interacting() || input.blocking() || Math.hypot(movement.x,movement.z)>0 || encounter.player.hp<=0 || encounter.weapon!=='axe' || Math.hypot(encounter.player.x-chopping.tree.position[0],encounter.player.z-chopping.tree.position[2])>1.8+chopping.tree.radius)) cancelChop();
   let approachAim: AimPoint | undefined;
+  if (!isPaused && pickupRoute && adventure.pickupTarget) {
+    const point: Point = [encounter.player.x, encounter.player.z], drop = adventure.session().drops.find(d => d.id === pickupRoute!.id);
+    if (Math.hypot(movement.x, movement.z) > 0 || input.interacting() || input.blocking() || !drop || encounter.player.hp <= 0) { adventure.cancelPickup(); pickupRoute = null; }
+    else if (near(point, drop.position, 1.5) && adventure.canCollectGround(drop)) { if (drop.age >= .55) { adventure.pickup(drop.id, point, true); adventure.cancelPickup(); pickupRoute = null; } }
+    else {
+      pickupRoute.elapsed += dt;
+      if (pickupRoute.elapsed >= .3) {
+        const refreshed = movementWorld?.pickupPath(encounter.player, drop.position, drop.height);
+        if (refreshed) pickupRoute.points = refreshed;
+        else if (movementWorld?.navigationReady) { adventure.message('Can’t reach item'); adventure.cancelPickup(); pickupRoute = null; }
+        if (pickupRoute) pickupRoute.elapsed = 0;
+      }
+      if (pickupRoute) {
+        while (pickupRoute.points.length && near(point, pickupRoute.points[0], .2)) pickupRoute.points.shift();
+        const next = pickupRoute.points[0];
+        if (next) { movement = { x: next[0] - point[0], z: next[1] - point[1] }; approachAim = { x: next[0], z: next[1] }; }
+        pickupRoute.stalled = !encounter.player.lock && !encounter.dodgeRemaining && near(point, pickupRoute.last, .01) ? pickupRoute.stalled + dt : 0; pickupRoute.last = point;
+        if (pickupRoute.stalled > 1 && !encounter.player.lock && !encounter.dodgeRemaining && movementWorld?.navigationReady) { adventure.message('Can’t reach item'); adventure.cancelPickup(); pickupRoute = null; }
+      }
+    }
+  }
   if (!isPaused && input.interacting() && !chopping && !input.blocking() && encounter.weapon==='axe' && !encounter.player.lock && !encounter.dodgeRemaining && Math.hypot(movement.x,movement.z)===0) {
     const target=interaction();
     if (target?.type==='tree') {
@@ -295,7 +356,7 @@ function updateGame(dt: number): void {
       if (!chopping.contacted && chopping.time>=player.chopContact) {
         chopping.contacted=true;
         const reward=harvesting.contact(currentArea.id,chopping.tree.id,[encounter.player.x,encounter.player.z]);
-        if (reward) { adventure.grantHarvest(reward.wood,reward.xp); active?.treeHit(chopping.tree.id); if (reward.felled) { active?.setTreeState(chopping.tree.id,true); movementWorld?.setTreeFelled(chopping.tree.id,true); } }
+        if (reward) { adventure.grantHarvest(reward.wood,reward.xp,[chopping.tree.position[0],chopping.tree.position[2]]); active?.treeHit(chopping.tree.id); if (reward.felled) { active?.setTreeState(chopping.tree.id,true); movementWorld?.setTreeFelled(chopping.tree.id,true); } }
         else cancelChop();
       }
       if (chopping && chopping.time>=duration(player,'chop')) cancelChop();
@@ -337,6 +398,9 @@ function tick(now: number): void {
   controls.update();
   camera.updateMatrixWorld();
   aimCamera.copy(camera);
+  const pointer = input.pointer();
+  if (!paused() && pointer) { resolveAim(pointer); lootLabels.hovered = adventureVisuals?.pick(aimRay) ?? null; }
+  lootLabels.sync(adventure.session(currentArea.id).drops, camera, [encounter.player.x, encounter.player.z], paused() || encounter.player.hp <= 0);
   hud.positionEnemy(encounter, camera, mount, paused() ? 0 : dt, inspecting || transitioning);
   active?.update(camera, paused() ? 0 : dt);
   renderer.info.reset();
@@ -376,7 +440,7 @@ try {
     focus: () => renderer.domElement.focus(),
   });
   graphics = new Graphics({ scene, camera, renderer, controls, sun, ambient, mount, lighting }, options.settings, effects);
-  window.addEventListener('pagehide', () => { graphics?.dispose(); personalLantern?.dispose(); playerEquipment.dispose(); enemyEquipment.dispose(); casterEquipment.dispose(); projectileVisuals.dispose(); casterVisuals.dispose(); adventureVisuals?.dispose(); active?.dispose(); movementWorld?.dispose(); renderer.dispose(); void disposeAreaCache(); }, { once: true });
+  window.addEventListener('pagehide', () => { graphics?.dispose(); personalLantern?.dispose(); playerEquipment.dispose(); enemyEquipment.dispose(); casterEquipment.dispose(); projectileVisuals.dispose(); casterVisuals.dispose(); adventureVisuals?.dispose(); lootLabels.dispose(); active?.dispose(); movementWorld?.dispose(); renderer.dispose(); void disposeAreaCache(); }, { once: true });
   resize();
   await graphics.initialize();
   requestAnimationFrame(tick);
@@ -449,6 +513,13 @@ async function changeArea(change: AreaChange): Promise<boolean> {
     for (const tree of candidate.trees) { const felled=harvesting.state(next.id,tree.id)?.felled ?? false; candidate.setTreeState(tree.id,felled); candidateMovement.setTreeFelled(tree.id,felled); }
     adventure.enter(encounter, next, spawn ?? arrival?.arrival ?? next.layout.player, recover);
     adventureVisuals = new AdventureVisuals(candidate.root);
+    adventure.placeGround = (origin, index) => movementWorld!.lootGround(origin, index, encounter.player);
+    adventure.canCollectGround = drop => {
+      const path = movementWorld!.pickupPath(encounter.player, drop.position, drop.height); if (!path) return false;
+      let length = 0, previous: Point = [encounter.player.x, encounter.player.z];
+      for (const point of [...path, drop.position]) { length += Math.hypot(point[0] - previous[0], point[1] - previous[1]); previous = point; }
+      return length <= 1.65;
+    };
     if (arrival) travel.arrive(arrival.id);
     inspecting = false; resetPresentation();
     syncAdventure(); cameraOwner.inspect(false, { x: 0, z: 0 });

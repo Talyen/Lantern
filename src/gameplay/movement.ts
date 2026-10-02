@@ -122,6 +122,26 @@ export class MovementWorld implements Movement {
     const next = route.path[0];
     return next ? { x: next[0] - from.x, z: next[2] - from.z } : { x: 0, z: 0 };
   }
+  /** Independent pickup paths never replace the enemy's pursuit-path cache. */
+  pickupPath(from: ActorState, point: [number, number], height: number): [number, number][] | null {
+    if (!this.navigationReady) return null;
+    const result = findPath(this.nav, [from.x, from.y, from.z], [point[0], height, point[1]], [.6, 1, .6], DEFAULT_QUERY_FILTER);
+    const end = result.path.at(-1)?.position;
+    if (!result.success || !end || Math.hypot(end[0] - point[0], end[2] - point[1]) > .65) return null;
+    return result.path.map(p => [p.position[0], p.position[2]]);
+  }
+  lootGround(origin: [number, number], index: number, player: ActorState): { position: [number, number]; height: number } {
+    for (let attempt = 0; attempt < 24; attempt++) {
+      const angle = index * 2.4 + attempt * 2.4, distance = .65 + (attempt % 4) * .25;
+      const point = constrain(this.boundary, [origin[0] + Math.cos(angle) * distance, origin[1] + Math.sin(angle) * distance]);
+      const hit = this.world.castRay(new RAPIER.Ray({ x: point[0], y: player.y + 12, z: point[1] }, { x: 0, y: -1, z: 0 }), 30, true, undefined, undefined, undefined, undefined, c => this.solid.has(c.handle));
+      if (!hit || [...this.obstacles.values()].some(o => !o.felled && o.collider.handle === hit.collider.handle)) continue;
+      const height = Math.max(0, player.y + 12 - hit.timeOfImpact);
+      if (this.pickupPath(player, point, height)) return { position: point, height };
+    }
+    // The actor's collision-resolved ground is the safe final placement.
+    return { position: [player.x, player.z], height: player.y };
+  }
   lineOfSight(from: ActorState, to: ActorState): boolean {
     const dx = to.x - from.x, dy = to.y - from.y, dz = to.z - from.z, length = Math.hypot(dx, dy, dz);
     if (length < .001) return true;

@@ -3,11 +3,17 @@
 Implementation acceptance follows the [lean task workflow](DEVELOPMENT.md#working-alongside-other-agents): inspect one representative loot interaction at normal gameplay scale. Alternate lighting/zoom and broader comparison scenarios below are optional targeted references.
 
 
-This is the agreed design for [Milestone 3](../ROADMAP.md#milestone-3--loot-recovery-and-homestead), with gathering consumers in milestone 4. Gameplay implementation remains outstanding. The current subset has small 3D raider scroll drops with nearby auto-pickup and one stack capped at 99; the clearing chest transfers scrolls directly into inventory. This document does not change runtime APIs or save formats.
+The physical-drop system is implemented for enemy scrolls, the clearing chest's existing equipment/scroll rewards, harvested Wood, and player-dropped inventory items. Gold, potions, Mining, shops, armor, and equipment stat tradeoffs remain later milestone work.
+
+The bag is a 12 × 8 grid. Sword uses 1 × 3 cells; Axe and Shield use 2 × 3; Bow and Staff use 2 × 4. Wood and Scroll of Return stacks use 1 × 1, stack to 99, and can occupy multiple cells. Each equipment copy has its own identity; equipped main/off-hand items occupy equipment slots instead of bag space. Item dimensions belong to `src/gameplay/inventory.ts`, alongside placement, transfers and packing.
+
+Pickups auto-place without shuffling the bag. Drag to move, merge, equip or drop outside the panel; invalid moves and Escape cancel. Shift-click chooses an amount to split, then click its destination or the world outside the panel. Sort consolidates supplies and packs larger objects first, committing only when everything fits. Equipped-item displacement and asset/motion preparation must succeed before any equipment change commits. Player-dropped supplies wait until the player leaves their pickup radius and returns, or explicitly selects them.
+
+Character save revision 3 retains the existing key, migrates previous equipment/resources/progress, and saves item copies, stacks, positions, equipment slots and individual chest claims. Legacy quantities beyond capacity remain in saved **Unpacked items**; select Collect to transfer what fits or drag/split them into the bag or world. Chest weapons are claimed on collection, so a restart can reoffer unclaimed rewards while preserving already collected claims. Dropping collected equipment does not reset its claim.
 
 ## Drops and collection
 
-Enemies, chests, world supplies, Woodcutting, and Mining use one shared ground-drop system. Chests scatter their rewards onto the ground rather than depositing them directly into inventory. Woodcutting yields Wood; Mining yields Stone and Iron; Hide can come from enemies, chests, and supplies. Keep the first equipment rewards authored with useful tradeoffs; random affixes and rarity systems remain deferred.
+Enemies, chests, Woodcutting and inventory dropping use one shared ground-drop system. Future world supplies and Mining must use this same owner. Chests scatter their rewards onto the ground rather than depositing them directly into inventory. Woodcutting yields Wood; Mining yields Stone and Iron; Hide remains planned for enemies, chests, and supplies. Keep the first equipment rewards authored with useful tradeoffs; random affixes and rarity systems remain deferred.
 
 Each drop has a small recognizable 3D object. Start with representative category models: equipment silhouettes, coins, material bundles, potions, and scrolls. A brief toss and slight tumble end in a settled resting pose, with restrained landing and collection sounds. Avoid persistent beams, glow, or constant idle animation. Resolve placement on reachable ground using the existing navigation and collision boundaries.
 
@@ -23,7 +29,7 @@ Clicking either an item's label or its object selects the same drop. Within 1.5 
 
 An unreachable route or a full-inventory attempt leaves the drop intact and gives brief feedback such as "Can't reach item" or "Inventory full". Do not turn blocked automatic collection into repeated messages or sounds. Labels continue to show only the item name.
 
-Uncollected loot remains through death and area travel without a despawn timer. Application restart refreshes the world and removes uncollected drops; collected character progress survives under the planned broader persistence system. Keep ground loot separate from permanent character progress and the future time-away renewal system.
+Uncollected loot remains through death and area travel without a despawn timer. Application restart refreshes the world and removes uncollected drops; collected character progress survives in the versioned character save. Keep ground loot separate from permanent character progress and the future time-away renewal system.
 
 ## Labels and visual treatment
 
@@ -44,7 +50,7 @@ Separate crowded labels into compact non-overlapping rows near their objects. Ho
 
 Labels remain readable over scenery, including props hiding the object. Visibility does not grant remote collection: a reachable route and physical proximity remain required. Keep text at a stable screen size across zoom, with no off-screen indicators. Distance, font size, and spacing are initial visual tuning values; validate them at gameplay scale. Bundle the font locally with its license when implementing this presentation.
 
-See [Art Direction](ART_DIRECTION.md#loot-presentation-planned) for its place in Lantern's visual hierarchy.
+See [Art Direction](ART_DIRECTION.md#loot-presentation) for its place in Lantern's visual hierarchy.
 
 ## Ownership and integration
 
@@ -52,11 +58,11 @@ Follow the existing [architecture](ARCHITECTURE.md#owners-and-data-flow): simula
 
 Extend the continuing Adventure state and its area snapshots, using the existing navigation/collision adapter for pickup approaches. Keep input priority explicit in the clearing coordinator. Render loot through the shared native WebGPU pipeline with TSL/node materials, and project labels using the displayed unjittered camera. Do not introduce a separate render graph or backend. Drop animation follows the gameplay pause gates; landing eligibility remains simulation-owned rather than decided by a render callback.
 
-Broader inventory capacity, authored reward quantities, and economy balance belong to their milestone implementations. The rules established here are a separate gold wallet, multiple 99-item stacks for other supplies, partial transfers, and session ground loot. Preserve the current scroll/save behavior until the inventory and persistence work replaces it deliberately; this documentation task performs no migration or font/asset installation.
+The current rewards retain their earlier quantities/chances. Woodcutting still awards XP at valid chop contact; Wood becomes a ground reward. Scroll casting reserves one usable scroll against dropping during its two-second cast, preserving death precedence. Gold/economy balance and equipment statistics remain future work. Pirata One is locally bundled with its license under `public/fonts/`.
 
 ## Implementation acceptance
 
-Use a few representative player flows when implementing, following [Development](DEVELOPMENT.md#commands-and-handoff). These are future acceptance scenarios, not checks already passed by this design.
+Use a few representative player flows when implementing, following [Development](DEVELOPMENT.md#commands-and-handoff). Use the implemented categories for current checks; gold, potions and Mining scenarios remain future acceptance requirements.
 
 1. **Fight and collect:** defeat an enemy, watch its rewards toss and settle, and collect nearby supplies while combat remains active. Click equipment by label and by object; each request collects once, never attacks or auto-equips it.
 2. **Chest and crowded loot:** open a chest, select individual rewards from separated name-only labels, and approach distant gear. Confirm hover identifies the matching object, including when scenery obscures it.
@@ -64,4 +70,4 @@ Use a few representative player flows when implementing, following [Development]
 4. **Cancel and fail an approach:** cancel with movement, attack, dodge, menus, death, or travel; replace the target with another drop. An unreachable item or full inventory gives brief feedback and preserves the loot without repeated automatic notifications.
 5. **Travel, death, and restart:** leave drops behind, travel away, die and return, and find the same remaining loot. Restart refreshes ground loot while saved collected progress survives under the completed persistence system.
 
-Review golden and silver lighting at minimum and maximum gameplay zoom, including crowded rewards, bright ground, dark scenery, and camera movement. Inspect Gothic readability, stable label placement, small-object recognition, and combat visibility; revise the weakest visible part before acceptance. Retain only a few high-value automated outcomes by extending existing tests where useful. Finish implementation with the normal handoff gate and report unverified gameplay or visual behavior.
+Review crowded rewards and camera movement under the current gameplay lighting and normal zoom; expand to other zooms or scenery only for a concrete readability concern. Inspect Gothic readability, stable label placement, small-object recognition, and combat visibility; revise the weakest visible part before acceptance. Retain only a few high-value automated outcomes by extending existing tests where useful. Finish implementation with the normal handoff gate and report unverified gameplay or visual behavior.

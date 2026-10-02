@@ -81,11 +81,11 @@ Examples of stronger choices:
 
 These examples guide visual decisions; they do not authorize unrelated redesigns or changes to combat rules.
 
-## Loot presentation (planned)
+## Loot presentation
 
 Ground loot should feel physical and readable within the weathered autumn world: small recognizable objects briefly toss, tumble, and settle, with restrained landing and collection sounds. Keep combat as the focal point; avoid persistent loot beams, glow, and constant idle motion.
 
-Use mixed-case Pirata One Gothic names on compact smoky charcoal backplates, with warm ivory lettering, muted gold for gold, and a restrained brass hover edge. Show only the item name. Separate crowded labels into quiet non-overlapping rows, keep text at a stable screen size across zoom, and link hover to the matching object. Labels remain readable over scenery. The [loot design](LOOT.md#labels-and-visual-treatment) owns starting colors, sizes, distances, and interaction rules; this direction is planned rather than implemented. Inspect Gothic readability, object recognition and combat visibility in one normal gameplay preview; additional views/zooms are optional if a specific readability concern appears.
+Use mixed-case Pirata One Gothic names on compact smoky charcoal backplates, with warm ivory lettering, muted gold for gold, and a restrained brass hover edge. Show only the item name. Separate crowded labels into quiet non-overlapping rows, keep text at a stable screen size across zoom, and link hover to the matching object. Labels remain readable over scenery. The [loot design](LOOT.md#labels-and-visual-treatment) owns starting colors, sizes, distances, and interaction rules; this treatment is implemented for current equipment, scroll and Wood drops. Gold and other supplies remain future work. Inspect Gothic readability, object recognition and combat visibility in one normal gameplay preview; additional views/zooms are optional if a specific readability concern appears.
 
 ## Optional outlines
 

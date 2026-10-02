@@ -1,10 +1,10 @@
 import { expect, test } from 'vitest';
-import { Adventure, characterSaveKey, scrollLimit } from '../src/gameplay/adventure';
+import { Adventure, characterSaveKey } from '../src/gameplay/adventure';
 import { createEncounter } from '../src/gameplay/encounter';
 import homestead from '../src/levels/areas/homestead.json';
 import clearing from '../src/levels/areas/clearing.json';
 import type { AreaDefinition } from '../src/levels/types';
-import { equipItem } from '../src/gameplay/equipment';
+import { equipInstance, receive, removeQuantity, sortedItems, validItems, type InventoryItem } from '../src/gameplay/inventory';
 const home = homestead as unknown as AreaDefinition, field = clearing as unknown as AreaDefinition;
 const memory = () => { const data = new Map<string, string>(); return { data, getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => { data.set(key, value); } }; };
 
@@ -20,8 +20,8 @@ test('home recovery, campfire travel and defeat preserve the outing and collecte
   state.enter(encounter, home); state.enter(encounter, field);
   expect([encounter.enemies.enemy.hp, encounter.phase, state.session().drops.length]).toEqual([0, 'playing', 1]);
   encounter.player.x = encounter.enemies.enemy.x; encounter.player.z = encounter.enemies.enemy.z;
-  state.character.scrolls = scrollLimit; state.step(encounter, field, .05); expect(state.session().drops).toHaveLength(1);
-  state.character.scrolls = 4; state.step(encounter, field, .05); state.step(encounter, field, .05);
+  state.character.items.find(i => i.item === 'scroll')!.quantity = 4;
+  state.step(encounter, field, .6); state.step(encounter, field, .05);
   expect([state.character.scrolls, state.session().drops.length]).toEqual([5, 0]);
   state.enter(encounter, home); state.enter(encounter, field); state.step(encounter, field, .05);
   expect(state.character.scrolls).toBe(5);
@@ -82,41 +82,64 @@ test('campfires heal over time only when safe and unsafe destinations cannot be 
   expect(state.canTravel(encounter, home, homeFire, field, fire)).toBe(false);
 });
 
-test('the guarded chest retains overflow and grants its reward once per outing', () => {
+test('the chest scatters rewards once per session and only collected gear is permanently claimed', () => {
   const storage = memory(), state = new Adventure(storage, () => 1), encounter = createEncounter('playing');
   const chest = field.chests![0]; state.enter(encounter, field, { position: chest.position, yaw: 0 });
   expect(state.openChest(encounter, field, chest)).toBe(false);
-  encounter.enemies.enemy.hp = 0; encounter.phase = 'won'; state.character.scrolls = 99;
+  encounter.enemies.enemy.hp = 0; encounter.phase = 'won';
   expect(state.openChest(encounter, field, chest)).toBe(true);
-  expect(state.chest(field, chest)).toEqual({ opened: true, remaining: 2 });
-  state.enter(encounter, home); state.enter(encounter, field, { position: chest.position, yaw: 0 });
-  state.character.scrolls = 98; state.openChest(encounter, field, chest);
-  expect([state.character.scrolls, state.chest(field, chest).remaining]).toEqual([99, 1]);
-  state.character.scrolls = 95; state.openChest(encounter, field, chest); state.openChest(encounter, field, chest);
-  expect([state.character.scrolls, state.chest(field, chest).remaining]).toEqual([96, 0]);
-  expect(new Adventure(storage).chest(field, chest)).toEqual({ opened: false, remaining: 2 });
+  expect(state.character.equipment).toEqual(['axe']); expect(state.character.scrolls).toBe(3);
+  expect(state.session().drops).toHaveLength(5); expect(state.openChest(encounter, field, chest)).toBe(false);
+  const sword = state.session().drops.find(d => d.item === 'sword')!; sword.age = .6;
+  expect(state.pickup(sword.id, chest.position, true)).toBe(true);
+  state.enter(encounter, home); state.enter(encounter, field);
+  expect(state.session().drops).toHaveLength(4);
+  const restored = new Adventure(storage); restored.enter(encounter, field, { position: chest.position, yaw: 0 }); encounter.enemies.enemy.hp = 0;
+  restored.openChest(encounter, field, chest);
+  expect(restored.session().drops.map(d => d.item)).toEqual(['scroll', 'shield', 'bow', 'staff']);
 });
 
-test('legacy characters gain an Axe, equipment rewards persist once, and gathering stays separate from combat', () => {
-  const storage = memory(); storage.setItem(characterSaveKey, JSON.stringify({ version: 1, scrolls: 7, campfires: ['clearing/camp'] }));
+test('legacy characters migrate equipped copies, resources and claimed rewards without loss', () => {
+  const storage = memory(); storage.setItem(characterSaveKey, JSON.stringify({ version: 2, scrolls: 7, campfires: ['clearing/camp'], equipment: ['axe', 'sword', 'shield', 'bow', 'staff'], loadout: { main: 'bow', off: null }, wood: 12000, xp: { woodcutting: 20, axeCombat: 30 }, campEquipmentClaimed: true }));
   const state = new Adventure(storage, () => 1), encounter = createEncounter('playing');
-  expect([state.character.version, state.character.scrolls, state.character.loadout.main, state.character.equipment]).toEqual([2, 7, 'axe', ['axe']]);
-  expect(state.commitEquipment({ main: 'bow', off: null })).toBe(false);
-  const chest = field.chests![0]; state.enter(encounter, field, { position: chest.position, yaw: 0 }); encounter.enemies.enemy.hp = 0;
-  state.openChest(encounter, field, chest); state.openChest(encounter, field, chest);
-  expect(state.character.equipment).toEqual(['axe', 'sword', 'shield', 'bow', 'staff']);
-  expect(state.commitEquipment({ main: 'axe', off: 'shield' })).toBe(true);
-  state.commitEquipment(equipItem(state.character.loadout, 'bow'));
+  expect([state.character.version, state.character.scrolls, state.character.loadout.main]).toEqual([3, 7, 'bow']);
+  expect(state.character.equipment).toEqual(['bow', 'axe', 'sword', 'shield', 'staff']);
+  expect(state.character.wood).toBe(12000); expect(state.character.items.some(i => i.slot === 'overflow')).toBe(true);
+  expect(validItems(state.character.items)).toBe(true);
+  const restored = new Adventure(storage); expect(restored.character).toEqual(state.character);
+  restored.enter(encounter, field, { position: field.chests![0].position, yaw: 0 }); encounter.enemies.enemy.hp = 0; restored.openChest(encounter, field, field.chests![0]);
+  expect(restored.session().drops.map(d => d.item)).toEqual(['scroll']);
+  const overflow = restored.character.items.find(i => i.slot === 'overflow')!;
+  const woodStack = restored.character.items.find(i => i.slot === 'bag' && i.item === 'wood')!;
+  restored.replaceItems(removeQuantity(restored.character.items, woodStack.id, woodStack.quantity));
+  restored.recoverItem(overflow.id); expect(restored.character.wood).toBe(12000 - woodStack.quantity);
+});
+
+test('partial collection preserves ground quantities and player-dropped supplies wait for departure', () => {
+  const state = new Adventure(memory(), () => 1), encounter = createEncounter('playing'); state.enter(encounter, home);
+  state.character.items = Array.from({ length: 96 }, (_, n): InventoryItem => ({ id: `full-${n}`, item: 'wood', quantity: n ? 99 : 97, slot: 'bag', x: n % 12, y: Math.floor(n / 12) }));
+  const point: [number, number] = [encounter.player.x, encounter.player.z], drop = state.spawnDrop('wood', 5, point); drop.age = .6;
+  expect(state.pickup(drop.id, point)).toBe(true); expect(drop.quantity).toBe(3);
+  expect(state.pickup(drop.id, point, true)).toBe(false); expect(state.notice).toBe('Inventory full');
+  state.dropItem('full-0', 20, point); const tossed = state.session().drops.at(-1)!;
+  state.step(encounter, home, 1); expect(tossed.quantity).toBe(20);
+  encounter.player.x += 3; state.step(encounter, home, .01); encounter.player.x -= 3; state.step(encounter, home, .01);
+  expect(tossed.quantity).toBe(3); // Earlier excess fills three of the freed stack cells first.
+});
+
+test('a full bag rejects displacement atomically and packing retains every item', () => {
+  const state = new Adventure();
+  state.character.items = Array.from({ length: 96 }, (_, n): InventoryItem => ({ id: `full-${n}`, item: 'wood', quantity: 99, slot: 'bag', x: n % 12, y: Math.floor(n / 12) }));
+  state.character.items.push({ id: 'axe', item: 'axe', quantity: 1, slot: 'main', x: 0, y: 0 }, { id: 'shield', item: 'shield', quantity: 1, slot: 'off', x: 0, y: 0 }, { id: 'bow', item: 'bow', quantity: 1, slot: 'overflow', x: 0, y: 0 });
+  const before = structuredClone(state.character.items);
+  expect(() => equipInstance(state.character.items, 'bow', 'main')).toThrow('Inventory full');
+  expect(state.character.items).toEqual(before);
+  state.character.items = state.character.items.filter(i => i.slot !== 'bag');
+  receive(state.character.items, 'wood', 105, state.newId);
+  state.replaceItems(equipInstance(state.character.items, 'bow', 'main'));
   expect(state.character.loadout).toEqual({ main: 'bow', off: null });
-  expect(state.character.equipment).toContain('shield');
-  state.grantHarvest(); state.grantAxeCombatXp();
-  const restored = new Adventure(storage);
-  expect([restored.character.wood, restored.character.xp]).toEqual([1, { woodcutting: 10, axeCombat: 10 }]);
-  expect(restored.character.loadout).toEqual({ main: 'bow', off: null });
-  restored.enter(encounter, field, { position: chest.position, yaw: 0 }); encounter.enemies.enemy.hp = 0;
-  restored.openChest(encounter, field, chest);
-  expect(restored.character.equipment).toHaveLength(5);
-  expect(restored.character.campEquipmentClaimed).toBe(true);
+  expect(validItems(sortedItems(state.character.items))).toBe(true);
+  expect(new Adventure({ getItem: () => JSON.stringify(state.character), setItem: () => {} }).character).toEqual(state.character);
 });
 
 test('the separate caster and camp guard retain independent defeat and reward state through travel', () => {
@@ -134,5 +157,16 @@ test('the separate caster and camp guard retain independent defeat and reward st
   expect(state.openChest(encounter,field,chest)).toBe(true);
   state.enter(encounter,home,undefined,true); state.enter(encounter,field);
   expect([encounter.enemies.caster.hp,encounter.enemies.enemy.hp,encounter.phase]).toEqual([0,0,'won']);
-  expect(state.session(field.id).drops).toHaveLength(2);
+  expect(state.session(field.id).drops).toHaveLength(7);
+});
+
+test('landing and physical access gate pickups, and a casting scroll cannot be dropped', () => {
+  const state = new Adventure(memory(), () => 1), encounter = createEncounter('playing'); state.enter(encounter, field);
+  const point: [number, number] = [encounter.player.x, encounter.player.z], drop = state.spawnDrop('sword', 1, point);
+  expect(state.pickup(drop.id, point, true)).toBe(false); drop.age = .55;
+  state.canCollectGround = () => false; expect(state.pickup(drop.id, point, true)).toBe(false);
+  state.canCollectGround = () => true; expect(state.pickup(drop.id, point, true)).toBe(true);
+  const scroll = state.character.items.find(i => i.item === 'scroll')!; state.beginCast(true);
+  expect(() => state.dropItem(scroll.id, scroll.quantity, point)).toThrow('Scroll is in use');
+  state.step(encounter, field, 2); expect(state.portal).not.toBeNull(); expect(state.character.scrolls).toBe(2);
 });

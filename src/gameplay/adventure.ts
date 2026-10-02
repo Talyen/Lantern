@@ -2,14 +2,24 @@ import { createEncounter, playerMaxHealth, enemyIds, type Encounter, type EnemyI
 import type { Point, Spawn } from './area';
 import type { AreaDefinition, Campfire, Chest } from '../levels/types';
 import { itemIds, normalizeLoadout, type ItemId, type Loadout } from './equipment';
+import { countItem, itemLoadout, lootDefinitions, receive, validItems, type InventoryItem, type LootItem } from './inventory';
 
 export const characterSaveKey = 'lantern.character.v1';
 export const scrollLimit = 99;
 export const homeArea = 'homestead';
-export type CharacterSave = { version: 2; scrolls: number; campfires: string[]; equipment: ItemId[]; loadout: Loadout; wood: number; xp: { woodcutting: number; axeCombat: number }; campEquipmentClaimed: boolean };
-export type ScrollDrop = { id: string; position: Point };
+export type CharacterSave = { version: 3; items: InventoryItem[]; campfires: string[]; xp: { woodcutting: number; axeCombat: number }; campClaims: ItemId[]; readonly scrolls: number; readonly wood: number; readonly equipment: ItemId[]; readonly loadout: Loadout };
+export type GroundDrop = { id: string; item: LootItem; quantity: number; position: Point; origin: Point; height: number; age: number; claim?: ItemId; instanceId?: string; blocked?: boolean };
 export type PortalLink = { area: string; departure: Spawn };
-type AreaSession = { encounter?: Encounter; drops: ScrollDrop[]; dropRolled: Partial<Record<EnemyId, boolean>>; chests: Record<string, { opened: boolean; remaining: number }> };
+type AreaSession = { encounter?: Encounter; drops: GroundDrop[]; dropRolled: Partial<Record<EnemyId, boolean>>; chests: Record<string, { opened: boolean; remaining: number }> };
+function character(items: InventoryItem[] = [{ id: 'item-1', item: 'axe', quantity: 1, slot: 'main', x: 0, y: 0 }, { id: 'item-2', item: 'scroll', quantity: 3, slot: 'bag', x: 0, y: 0 }]): CharacterSave {
+  const value = { version: 3 as const, items, campfires: ['homestead/camp'], xp: { woodcutting: 0, axeCombat: 0 }, campClaims: [] as ItemId[] };
+  return Object.defineProperties(value, {
+    scrolls: { get: () => countItem(value.items.filter(i => i.slot !== 'overflow'), 'scroll') },
+    wood: { get: () => countItem(value.items, 'wood') },
+    equipment: { get: () => value.items.filter(i => itemIds.includes(i.item as ItemId)).map(i => i.item as ItemId) },
+    loadout: { get: () => itemLoadout(value.items) },
+  }) as CharacterSave;
+}
 export type Storage = Pick<globalThis.Storage, 'getItem' | 'setItem'>;
 export const chestUnlocked = (encounter: Encounter, chest: Chest) => encounter.enemies[chest.guard ?? 'enemy'].hp <= 0;
 export const fireKey = (area: string, fire: string) => `${area}/${fire}`;
@@ -17,45 +27,96 @@ export const near = (point: Point, target: Point, radius: number) => Math.hypot(
 
 /** Continuing character state and inactive area snapshots; no rendering/browser dependencies. */
 export class Adventure {
-  character: CharacterSave = { version: 2, scrolls: 3, campfires: ['homestead/camp'], equipment: ['axe'], loadout: { main: 'axe', off: null }, wood: 0, xp: { woodcutting: 0, axeCombat: 0 }, campEquipmentClaimed: false };
+  character = character();
   portal: PortalLink | null = null;
   castRemaining = 0;
   saveError = '';
+  notice = '';
+  private noticeTime = 0;
   currentArea: string | null = null;
+  pickupTarget: string | null = null;
+  placeGround: (origin: Point, index: number) => { position: Point; height: number } = origin => ({ position: [...origin], height: 0 });
+  canCollectGround: (drop: GroundDrop) => boolean = () => true;
   private sessions = new Map<string, AreaSession>();
+  private sequence = 2;
+  newId = (): string => `item-${++this.sequence}`;
   constructor(private storage?: Storage, private random = Math.random) {
     if (!storage) return;
     try {
-      const raw = storage.getItem(characterSaveKey);
-      if (raw) {
-        const value = JSON.parse(raw);
-        if (![1, 2].includes(value?.version) || !Number.isInteger(value.scrolls) || value.scrolls < 0 || value.scrolls > scrollLimit || !Array.isArray(value.campfires) || !value.campfires.every((id: unknown) => typeof id === 'string')) throw new Error('Invalid character save');
-        if (value.version === 2) {
-          const counter = (number: unknown) => typeof number === 'number' && Number.isSafeInteger(number) && number >= 0;
-          if (!Array.isArray(value.equipment) || !value.equipment.every((id: ItemId) => itemIds.includes(id)) || !counter(value.wood) || !counter(value.xp?.woodcutting) || !counter(value.xp?.axeCombat) || typeof value.campEquipmentClaimed !== 'boolean'
-            || !value.loadout || !(value.loadout.main === null || itemIds.includes(value.loadout.main) && value.loadout.main !== 'shield') || ![null, 'shield'].includes(value.loadout.off)
-            || value.loadout.main && !value.equipment.includes(value.loadout.main) || value.loadout.off && !value.equipment.includes(value.loadout.off)) throw new Error('Invalid equipment save');
-          this.character = { version: 2, scrolls: value.scrolls, campfires: [...new Set<string>([...this.character.campfires, ...value.campfires])], equipment: [...new Set<ItemId>(value.equipment)], loadout: normalizeLoadout(value.loadout), wood: value.wood, xp: { woodcutting: value.xp.woodcutting, axeCombat: value.xp.axeCombat }, campEquipmentClaimed: value.campEquipmentClaimed };
-        } else {
-          this.character.scrolls = value.scrolls;
-          this.character.campfires = [...new Set<string>([...this.character.campfires, ...value.campfires])];
-          this.save();
+      const raw = storage.getItem(characterSaveKey); if (!raw) return;
+      const value = JSON.parse(raw), counter = (n: unknown) => typeof n === 'number' && Number.isSafeInteger(n) && n >= 0;
+      if (![1, 2, 3].includes(value?.version) || !Array.isArray(value.campfires) || !value.campfires.every((id: unknown) => typeof id === 'string')) throw new Error('Invalid character save');
+      if (value.version === 3) {
+        if (!validItems(value.items) || !counter(value.xp?.woodcutting) || !counter(value.xp?.axeCombat) || !Array.isArray(value.campClaims) || !value.campClaims.every((id: ItemId) => itemIds.includes(id))) throw new Error('Invalid inventory save');
+        this.character = character(value.items);
+        this.character.xp = value.xp; this.character.campClaims = [...new Set<ItemId>(value.campClaims)];
+        for (const entry of value.items) this.sequence = Math.max(this.sequence, Number(entry.id.match(/^item-(\d+)$/)?.[1] ?? 0));
+      } else {
+        if (!counter(value.scrolls) || value.scrolls > scrollLimit) throw new Error('Invalid scroll save');
+        if (value.version === 2 && (!Array.isArray(value.equipment) || !value.equipment.every((id: ItemId) => itemIds.includes(id)) || !counter(value.wood) || !counter(value.xp?.woodcutting) || !counter(value.xp?.axeCombat) || typeof value.campEquipmentClaimed !== 'boolean'
+          || !value.loadout || !(value.loadout.main === null || itemIds.includes(value.loadout.main) && value.loadout.main !== 'shield') || ![null, 'shield'].includes(value.loadout.off)
+          || value.loadout.main && !value.equipment.includes(value.loadout.main) || value.loadout.off && !value.equipment.includes(value.loadout.off))) throw new Error('Invalid equipment save');
+        const items: InventoryItem[] = [], loadout = value.version === 2 ? normalizeLoadout(value.loadout) : { main: 'axe', off: null };
+        for (const item of new Set<ItemId>(value.version === 2 ? value.equipment : ['axe'])) items.push({ id: this.newId(), item, quantity: 1, slot: loadout.main === item ? 'main' : loadout.off === item ? 'off' : 'overflow', x: 0, y: 0 });
+        // Recover unequipped legacy gear before supplies, preserving anything beyond capacity.
+        for (const entry of [...items]) if (entry.slot === 'overflow') {
+          items.splice(items.indexOf(entry), 1);
+          if (!receive(items, entry.item, 1, this.newId, entry.id)) items.push(entry);
         }
+        for (const [item, quantity] of [['scroll', value.scrolls], ['wood', value.version === 2 ? value.wood : 0]] as [LootItem, number][]) {
+          const remainder = quantity - receive(items, item, quantity, this.newId);
+          if (remainder) items.push({ id: this.newId(), item, quantity: remainder, slot: 'overflow', x: 0, y: 0 });
+        }
+        this.character = character(items);
+        if (value.version === 2) { this.character.xp = value.xp; if (value.campEquipmentClaimed) this.character.campClaims = ['sword', 'shield', 'bow', 'staff']; }
       }
+      this.character.campfires = [...new Set<string>(['homestead/camp', ...value.campfires])];
+      if (value.version !== 3) this.save();
     } catch { this.saveError = 'Unable to load progress. Check local storage before restarting.'; }
   }
   save(): void {
     if (!this.storage) return;
-    try { this.storage?.setItem(characterSaveKey, JSON.stringify(this.character)); this.saveError = ''; }
+    try { this.storage.setItem(characterSaveKey, JSON.stringify(this.character)); this.saveError = ''; }
     catch { this.saveError = 'Unable to save progress. Allow local storage before restarting.'; }
   }
-  /** Commit only after the coordinator has prepared the matching models and motions. */
-  commitEquipment(loadout: Loadout): boolean {
-    if (loadout.main && !this.character.equipment.includes(loadout.main) || loadout.off && !this.character.equipment.includes(loadout.off)) return false;
-    this.character.loadout = normalizeLoadout(loadout); this.save(); return true;
+  replaceItems(items: InventoryItem[]): void { this.character.items = items; this.save(); }
+  message(text: string): void { this.notice = text; this.noticeTime = 2; }
+  cancelPickup(): void { this.pickupTarget = null; }
+  spawnDrop(item: LootItem, quantity: number, origin: Point, options: Partial<Pick<GroundDrop, 'claim' | 'instanceId' | 'blocked'>> = {}): GroundDrop {
+    const point = this.placeGround(origin, this.session().drops.length);
+    const drop: GroundDrop = { id: this.newId(), item, quantity, origin: [...origin], ...point, age: 0, ...options };
+    this.session().drops.push(drop); return drop;
   }
-  grantHarvest(wood = 1, xp = 10): void {
-    this.character.wood += wood; this.character.xp.woodcutting += xp; this.save();
+  dropItem(id: string, quantity: number, origin: Point): void {
+    const entry = this.character.items.find(i => i.id === id);
+    if (!entry || !Number.isSafeInteger(quantity) || quantity < 1 || quantity > entry.quantity) throw new Error('Item is no longer available.');
+    if (entry.item === 'scroll' && this.castRemaining > 0 && this.character.scrolls - quantity < 1) throw new Error('Scroll is in use.');
+    if (entry.slot === 'main' || entry.slot === 'off') throw new Error('Move equipped gear into the bag before dropping it.');
+    this.spawnDrop(entry.item, quantity, origin, { blocked: lootDefinitions[entry.item].stackable, instanceId: lootDefinitions[entry.item].stackable ? undefined : entry.id });
+    entry.quantity -= quantity; this.replaceItems(this.character.items.filter(i => i.quantity > 0));
+  }
+  recoverItem(id: string): void {
+    const next = structuredClone(this.character.items), entry = next.find(i => i.id === id && i.slot === 'overflow'); if (!entry) return;
+    next.splice(next.indexOf(entry), 1);
+    entry.quantity -= receive(next, entry.item, entry.quantity, this.newId, lootDefinitions[entry.item].stackable ? undefined : entry.id);
+    if (entry.quantity) next.push(entry);
+    if (entry.quantity === this.character.items.find(i => i.id === id)?.quantity) throw new Error('Inventory full.');
+    this.replaceItems(next);
+  }
+  pickup(id: string, point: Point, manual = false): boolean {
+    const drop = this.session().drops.find(d => d.id === id);
+    if (!drop || drop.age < .55 || !near(point, drop.position, 1.5)) return false;
+    if (!this.canCollectGround(drop)) { if (manual) this.message('Can’t reach item'); return false; }
+    if (drop.blocked && !manual) return false;
+    const amount = receive(this.character.items, drop.item, drop.quantity, this.newId, drop.instanceId);
+    if (!amount) { if (manual) this.message('Inventory full'); return false; }
+    drop.quantity -= amount;
+    if (drop.claim) this.character.campClaims = [...new Set([...this.character.campClaims, drop.claim])];
+    if (!drop.quantity) this.session().drops.splice(this.session().drops.indexOf(drop), 1);
+    this.save(); return true;
+  }
+  grantHarvest(wood = 1, xp = 10, position: Point = [0, 0]): void {
+    this.spawnDrop('wood', wood, position); this.character.xp.woodcutting += xp; this.save();
   }
   grantAxeCombatXp(amount = 10): void { this.character.xp.axeCombat += amount; this.save(); }
   session(id = this.currentArea!): AreaSession {
@@ -79,7 +140,7 @@ export class Adventure {
     next.player.x = arrival.position[0]; next.player.z = arrival.position[1]; next.player.yaw = arrival.yaw;
     next.player.hp = recover ? playerMaxHealth : health;
     Object.assign(encounter, next);
-    this.castRemaining = 0;
+    this.castRemaining = 0; this.cancelPickup();
     if (recover) this.portal = null;
   }
   discover(area: AreaDefinition, point: Point): void {
@@ -103,17 +164,12 @@ export class Adventure {
   }
   openChest(encounter: Encounter, area: AreaDefinition, chest: Chest): boolean {
     if (this.currentArea !== area.id || encounter.player.hp <= 0 || !chestUnlocked(encounter,chest) || this.castRemaining > 0 || !near([encounter.player.x, encounter.player.z], chest.position, 1.8)) return false;
-    const state = this.chest(area, chest), collected = Math.min(state.remaining, scrollLimit - this.character.scrolls);
-    const equipment = area.id === 'clearing' && !this.character.campEquipmentClaimed;
-    const changed = !state.opened || collected > 0 || equipment;
-    state.opened = true; state.remaining -= collected; this.character.scrolls += collected;
-    if (equipment) {
-      this.character.equipment = [...new Set<ItemId>([...this.character.equipment, 'sword', 'shield', 'bow', 'staff'])];
-      this.character.campEquipmentClaimed = true;
-    }
-    if (collected || equipment) this.save();
-    return changed;
+    const state = this.chest(area, chest); if (state.opened) return false;
+    if (state.remaining) this.spawnDrop('scroll', state.remaining, chest.position);
+    if (area.id === 'clearing') for (const item of ['sword', 'shield', 'bow', 'staff'] as ItemId[]) if (!this.character.campClaims.includes(item)) this.spawnDrop(item, 1, chest.position, { claim: item });
+    state.opened = true; state.remaining = 0; return true;
   }
+
   destinations(areas: Record<string, AreaDefinition>): { area: AreaDefinition; fire: Campfire; available: boolean }[] {
     return Object.values(areas).flatMap(area => (area.campfires ?? []).filter(fire => area.id !== this.currentArea && this.character.campfires.includes(fireKey(area.id, fire.id))).map(fire => ({ area, fire, available: this.fireSafe(area, fire) })));
   }
@@ -122,7 +178,8 @@ export class Adventure {
     this.castRemaining = 2; return true;
   }
   step(encounter: Encounter, area: AreaDefinition, dt: number): void {
-    if (encounter.player.hp <= 0) { this.castRemaining = 0; this.portal = null; return; }
+    if (encounter.player.hp <= 0) { this.castRemaining = 0; this.portal = null; this.cancelPickup(); return; }
+    this.noticeTime = Math.max(0, this.noticeTime - dt); if (!this.noticeTime) this.notice = '';
     const point: Point = [encounter.player.x, encounter.player.z];
     this.discover(area, point);
     if (area.campfires?.some(fire => fire.heals && near(point, fire.position, 3) && this.fireSafe(area, fire, encounter))) encounter.player.hp = Math.min(playerMaxHealth, encounter.player.hp + playerMaxHealth * .03 * dt);
@@ -131,17 +188,20 @@ export class Adventure {
       const enemy = encounter.enemies[id];
       if (enemy.home && enemy.hp <= 0 && !session.dropRolled[id]) {
         session.dropRolled[id] = true;
-        if (this.random() < .5) session.drops.push({ id: `${id === 'enemy' ? 'raider' : id}-scroll`, position: [enemy.x, enemy.z] });
+        if (this.random() < .5) this.spawnDrop('scroll', 1, [enemy.x, enemy.z]);
       }
     }
-    if (this.character.scrolls < scrollLimit) {
-      const index = session.drops.findIndex(drop => near(point, drop.position, 1.5));
-      if (index >= 0) { session.drops.splice(index, 1); this.character.scrolls++; this.save(); }
+    for (const drop of [...session.drops]) {
+      drop.age += dt;
+      if (drop.blocked && !near(point, drop.position, 1.5)) drop.blocked = false;
+      if (lootDefinitions[drop.item].stackable) this.pickup(drop.id, point);
     }
     if (this.castRemaining > 0) {
       this.castRemaining = Math.max(0, this.castRemaining - dt);
       if (this.castRemaining === 0) {
-        this.character.scrolls--;
+        const scroll = this.character.items.find(i => i.item === 'scroll' && i.slot === 'bag');
+        if (!scroll) return;
+        scroll.quantity--; this.character.items = this.character.items.filter(i => i.quantity > 0);
         this.portal = { area: area.id, departure: { position: [...point], yaw: encounter.player.yaw } };
         this.save();
       }
