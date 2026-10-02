@@ -163,6 +163,7 @@ export class CoreEffects {
       if (!this.atmosphericParticles && atmosphericKinds.has(emitter.kind)) continue;
       if (!this.visible(emitter.space)) continue;
       emitter.carry += dt * emitter.rate * particlePresets[this.quality].emission;
+      if (emitter.carry < 1) continue;
       this.scratch.copy(emitter.position); emitter.space.localToWorld(this.scratch);
       while (emitter.carry >= 1) { emitter.carry--; this.spawn(emitter.kind, this.scratch.x, this.scratch.y, this.scratch.z); }
     }

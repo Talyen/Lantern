@@ -43,6 +43,7 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
   const resources = resourceDefinitions(area), mineralModels = new Map<string, THREE.Object3D>();
   const trees = treeDefinitions(area), treeIds = new Map(trees.map(t => [t.id, t]));
   const treeModels = new Map<string, { object: THREE.Object3D; stump: THREE.Mesh; rotation: [number, number]; hitAge: number; felled: boolean }>();
+  const shakingTrees = new Set<string>();
   const portals: Portal[] = [];
   const missing: string[] = [], foliage: THREE.Object3D[] = [], fires: THREE.PointLight[] = []; let shadow: THREE.PointLight | null = null;
   try {
@@ -241,10 +242,13 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
     function update(camera: THREE.Camera, dt = 0): void {
       for (const instance of instances) updateAssetLods(instance.object, camera);
       for (const { hinge, opened } of chests.values()) hinge.rotation.x = THREE.MathUtils.damp(hinge.rotation.x, opened ? -1.25 : 0, 8, dt);
-      for (const tree of treeModels.values()) {
+      for (const id of shakingTrees) {
+        const tree = treeModels.get(id)!;
         tree.hitAge += dt;
         const tilt = !tree.felled && tree.hitAge < .36 ? Math.sin(tree.hitAge * 38) * .013 * (1 - tree.hitAge / .36) : 0;
         tree.object.rotation.x = tree.rotation[0] + tilt; tree.object.rotation.z = tree.rotation[1] + tilt * .6;
+        // Restore the authored pose on the final frame, then stop touching it.
+        if (tree.hitAge >= .36) shakingTrees.delete(id);
       }
     }
     function setChestOpened(id: string, opened: boolean): void { const chest = chests.get(id); if (chest) chest.opened = opened; }
@@ -260,10 +264,11 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
     }
     function setTreeState(id: string, felled: boolean): void {
       const tree = treeModels.get(id); if (!tree) return;
+      shakingTrees.delete(id);
       tree.felled = felled; tree.object.visible = !felled; tree.stump.visible = felled; tree.hitAge = Infinity;
       [tree.object.rotation.x, tree.object.rotation.z] = tree.rotation;
     }
-    function treeHit(id: string): void { const tree = treeModels.get(id); if (tree && !tree.felled) tree.hitAge = 0; }
+    function treeHit(id: string): void { const tree = treeModels.get(id); if (tree && !tree.felled) { tree.hitAge = 0; shakingTrees.add(id); } }
     function activate(effects: CoreEffects): void {
       effects.addGrass(grass!);
       for (const model of foliage) effects.addFoliage(model);

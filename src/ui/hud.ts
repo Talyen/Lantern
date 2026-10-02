@@ -19,6 +19,7 @@ export function createHud(onRetry: () => void) {
   let safe = false;
   const resources = new WeakMap<HTMLElement, string>();
   const enemyValues: Partial<Record<EnemyId, number>> = {};
+  const enemyTransforms: Partial<Record<EnemyId, string>> = {};
   function resource(orb: HTMLElement, name: string, value: number, max: number): void {
     const count = Math.max(0, Math.min(max, value));
     if (resources.get(orb) === `${count}/${max}`) return;
@@ -50,16 +51,25 @@ export function createHud(onRetry: () => void) {
           bar.setAttribute('aria-valuenow', String(Math.max(0, enemy.hp)));
           bar.firstElementChild!.setAttribute('style', `width:${Math.max(0, enemy.hp) / enemyMaxHealth * 100}%`);
         }
-        if (enemy.hp <= 0) { damagedFor[id]=0; bar.hidden=true; }
+        if (enemy.hp <= 0) { damagedFor[id]=0; if (!bar.hidden) bar.hidden=true; }
       }
     },
     positionEnemy(encounter: Encounter, camera: THREE.Camera, mount: HTMLElement, dt: number, obscured: boolean) {
+      let width: number | undefined, height = 0;
       for (const id of enemyIds) {
         const enemy=encounter.enemies[id], bar=healthBars[id];
         damagedFor[id] = Math.max(0, damagedFor[id] - dt);
+        if (safe || obscured || !enemy.home || enemy.hp <= 0 || damagedFor[id] <= 0) {
+          if (!bar.hidden) bar.hidden = true;
+          continue;
+        }
         anchor.set(enemy.x, enemy.y + 1.8, enemy.z).project(camera);
-        bar.hidden = safe || obscured || !enemy.home || enemy.hp <= 0 || damagedFor[id] <= 0 || Math.abs(anchor.x) > 1 || Math.abs(anchor.y) > 1 || Math.abs(anchor.z) > 1;
-        if (!bar.hidden) bar.style.transform = `translate(${(anchor.x + 1) * mount.clientWidth / 2}px, ${(1 - anchor.y) * mount.clientHeight / 2}px) translate(-50%, -100%)`;
+        const hidden = Math.abs(anchor.x) > 1 || Math.abs(anchor.y) > 1 || Math.abs(anchor.z) > 1;
+        if (bar.hidden !== hidden) bar.hidden = hidden;
+        if (hidden) continue;
+        if (width === undefined) { width = mount.clientWidth; height = mount.clientHeight; }
+        const transform = `translate(${(anchor.x + 1) * width / 2}px, ${(1 - anchor.y) * height / 2}px) translate(-50%, -100%)`;
+        if (enemyTransforms[id] !== transform) { bar.style.transform = transform; enemyTransforms[id] = transform; }
       }
     },
     setSafe(value: boolean) { safe = value; if (safe) for (const id of enemyIds) healthBars[id].hidden=true; },

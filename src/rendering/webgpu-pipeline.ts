@@ -134,7 +134,8 @@ class PipelineGraph {
         }
         return result.div(total.max(.00001));
       })();
-      const resolved = rtt(beauty); this.resources.push(resolved);
+      // DOF reads scene depth through viewZ; this full-screen copy owns color only.
+      const resolved = rtt(beauty, null, null, { depthBuffer: false }); this.resources.push(resolved);
       const soft = dof(resolved, viewZ, this.focus, this.focusRange, this.bokeh);
       this.resources.push(soft); beauty = vec4(soft as unknown as Node<'vec4'>);
     }

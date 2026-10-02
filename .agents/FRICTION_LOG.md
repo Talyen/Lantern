@@ -14,7 +14,7 @@ Centralized intake for unresolved agent friction while working in Lantern. Keep 
 
 | Date | Area | Symptom (expected vs actual) |
 |------|------|------------------------------|
-| 2026-10-02 | Managed previews | `agent:dev --stop` succeeds without cancelling a preview queued for the GPU slot. [Preview startup](../scripts/agents/preview.mjs) writes its session record only after acquiring the slot, so the stop command cannot find the pending owner. Observed during lint expansion, the ten-bug audit and authored-equipment integration; the owned queued child was identity-checked and interrupted without touching the active task. Record pending startup identity before waiting and support verified cancellation. |
+| 2026-10-02 | Managed previews | `agent:dev --stop` succeeds without cancelling a preview queued for the GPU slot. [Preview startup](../scripts/agents/preview.mjs) writes its session record only after acquiring the slot, so the stop command cannot find the pending owner. Observed during lint expansion, the ten-bug audit, authored-equipment integration and runtime-efficiency review; the owned queued child was identity-checked and interrupted without touching the active task. Record pending startup identity before waiting and support verified cancellation. |
 | 2026-10-02 | GPU review admission | A long-waiting `fix-ten-bugs` preview remained queued when the later `graveyard-crypt` preview acquired the released GPU slot. [Native lease admission](../scripts/agents/native.py) polls nonblocking locks every 150 ms without retaining waiter order, so later work can overtake an existing wait. Add ordered admission with cancellation; preserve the single GPU limit and active owners. |
 
 ## Archive
