@@ -26,6 +26,30 @@ def identity(pid):
         return ''
 
 
+def stop_owned_groups(groups):
+    def matches(pid, started):
+        try:
+            return started and identity(pid) == started and os.getpgid(pid) == pid
+        except ProcessLookupError:
+            return False
+
+    for pid, started in groups.items():
+        if matches(pid, started):
+            try:
+                os.killpg(pid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
+    deadline = time.monotonic() + 2
+    while time.monotonic() < deadline and any(matches(pid, started) for pid, started in groups.items()):
+        time.sleep(.1)
+    for pid, started in groups.items():
+        if matches(pid, started):
+            try:
+                os.killpg(pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+
+
 def clone(source, target, exclusions=(), small_copy=False):
     source, target = os.path.abspath(source), os.path.abspath(target)
     source_root = Path(source).resolve()
@@ -147,6 +171,7 @@ def lease(args):
     temporary.write_text(json.dumps(record))
     temporary.replace(record_path)
     children = {}
+    cleanup_groups = {}
     cleanups = []
     def stop(*_):
         raise SystemExit(1)
@@ -157,7 +182,10 @@ def lease(args):
         for line in sys.stdin:
             message = json.loads(line)
             if 'cleanup' in message:
-                cleanups.append(message['cleanup'])
+                cleanups.append((message['cleanup'], message.get('timeout', 10)))
+            elif 'cleanupGroup' in message:
+                group = message['cleanupGroup']
+                cleanup_groups[group['pid']] = group['started']
             elif 'child' in message:
                 children[message['child']] = message['started']
             elif 'done' in message:
@@ -170,11 +198,14 @@ def lease(args):
                     os.killpg(pid, signal.SIGTERM)
                 except ProcessLookupError:
                     pass
-        for command in cleanups:
+        for command, timeout in cleanups:
             try:
-                subprocess.run(command, timeout=10, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                subprocess.run(command, timeout=timeout, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             except (OSError, subprocess.TimeoutExpired):
                 pass
+        # Browser daemons and Chrome create separate groups outside the CLI's
+        # process tree. Keep admission reserved until their verified groups stop.
+        stop_owned_groups(cleanup_groups)
         record_path.unlink(missing_ok=True)
         handle.close()
         for retired in drained:

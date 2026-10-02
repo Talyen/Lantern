@@ -48,7 +48,10 @@ export async function acquire(resource, { cwd = root, ctx, slots = RESOURCE_LIMI
     });
   });
   if(!record){child.stdin.end();await exited;return null;}
-  const lease = { child, record, store: ctx.store, cleanup: command => child.stdin.write(JSON.stringify({ cleanup: command }) + '\n'), release: async () => {
+  const lease = { child, record, store: ctx.store,
+    cleanup: (command, timeout = 10) => child.stdin.write(JSON.stringify({ cleanup: command, timeout }) + '\n'),
+    cleanupGroup: group => child.stdin.write(JSON.stringify({ cleanupGroup: group }) + '\n'),
+    release: async () => {
     if (owned.get(resource) === lease) owned.delete(resource);
     child.stdin.end(); await exited;
   } };

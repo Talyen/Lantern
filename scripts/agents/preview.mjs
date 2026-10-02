@@ -1,6 +1,8 @@
 import { createServer as portServer } from 'node:net';
-import { spawn } from 'node:child_process';
-import { mkdir, open, rm } from 'node:fs/promises';
+import { spawn, execFile } from 'node:child_process';
+import { mkdir, open, rm, readFile } from 'node:fs/promises';
+import { homedir } from 'node:os';
+import { promisify } from 'node:util';
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -9,6 +11,33 @@ import { context, readJSON, writeJSON, processIdentity } from './state.mjs';
 import { acquire } from './resources.mjs';
 import { run, root } from '../lib/cli.mjs';
 export const sessionPath = cwd => join(cwd, '.local/agents/preview.json');
+const execute = promisify(execFile);
+/** Only groups descended from this preview's uniquely named browser daemon. */
+export async function browserProcessGroups(session) {
+  const directory = process.env.AGENT_BROWSER_SOCKET_DIR ?? join(homedir(), '.agent-browser');
+  const text = await readFile(join(directory, `${session}.pid`), 'utf8').catch(error => {
+    if (error.code === 'ENOENT') return ''; throw error;
+  });
+  if (!text.trim()) return [];
+  const pid = Number(text.trim());
+  if (!Number.isSafeInteger(pid) || pid < 1) throw new Error('Invalid owned browser daemon PID');
+  const { stdout } = await execute('ps', ['-axo', 'pid=,ppid=,pgid=,lstart=,comm=']);
+  const rows = stdout.trim().split('\n').map(line => {
+    const [, process, parent, group, started, command] = line.match(/^\s*(\d+)\s+(\d+)\s+(\d+)\s+(\S+\s+\S+\s+\d+\s+\S+\s+\d{4})\s+(.+)$/) ?? [];
+    return { pid: Number(process), parent: Number(parent), group: Number(group), started, command };
+  });
+  const daemon = rows.find(row => row.pid === pid);
+  if (!daemon) return [];
+  if (!daemon.command?.includes('agent-browser') || daemon.group !== pid) throw new Error('Owned browser daemon identity could not be verified');
+  const descendants = new Set([pid]);
+  for (let changed = true; changed;) {
+    changed = false;
+    for (const row of rows) if (descendants.has(row.parent) && !descendants.has(row.pid)) { descendants.add(row.pid); changed = true; }
+  }
+  const groups = await Promise.all(rows.filter(row => descendants.has(row.pid) && row.group === row.pid).map(async row => ({ pid: row.pid,
+    started: await processIdentity(row.pid) === row.started ? row.started : '' })));
+  return groups.filter(group => group.started);
+}
 export async function livePreview(cwd) {
   const record = await readJSON(sessionPath(cwd), null);
   if (!record?.url) return null;
@@ -65,17 +94,30 @@ async function serve() {
   const cwd = process.cwd(), ctx = await context(cwd);
   if (options.main && cwd !== ctx.main) throw new Error('Main preview must use the main checkout.');
   const session = `lantern-level-${options.token}`;
-  let lease, ownerLease, server, timer, closing = false, browserOpened = false;
+  let lease, ownerLease, server, timer, browserTimer, closing = false;
+  const trackedGroups = new Map();
+  let browserScan = Promise.resolve();
   const record = { pid: process.pid, started: await processIdentity(process.pid), token: options.token,
     session, renderer: 'webgpu', browser: options.browser, author: options.author, status: 'starting', ready: false };
+  const trackBrowser = () => {
+    browserScan = browserScan.catch(() => {}).then(async () => {
+      for (const group of await browserProcessGroups(session)) if (trackedGroups.get(group.pid) !== group.started) {
+        if (trackedGroups.has(group.pid)) throw new Error('Browser PID was reused; preserve the new process and inspect preview.log.');
+        trackedGroups.set(group.pid, group.started); lease.cleanupGroup(group);
+      }
+      record.browserProcesses = [...trackedGroups].map(([pid, started]) => ({ pid, started }));
+    });
+    return browserScan;
+  };
   const close = async () => {
     if (closing) return; closing = true;
-    clearInterval(timer);
-    if (browserOpened) await run('agent-browser', ['--session', session, 'close']).catch(() => {});
+    clearInterval(timer); clearInterval(browserTimer);
+    if (options.browser && lease) await trackBrowser().catch(error => console.error(error));
     await server?.close();
+    await lease?.release();
     if ((await readJSON(sessionPath(cwd), null))?.token === options.token) await rm(sessionPath(cwd), { force: true });
     if (options.author && (await readJSON(join(cwd, '.local/level-design/session.json'), null))?.token === options.token) await rm(join(cwd, '.local/level-design/session.json'), { force: true });
-    await lease?.release(); await ownerLease?.release(); process.exit(0);
+    await ownerLease?.release(); process.exit(0);
   };
   process.once('SIGTERM', close); process.once('SIGINT', close);
   try {
@@ -87,7 +129,7 @@ async function serve() {
     await writeJSON(sessionPath(cwd), record);
     lease = options.browser ? await acquire('gpu', { cwd, ctx }) : null;
     if (closing) { await lease?.release(); return; }
-    lease?.cleanup(['agent-browser', '--session', session, 'close']);
+    lease?.cleanup(['agent-browser', '--session', session, 'close'], 3);
     const port = options.main ? 5173 : await new Promise((accept, reject) => {
       const probe = portServer(); probe.once('error', reject);
       probe.listen(0, '127.0.0.1', () => { const selected = probe.address().port; probe.close(() => accept(selected)); });
@@ -113,7 +155,12 @@ async function serve() {
     Object.assign(record, { url, status: 'serving', gpuLease: lease ? { token: lease.record.token, slot: lease.record.slot } : null });
     await writeJSON(sessionPath(cwd), record);
     if (options.author) await writeJSON(join(cwd, '.local/level-design/session.json'), record);
-    if (options.browser) { browserOpened = true; await run('agent-browser', ['--session', session, '--headed', 'false', '--webgpu', 'open', `${url}/?area=${encodeURIComponent(options.area)}${options.author ? '&author=levels' : ''}`]); }
+    if (options.browser) {
+      browserTimer = setInterval(() => { trackBrowser().catch(error => console.error(error)); }, 1000);
+      try { await run('agent-browser', ['--session', session, '--headed', 'false', '--webgpu', 'open', `${url}/?area=${encodeURIComponent(options.area)}${options.author ? '&author=levels' : ''}`]); }
+      finally { await trackBrowser(); }
+      if (!trackedGroups.size) throw new Error('Browser opened without a verifiable owned process group; inspect preview.log.');
+    }
     record.ready = true; await writeJSON(sessionPath(cwd), record);
     if (options.author) await writeJSON(join(cwd, '.local/level-design/session.json'), record);
     if (options.main) timer = setInterval(async () => {

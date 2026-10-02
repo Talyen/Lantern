@@ -39,6 +39,17 @@ Finish combines current main assets with task-edited artifacts before checking. 
 
 Automatic limits default to eight task worktrees, one static-check job, one heavy build/export/install, and one agent GPU-review session. Worktree capacity is independent of these resource leases: more source-editing tasks do not admit more GPU reviews or heavy jobs. Resource waiting is recorded separately from execution time. Live queued requests enter in registration order; later requests, including try-only probes, cannot overtake them. Cancelled or exited waiters release their place. Each checkout has one preview owner, recorded before GPU admission so `agent:dev --stop` can cancel a queued startup. A queued build waits before its execution deadline begins and does not hold a lightweight-check slot. These limits do not close or change the user's own play session. Previews start on demand; closing them releases the GPU resource. Level capture/measure/bake operations borrow their verified owned authoring session's lease. Retired second-slot locks drain without terminating their owners and remain reserved so older worktrees cannot admit another job. These are managed-command limits, not a hardware cap on external apps.
 
+Reuse the task's managed browser for navigation and reloads; do not open replacement
+sessions alongside an unresponsive preview. The preview records its uniquely named
+browser daemon and Chrome process groups with PID/start identities. The lease
+guardian attempts normal browser close, then stops only those verified groups if
+close fails or the preview owner exits abruptly. GPU admission stays reserved
+through cleanup. Do not use global browser-close or age-based reclamation against
+another task or the user's browser. These limits belong to this repository;
+Alchemy browser tests and Trinket simulator builds can still compete for the same
+Mac's memory. Coordinate expensive inspections when host memory pressure is high,
+while allowing source editing to continue.
+
 Set a repository-local override with `git config --local lantern.maxWorktrees 12`; remove it with `git config --local --unset lantern.maxWorktrees` to restore eight. The setting must be a positive integer and is shared by every worktree. Lowering it preserves existing tasks and waits for usage to fall below the new limit. Every task not yet cleaned consumes a slot, including integrated tasks awaiting cleanup. Admission releases the promotion lock while waiting so other tasks can finish and be cleaned.
 
 Local/private-asset operations require 20 GiB available disk; admission waits at the configured worktree limit. Asset-free CI with no private vendor/source directories uses a 1 GiB reserve, since [standard hosted runners](https://docs.github.com/en/actions/reference/runners/github-hosted-runners) advertise 14 GB storage. CI containing private inputs retains the 20 GiB reserve. If disk space or task slots are exhausted, the agent runs `agent:status`, cleans completed tasks with `agent:cleanup`, and retries without asking the user to manage resources. Preserve unfinished tasks and source archives. Cleanup retains successful/failure check evidence and preview logs alongside private sources in `.local/agent-archives/<slug>/`. Staging and production public files also use native clones. Successful check evidence replaces older successful evidence; failure evidence is retained. Captures replace the same task/view output rather than collecting a settings matrix.

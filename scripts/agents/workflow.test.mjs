@@ -7,7 +7,7 @@ import { createInterface } from 'node:readline';
 import { promisify } from 'node:util';
 import { once } from 'node:events';
 import { join } from 'node:path';
-import { git, context, writeJSON, readJSON, taskPath, taskCapacity, spaceRequirement } from './state.mjs';
+import { git, context, writeJSON, readJSON, taskPath, taskCapacity, spaceRequirement, processIdentity } from './state.mjs';
 import { startTask, finishTask, cleanupTask, recover, installedDependenciesMatch } from './workflow.mjs';
 import { acquire, childEnvironment, withResource } from './resources.mjs';
 import { sessionPath, stopPreview } from './preview.mjs';
@@ -315,6 +315,61 @@ test('queued previews can be stopped and concurrent startup keeps one owner', { 
     await stopPreview(ctx.main).catch(() => {});
     for (const child of starters) if (child.exitCode === null) { const exit = once(child, 'exit'); child.kill('SIGTERM'); await exit; }
     await lease?.release(); await ctx.dispose();
+  }
+});
+
+test('browser cleanup survives a failed close without touching a reused process identity', { timeout: 15000 }, async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'lantern-browser-cleanup-'));
+  const ctx = { store: directory, main: directory };
+  const browser = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { detached: true, stdio: 'ignore' });
+  const unrelated = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { detached: true, stdio: 'ignore' });
+  const browserExit = once(browser, 'exit'), unrelatedExit = once(unrelated, 'exit');
+  let lease;
+  try {
+    lease = await acquire('gpu', { ctx });
+    lease.cleanup([process.execPath, '-e', 'process.exit(7)']);
+    lease.cleanupGroup({ pid: browser.pid, started: await processIdentity(browser.pid) });
+    lease.cleanupGroup({ pid: unrelated.pid, started: 'different start identity' });
+    await lease.release(); lease = undefined;
+    await browserExit;
+    assert.ok(await processIdentity(unrelated.pid));
+    lease = await acquire('gpu', { ctx, tryOnly: true });
+    assert.ok(lease, 'Admission resumes after owned browser cleanup');
+  } finally {
+    if (browser.exitCode === null && browser.signalCode === null) browser.kill('SIGKILL');
+    unrelated.kill('SIGKILL'); await unrelatedExit;
+    await lease?.release(); await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('browser cleanup survives an abruptly exited preview owner', { timeout: 15000 }, async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'lantern-browser-owner-'));
+  const ctx = { store: directory, main: directory };
+  const code = `
+    import {spawn} from 'node:child_process';
+    import {acquire} from ${JSON.stringify(new URL('./resources.mjs', import.meta.url).href)};
+    import {processIdentity} from ${JSON.stringify(new URL('./state.mjs', import.meta.url).href)};
+    const lease = await acquire('gpu', {ctx: ${JSON.stringify(ctx)}});
+    const browser = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {detached:true, stdio:'ignore'});
+    lease.cleanupGroup({pid:browser.pid, started:await processIdentity(browser.pid)});
+    console.log(JSON.stringify({pid:browser.pid}));
+    setInterval(() => {}, 1000);
+  `;
+  const owner = spawn(process.execPath, ['--input-type=module', '-e', code], { stdio: ['ignore', 'pipe', 'inherit'] });
+  const lines = createInterface({ input: owner.stdout });
+  let browserPid, lease;
+  try {
+    const [line] = await once(lines, 'line'); browserPid = JSON.parse(line).pid;
+    const exited = once(owner, 'exit'); owner.kill('SIGKILL'); await exited;
+    for (let attempt = 0; attempt < 50 && await processIdentity(browserPid); attempt++) await new Promise(resolve => setTimeout(resolve, 100));
+    assert.equal(await processIdentity(browserPid), '');
+    lease = await acquire('gpu', { ctx, tryOnly: true });
+    assert.ok(lease);
+  } finally {
+    lines.close();
+    if (owner.exitCode === null && owner.signalCode === null) owner.kill('SIGKILL');
+    if (browserPid && await processIdentity(browserPid)) process.kill(browserPid, 'SIGKILL');
+    await lease?.release(); await rm(directory, { recursive: true, force: true });
   }
 });
 
