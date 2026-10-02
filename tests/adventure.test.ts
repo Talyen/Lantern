@@ -1,4 +1,5 @@
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
+import { characterBackupKey, decodeCharacter } from '../src/gameplay/character-save';
 import { Adventure, characterSaveKey } from '../src/gameplay/adventure';
 import { createEncounter } from '../src/gameplay/encounter';
 import homestead from '../src/levels/areas/homestead.json';
@@ -55,8 +56,10 @@ test('character saves retain scrolls/discoveries while session encounters and po
   restored.enter(encounter, field); expect(encounter.enemies.enemy.hp).toBe(100);
   storage.setItem(characterSaveKey, JSON.stringify({ version: 1, scrolls: 7, campfires: ['removed/fire'] }));
   expect(new Adventure(storage).destinations({ homestead: home, clearing: field })).toHaveLength(1);
-  storage.setItem(characterSaveKey, '{broken'); expect(new Adventure(storage).saveError).toMatch(/Unable to load/);
-  const failed = new Adventure({ getItem: () => null, setItem: () => { throw Error('full'); } }); failed.save(); expect(failed.saveError).toMatch(/Unable to save/);
+  storage.setItem(characterSaveKey, '{broken');
+  const recovered = new Adventure(storage); expect(recovered.character.scrolls).toBeGreaterThan(0);
+  expect(JSON.parse(storage.getItem(`${characterSaveKey}.unreadable`)!)).toContain('{broken');
+  const failed = new Adventure({ getItem: () => null, setItem: () => { throw Error('full'); } }); failed.save(); expect(failed.saveDiagnostics().pending).toBe(true); failed.closeSave();
 });
 
 test('campfires heal over time only when safe and unsafe destinations cannot be used', () => {
@@ -285,4 +288,100 @@ test('revision 4 Homestead progress migrates with combat controls and starter po
   storage.setItem(characterSaveKey,JSON.stringify({version:4,items,stash,shelterRestored:true,restedSeconds:123,campfires:['homestead/camp'],xp:{woodcutting:327.5,mining:47.5,axeCombat:60},campClaims:['sword']}));
   const migrated=new Adventure(storage);expect(migrated.character.version).toBe(5);expect(migrated.character.stash).toEqual(stash);expect(migrated.character.shelterRestored).toBe(true);expect(migrated.character.restedSeconds).toBe(123);expect(migrated.character.xp.mining).toBe(47.5);expect(migrated.character.actionBar[4]).toBe('sword-basic');expect(migrated.character.potions).toBe(3);
   const restored=new Adventure(storage);expect(restored.character).toEqual(migrated.character);expect(restored.character.potions).toBe(3);expect(new Set([...restored.character.items,...restored.character.stash].map(i=>i.id)).size).toBe(restored.character.items.length+restored.character.stash.length);
+});
+
+test('unreadable saves restore the validated backup and preserve original bytes before replacement', () => {
+  const storage = memory(), state = new Adventure(storage);
+  state.save(); const original = storage.getItem(characterSaveKey)!;
+  state.character.items.find(i => i.item === 'scroll')!.quantity = 7; state.save();
+  expect(storage.getItem(characterBackupKey)).toBe(original);
+  storage.setItem(characterSaveKey, '{broken');
+  const recovered = new Adventure(storage);
+  expect(recovered.character.scrolls).toBe(3);
+  expect(decodeCharacter(storage.getItem(characterSaveKey)!).scrolls).toBe(3);
+  expect(JSON.parse(storage.getItem(`${characterSaveKey}.unreadable`)!)).toEqual(['{broken']);
+  // A failed preservation write must not replace either unreadable copy.
+  const broken = memory(); broken.setItem(characterSaveKey, '{primary'); broken.setItem(characterBackupKey, '{backup');
+  const unavailable = new Adventure({ getItem: broken.getItem, setItem: () => { throw Error('full'); } });
+  unavailable.save(); unavailable.closeSave();
+  expect(broken.getItem(characterSaveKey)).toBe('{primary'); expect(broken.getItem(characterBackupKey)).toBe('{backup');
+  const fresh = new Adventure(broken); fresh.save();
+  expect(decodeCharacter(broken.getItem(characterSaveKey)!).scrolls).toBe(3);
+  expect(JSON.parse(broken.getItem(`${characterSaveKey}.unreadable`)!)).toEqual(['{primary']);
+  expect(JSON.parse(broken.getItem(`${characterBackupKey}.unreadable`)!)).toEqual(['{backup']);
+});
+
+test('failed writes back off, coalesce the latest progress, retain a backup and flush on exit', async () => {
+  vi.useFakeTimers();
+  try {
+    const storage = memory(), initial = new Adventure(storage); initial.save();
+    const original = storage.getItem(characterSaveKey)!;
+    let failing = true, attempts = 0;
+    const state = new Adventure({ getItem: storage.getItem, setItem: (key, value) => {
+      attempts++; if (failing) throw Error('full'); storage.setItem(key, value);
+    } });
+    state.character.xp.mining = 1; state.save(); expect(attempts).toBe(1);
+    for (const delay of [1000, 2000, 5000, 15000, 30000, 30000]) {
+      state.character.xp.mining++; state.save();
+      const before = attempts;
+      await vi.advanceTimersByTimeAsync(delay - 1); expect(attempts).toBe(before);
+      await vi.advanceTimersByTimeAsync(1); expect(attempts).toBe(before + 1);
+    }
+    expect(storage.getItem(characterSaveKey)).toBe(original);
+    failing = false; state.character.xp.mining = 20; state.save();
+    await vi.advanceTimersByTimeAsync(30000);
+    expect(decodeCharacter(storage.getItem(characterSaveKey)!).xp.mining).toBe(20);
+    expect(storage.getItem(characterBackupKey)).toBe(original); expect(state.saveDiagnostics().pending).toBe(false);
+    failing = true; state.character.xp.mining = 21; state.save();
+    failing = false; state.character.xp.mining = 22; state.closeSave();
+    expect(decodeCharacter(storage.getItem(characterSaveKey)!).xp.mining).toBe(22);
+    expect(decodeCharacter(storage.getItem(characterBackupKey)!).xp.mining).toBe(20);
+    expect(vi.getTimerCount()).toBe(0);
+  } finally { vi.useRealTimers(); }
+});
+
+test('startup retries restore before play, but late reads never swap or overwrite an active character', async () => {
+  vi.useFakeTimers();
+  try {
+    const storage = memory(); storage.setItem(characterSaveKey, JSON.stringify({version:1,scrolls:7,campfires:[]}));
+    let readable = false;
+    const source = { getItem: (key: string) => { if (!readable) throw Error('denied'); return storage.getItem(key); }, setItem: storage.setItem };
+    const startup = new Adventure(source), preparation = startup.prepareSave();
+    readable = true; await vi.advanceTimersByTimeAsync(1000); await preparation;
+    expect(startup.character.scrolls).toBe(7);
+    readable = false;
+    const session = new Adventure(source), pending = session.prepareSave();
+    await vi.advanceTimersByTimeAsync(3000); await pending;
+    const existing = storage.getItem(characterSaveKey);
+    session.character.xp.mining = 20; session.save();
+    readable = true; await vi.advanceTimersByTimeAsync(1000);
+    expect(session.character.scrolls).toBe(3); expect(session.character.xp.mining).toBe(20);
+    expect(storage.getItem(characterSaveKey)).toBe(existing); expect(session.saveDiagnostics().blockedByExisting).toBe(true);
+    session.closeSave(); expect(storage.getItem(characterSaveKey)).toBe(existing);
+    // If storage proves empty, the latest in-memory progress can be persisted safely.
+    const empty = memory(); readable = false;
+    const temporary = new Adventure({getItem: key => {if(!readable)throw Error('denied');return empty.getItem(key);},setItem:empty.setItem});
+    temporary.character.xp.mining = 30; temporary.save(); readable = true;
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(decodeCharacter(empty.getItem(characterSaveKey)!).xp.mining).toBe(30); temporary.closeSave();
+  } finally { vi.useRealTimers(); }
+});
+
+test('a rejected save publishes no partially decoded character', () => {
+  const storage = memory(); storage.setItem(characterSaveKey, JSON.stringify({version:2,scrolls:5,campfires:[],equipment:['bow'],loadout:{main:'bow',off:null},wood:0,xp:{woodcutting:30,axeCombat:0},campEquipmentClaimed:false}));
+  const state = new Adventure(storage); expect(state.character.loadout.main).toBe('bow');
+  const invalid = {...JSON.parse(storage.getItem(characterSaveKey)!), restedSeconds:2000};
+  storage.setItem(characterSaveKey, JSON.stringify(invalid)); storage.data.delete(characterBackupKey);
+  const fresh = new Adventure(storage); expect(fresh.character.loadout.main).toBe('axe'); expect(fresh.character.xp.woodcutting).toBe(0);
+});
+
+test('overflow transfers into empty stash cells cap stacks and retain quantity and identity', () => {
+  const source: InventoryItem[] = [{id:'legacy',item:'wood',quantity:200,slot:'overflow',x:0,y:0}];
+  const first = transferItem(source, [], 'legacy', 200, () => 'part-1', {x:0,y:0});
+  expect(first.source[0]).toMatchObject({id:'legacy',quantity:101}); expect(first.destination[0]).toMatchObject({id:'part-1',quantity:99});
+  expect(validItems(first.source)).toBe(true); expect(validItems(first.destination)).toBe(true);
+  const second = transferItem(first.source, first.destination, 'legacy', 101, () => 'part-2', {x:1,y:0});
+  const last = transferItem(second.source, second.destination, 'legacy', 2, () => 'unused', {x:2,y:0});
+  expect(last.source).toEqual([]); expect(last.destination.map(i => [i.id,i.quantity])).toEqual([['part-1',99],['part-2',99],['legacy',2]]);
+  expect(source[0].quantity).toBe(200);
 });

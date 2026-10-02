@@ -14,6 +14,7 @@ import { LootLabels } from '../ui/loot';
 import { itemLoadout, lootDefinitions, removeQuantity, validItems, type InventoryItem } from '../gameplay/inventory';
 import type { Spawn, Point } from '../gameplay/area';
 import { MovementWorld } from '../gameplay/movement';
+import { prepareAreaCandidate } from './area-candidate';
 import { cameraOffset } from './projection';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -96,12 +97,9 @@ let frozen = import.meta.env.DEV && renderQuery.get('author') === 'levels';
 let fixedCamera = frozen;
 let areaErrors: string[] = [], updateMs = 0, contentHash = '', characterMissing = false;
 const travel = new GateTravel();
-let storage: Storage | undefined;
-try { storage = localStorage; } catch { /* Report unavailable storage below. */ }
 const enemyLoadout: Loadout = { main: 'axe', off: null };
-const adventure = new Adventure(storage);
-if (!storage) adventure.saveError = 'Unable to save progress. Allow local storage before restarting.';
-else if (!adventure.saveError) adventure.save();
+const adventure = new Adventure(() => localStorage);
+await adventure.prepareSave();
 let adventureVisuals: AdventureVisuals | undefined;
 const frames: { left: number; resolve: () => void }[] = [];
 const waitFrames = (count = 16) => new Promise<void>(resolve => { frames.push({ left: count, resolve }); invalidateFrame(); });
@@ -570,7 +568,7 @@ try {
   const menusChanged = new MutationObserver(invalidateFrame);
   document.querySelectorAll('dialog').forEach(dialog => menusChanged.observe(dialog, { attributes: true, attributeFilter: ['open'] }));
   mount.addEventListener('graphicssettingschange', invalidateFrame, true);
-  window.addEventListener('pagehide', () => { ticking = false; cancelAnimationFrame(frameRequest); menusChanged.disconnect(); adventure.save(); gatheringTools.dispose(); audio.dispose(); graphics?.dispose(); personalLantern?.dispose(); playerEquipment.dispose(); interactionHighlight.dispose(); enemyEquipment.dispose(); casterEquipment.dispose(); projectileVisuals.dispose(); casterVisuals.dispose(); adventureVisuals?.dispose(); lootLabels.dispose(); active?.dispose(); movementWorld?.dispose(); for (const actor of Object.values(actors)) { actor.mixer?.stopAllAction(); actor.mixer?.uncacheRoot(actor.mixer.getRoot()); disposeSceneResources(actor.root); } renderer.dispose(); void disposeAreaCache(); }, { once: true });
+  window.addEventListener('pagehide', () => { ticking = false; cancelAnimationFrame(frameRequest); menusChanged.disconnect(); generation++; adventure.closeSave(); gatheringTools.dispose(); audio.dispose(); graphics?.dispose(); personalLantern?.dispose(); playerEquipment.dispose(); interactionHighlight.dispose(); enemyEquipment.dispose(); casterEquipment.dispose(); projectileVisuals.dispose(); casterVisuals.dispose(); adventureVisuals?.dispose(); lootLabels.dispose(); active?.dispose(); movementWorld?.dispose(); for (const actor of Object.values(actors)) { actor.mixer?.stopAllAction(); actor.mixer?.uncacheRoot(actor.mixer.getRoot()); disposeSceneResources(actor.root); } renderer.dispose(); void disposeAreaCache(); }, { once: true });
   resize();
   await graphics.initialize();
   ticking = true; requestFrame();
@@ -582,7 +580,7 @@ try {
       changeArea: id => changeArea({ kind: 'travel', area: id }), restart: reset, inspect: () => { inspect(); return inspecting; }, waitFrames, setFrozen: freezePreview, setView: previewView,
       appearance: () => ({ lantern: lanternEnabled, surfaces: surfaceMode }),
       setAppearance: changeAppearance,
-      diagnostics: () => ({ audio:audio.diagnostics(), lantern: personalLantern?.diagnostics(), surfaces: surfaceMode, area: currentArea.id, revision, renderedRevision, ready: !!active && renderedRevision === revision && !transitioning && !areaErrors.length && !mount.dataset.renderError, errors: [...areaErrors, ...(mount.dataset.renderError ? [mount.dataset.renderError] : [])], missing: [...(active?.missing ?? []), ...(characterMissing ? ['character'] : [])], contentHash, settings: options!.settings, backend: 'webgpu', updateMs, renderedFrames, phase: encounter.phase, equipment: playerEquipment.diagnostics(), controls:{bindings:preferences.value,actionBar:adventure.character.actionBar},interaction:{hover:hoveredInteraction?.key ?? null,approach:worldApproach?.key ?? null}, harvest: {chopping: chopping?.tree.id ?? null, trees: active?.resources.map(tree=>({...tree,...harvesting.state(currentArea.id,tree.id)}))}, adventure: { character: adventure.character, portal: adventure.portal, castRemaining: adventure.castRemaining, drops: adventure.session(currentArea.id).drops, chests: adventure.session(currentArea.id).chests, fires: (currentArea.campfires ?? []).map(fire => ({ id: fire.id, safe: adventure.fireSafe(currentArea, fire, encounter) })) }, encounter: { enemies: structuredClone(encounter.enemies), enemyEquipment: enemyEquipment.diagnostics(), casterEquipment: casterEquipment.diagnostics(), player: { ...encounter.player }, playerMana: encounter.playerMana, dodgeRemaining: encounter.dodgeRemaining, dodgeCooldown: encounter.dodgeCooldown, blocking: encounter.blocking, projectiles: encounter.projectiles, pending: encounter.pending, animations: { player: player.current, enemy: enemy.current, caster: caster.current }, navigationReady: movementWorld?.navigationReady ?? false, navigationMs: movementWorld?.generationMs ?? 0 }, camera: { position: camera.position.toArray(), target: controls.target.toArray(), zoom: camera.zoom, viewport: [mount.clientWidth, mount.clientHeight] }, objects: active?.root.children.length ?? 0, resources: { memory: { ...renderer.info.memory }, drawCalls: renderer.info.render.drawCalls, triangles: renderer.info.render.triangles }, graphics: renderer.domElement.dataset.graphics ? JSON.parse(renderer.domElement.dataset.graphics) : null }),
+      diagnostics: () => ({ audio:audio.diagnostics(), lantern: personalLantern?.diagnostics(), surfaces: surfaceMode, area: currentArea.id, revision, renderedRevision, ready: !!active && renderedRevision === revision && !transitioning && !areaErrors.length && !mount.dataset.renderError, errors: [...areaErrors, ...(mount.dataset.renderError ? [mount.dataset.renderError] : [])], missing: [...(active?.missing ?? []), ...(characterMissing ? ['character'] : [])], contentHash, settings: options!.settings, backend: 'webgpu', updateMs, renderedFrames, phase: encounter.phase, equipment: playerEquipment.diagnostics(), controls:{bindings:preferences.value,actionBar:adventure.character.actionBar},interaction:{hover:hoveredInteraction?.key ?? null,approach:worldApproach?.key ?? null}, harvest: {chopping: chopping?.tree.id ?? null, trees: active?.resources.map(tree=>({...tree,...harvesting.state(currentArea.id,tree.id)}))}, adventure: { persistence: adventure.saveDiagnostics(), character: adventure.character, portal: adventure.portal, castRemaining: adventure.castRemaining, drops: adventure.session(currentArea.id).drops, chests: adventure.session(currentArea.id).chests, fires: (currentArea.campfires ?? []).map(fire => ({ id: fire.id, safe: adventure.fireSafe(currentArea, fire, encounter) })) }, encounter: { enemies: structuredClone(encounter.enemies), enemyEquipment: enemyEquipment.diagnostics(), casterEquipment: casterEquipment.diagnostics(), player: { ...encounter.player }, playerMana: encounter.playerMana, dodgeRemaining: encounter.dodgeRemaining, dodgeCooldown: encounter.dodgeCooldown, blocking: encounter.blocking, projectiles: encounter.projectiles, pending: encounter.pending, animations: { player: player.current, enemy: enemy.current, caster: caster.current }, navigationReady: movementWorld?.navigationReady ?? false, navigationMs: movementWorld?.generationMs ?? 0 }, camera: { position: camera.position.toArray(), target: controls.target.toArray(), zoom: camera.zoom, viewport: [mount.clientWidth, mount.clientHeight] }, objects: active?.root.children.length ?? 0, resources: { memory: { ...renderer.info.memory }, drawCalls: renderer.info.render.drawCalls, triangles: renderer.info.render.triangles }, graphics: renderer.domElement.dataset.graphics ? JSON.parse(renderer.domElement.dataset.graphics) : null }),
     });
   }
 
@@ -625,20 +623,23 @@ async function changeArea(change: AreaChange): Promise<boolean> {
   const resolved = { ...next, lighting: resolveLightingFor(next) };
   const savedView = frozen && active?.area.id === id ? { target: controls.target.clone(), zoom: camera.zoom } : null;
   transitioning = true; clearInput();
+  let candidateOwner: Awaited<ReturnType<typeof prepareAreaCandidate>> | undefined;
   try {
     if (transition) { fade.style.opacity = '1'; await new Promise(resolve => setTimeout(resolve, 160)); }
     const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify({ ...resolved, surfaces: nextSurfaces })));
     const hash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
-    const candidate = await buildArea(next, nextSurfaces,appearance?.shelterRestored ?? adventure.character.shelterRestored);
-    let candidateMovement: MovementWorld | undefined;
-    let preparedLighting: Awaited<ReturnType<Graphics['prepareLighting']>>;
-    try {
-      candidateMovement = await MovementWorld.create(next.layout.boundary, traversalWithTrees(next));
-      if (renderQuery.get('portal') === 'off') candidate.portals.forEach(p => p.root.visible = false);
-      preparedLighting = await graphics!.prepareLighting(resolved, candidate.root);
-    } catch (error) { candidateMovement?.dispose(); candidate.dispose(); throw error; }
-    if (request !== generation || canCommit && !canCommit()) { graphics!.discardLighting(preparedLighting); candidate.dispose(); candidateMovement.dispose(); return false; }
-    if(change.kind==='refresh')change.onCommit?.();
+    candidateOwner = await prepareAreaCandidate(
+      () => buildArea(next, nextSurfaces, appearance?.shelterRestored ?? adventure.character.shelterRestored),
+      () => MovementWorld.create(next.layout.boundary, traversalWithTrees(next)),
+      candidate => {
+        if (renderQuery.get('portal') === 'off') candidate.portals.forEach(p => p.root.visible = false);
+        return graphics!.prepareLighting(resolved, candidate.root);
+      },
+    );
+    const { area: candidate, movement: candidateMovement, lighting: preparedLighting } = candidateOwner;
+    if (!candidateOwner.accept(() => request === generation && (!canCommit || canCommit()), () => {
+      if (change.kind === 'refresh') change.onCommit?.();
+    })) return false;
     graphics!.effects.clearArea(); adventureVisuals?.dispose(); active?.dispose(); movementWorld?.dispose(); movementWorld = candidateMovement; active = candidate; currentArea = next; committedLighting = resolved.lighting; lanternEnabled = appearance?.lantern ?? lanternEnabled; personalLantern?.setEnabled(lanternEnabled); surfaceMode = nextSurfaces; graphics!.commitLighting(preparedLighting); scene.add(candidate.root); candidate.activate(graphics!.effects);
     const arrival = next.gates.find(g => g.id === arrivalId);
     harvesting.register(next.id,candidate.resources);
@@ -664,7 +665,7 @@ async function changeArea(change: AreaChange): Promise<boolean> {
     transitioning = false; audio.update(encounter.player,paused()); await waitFrames(2); updateMs = performance.now() - started;
     renderer.domElement.focus(); return true;
   } catch (error) { if (request === generation) { areaErrors = [error instanceof Error ? error.message : String(error)]; hud.setAssetStatus(`Unable to travel. ${areaErrors[0]}`); } return false; }
-  finally { if (request === generation) { transitioning = false; fade.style.opacity = '0'; clearInput(); } }
+  finally { candidateOwner?.dispose(); if (request === generation) { transitioning = false; fade.style.opacity = '0'; clearInput(); } }
 }
 if (import.meta.hot) import.meta.hot.accept('../levels/registry', async module => {
   if (!module) return;

@@ -12,5 +12,5 @@
 .enemy-health{position:absolute;left:0;top:0;width:56px;height:5px;z-index:1;pointer-events:none;background:#101318bb;border:1px solid #b8aba054;border-radius:2px;overflow:hidden;box-shadow:0 1px 3px #0008}.enemy-health>div{height:100%;background:#a94e45;transition:width .15s}
 @keyframes orb-wave{from{transform:translate(-2%,1%) rotate(-5deg)}to{transform:translate(2%,-1%) rotate(5deg)}}
 @keyframes orb-current{from{transform:translate(-3%,2%) rotate(4deg) scale(1.03)}to{transform:translate(3%,-2%) rotate(-4deg) scale(1.08)}}
-@media(max-width:600px){.resource-orb{bottom:8px}.resource-orb--health{left:6px}.resource-orb--mana{right:6px}#asset-status{bottom:128px;max-width:calc(100vw - 24px)}#save-status{bottom:174px;max-width:calc(100vw - 24px)}}
+@media(max-width:600px){.resource-orb{bottom:8px}.resource-orb--health{left:6px}.resource-orb--mana{right:6px}#asset-status{bottom:128px;max-width:calc(100vw - 24px)}}
 @media(prefers-reduced-motion:reduce){.orb-surface,.orb-current{animation:none}.orb-liquid{transition:none}}

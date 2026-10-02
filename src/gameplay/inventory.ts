@@ -1,5 +1,5 @@
 import type { WeaponSet } from './abilities';
-import { itemDefinitions, type ItemId, type Loadout } from './equipment';
+import { itemDefinitions, itemIds, supportsShield, type ItemId, type Loadout } from './equipment';
 
 export const bagWidth = 12, bagHeight = 8, stackLimit = 99;
 export type LootItem = ItemId | 'scroll' | 'wood' | 'potion' | 'stone' | 'iron';
@@ -69,8 +69,8 @@ export function moveItem(items: InventoryItem[], id: string, x: number, y: numbe
 }
 export function equipInstance(items: InventoryItem[], id: string, slot: 'main' | 'off', set: WeaponSet = 0): InventoryItem[] {
   const next = structuredClone(items), entry = next.find(i => i.id === id);
-  if (!entry || !['axe', 'sword', 'shield', 'bow', 'staff'].includes(entry.item)) throw new Error('That item cannot be equipped.');
-  if (slot === 'off' && (entry.item !== 'shield' || !['axe', 'sword'].includes(itemLoadout(next,set).main ?? ''))) throw new Error('Equip an Axe or Sword first.');
+  if (!entry || !itemIds.includes(entry.item as ItemId)) throw new Error('That item cannot be equipped.');
+  if (slot === 'off' && (entry.item !== 'shield' || !supportsShield(itemLoadout(next,set).main))) throw new Error('Equip an Axe or Sword first.');
   if (slot === 'main' && entry.item === 'shield') throw new Error('A Shield belongs in the off hand.');
   const sourceSet = entry.weaponSet ?? 0, sourceMain = entry.slot === 'main';
   const displace = next.filter(i => i.id !== id && (i.weaponSet ?? 0) === set && (i.slot === slot || slot === 'main' && itemDefinitions[entry.item as ItemId].hands === 2 && i.slot === 'off' && (i.weaponSet ?? 0) === set));
@@ -118,12 +118,12 @@ export function validItems(value: unknown): value is InventoryItem[] {
     ids.add(i.id);
     if (i.slot === 'main' || i.slot === 'off') {
       if (i.weaponSet !== undefined && i.weaponSet !== 0 && i.weaponSet !== 1) return false;
-      if (slots.has(`${i.weaponSet ?? 0}/${i.slot}`) || i.slot === 'main' && !['axe', 'sword', 'bow', 'staff'].includes(i.item) || i.slot === 'off' && i.item !== 'shield') return false;
+      if (slots.has(`${i.weaponSet ?? 0}/${i.slot}`) || i.slot === 'main' && (!itemIds.includes(i.item) || i.item === 'shield') || i.slot === 'off' && i.item !== 'shield') return false;
       slots.add(`${i.weaponSet ?? 0}/${i.slot}`);
     }
   }
   if (value.some(i => i.slot === 'bag' && !fits(value, i.item, i.x, i.y, i.id))) return false;
-  return ([0,1] as const).every(set => { const loadout = itemLoadout(value,set); return !loadout.off || loadout.main === 'axe' || loadout.main === 'sword'; });
+  return ([0,1] as const).every(set => { const loadout = itemLoadout(value,set); return !loadout.off || supportsShield(loadout.main); });
 }
 
 /** Both containers commit together. Partial transfers preserve the source remainder. */
@@ -137,8 +137,8 @@ export function transferItem(source: InventoryItem[], destination: InventoryItem
       amount = Math.min(quantity, stackLimit - stack.quantity); stack.quantity += amount;
     } else {
       if (!fits(nextDestination,entry.item,point.x,point.y)) throw new Error('Item does not fit.');
-      amount = quantity;
-      nextDestination.push({...entry,id: quantity === entry.quantity ? entry.id : makeId(),quantity:amount,slot:'bag',...point});
+      amount = Math.min(quantity, lootDefinitions[entry.item].stackable ? stackLimit : 1);
+      nextDestination.push({...entry,id: amount === entry.quantity ? entry.id : makeId(),quantity:amount,slot:'bag',...point});
     }
   } else amount = receive(nextDestination,entry.item,quantity,makeId,lootDefinitions[entry.item].stackable ? undefined : entry.id);
   if (!amount) throw new Error('No space available.');

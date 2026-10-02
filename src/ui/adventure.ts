@@ -1,9 +1,10 @@
 import { bindMenuDismissal } from './menu';
 import type { CharacterSave } from '../gameplay/adventure';
-import { emptyPosition, equipInstance, lootDefinitions, moveItem, sortedItems, transferItem, itemLoadout, type InventoryItem } from '../gameplay/inventory';
+import { bagWidth, bagHeight, stackLimit, emptyPosition, equipInstance, lootDefinitions, moveItem, sortedItems, transferItem, itemLoadout, type InventoryItem } from '../gameplay/inventory';
 import { progression, shelterRecipe, skillProgress } from '../gameplay/skills';
 import { countItem } from '../gameplay/inventory';
 import type { WeaponSet } from '../gameplay/abilities';
+import { supportsShield } from '../gameplay/equipment';
 import { itemIcon } from './item-icons';
 
 export type TravelChoice = { name: string; available: boolean; travel(): void };
@@ -128,7 +129,7 @@ export class AdventureMenus {
       const host = document.getElementById(`equipment-${slot}`)!; host.replaceChildren();
       const entry = character.items.find(i => i.slot === slot && (i.weaponSet ?? 0)===this.viewSet);
       if (entry) host.append(this.button(entry));
-      else host.textContent = slot === 'off' && ['bow', 'staff'].includes(itemLoadout(character.items,this.viewSet).main ?? '') ? 'Two-handed' : 'Empty';
+      else host.textContent = slot === 'off' && itemLoadout(character.items,this.viewSet).main !== null && !supportsShield(itemLoadout(character.items,this.viewSet).main) ? 'Two-handed' : 'Empty';
     }
     this.inventory.querySelectorAll<HTMLElement>('[data-set]').forEach(button=>{button.setAttribute('aria-pressed',String(Number(button.dataset.set)===this.viewSet));button.title=Number(button.dataset.set)===character.activeSet ? 'Active weapon set' : 'Alternate weapon set';});
     const overflow = document.getElementById('inventory-overflow')!; overflow.replaceChildren();
@@ -154,10 +155,10 @@ export class AdventureMenus {
   }
   private openSplit(entry: InventoryItem): void {
     this.cancelDrag(); this.splitId = entry.id; this.split.hidden = false;
-    const input = document.getElementById('split-amount') as HTMLInputElement; input.max = String(Math.min(99, entry.quantity - 1)); input.value = String(Math.min(99, Math.floor(entry.quantity / 2))); input.focus(); input.select();
+    const input = document.getElementById('split-amount') as HTMLInputElement; input.max = String(Math.min(stackLimit, entry.quantity - 1)); input.value = String(Math.min(stackLimit, Math.floor(entry.quantity / 2))); input.focus(); input.select();
   }
   private showGhost(entry: InventoryItem): void {
-    const cell = (this.drag?.container==='stash' ? this.stashGrid : this.grid).getBoundingClientRect().width / 12, definition = lootDefinitions[entry.item];
+    const cell = (this.drag?.container==='stash' ? this.stashGrid : this.grid).getBoundingClientRect().width / bagWidth, definition = lootDefinitions[entry.item];
     this.ghost.innerHTML = `${itemIcon(entry.item)}<span class="stack-count">${this.drag!.quantity > 1 ? this.drag!.quantity : ''}</span>`;
     this.ghost.style.width = `${cell * definition.width}px`; this.ghost.style.height = `${cell * definition.height}px`; this.ghost.hidden = false;
   }
@@ -165,14 +166,14 @@ export class AdventureMenus {
     for(const [grid,container] of [[this.grid,'bag'],[this.stashGrid,'stash']] as const){if(container==='stash' && !this.stashMode)continue;const r=grid.getBoundingClientRect();if(x>=r.left && x<=r.right && y>=r.top && y<=r.bottom)return {grid,container};}return null;
   }
   private destination(grid:HTMLElement,x:number,y:number):{x:number;y:number} {
-    const rect=grid.getBoundingClientRect(),cell=rect.width/12;
+    const rect=grid.getBoundingClientRect(),cell=rect.width/bagWidth;
     return {x:Math.floor((x-(this.drag?.offsetX??0)-rect.left+cell*.3)/cell),y:Math.floor((y-(this.drag?.offsetY??0)-rect.top+cell*.3)/cell)};
   }
   private previewPlacement(x:number,y:number):void {
     const entry=this.entries().find(i=>i.id===this.drag?.id),target=this.targetGrid(x,y);this.marker.hidden=!target;if(!entry || !target)return;
     const point=this.destination(target.grid,x,y),definition=lootDefinitions[entry.item];target.grid.append(this.marker);
     Object.assign(this.marker.style,{gridColumn:`${Math.max(0,point.x)+1} / span ${definition.width}`,gridRow:`${Math.max(0,point.y)+1} / span ${definition.height}`});
-    this.marker.hidden=point.x<0 || point.y<0 || point.x+definition.width>12 || point.y+definition.height>8;
+    this.marker.hidden=point.x<0 || point.y<0 || point.x+definition.width>bagWidth || point.y+definition.height>bagHeight;
     try {if(target.container===this.drag!.container)moveItem(this.contents(target.container),entry.id,point.x,point.y,this.drag!.quantity,()=> 'preview');else transferItem(this.contents(this.drag!.container),this.contents(target.container),entry.id,this.drag!.quantity,()=> 'preview',point);this.marker.dataset.valid='true';}catch{this.marker.dataset.valid='false';}
   }
   private async release(x:number,y:number):Promise<void> {

@@ -1,4 +1,4 @@
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 import homestead from '../src/levels/areas/homestead.json';
 import clearing from '../src/levels/areas/clearing.json';
 import type { AreaDefinition } from '../src/levels/types';
@@ -114,4 +114,44 @@ test('resource level and skill XP drive contact yields without changing depletio
   expect(harvest.facing('clearing',point,Math.PI)?.id).toBe(node.id);expect(harvest.facing('clearing',point,0)?.id).not.toBe(node.id);
   expect(skillLevel(levelXp(5))).toBe(5);expect(harvest.contact('clearing',node.id,point,levelXp(5))?.quantity).toBe(2);
   expect(harvest.contact('clearing',node.id,point,levelXp(9))?.quantity).toBe(3);harvest.contact('clearing',node.id,point);expect(harvest.contact('clearing',node.id,point)).toBeUndefined();
+});
+
+
+test('area candidates retain the active area and release failed, superseded and rejected preparations once', async () => {
+  const { prepareAreaCandidate } = await import('../src/clearing/area-candidate');
+  type Area = Awaited<ReturnType<typeof import('../src/levels/builder').buildArea>>;
+  type World = import('../src/gameplay/movement').MovementWorld;
+  type Lighting = import('../src/rendering/area-lighting').PreparedLighting;
+  const active = { dispose: vi.fn() };
+  const resources = () => ({area:{dispose:vi.fn()} as unknown as Area,movement:{dispose:vi.fn()} as unknown as World,lighting:{release:vi.fn()} as unknown as Lighting});
+  const failed = resources();
+  await expect(prepareAreaCandidate(async()=>failed.area,async()=>failed.movement,async()=>{throw Error('lighting failed');})).rejects.toThrow('lighting failed');
+  expect(failed.area.dispose).toHaveBeenCalledTimes(1); expect(failed.movement.dispose).toHaveBeenCalledTimes(1);
+  const navigationFailure = resources();
+  await expect(prepareAreaCandidate(async()=>navigationFailure.area,async()=>{throw Error('navigation failed');},async()=>navigationFailure.lighting)).rejects.toThrow('navigation failed');
+  expect(navigationFailure.area.dispose).toHaveBeenCalledTimes(1);
+  for (const eligibility of [()=>false,()=>{throw Error('eligibility failed');}]) {
+    const candidate = resources(), prepared = await prepareAreaCandidate(async()=>candidate.area,async()=>candidate.movement,async()=>candidate.lighting);
+    try { expect(prepared.accept(eligibility,()=>active.dispose())).toBe(false); } catch (error) { expect(String(error)).toContain('eligibility failed'); }
+    prepared.dispose(); expect(candidate.area.dispose).toHaveBeenCalledTimes(1); expect(candidate.movement.dispose).toHaveBeenCalledTimes(1); expect(candidate.lighting.release).toHaveBeenCalledTimes(1);
+  }
+  const candidate = resources(), prepared = await prepareAreaCandidate(async()=>candidate.area,async()=>candidate.movement,async()=>candidate.lighting);
+  expect(()=>prepared.accept(()=>true,()=>{throw Error('repair failed');})).toThrow('repair failed');
+  prepared.dispose(); expect(candidate.area.dispose).toHaveBeenCalledTimes(1); expect(candidate.movement.dispose).toHaveBeenCalledTimes(1); expect(candidate.lighting.release).toHaveBeenCalledTimes(1);
+  expect(active.dispose).not.toHaveBeenCalled();
+  const accepted = resources(), committed = await prepareAreaCandidate(async()=>accepted.area,async()=>accepted.movement,async()=>accepted.lighting);
+  expect(committed.accept(()=>true,()=>{})).toBe(true); committed.dispose();
+  expect(accepted.area.dispose).not.toHaveBeenCalled(); expect(accepted.movement.dispose).not.toHaveBeenCalled(); expect(accepted.lighting.release).not.toHaveBeenCalled();
+});
+
+test('early area construction failure releases allocated geometry and material', async () => {
+  const THREE = await import('three');
+  const { buildArea } = await import('../src/levels/builder');
+  const geometry = vi.spyOn(THREE.BufferGeometry.prototype,'dispose'), material = vi.spyOn(THREE.Material.prototype,'dispose');
+  try {
+    const area = structuredClone(grassArea); area.grass=[]; area.effects={...area.effects,fires:[],portals:[]}; area.scatter=[];
+    area.props=[{id:'broken-tree',primitive:{kind:'box',size:[0,0,0],color:'#514031'},harvest:{kind:'tree',radius:.3},position:[0,0,0],yaw:0,height:1,scale:[1,1,1],castShadow:true,receiveShadow:true}];
+    await expect(buildArea(area)).rejects.toThrow('model has no visible height');
+    expect(geometry).toHaveBeenCalled(); expect(material).toHaveBeenCalled();
+  } finally { geometry.mockRestore(); material.mockRestore(); }
 });
