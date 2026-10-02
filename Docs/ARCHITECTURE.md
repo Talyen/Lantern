@@ -25,6 +25,10 @@ This table is the canonical map read by `agent:context`. Owners are starting poi
 | `tooling` | Agent workflow, checks and scripts | [agent CLI](../scripts/agents/cli.mjs), [checks](../scripts/check.mjs), [CLI helpers](../scripts/lib/cli.mjs) | [resources](DEVELOPMENT_REFERENCE.md#private-assets-and-resource-use), [script conventions](DEVELOPMENT_REFERENCE.md#script-conventions), [checks](DEVELOPMENT_REFERENCE.md#commands-and-handoff), [reads](DEVELOPMENT_REFERENCE.md#read-only-agent-tools) | `npm run agent:status` | One relevant observable command outcome |
 | `docs` | Repository guidance and roadmap | [guide](../AGENTS.md), [workflow](DEVELOPMENT.md), [roadmap](../ROADMAP.md) | [workflow](DEVELOPMENT.md), [change method](RUNTIME.md#change-method) | — | Link check and task diff review |
 
+## Desktop reporting
+
+[Desktop candidates and reporting](DESKTOP.md) owns distribution and report behavior. The bounded collector in `src/diagnostics/report.ts` starts before route imports and receives selected status from the clearing coordinator. It never consumes the full gameplay diagnostic snapshot or character saves. Electron's `electron/reporting.cjs` owns local report retention and native export through the restricted preload bridge.
+
 ## Owners and data flow
 
 See [the detailed owners and data flow reference](RUNTIME.md#owners-and-data-flow).

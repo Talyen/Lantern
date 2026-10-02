@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { defineConfig, type Plugin } from 'vite';
 import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
@@ -25,7 +27,9 @@ function privateLibrary(): Plugin {
     });
   } };
 }
+const buildIdentity = { version: (JSON.parse(readFileSync(resolve('package.json'), 'utf8')) as { version: string }).version, revision: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), dirty: !!execFileSync('git', ['status', '--porcelain', '--untracked-files=no'], { encoding: 'utf8' }).trim() };
 export default defineConfig(({ command }) => ({
+  define: { __LANTERN_BUILD__: JSON.stringify(buildIdentity) },
   publicDir: command === 'build' ? '.local/build-public' : 'public',
   plugins: [privateLibrary()],
   build: { copyPublicDir: false }, // The build wrapper privately clones the staged public files once.

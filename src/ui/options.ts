@@ -1,3 +1,4 @@
+import { diagnosticExportButton } from '../diagnostics/report';
 import { qualityLevels } from '../rendering/quality-presets';
 import { defaults, depthOfFieldModes, frameRateLimits, ranges, readSettings, saveSettings, upscaleQualities, type GraphicsSettings, type NumericSetting, type FrameRateLimit } from '../rendering/graphics-settings';
 import './options.css';
@@ -23,6 +24,7 @@ export class Options {
   private dialog = document.getElementById('options-dialog') as HTMLDialogElement;
   constructor(private ctx: OptionsContext) {
     this.buildControls(); this.buildAudio(); this.apply();
+    this.dialog.querySelector('.options-footer')!.prepend(diagnosticExportButton());
     const bindings=document.createElement('button'); bindings.type='button'; bindings.textContent='Keybindings'; bindings.id='options-keybindings'; bindings.onclick=()=>{this.close();this.ctx.keybindings();};this.dialog.querySelector('#options-close')!.before(bindings);
     const error = document.createElement('p'); error.hidden = true; error.setAttribute('role', 'alert');
     document.getElementById('graphics-settings')!.append(error);

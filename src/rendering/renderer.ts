@@ -1,3 +1,4 @@
+import { recordFailure } from '../diagnostics/report';
 import { prepareSceneryLoader } from '../assets/scenery-loader';
 import * as THREE from 'three';
 import { WebGPURenderer } from 'three/webgpu';
@@ -34,13 +35,20 @@ export async function createRenderer(mount: HTMLElement): Promise<WebGPURenderer
       }));
     }
   };
-  const device = Reflect.get(renderer.backend, 'device') as EventTarget | undefined;
+  const device = Reflect.get(renderer.backend, 'device') as (EventTarget & { lost?: Promise<{ reason: string; message: string }> }) | undefined;
   device?.addEventListener('uncapturederror', event => {
     const error = Reflect.get(event, 'error') as { message?: string } | undefined;
     const message = error?.message ?? 'Native WebGPU rendering failed.';
     mount.dataset.renderError = message; renderer.domElement.dataset.renderError = message;
+    recordFailure('gpu', message);
     console.error(message);
   });
+  device?.lost?.then(info => {
+    if (info.reason === 'destroyed') return;
+    const message = `Graphics device lost. ${info.message}`;
+    mount.dataset.renderError = message;
+    recordFailure('gpu-device-lost', message);
+  }).catch((error: unknown) => recordFailure('gpu-device-lost', error));
   prepareSceneryLoader(renderer);
   renderer.setPixelRatio(1);
   renderer.shadowMap.enabled = true;

@@ -22,3 +22,7 @@ Use `npm run agent:status` for task paths, capacity, resource owners and check r
 Follow [prototype acceptance](DEVELOPMENT_REFERENCE.md#testing-during-the-prototype-phase): no new tests by default; one relevant gameplay interaction, links/diff review for documentation, or an observable command result for tooling. Broaden only for an observed failure, consequential save migration or renderer/dependency initialization change. Performance measurements require a specific user request or evidenced defect and the reason flag in [Performance](PERFORMANCE.md). Routine work does not authorize benchmarks or local full suites.
 
 Report completed behavior, sanity validation and material limits. Checks/builds do not establish visual quality or cross-platform performance. The [command reference](DEVELOPMENT_REFERENCE.md#commands-and-handoff) owns detailed checks; [read-only tools](DEVELOPMENT_REFERENCE.md#read-only-agent-tools) owns bounded context, manifest/source inspection and saved diagnostics. Specialized guides are reached through [task routing](ARCHITECTURE.md#task-routing); historical migration evidence is [optional background](archive/TASK_WORKFLOW_2026-10-01.md).
+
+## Desktop candidates
+
+[Desktop packaging and diagnostics](DESKTOP.md) owns Mac preparation, public Windows candidate packaging, local report export and manual Windows acceptance. Candidate preparation requires clean committed source and prepared playable art; publication and dispatch are explicit commands.

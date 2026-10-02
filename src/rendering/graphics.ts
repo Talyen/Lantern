@@ -53,6 +53,7 @@ export class Graphics {
     this.areaLighting = new AreaLightingResources(ctx.renderer);
     this.apply(settings);
   }
+  pipelineDiagnostics() { return this.gpuPipeline?.diagnostics(); }
   get preparingSettings(): boolean { return this.gpuPipeline?.preparing ?? false; }
   resetMeasurements(): void { this.intervals = []; this.lastFrame = 0; }
   async initialize(): Promise<void> {

@@ -152,7 +152,7 @@ Long exports stream output. Checks retain complete local logs and print short st
 
 ## Publication
 
-Review status, complete candidate paths and relevant diffs before staging. Original material uses [the project license](../LICENSE.md); third-party exceptions are recorded in [notices](../THIRD_PARTY_NOTICES.md). Never stage private art, receipts, credentials, captures or build products. Commit reviewed source changes and watch the exact pushed revision's CI until green when publication is requested. No website deployment, Steam integration or build distribution is configured.
+Review status, complete candidate paths and relevant diffs before staging. Original material uses [the project license](../LICENSE.md); third-party exceptions are recorded in [notices](../THIRD_PARTY_NOTICES.md). Never stage private art, receipts, credentials, captures or build products. Commit reviewed source changes and watch the exact pushed revision's CI until green when publication is requested. No website deployment or Steam integration is configured. [Desktop candidates](DESKTOP.md) use explicit public prerelease upload and Windows packaging dispatch; ordinary task integration does not publish builds.
 
 ## Testing during the prototype phase
 

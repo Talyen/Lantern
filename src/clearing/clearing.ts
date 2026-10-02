@@ -1,3 +1,4 @@
+import { registerRuntimeSnapshot } from '../diagnostics/report';
 import { parseJson } from '../data/json';
 import { disposeSceneResources, sceneTextures } from '../assets/resource-ownership';
 import { resolveAreaLighting as lightingFor } from '../levels/lighting';
@@ -481,6 +482,21 @@ function dispose(): void {
   void renderer.dispose().catch((error: unknown) => console.error('Unable to release graphics.', error));
   void disposeAreaCache().catch((error: unknown) => console.error('Unable to release area assets.', error));
 }
+
+registerRuntimeSnapshot(() => {
+  const sound = audio.diagnostics();
+  const pipeline = graphics?.pipelineDiagnostics();
+  return {
+    area: currentArea.id, ready: !!active && renderedRevision === revision && !transitioning && !areaErrors.length && !mount.dataset.renderError,
+    backend: 'webgpu', missing: [...(active?.missing ?? []), ...(characterMissing ? ['character'] : [])].slice(0, 16),
+    errors: [...areaErrors, ...(mount.dataset.renderError ? [mount.dataset.renderError] : [])].slice(-16),
+    settings: options ? { ...options.settings } : undefined,
+    audio: { state: sound.state, loaded: sound.loaded, loading: sound.loading, voices: sound.voices, errors: sound.errors.slice(-16) },
+    persistence: adventure.saveDiagnostics(),
+    graphics: pipeline && 'sceneWidth' in pipeline ? { ready: pipeline.ready, method: pipeline.method, sceneWidth: pipeline.sceneWidth ?? 0, sceneHeight: pipeline.sceneHeight ?? 0,
+      outputWidth: pipeline.outputWidth ?? 0, outputHeight: pipeline.outputHeight ?? 0 } : undefined,
+  };
+});
 
 function diagnostics() {
   return {

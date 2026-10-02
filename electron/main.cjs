@@ -1,7 +1,8 @@
-// Local renderer experiment. No Steam SDK, remote content, or native renderer privileges.
+// Packaged/local desktop shell. No remote content or native renderer privileges.
 const { app, BrowserWindow, Menu, screen, protocol } = require('electron');
 const fs = require('node:fs/promises');
 const path = require('node:path');
+const { installReporting } = require('./reporting.cjs');
 const root = path.resolve(__dirname, '../dist');
 const flag = (name, fallback) => process.argv.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
 const background = process.argv.includes('--background');
@@ -39,7 +40,10 @@ app.whenReady().then(async () => {
   const area = display.workArea;
   const width = Math.min(1280, Math.floor(area.width * 0.9));
   const height = Math.min(900, Math.floor(area.height * 0.9));
-  const window = new BrowserWindow({ width, height, x: area.x + Math.floor((area.width - width) / 2), y: area.y + Math.floor((area.height - height) / 2), minWidth: Math.min(800, width), minHeight: Math.min(560, height), show: false, focusable: !background, skipTaskbar: background, backgroundColor: '#111e24', title: 'Lantern', webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true, backgroundThrottling: false, focusOnNavigation: !background } });
+  const window = new BrowserWindow({ width, height, x: area.x + Math.floor((area.width - width) / 2), y: area.y + Math.floor((area.height - height) / 2), minWidth: Math.min(800, width), minHeight: Math.min(560, height), show: false, focusable: !background, skipTaskbar: background, backgroundColor: '#111e24', title: 'Lantern', webPreferences: { preload: path.join(__dirname, 'preload.cjs'), nodeIntegration: false, contextIsolation: true, sandbox: true, backgroundThrottling: false, focusOnNavigation: !background } });
+  let build = { version: app.getVersion(), revision: 'development', dirty: true };
+  try { build = JSON.parse(await fs.readFile(path.join(root, 'build-identity.json'), 'utf8')); } catch { /* Local development builds may precede candidate preparation. */ }
+  installReporting(window, build);
   Menu.setApplicationMenu(null);
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', (event, url) => { if (new URL(url).protocol !== 'lantern:' || new URL(url).host !== 'app') event.preventDefault(); });

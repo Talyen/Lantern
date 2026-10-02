@@ -1,0 +1,48 @@
+name: Windows desktop candidate
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Prepared public web build: playtest- followed by 12 commit characters'
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: desktop-windows-${{ inputs.release_tag }}
+  cancel-in-progress: false
+jobs:
+  package:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      CANDIDATE_TAG: ${{ inputs.release_tag }}
+    steps:
+      - name: Validate candidate tag
+        shell: pwsh
+        run: |
+          if ($env:CANDIDATE_TAG -cnotmatch '^playtest-[a-f0-9]{12}$') { throw 'Invalid candidate tag' }
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.release_tag }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+      - name: Verify and install prepared playable content
+        shell: pwsh
+        run: |
+          $revision = (git rev-parse HEAD).Trim()
+          node scripts/desktop/candidate.mjs fetch --tag $env:CANDIDATE_TAG --revision $revision
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - run: npm run desktop:package
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Lantern-windows-x64-${{ inputs.release_tag }}
+          path: .local/desktop/out/make/zip/win32/x64/*.zip
+          if-no-files-found: error
+          retention-days: 30

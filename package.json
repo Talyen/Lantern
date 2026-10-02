@@ -45,7 +45,12 @@
     "agent:context": "node scripts/agents/context.mjs",
     "agent:inspect": "node scripts/agents/inspect.mjs",
     "agent:source": "node scripts/agents/source.mjs",
-    "agent:diagnostics": "node scripts/agents/diagnostics.mjs"
+    "agent:diagnostics": "node scripts/agents/diagnostics.mjs",
+    "desktop:prepare": "node scripts/desktop/candidate.mjs prepare",
+    "desktop:verify": "node scripts/desktop/candidate.mjs verify",
+    "desktop:publish": "node scripts/desktop/candidate.mjs publish",
+    "desktop:dispatch": "node scripts/desktop/candidate.mjs dispatch",
+    "desktop:package": "node scripts/desktop/package.mjs"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "0.21.0",
@@ -55,6 +60,8 @@
   },
   "devDependencies": {
     "@astral-sh/ruff-wasm-nodejs": "0.16.10",
+    "@electron-forge/cli": "8.0.1",
+    "@electron-forge/maker-zip": "8.0.1",
     "@eslint/js": "^10.0.1",
     "@types/node": "^24.19.0",
     "@types/three": "0.186.0",
@@ -62,6 +69,7 @@
     "eslint": "^10.11.0",
     "globals": "^17.13.0",
     "stylelint": "17.16.0",
+    "tar": "7.5.22",
     "typescript": "^5.9.0",
     "typescript-eslint": "^8.71.0",
     "vite": "^7.1.0",
@@ -71,5 +79,11 @@
   "engines": {
     "node": ">=24 <25",
     "npm": ">=11"
+  },
+  "main": "electron/main.cjs",
+  "description": "Lantern fantasy action RPG",
+  "author": "Talyen",
+  "config": {
+    "forge": "./forge.config.cjs"
   }
 }

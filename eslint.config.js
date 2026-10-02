@@ -19,7 +19,7 @@ export default [
       'lantern/require-disable-reason': 'error',
     },
   },
-  { files: ['scripts/**/*.{js,mjs,cjs}', 'eslint/**/*.{js,mjs}', 'electron/**/*.cjs', '*.{js,ts}'], ignores: ['scripts/assets/mixamo/mixamo-browser-download.js'], languageOptions: { globals: globals.node } },
+  { files: ['scripts/**/*.{js,mjs,cjs}', 'eslint/**/*.{js,mjs}', 'electron/**/*.cjs', '*.{js,cjs,ts}'], ignores: ['scripts/assets/mixamo/mixamo-browser-download.js'], languageOptions: { globals: globals.node } },
   // This source is injected into the signed-in browser; the collector fills its placeholder.
   { files: ['scripts/assets/mixamo/mixamo-browser-download.js'], languageOptions: { globals: { ...globals.browser, __COMPLETED__: 'readonly' } } },
   {
