@@ -161,7 +161,7 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
       model.position.fromArray(p.position);
       model.rotation.y += p.yaw; model.scale.multiply(new THREE.Vector3(...p.scale)); model.name = p.id;
       const resource = resources.find(n => n.id === p.id);
-      if(resource?.kind==='iron')model.traverse(o=>{if(isMesh(o) && o.material instanceof MeshStandardNodeMaterial){const ore=o.material.clone();const vein=mix(color('#5e5b52'),color('#89654e'),smoothstep(.25,.65,sin(positionWorld.x.mul(13).add(positionWorld.z.mul(8))).mul(.5).add(.5)));ore.colorNode=area.id==='clearing' ? mix(o.material.colorNode ?? color(o.material.color),vein,.3) : vein;ore.roughness=.85;ownedMaterial.add(ore);o.material=ore;}});
+      if(resource?.kind==='iron')model.traverse(o=>{if(isMesh(o) && o.material instanceof MeshStandardNodeMaterial){const ore=o.material.clone();const vein=mix(color('#5e5b52'),color('#89654e'),smoothstep(.25,.65,sin(positionWorld.x.mul(13).add(positionWorld.z.mul(8))).mul(.5).add(.5)));ore.colorNode=area.id==='clearing' ? mix(o.material.colorNode?.rgb ?? color(o.material.color),vein,.3) : vein;ore.roughness=.85;ownedMaterial.add(ore);o.material=ore;}});
       if (resource && resource.kind !== 'tree') { model.userData.harvestResource=p.id; model.traverse(o=>animated.add(o)); model.userData.resourceScaleY=model.scale.y; mineralModels.set(p.id,model); interactables.set(`resource/${p.id}`,model); }
       if (area.shop?.prop === p.id) { interactables.set(`shop/${area.shop.id}`, model); model.traverse(object => animated.add(object)); }
       const tree = treeIds.get(p.id);
