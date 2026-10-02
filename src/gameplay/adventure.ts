@@ -1,11 +1,15 @@
-import { rollGold } from './economy';
+import { chestRewards, enemyRewards } from './adventure-rewards';
+import {
+  advanceGroundDrops, collectGroundDrop, lootEvent,
+  type DropOptions, type GroundDrop, type GroundItem, type LootEvent,
+} from './ground-loot';
 import { purchase, sale, repurchase } from './shop-transactions';
 import { canRepairShelter, restoredShelter, validatedContainers } from './homestead-transactions';
 import { validBar, type ActionBar, type WeaponSet } from './abilities';
 import { applyEquipment, createEncounter, type Encounter, type EnemyId } from './encounter';
-import type { Point, Spawn } from './area';
+import { near, type Point, type Spawn } from './area';
 import type { AreaDefinition, Campfire, Chest } from '../levels/types';
-import { isEquipmentSlot, type ItemId } from './equipment';
+import { isEquipmentSlot } from './equipment';
 import { character, type CharacterSave } from './character-save';
 import { CharacterPersistence, type StorageSource } from './character-persistence';
 export { characterSaveKey } from './character-save';
@@ -16,22 +20,8 @@ import { progression, progressMultiplier, type Skill, type GatheringSkill } from
 
 export const scrollLimit = stackLimit;
 export const homeArea = 'homestead';
-export const dropLandingSeconds = .55;
-export const pickupRadius = 1.5;
-export type GroundItem = LootItem | 'gold';
-export type GroundDrop = {
-  id: string;
-  item: GroundItem;
-  quantity: number;
-  position: Point;
-  origin: Point;
-  height: number;
-  age: number;
-  claim?: ItemId;
-  instanceId?: string;
-  blocked?: boolean;
-  harvestXp?: { skill: GatheringSkill; perUnit: number };
-};
+export { dropLandingSeconds, pickupRadius, type GroundDrop, type GroundItem } from './ground-loot';
+export { near } from './area';
 export type ReturnSpawn = Spawn & { height?: number };
 export type PortalLink = { area: string; departure: ReturnSpawn };
 type AreaSession = {
@@ -43,18 +33,13 @@ type AreaSession = {
 export const chestUnlocked = (encounter: Encounter, chest: Chest) => chest.guard === null
   || (chest.guards ?? [chest.guard ?? 'enemy']).every(id => !!encounter.enemies[id] && encounter.enemies[id].hp <= 0);
 export const fireKey = (area: string, fire: string) => `${area}/${fire}`;
-export const near = (point: Point, target: Point, radius: number) => Math.hypot(point[0] - target[0], point[1] - target[1]) <= radius;
 
 export type AdventureEvent =
   | {
     type: 'chestOpen' | 'returnCast' | 'portalOpen' | 'portalClose' | 'fireDiscovered' | 'healing' | 'potionUse';
     position?: { x: number; z: number };
   }
-  | {
-    type: 'lootDrop' | 'lootLand' | 'lootPickup';
-    item: GroundItem;
-    position: { x: number; z: number };
-  };
+  | LootEvent;
 
 /** Continuing character state and inactive area snapshots; no rendering/browser dependencies. */
 export class Adventure {
@@ -151,11 +136,11 @@ export class Adventure {
     this.events = [];
   }
 
-  spawnDrop(item: GroundItem, quantity: number, origin: Point, options: Partial<Pick<GroundDrop, 'claim' | 'instanceId' | 'blocked' | 'harvestXp'>> = {}): GroundDrop {
+  spawnDrop(item: GroundItem, quantity: number, origin: Point, options: DropOptions = {}): GroundDrop {
     const point = this.placeGround(origin, this.session().drops.length);
     const drop: GroundDrop = { id: this.newId(), item, quantity, origin: [...origin], ...point, age: 0, ...options };
     this.session().drops.push(drop);
-    this.events.push({ type: 'lootDrop', item, position: { x: drop.position[0], z: drop.position[1] } });
+    this.events.push(lootEvent('lootDrop', drop));
     return drop;
   }
 
@@ -184,28 +169,14 @@ export class Adventure {
   }
 
   pickup(id: string, point: Point, manual = false): boolean {
-    const drop = this.session().drops.find(d => d.id === id);
-    if (!drop || drop.age < dropLandingSeconds || !near(point, drop.position, pickupRadius)) return false;
-    if (!this.canCollectGround(drop)) {
-      if (manual) this.message('Can’t reach item');
+    const result = collectGroundDrop(this.session().drops, id, point, this.character, this.newId, this.canCollectGround, manual);
+    if (!result.collected) {
+      if (result.notice) this.message(result.notice);
       return false;
     }
-
-    if (drop.blocked && !manual) return false;
-    const amount = drop.item === 'gold'
-      ? Math.min(drop.quantity, Number.MAX_SAFE_INTEGER - this.character.gold)
-      : receive(this.character.items, drop.item, drop.quantity, this.newId, drop.instanceId);
-    if (drop.item === 'gold') this.character.gold += amount;
-    if (!amount) {
-      if (manual) this.message(drop.item === 'gold' ? 'Gold wallet is full' : 'Inventory full');
-      return false;
-    }
-
-    this.events.push({ type: 'lootPickup', item: drop.item, position: { x: drop.position[0], z: drop.position[1] } });
+    const { drop, amount } = result;
+    this.events.push(lootEvent('lootPickup', drop));
     if (drop.harvestXp) this.awardXp(drop.harvestXp.skill, amount * drop.harvestXp.perUnit);
-    drop.quantity -= amount;
-    if (drop.claim) this.character.campClaims = [...new Set([...this.character.campClaims, drop.claim])];
-    if (!drop.quantity) this.session().drops.splice(this.session().drops.indexOf(drop), 1);
     this.save();
     return true;
   }
@@ -373,20 +344,11 @@ export class Adventure {
     const state = this.chest(area, chest);
     if (state.opened) return false;
     this.events.push({ type: 'chestOpen', position: { x: chest.position[0], z: chest.position[1] } });
-    const gold = rollGold({ kind: 'chest', areaLevel: area.level, level: chest.level, gold: chest.gold }, this.random);
-    if (gold) this.spawnDrop('gold', gold, chest.position);
-    if (state.remaining) this.spawnDrop('scroll', state.remaining, chest.position);
-    if (chest.potions) this.spawnDrop('potion', chest.potions, chest.position);
-    this.guaranteedEquipment(chest.equipment ?? [], chest.position);
+    for (const reward of chestRewards(chest, state.remaining, area.level, this.character.campClaims, this.random))
+      this.spawnDrop(reward.item, reward.quantity, chest.position, reward.options);
     state.opened = true;
     state.remaining = 0;
     return true;
-  }
-
-  private guaranteedEquipment(items: readonly ItemId[], position: Point): void {
-    for (const item of items) {
-      if (!this.character.campClaims.includes(item)) this.spawnDrop(item, 1, position, { claim: item });
-    }
   }
 
   destinations(areas: Record<string, AreaDefinition>): { area: AreaDefinition; fire: Campfire; available: boolean }[] {
@@ -422,7 +384,7 @@ export class Adventure {
     this.updateHealing(encounter, area, point, dt);
     const session = this.session();
     this.rollEnemyDrops(encounter, area, session);
-    this.updateDrops(session, point, dt);
+    advanceGroundDrops(session.drops, point, dt, event => this.events.push(event), (id, point) => this.pickup(id, point));
     this.advanceReturnCast(encounter, area, point, dt);
   }
 
@@ -464,25 +426,8 @@ export class Adventure {
       if (!(enemy.home && enemy.hp <= 0 && !session.dropRolled[id])) continue;
       session.dropRolled[id] = true;
       const point: Point = [enemy.x, enemy.z];
-      if (this.random() < .5) this.spawnDrop('scroll', 1, point);
-      const rewards = area.layout.enemies?.find(enemy => enemy.id === id)
-        ?? area.layout[id as 'enemy' | 'caster'];
-      const gold = rollGold({ ...rewards, kind: 'enemy', areaLevel: area.level }, this.random);
-      if (gold) this.spawnDrop('gold', gold, point);
-      this.guaranteedEquipment(area.enemyEquipment?.[id] ?? [], point);
-    }
-  }
-
-  private updateDrops(session: AreaSession, point: Point, dt: number): void {
-    // Collection removes entries, so iterate a snapshot of this frame's drops.
-    for (const drop of [...session.drops]) {
-      if (drop.age < dropLandingSeconds && drop.age + dt >= dropLandingSeconds) {
-        this.events.push({ type: 'lootLand', item: drop.item, position: { x: drop.position[0], z: drop.position[1] } });
-      }
-
-      drop.age += dt;
-      if (drop.blocked && !near(point, drop.position, pickupRadius)) drop.blocked = false;
-      if (drop.item === 'gold' || lootDefinitions[drop.item].stackable) this.pickup(drop.id, point);
+      for (const reward of enemyRewards(area, id, this.character.campClaims, this.random))
+        this.spawnDrop(reward.item, reward.quantity, point, reward.options);
     }
   }
 

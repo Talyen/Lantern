@@ -1,5 +1,6 @@
 import type { GameAudio } from '../audio/audio';
-import type { Adventure, CharacterSave } from '../gameplay/adventure';
+import type { Adventure } from '../gameplay/adventure';
+import type { CharacterSave } from '../gameplay/character-save';
 import { applyEquipment, inCombat, type Encounter } from '../gameplay/encounter';
 import {
   lootDefinitions, removeQuantity, sameEquipment, validItems,

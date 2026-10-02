@@ -1,5 +1,6 @@
-import { near, dropLandingSeconds, pickupRadius, type Adventure } from '../gameplay/adventure';
-import type { Point } from '../gameplay/area';
+import type { Adventure } from '../gameplay/adventure';
+import { dropLandingSeconds, pickupRadius } from '../gameplay/ground-loot';
+import { near, type Point } from '../gameplay/area';
 import type { AimPoint, Encounter } from '../gameplay/encounter';
 import type { MovementWorld } from '../gameplay/movement';
 import type { WorldInteraction } from './world-interactions';

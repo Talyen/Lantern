@@ -1,6 +1,6 @@
 import { renderEquipmentDetails, statLabel, statValue } from './equipment-details';
 import { bindMenuDismissal } from './menu';
-import type { CharacterSave } from '../gameplay/adventure';
+import type { CharacterSave } from '../gameplay/character-save';
 import { bagWidth, bagHeight, stackLimit, emptyPosition, equipInstance, lootDefinitions, moveItem, sortedItems, transferItem, itemLoadout, type InventoryItem } from '../gameplay/inventory';
 import { progression, shelterRecipe, skillProgress } from '../gameplay/skills';
 import { countItem } from '../gameplay/inventory';

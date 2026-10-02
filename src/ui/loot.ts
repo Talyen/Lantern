@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { lootDefinitions } from '../gameplay/inventory';
-import type { GroundDrop } from '../gameplay/adventure';
+import type { GroundDrop } from '../gameplay/ground-loot';
 
 type LabelLayout = {
   label: HTMLButtonElement;

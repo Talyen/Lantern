@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { MeshBasicNodeMaterial, MeshStandardNodeMaterial } from 'three/webgpu';
 import { Portal } from './portal';
 import type { Point } from '../gameplay/area';
-import { dropLandingSeconds, type GroundDrop } from '../gameplay/adventure';
+import { dropLandingSeconds, type GroundDrop } from '../gameplay/ground-loot';
 import { equipmentCatalog, itemDefinitions, type HandItem } from '../gameplay/equipment';
 import { assetLibrary, type AssetInstance } from '../assets/asset-library';
 import { disposeSceneInstances } from '../assets/resource-ownership';
