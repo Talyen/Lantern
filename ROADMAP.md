@@ -177,7 +177,7 @@ The owner selected warm, crafted fantasy with restrained ornament and desktop ke
 
 - [x] Establish repository design direction, decision records, proposed foundation values, component contracts and an original ImageGen mockup workflow.
 - [x] Create original Inventory direction concepts with saved prompts/provenance and critique; runtime implementation remains outstanding.
-- [ ] Select a material/layout treatment and resolve typography, icon finish, compact window and UI-scale choices through a functional prototype.
+- [ ] Refine the selected A — Crafted instrument treatment and resolve layout, typography, icon finish, compact window and UI-scale choices through a functional prototype.
 - [ ] Build a development-only fixed-data component specimen and a real Inventory/Equipment/Stash vertical slice; extract shared tokens and menu/control patterns from concrete consumers.
 - [ ] Apply the shared language to HUD/action bar, Skills, Options and Keybindings, preserving readability, live settings/draft policies and input ownership.
 - [ ] Finish travel, shelter, loot/context prompts, outcomes and startup/save-recovery presentation; cover shops, Smithing and future screens as gameplay requirements become available.

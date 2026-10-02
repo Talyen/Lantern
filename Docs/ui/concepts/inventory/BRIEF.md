@@ -1,6 +1,6 @@
 # First Inventory design brief
 
-Status: concept and proposed functional slice, October 2, 2026. Material preference is pending. See [A/B/C concepts and critique](../README.md), [decisions](../../DESIGN_DECISIONS.md) and [shared foundations](../../../UI_DESIGN.md).
+Status: concept and proposed functional slice, October 2, 2026. The owner selected A — Crafted instrument as the lead material treatment. See [A/B/C concepts and critique](../README.md), [decisions](../../DESIGN_DECISIONS.md) and [shared foundations](../../../UI_DESIGN.md).
 
 ## Player goal and visible effect
 
@@ -34,6 +34,6 @@ Stash extends this same system with two exact grids and a clear destination. Use
 
 ## Decision and acceptance
 
-Resolve material treatment, heading size, icon finish, detail placement and compact behavior in that order. First implement a fixed-data specimen sharing the actual component code, then the real Inventory slice; document its entry point when created. Avoid a screenshot-shaped implementation or a second set of demo components.
+Refine A's material treatment, then resolve heading size, icon finish, detail placement and compact behavior. First implement a fixed-data specimen sharing the actual component code, then the real Inventory slice; document its entry point when created. Avoid a screenshot-shaped implementation or a second set of demo components.
 
 Acceptance evidence for that slice: one normal-settings owned preview, one real select/compare/equip/close flow, one relevant compact-layout concern if that behavior changes, refinement of the weakest visible detail, and the lean integration sanity gate. Preserve actual item rules and persistence. Record unresolved keyboard/gamepad, accessibility, window-size and platform limits in the coverage entry.

@@ -9,6 +9,7 @@ Use [the design system](../UI_DESIGN.md) for shared rules and [the workflow](WOR
 | Warm, crafted fantasy with restrained ornament | Adopted by owner | Explicit choice; extend Lantern's warm grimdark, iron/brass/smoky glass and amber refuge |
 | Desktop keyboard/mouse first | Adopted by owner | Explicit choice; prioritize readable desktop interactions |
 | Plan gamepad and smaller windows | Adopted by owner | Include focus/back/alternate-operation design and compact layout studies; implementation/support remains outstanding |
+| A — Crafted instrument leads the first Inventory prototype | Adopted by owner | Explicit selection after reviewing A/B/C; fine brass and warmer detail, refined in a functional layout |
 | All screens/components should converge on a shared system | Requested by owner | One reusable vocabulary and screen migration process; no numerical quality certification |
 | Original ImageGen mockups for screen/layout direction | Requested by owner | Save prompts, images, critique and decision status; verify interactions in DOM prototypes |
 
@@ -18,7 +19,7 @@ The native-only WebGPU pipeline, current game mechanics, authored item catalog a
 
 | Decision | Recommendation | How to decide | Status |
 | --- | --- | --- | --- |
-| Material weight | Crafted instrument: quiet surfaces, thin brass, selective iron joints | Compare [A/B/C Inventory concepts](concepts/README.md); select what to keep/remove | Proposed |
+| Material finish within selected A | Quiet reading surfaces, thin brass, selective iron joints; use B's calmer framing as a refinement reference | Refine [the selected Inventory concept](concepts/README.md) at actual use size; remove excessive glow/framing | Proposed refinement of adopted direction |
 | Heading/reading typography | Pirata One for short headings, readable sans for controls and numbers | Inspect title, item name, long label and stat row at gameplay scale | Proposed |
 | Icon finish | Original painterly item/ability art with shared silhouette/padding/light; DOM text and code-owned state chrome | Compare several representative icons at actual slot size; respect licensed-art provenance | Proposed |
 | Inventory information hierarchy | Equipment / spatial Bag / selected item; properties and comparison next to actions | Select and equip one existing item; verify the comparison target is unmistakable | Proposed |

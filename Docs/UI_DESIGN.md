@@ -4,7 +4,7 @@ This is the canonical owner of Lantern's UI design direction and shared presenta
 
 ## Status and intent
 
-On October 2, 2026, the owner selected **warm, crafted fantasy with restrained ornament**, with **desktop keyboard/mouse first, gamepad and smaller windows planned**. These choices guide new UI work. The foundation values below are proposed starting specifications, pending functional prototype review. Existing screens have not yet been migrated and this document does not certify their accessibility or quality.
+On October 2, 2026, the owner selected **warm, crafted fantasy with restrained ornament**, with **desktop keyboard/mouse first, gamepad and smaller windows planned**, then chose **A — Crafted instrument** to lead the first functional Inventory prototype. These choices guide new UI work. The foundation values below are proposed starting specifications, pending functional prototype review. Existing screens have not yet been migrated and this document does not certify their accessibility or quality.
 
 The quality ambition is the confidence, responsiveness and finish associated with excellent game and product interfaces. Achieve it through recognizable Lantern craft, readable decisions, predictable behavior and consistent feedback. A numerical quality score is not acceptance evidence. A still mockup cannot establish functional polish.
 
@@ -18,7 +18,7 @@ Hierarchy should come from proportion, spacing, type, contrast and placement bef
 
 Avoid excessive gold borders, constant glow, noisy text backgrounds, tiny decorative labels and ornament around every control. Keep Gothic character in short headings; use highly readable mixed-case labels, descriptions and numerals. Use familiar player-facing names. Do not add lore, slogans, explanatory panels or new mechanics to fill a composition.
 
-The [initial Inventory concepts](ui/concepts/README.md) explore three treatments within this direction. Their material/layout details remain candidates, including the recommended Crafted instrument treatment. An image is never the source of truth for equipment slots, item data or interaction rules.
+The [initial Inventory concepts](ui/concepts/README.md) explore three treatments within this direction. Crafted instrument is the selected lead; exact material/layout details still require functional refinement, with B/C retained as comparison references. An image is never the source of truth for equipment slots, item data or interaction rules.
 
 ## Foundation specifications
 
@@ -106,7 +106,7 @@ Primary references: [text contrast](https://www.w3.org/WAI/WCAG22/Understanding/
 
 ## Adoption order and ownership
 
-1. Select an Inventory material treatment and confirm its information hierarchy; study the same layout at compact size.
+1. Refine the selected Crafted instrument Inventory treatment and confirm its information hierarchy; study the same layout at compact size.
 2. Build a development-only DOM component specimen with fixed representative data, isolated from saves/gameplay, then one functional Inventory vertical slice. Show state variants beside the real components rather than approximating them in images.
 3. Extract the proven semantic tokens and shared menu/control patterns beside `src/ui/`; migrate Inventory and stash with existing operations intact.
 4. Apply those patterns to HUD/action bar and Skills, then Options/Keybindings. Refine at gameplay scale with one relevant interaction per task.

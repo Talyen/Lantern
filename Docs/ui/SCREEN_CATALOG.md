@@ -8,7 +8,7 @@ Status meanings: **Existing** = current prototype behavior; **Concept** = genera
 
 | Surface | Player goal and key states | Current owner | Design coverage / next step |
 | --- | --- | --- | --- |
-| Inventory / Equipment | Organize, compare, equip; two hand sets and shared slots; empty/selected/equipped/pending/failure/full/overflow | [adventure UI](../../src/ui/adventure.ts), [markup](../../index.html), [inventory controller](../../src/clearing/inventory.ts) | Existing + Concept A/B/C; choose treatment, make compact study and functional slice |
+| Inventory / Equipment | Organize, compare, equip; two hand sets and shared slots; empty/selected/equipped/pending/failure/full/overflow | [adventure UI](../../src/ui/adventure.ts), [markup](../../index.html), [inventory controller](../../src/clearing/inventory.ts) | Existing + Concept A selected; make compact study and functional slice |
 | Stash / transfer | Inspect Bag and Stash, store/take exact quantities; destination/full/partial/selection/busy | Same adventure UI and controller | Existing; reuse Inventory grid/detail, design compact container switch |
 | Split / carry / placement | Choose quantity and destination; carried/cancel/valid/invalid/outside drop | Same adventure UI; [inventory model](../../src/gameplay/inventory.ts) | Existing; specify alternate operation and nested Escape behavior with Inventory |
 | Combat HUD / resources | Read health/mana, supplies and readiness without losing combat focus; low/empty/damage/paused | [HUD](../../src/ui/hud.ts), [orb CSS](../../src/ui/orbs.css) | Existing; preserve orb identity, establish safe play-space composition |
@@ -42,4 +42,4 @@ Menu shells; primary/secondary/icon/consequential buttons; view switches; labels
 
 Append a concise entry when a screen is inspected: date; surface; integrated revision; intended effect; relevant interaction and viewport/input; refinement made; remaining limits. Private capture paths may be recorded as plain code paths; never embed licensed captures in tracked files. Keep entries bounded and current; older evidence belongs with the task archive rather than a growing mandatory checklist.
 
-October 2, 2026: documentation foundation and original Inventory direction concepts only. No runtime UI was changed; functional, responsive, gamepad and accessibility inspection remains outstanding.
+October 2, 2026: documentation foundation and original Inventory direction concepts; owner selected A — Crafted instrument for the first functional prototype. No runtime UI was changed; functional, responsive, gamepad and accessibility inspection remains outstanding.
