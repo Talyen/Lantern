@@ -316,12 +316,14 @@ function dispatchInput(action: InputAction): void {
   if (action === 'options') { toggleOptions(); return; }
   if (paused()) return;
 
-  if (action.startsWith('slot')) {
-    const id = adventure.character.actionBar[Number(action.slice(4))];
-    if (id) startAbility(id);
-    return;
-  }
   switch (action) {
+    case 'slot0': case 'slot1': case 'slot2': case 'slot3': case 'slot4': case 'slot5': {
+      const id = adventure.character.actionBar[Number(action.slice(4))];
+      if (id) startAbility(id);
+      break;
+    }
+    // Movement reads held inputs in the frame loop.
+    case 'moveUp': case 'moveDown': case 'moveLeft': case 'moveRight': break;
     case 'dodge': startDodge(); break;
     case 'swap': startSwap(); break;
     case 'potion': usePotion(); break;

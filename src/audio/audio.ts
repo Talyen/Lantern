@@ -149,6 +149,6 @@ export class GameAudio {
     window.removeEventListener('pointerdown', this.gesture, true); window.removeEventListener('keydown', this.gesture, true);
     document.removeEventListener('visibilitychange', this.visibility); window.removeEventListener('blur', this.blur); window.removeEventListener('focus', this.focus);
     for (const voice of this.voices) this.stopVoice(voice);
-    this.buffers.clear(); void this.context?.close().catch(error => console.warn('Unable to release audio.', error));
+    this.buffers.clear(); if (this.context) void this.context.close().catch(error => console.warn('Unable to release audio.', error));
   }
 }

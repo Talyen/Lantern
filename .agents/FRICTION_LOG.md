@@ -14,7 +14,6 @@ Centralized intake for unresolved agent friction while working in Lantern. Keep 
 
 | Date | Area | Symptom (expected vs actual) |
 |------|------|------------------------------|
-| 2026-10-02 | Task dependency setup | [Task setup](../scripts/agents/workflow.mjs) stamps cloned `node_modules` with the current manifest identity without verifying the installed packages. Main and a newly created lint-policy task lacked the declared ESLint packages, but `ensureDependencies` accepted the clone. An owned `npm ci` restored task validation; stale-clone detection and main's older install remain unresolved. |
 
 ## Archive
 
