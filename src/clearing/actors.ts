@@ -10,6 +10,8 @@ export type Actor = { root: THREE.Group; mixer: THREE.AnimationMixer | null; act
 // Mixamo faces +Z here: its anatomical left travels +X, and right travels -X.
 const directions = ['run', 'left', 'backward', 'right'] as const;
 const blockDirections = ['blockForward', 'blockLeft', 'blockBackward', 'blockRight'] as const;
+const lowerDirections = ['lower_run', 'lower_left', 'lower_backward', 'lower_right'] as const;
+const locomotionRoles: readonly PlaybackRole[] = [...directions, ...lowerDirections, 'blockUpper'];
 export function makeActor(scene: THREE.Scene, state: ActorState): Actor {
   const root = new THREE.Group(); root.position.set(state.x, .04, state.z); scene.add(root);
   return { root, mixer: null, actions: {}, current: null, moveSpeed: state.speed, rigScale: 1, blockBlend: 0, runSpeed: 4, speeds: {}, contacts: [], commitLead: 0, chopContact: .32, mineContact: .36, skillContacts: {}, phases: {}, gait: 0, velocity: new THREE.Vector2(), previous: null, displacement: new THREE.Vector2(), weights: [0, 0, 0, 0] };
@@ -24,7 +26,7 @@ export function play(actor: Actor, name: Motion, rate = 1): void {
   if (!starting) next.fadeIn(blend);
   next.play();
   actor.current = name;
-  if (name === 'run') for (const role of [...directions, ...directions.map(role=>`lower_${role}` as PlaybackRole), 'blockUpper'] as PlaybackRole[]) {
+  if (name === 'run') for (const role of locomotionRoles) {
     const action = actor.actions[role];
     action?.reset().stopFading().setEffectiveTimeScale(0).setEffectiveWeight(0).play();
   }
@@ -87,13 +89,16 @@ export function updateActor(actor: Actor, state: ActorState, dt: number, paused:
       for (let i = 0; i < directions.length; i++) weights[i] = i === first ? 1 - fraction : i === (first + 1) % 4 ? fraction : 0;
       if (!actor.actions.left) { weights.fill(0); weights[0]=1; }
       let stride = 0;
-      directions.forEach((role, i) => { const action = actor.actions[role], lower=actor.actions[`lower_${role}`]; if (action) stride += weights[i] * ((1-actor.blockBlend)*(actor.speeds[role] ?? actor.runSpeed)*action.getClip().duration + actor.blockBlend*(actor.speeds[blockDirections[i]] ?? actor.runSpeed)*(lower?.getClip().duration ?? action.getClip().duration)); });
+      for (let i = 0; i < directions.length; i++) {
+        const role = directions[i], action = actor.actions[role], lower = actor.actions[lowerDirections[i]];
+        if (action) stride += weights[i] * ((1-actor.blockBlend)*(actor.speeds[role] ?? actor.runSpeed)*action.getClip().duration + actor.blockBlend*(actor.speeds[blockDirections[i]] ?? actor.runSpeed)*(lower?.getClip().duration ?? action.getClip().duration));
+      }
       actor.gait = (actor.gait + dt * speed / Math.max(.2, stride)) % 1;
-      directions.forEach((role, i) => {
-        const action = actor.actions[role]; if (!action) return;
+      for (let i = 0; i < directions.length; i++) {
+        const role = directions[i], action = actor.actions[role]; if (!action) continue;
         action.stopFading().setEffectiveWeight(weights[i] * (1-actor.blockBlend)).setEffectiveTimeScale(0); action.time = ((actor.gait+(actor.phases[role] ?? 0))%1)*action.getClip().duration;
-        const lower=actor.actions[`lower_${role}`]; if (lower) { lower.stopFading().setEffectiveWeight(weights[i]*actor.blockBlend).setEffectiveTimeScale(0); lower.time=((actor.gait+(actor.phases[blockDirections[i]] ?? actor.phases[role] ?? 0))%1)*lower.getClip().duration; }
-      });
+        const lower=actor.actions[lowerDirections[i]]; if (lower) { lower.stopFading().setEffectiveWeight(weights[i]*actor.blockBlend).setEffectiveTimeScale(0); lower.time=((actor.gait+(actor.phases[blockDirections[i]] ?? actor.phases[role] ?? 0))%1)*lower.getClip().duration; }
+      }
       actor.actions.blockUpper?.setEffectiveWeight(actor.blockBlend).setEffectiveTimeScale(1);
     }
   }

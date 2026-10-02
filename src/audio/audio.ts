@@ -16,6 +16,7 @@ export class GameAudio {
   private buses = new Map<Bus, GainNode>();
   private buffers = new Map<string, AudioBuffer>();
   private voices = new Set<Voice>();
+  private keyedVoices = new Map<string, Voice>();
   private last = new Map<SoundCue, number>();
   private listener: SoundPosition = { x: 0, z: 0 };
   private paused = true;
@@ -120,8 +121,10 @@ export class GameAudio {
     if (source.loop) { source.loopStart = clips[id].loopStart ?? 0; source.loopEnd = Math.min(buffer.duration,clips[id].loopEnd ?? buffer.duration); } source.playbackRate.value = options.rate ?? definition.rate;
     source.connect(gain); gain.connect(pan); pan.connect(this.buses.get(definition.bus)!);
     const voice: Voice = { source, gain, pan, bus: definition.bus, position: position ? { x: position.x, z: position.z } : undefined, level: definition.gain * (options.gain ?? 1), key: options.key, loop: source.loop };
-    this.voices.add(voice); this.position(voice, !voice.loop);
-    source.onended = () => { this.voices.delete(voice); source.disconnect(); gain.disconnect(); pan.disconnect(); };
+    this.voices.add(voice);
+    if (voice.key) this.keyedVoices.set(voice.key, voice);
+    this.position(voice, !voice.loop);
+    source.onended = () => { this.removeVoice(voice); source.disconnect(); gain.disconnect(); pan.disconnect(); };
     source.start(); this.counts.set(cue, (this.counts.get(cue) ?? 0) + 1);
   }
   loop(key: string, cue: SoundCue, position?: SoundPosition, gain = 1): void {
@@ -134,12 +137,24 @@ export class GameAudio {
     let count = 0; for (const active of this.voices) if (active.loop) count++;
     if (count < 12) this.play(cue, position, { key, loop: true, gain });
   }
-  private keyedVoice(key: string): Voice | undefined { for (const voice of this.voices) if (voice.key === key) return voice; }
+  private keyedVoice(key: string): Voice | undefined {
+    if (key) return this.keyedVoices.get(key);
+    // Empty keys historically allow multiple voices; preserve their ordering.
+    for (const voice of this.voices) if (voice.key === key) return voice;
+  }
   keepLoops(keys: Set<string>): void { for (const voice of this.voices) if (voice.loop && voice.key && !keys.has(voice.key)) this.stopVoice(voice); }
-  stop(key: string): void { for (const voice of this.voices) if (voice.key === key) this.stopVoice(voice); }
+  stop(key: string): void {
+    if (key) { const voice = this.keyedVoices.get(key); if (voice) this.stopVoice(voice); }
+    else for (const voice of this.voices) if (voice.key === key) this.stopVoice(voice);
+  }
+  private removeVoice(voice: Voice): void {
+    this.voices.delete(voice);
+    // A stopped voice may end after another voice has reused its key.
+    if (voice.key && this.keyedVoices.get(voice.key) === voice) this.keyedVoices.delete(voice.key);
+  }
   private stopVoice(voice: Voice): void {
     const now = this.context!.currentTime; voice.gain.gain.cancelScheduledValues(now); voice.gain.gain.setTargetAtTime(0, now, .005);
-    voice.source.stop(now+.025); this.voices.delete(voice);
+    voice.source.stop(now+.025); this.removeVoice(voice);
   }
   clearTransient(includeUi = false): void { for (const voice of this.voices) if (!voice.loop && (includeUi || voice.bus !== 'ui')) this.stopVoice(voice); }
   clearArea(): void { for (const voice of this.voices) if (voice.bus !== 'ui') this.stopVoice(voice); }
