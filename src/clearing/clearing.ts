@@ -48,7 +48,7 @@ import { InventoryController } from './inventory';
 import { CombatController } from './combat';
 import { ClickApproach } from './click-approach';
 import { PointerAim } from './pointer-aim';
-import { worldTargets as buildWorldTargets, interactionError as worldInteractionError, pickInteraction as pickWorldInteraction, type WorldInteraction } from './world-interactions';
+import { WorldInteractions, interactionError as worldInteractionError, type WorldInteraction } from './world-interactions';
 import { traversalWithTrees } from '../levels/trees';
 import '../ui/game.css';
 import '../ui/options.css';
@@ -97,6 +97,7 @@ let lanternEnabled = !(import.meta.env.DEV && renderQuery.get('lantern') === 'of
 let personalLantern: PlayerLantern | undefined;
 let surfaceMode: SurfaceMode = import.meta.env.DEV && renderQuery.get('surfaces') === 'showcase' ? 'showcase' : import.meta.env.DEV && renderQuery.get('surfaces') === 'authored' ? 'authored' : 'projected';
 let active: AreaInstance | undefined;
+let worldInteractions: WorldInteractions | undefined;
 let movementWorld: MovementWorld | undefined;
 let generation = 0, revision = 0, renderedRevision = 0, transitioning = false;
 let frozen = import.meta.env.DEV && renderQuery.get('author') === 'levels';
@@ -315,16 +316,14 @@ optionsButton.title = 'Options'; optionsButton.setAttribute('aria-label', 'Optio
 optionsButton.onclick = toggleOptions;
 document.getElementById('app')!.append(optionsButton);
 
-function worldTargets(): WorldInteraction[] {
-  return buildWorldTargets(currentArea, active, adventure, harvesting, adventureVisuals?.portalTarget);
+function worldTargets(): readonly WorldInteraction[] {
+  return worldInteractions?.targets(adventure, harvesting, adventureVisuals?.portalTarget) ?? [];
 }
 function interactionError(target: WorldInteraction): string {
   return worldInteractionError(target, currentArea, adventure, encounter);
 }
 function pickInteraction(): WorldInteraction | null {
-  if (!active) return null;
-  const roots = [active.root, ...(adventureVisuals?.portalTarget ? [adventureVisuals.portalTarget] : []), player.root, enemy.root, caster.root];
-  return pickWorldInteraction(pointerAim.ray, roots, worldTargets());
+  return worldInteractions?.pick(pointerAim.ray, worldTargets()) ?? null;
 }
 
 function worldClick(clientX: number, clientY: number): boolean {
@@ -538,6 +537,7 @@ function dispose(): void {
   casterVisuals.dispose();
   adventureVisuals?.dispose();
   lootLabels.dispose();
+  worldInteractions = undefined;
   active?.dispose();
   movementWorld?.dispose();
   for (const actor of Object.values(actors)) {
@@ -655,6 +655,7 @@ async function changeArea(change: AreaChange): Promise<boolean> {
     movementWorld?.dispose();
     movementWorld = candidateMovement;
     active = candidate;
+    worldInteractions = new WorldInteractions(next, candidate, [player.root, enemy.root, caster.root]);
     currentArea = next;
     committedLighting = resolved.lighting;
     lanternEnabled = appearance?.lantern ?? lanternEnabled;

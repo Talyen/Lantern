@@ -16,7 +16,7 @@ type ApproachFrame = {
   movement: { x: number; z: number };
   block: boolean;
   navigation: MovementWorld | undefined;
-  targets: () => WorldInteraction[];
+  targets: () => readonly WorldInteraction[];
   error: (target: WorldInteraction) => string;
   interact: (target: WorldInteraction) => void;
 };

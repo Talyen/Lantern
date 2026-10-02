@@ -14,6 +14,7 @@ export type MotionPack = { id: string; label: string; clips: MotionClip[] };
 export type MotionCatalog = { version: number; packs: MotionPack[]; defaults: Record<AnimationRole, string>; profiles: Record<string, Partial<Record<AnimationRole, string>>> };
 export type CombatMotions = { clips: Record<MotionState, THREE.AnimationClip> & Partial<Record<AnimationRole, THREE.AnimationClip>>; contacts: number[]; commitLead?: number; runSpeed: number; speeds: Partial<Record<AnimationRole, number>>; chopContact: number; mineContact: number; skillContacts: Partial<Record<'sweep' | 'pierce',number[]>>; phases: Partial<Record<AnimationRole, number>> };
 const cache = new Map<string, Promise<THREE.AnimationClip>>();
+const joinedShots = new Map<string, THREE.AnimationClip>();
 const catalogs = new Map<string, Promise<MotionCatalog>>();
 export function getMotionCatalog(who: RigId): Promise<MotionCatalog> {
   const url = characters[who].catalog;
@@ -33,6 +34,9 @@ async function loadClip(loader: GLTFLoader, clip: MotionClip): Promise<THREE.Ani
   }).catch((error: unknown) => { cache.delete(url); throw error; }));
   const source = await cache.get(url)!;
   // Playback state belongs to each clip/action; keyframe buffers stay read-only.
+  return independentClip(source);
+}
+function independentClip(source: THREE.AnimationClip): THREE.AnimationClip {
   return new THREE.AnimationClip(source.name, source.duration, source.tracks.slice(), source.blendMode);
 }
 export async function loadEquipmentMotions(loader: GLTFLoader, who: RigId, loadout: Loadout): Promise<CombatMotions> {
@@ -59,7 +63,14 @@ export async function loadEquipmentMotions(loader: GLTFLoader, who: RigId, loado
     if (!clip || marker === undefined || !Number.isFinite(marker) || marker <= 0 || marker >= clip.duration) throw new Error('Gathering motions need reviewed contact markers. Prepare the curated motion profiles with npm run assets:export-character.');
   }
   for(const role of ['sweep','pierceRelease'] as const)if(clips[role] && (typeof all[role]?.contact!=='number' || all[role]!.contact!<=0 || all[role]!.contact!>=clips[role]!.duration))throw new Error('Skill has no reviewed contact marker. Prepare compatible Mixamo motions.');
-  if (clips.pierceDraw && clips.pierceRelease) clips.pierce=joinShot(clips.pierceDraw,clips.pierceRelease);
+  if (clips.pierceDraw && clips.pierceRelease) {
+    // Joining is deterministic for the cached source pair. Retain its keyframes
+    // once, with a separate wrapper/action for each prepared equipment profile.
+    const key = JSON.stringify([all.pierceDraw!.url, all.pierceRelease!.url]);
+    let joined = joinedShots.get(key);
+    if (!joined) { joined = joinShot(clips.pierceDraw, clips.pierceRelease); joinedShots.set(key, joined); }
+    clips.pierce = independentClip(joined);
+  }
   const contact = base.attack.contact;
   if (contact === undefined || contact <= 0 || contact >= clips.attack.duration) throw new Error('Attack has no reviewed contact marker. Prepare the curated motion profiles.');
   const motions: CombatMotions = { clips, contacts: [contact], commitLead: (motionProfiles.clips as Record<string,{commitLead?:number}>)[base.attack.id]?.commitLead ?? 0, runSpeed: base.run.speed ?? 4,

@@ -1,6 +1,6 @@
 import type { Adventure } from '../gameplay/adventure';
 import type { Point } from '../gameplay/area';
-import { enemyIds, type Encounter } from '../gameplay/encounter';
+import { enemyIds, type ActorId, type Encounter } from '../gameplay/encounter';
 import { gatheringSafe, type Harvesting } from '../gameplay/harvesting';
 import type { MovementWorld } from '../gameplay/movement';
 import { gathering } from '../gameplay/skills';
@@ -18,11 +18,18 @@ type GatheringContext = {
   paused(): boolean;
 };
 type Swing = { resource: ResourceDefinition; time: number; contacted: boolean };
+type Occupant = { areaId: string; position: Point };
 
 /** Coordinates gathering motions and contacts without changing equipped items. */
 export class GatheringController {
   private selected: ResourceDefinition | null = null;
   private swing: Swing | null = null;
+  private readonly occupantRecords: Record<ActorId, Occupant> = {
+    player: { areaId: '', position: [0, 0] },
+    enemy: { areaId: '', position: [0, 0] },
+    caster: { areaId: '', position: [0, 0] },
+  };
+  private readonly occupants: Occupant[] = [];
 
   constructor(
     private readonly encounter: Encounter,
@@ -95,11 +102,18 @@ export class GatheringController {
   advance(dt: number): void {
     const area = this.context.area();
     const { player, enemies } = this.encounter;
-    const occupants = [
-      { areaId: area.id, position: [player.x, player.z] as Point },
-      ...enemyIds.filter(id => area.kind !== 'safe' && enemies[id].hp > 0)
-        .map(id => ({ areaId: area.id, position: [enemies[id].x, enemies[id].z] as Point })),
-    ];
+    const occupants = this.occupants;
+    occupants.length = 0;
+    const playerOccupant = this.occupantRecords.player;
+    playerOccupant.areaId = area.id; playerOccupant.position[0] = player.x; playerOccupant.position[1] = player.z;
+    occupants.push(playerOccupant);
+    if (area.kind !== 'safe') for (const id of enemyIds) {
+      const enemy = enemies[id];
+      if (enemy.hp <= 0) continue;
+      const occupant = this.occupantRecords[id];
+      occupant.areaId = area.id; occupant.position[0] = enemy.x; occupant.position[1] = enemy.z;
+      occupants.push(occupant);
+    }
     for (const change of this.harvesting.advance(dt, occupants)) {
       if (change.areaId !== area.id) continue;
       this.context.instance()?.setResourceState(change.id, false);
