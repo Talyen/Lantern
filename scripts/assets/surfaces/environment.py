@@ -1,7 +1,8 @@
 """Bake original environment surfaces onto locally prepared Synty meshes.
-Authored palette regions are sampled before UV replacement; geometry stays intact.
+Authored palette regions are sampled before UV replacement. Default geometry stays
+intact; opt-in showcase recipes may reshape canopy while preserving trunk/bounds.
 """
-import argparse, hashlib, json, sys
+import argparse, hashlib, json, sys, math
 from pathlib import Path
 from collections import Counter
 import bpy
@@ -50,6 +51,39 @@ def image_pixels(image):
     pixels=np.empty(len(image.pixels),dtype=np.float32); image.pixels.foreach_get(pixels)
     return pixels.reshape((image.size[1],image.size[0],4))
 
+
+def prepare_showcase(mesh, classes, row):
+    """Local form edits and mapping; preserve trunk, hierarchy and original bounds."""
+    up=row.get('upAxis',2); horizontal=[axis for axis in range(3) if axis!=up]
+    lo=[min(v.co[i] for v in mesh.data.vertices) for i in range(3)]
+    hi=[max(v.co[i] for v in mesh.data.vertices) for i in range(3)]
+    span=[max(hi[i]-lo[i],.001) for i in range(3)]
+    amount=row.get('shape',{}).get('canopyIrregularity',0)
+    if amount:
+        foliage={v for face,family in zip(mesh.data.polygons,classes) if family=='foliage' for v in face.vertices}
+        solid={v for face,family in zip(mesh.data.polygons,classes) if family!='foliage' for v in face.vertices}
+        for index in foliage-solid:
+            co=mesh.data.vertices[index].co; h=(co[up]-lo[up])/span[up]
+            a,c=horizontal; angle=math.atan2(co[c],co[a])
+            # Zero at every original extremum keeps height normalization and trunk alignment stable.
+            ta=(co[a]-lo[a])/span[a];tc=(co[c]-lo[c])/span[c]
+            envelope=math.sin(math.pi*h)**2*(4*ta*(1-ta))*(4*tc*(1-tc))
+            shrink=1-amount*(.5+.5*math.sin(angle*3+h*22))*envelope
+            co[a]*=shrink;co[c]*=shrink
+        mesh.data.update()
+        mesh.data.normals_split_custom_set([tuple(face.normal) for face in mesh.data.polygons for _ in face.loop_indices])
+    uv=mesh.data.uv_layers.new(name='SurfaceGrain')
+    for face,family in zip(mesh.data.polygons,classes):
+        rule=row.get('mapping',{}).get(family,{})
+        if rule.get('mode')!='cylinder':continue
+        a,c=horizontal; values=[]
+        for loop in face.loop_indices:
+            co=mesh.data.vertices[mesh.data.loops[loop].vertex_index].co
+            values.append((math.atan2(co[c],co[a])/(2*math.pi)+.5,(co[up]-lo[up])/span[up]))
+        seam=max(u for u,v in values)-min(u for u,v in values)>.5
+        repeat=rule.get('repeat',[1,1])
+        for loop,(u,v) in zip(face.loop_indices,values):uv.data[loop].uv=((u+1 if seam and u<.5 else u)*repeat[0],v*repeat[1])
+
 def bake(row, textures, output, size):
     bpy.ops.wm.read_factory_settings(use_empty=True)
     bpy.ops.import_scene.gltf(filepath=str(row['source']))
@@ -71,9 +105,9 @@ def bake(row, textures, output, size):
             factor=(1,1,1,1) if socket.is_linked else tuple(socket.default_value)
             originals[mat.name]=(tex.image if tex else None,factor,mat)
             if tex and tex.image.name not in arrays: arrays[tex.image.name]=image_pixels(tex.image)
-    surfaces={family:bpy.data.images.load(str(textures/(family+'-v1.png')),check_existing=True) for family in ['stone','bark','timber','foliage','cloth','leather']}
+    surfaces={family:bpy.data.images.load(str(textures/row.get('surfaces',{}).get(family,family+'-v1.png')),check_existing=True) for family in ['stone','bark','timber','foliage','cloth','leather']}
     look=row.get('foliage')
-    if look:
+    if look and not look.get('retainSourcePalette'):
         source=surfaces['foliage']
         pixels=image_pixels(source)
         image=bpy.data.images.new('Autumn foliage',source.size[0],source.size[1],alpha=True)
@@ -105,6 +139,7 @@ def bake(row, textures, output, size):
         for face,(rgb,alpha),family in zip(mesh.data.polygons,samples,classes):
             if look and family=='foliage': rgb=autumn_colors(rgb,look,reference)
             for loop_index in face.loop_indices: tint.data[loop_index].color=(*[linear(float(c)) for c in rgb],alpha)
+        if row.get('mapping'): prepare_showcase(mesh,classes,row)
         # Exported flat normals duplicate vertices at every triangle. Unwrap a
         # welded topology copy, then transfer corner UVs without changing the
         # real mesh, its normals, vertex colors, hierarchy or source UVs.
@@ -126,7 +161,7 @@ def bake(row, textures, output, size):
         for index,loop in enumerate(temporary.uv_layers.active.data): baked_uv.data[index].uv=loop.uv
         bpy.data.objects.remove(topology,do_unlink=True); bpy.data.meshes.remove(temporary)
         bpy.ops.object.select_all(action='DESELECT'); mesh.select_set(True); bpy.context.view_layer.objects.active=mesh
-        mesh.data.uv_layers.active_index=1; mesh.data.uv_layers[1].active_render=True
+        mesh.data.uv_layers.active=baked_uv; baked_uv.active_render=True
         materials=[];colorsockets=[];alpha=[]
         for family in counts:
             mat=bpy.data.materials.new(mesh.name+':'+family);mat.use_nodes=True;nodes=mat.node_tree.nodes;nodes.clear();links=mat.node_tree.links
@@ -134,12 +169,32 @@ def bake(row, textures, output, size):
             color=attr.outputs['Color']
             surface=surfaces.get(family)
             if surface:
-                coord=nodes.new('ShaderNodeTexCoord');mapping=nodes.new('ShaderNodeVectorMath');mapping.operation='SCALE';mapping.inputs[3].default_value=1.2 if family in ['bark','timber'] else .85
+                rule=row.get('mapping',{}).get(family,{})
+                coord=nodes.new('ShaderNodeTexCoord');mapping=nodes.new('ShaderNodeMapping')
+                scale=1.2 if family in ['bark','timber'] else .85
+                mapping.inputs['Scale'].default_value=rule.get('scale',[scale]*3)
+                mapping.inputs['Rotation'].default_value=rule.get('rotation',[0,0,0])
                 tex=nodes.new('ShaderNodeTexImage');tex.image=surface;tex.projection='BOX';tex.projection_blend=.25;tex.extension='REPEAT'
-                links.new(coord.outputs['Generated'],mapping.inputs[0]);links.new(mapping.outputs['Vector'],tex.inputs['Vector'])
+                if rule.get('mode')=='cylinder':
+                    grain=nodes.new('ShaderNodeUVMap');grain.uv_map='SurfaceGrain';tex.projection='FLAT';links.new(grain.outputs['UV'],tex.inputs['Vector'])
+                else:
+                    links.new(coord.outputs['Generated'],mapping.inputs['Vector']);links.new(mapping.outputs['Vector'],tex.inputs['Vector'])
                 # Half authored palette, half original surface: recognizable facets without photographic contrast.
-                mix=nodes.new('ShaderNodeMixRGB');mix.blend_type='MIX';mix.inputs[0].default_value=row['projection']['colorBlend'] if family!='foliage' else row['projection']['foliageBlend']
+                mix=nodes.new('ShaderNodeMixRGB');mix.blend_type='MIX';mix.inputs[0].default_value=rule.get('blend',row['projection']['colorBlend'] if family!='foliage' else row['projection']['foliageBlend'])
                 links.new(attr.outputs['Color'],mix.inputs[1]);links.new(tex.outputs['Color'],mix.inputs[2]);color=mix.outputs[0]
+                if family=='foliage' and 'interior' in rule:
+                    # Broad radial material variation: darker inner needles, restrained outer tips.
+                    separate=nodes.new('ShaderNodeSeparateXYZ');links.new(coord.outputs['Generated'],separate.inputs[0])
+                    horizontal=[axis for axis in range(3) if axis!=row.get('upAxis',2)]
+                    radial=[]
+                    for axis in horizontal:
+                        subtract=nodes.new('ShaderNodeMath');subtract.operation='SUBTRACT';subtract.inputs[1].default_value=.5;links.new(separate.outputs[axis],subtract.inputs[0])
+                        absolute=nodes.new('ShaderNodeMath');absolute.operation='ABSOLUTE';links.new(subtract.outputs[0],absolute.inputs[0]);radial.append(absolute.outputs[0])
+                    radius=nodes.new('ShaderNodeMath');radius.operation='MAXIMUM';links.new(radial[0],radius.inputs[0]);links.new(radial[1],radius.inputs[1])
+                    value=nodes.new('ShaderNodeMapRange');value.inputs['From Min'].default_value=.05;value.inputs['From Max'].default_value=.4;value.inputs['To Min'].default_value=rule['interior'];value.inputs['To Max'].default_value=rule['tips'];links.new(radius.outputs[0],value.inputs['Value'])
+                    finish=nodes.new('ShaderNodeMixRGB');finish.blend_type='MULTIPLY';finish.inputs[0].default_value=1;links.new(color,finish.inputs[1]);links.new(value.outputs['Result'],finish.inputs[2]);color=finish.outputs[0]
+                if 'valueScale' in rule:
+                    finish=nodes.new('ShaderNodeMixRGB');finish.blend_type='MULTIPLY';finish.inputs[0].default_value=1;finish.inputs[2].default_value=(rule['valueScale'],)*3+(1,);links.new(color,finish.inputs[1]);color=finish.outputs[0]
             emission=nodes.new('ShaderNodeEmission');out=nodes.new('ShaderNodeOutputMaterial');links.new(color,emission.inputs['Color']);links.new(emission.outputs[0],out.inputs['Surface'])
             materials.append((family,mat,emission));colorsockets.append(color);alpha.append(attr.outputs['Alpha'])
         mesh.data.materials.clear()
@@ -166,10 +221,10 @@ def bake(row, textures, output, size):
             tex=nodes.new('ShaderNodeTexImage');tex.image=baked['alpha'];links.new(tex.outputs['Color'],bsdf.inputs['Alpha']);mat.surface_render_method='DITHERED'
         mat.use_backface_culling=not any(originals[m][2].use_backface_culling is False for m in originals)
         mesh.data.materials.clear();mesh.data.materials.append(mat)
-        mesh.data.uv_layers.active_index=1;mesh.data.uv_layers[1].active_render=True
+        mesh.data.uv_layers.active=baked_uv;baked_uv.active_render=True
         # Remove sampled colors after baking; keep authored UVs for audit and preserve normals/hierarchy.
         mesh.data.color_attributes.remove(tint)
-        report['meshes'].append({'name':mesh.name,'vertices':len(mesh.data.vertices),'faces':len(mesh.data.polygons),'regions':dict(counts),'alphaPreserved':bool(source_alpha)})
+        report['meshes'].append({'name':mesh.name,'vertices':len(mesh.data.vertices),'faces':len(mesh.data.polygons),'regions':dict(counts),'alphaPreserved':bool(source_alpha),'mapping':row.get('mapping'),'shape':row.get('shape')})
     target=output/row['filename'];target.parent.mkdir(parents=True,exist_ok=True)
     bpy.ops.export_scene.gltf(filepath=str(target),export_format='GLB',export_apply=False,export_animations=False,export_extras=True,export_texcoords=True,export_normals=True,export_materials='EXPORT')
     report['output']=str(target);report['bytes']=target.stat().st_size

@@ -48,6 +48,8 @@ Typed `chests` reference a placed asset through `prop`, an interaction `position
 
 ## Woodland color composition
 
+Woodland ground patches optionally select `layer: "earth" | "litter" | "rocky-soil"` to blend a coordinated material rather than only a color. Existing color patches retain their behavior; centers/radii remain world metres, strength remains 0–1, and order controls overlap. Material sampling belongs to `src/rendering/woodland-ground.ts`; area data owns placement. The development-only Woodland showcase uses explicit bounded patches and four selected Clearing placements from [the environment manifest](../assets/textures/environment/manifest.json), reviewed from `entrance`. It does not change placement transforms, navigation or normal surface defaults. See [the showcase workflow](DEVELOPMENT.md#optional-scenery-and-surface-studies).
+
 Homestead and Forest Clearing use the weathered autumn palette in [Art Direction](ART_DIRECTION.md). Keep copper/rust/ochre in broad foliage clusters, darker olive in supporting masses, and burgundy sparse. Stable colors belong to the prepared asset family, not random per-instance or per-face tinting. Keep soil warm brown, use subdued autumn staining near tree edges, and preserve quiet paths and combat spaces. Color iterations retain transforms, collision, reserved regions and scatter seeds/counts. Technical blockout and movement trials retain their diagnostic colors.
 
 ## Fast iteration

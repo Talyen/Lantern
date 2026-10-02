@@ -46,6 +46,7 @@ export function validateAreas(input: Record<string, AreaDefinition>): string[] {
           if (prop.primitive.surface !== 'woodland' || !Array.isArray(prop.primitive.patches)) fail('patches require a woodland surface and a list');
           else for (const patch of prop.primitive.patches) {
             if (!patch || !finite(patch.center, 2) || !Number.isFinite(patch.radius) || patch.radius <= 0 || !Number.isFinite(patch.strength) || patch.strength < 0 || patch.strength > 1 || typeof patch.color !== 'string' || !/^#[0-9a-f]{6}$/i.test(patch.color)) fail('invalid woodland patch');
+            if (patch?.layer !== undefined && !['earth', 'litter', 'rocky-soil'].includes(patch.layer)) fail('unknown woodland material layer');
           }
         }
         if (prop.primitive && (!['box', 'cylinder', 'pebble', 'tent'].includes(prop.primitive.kind) || !finite(prop.primitive.size) || prop.primitive.size.some(s => s <= 0))) fail('invalid primitive');

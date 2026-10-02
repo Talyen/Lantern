@@ -39,6 +39,12 @@ Prepared variants cover the three selected pines, rock, log, bush, fern, crate, 
 
 Run `node scripts/assets/surfaces/environment.mjs --help` for the local exporter. Default bakes are 1024 pixels. Runtime prefers available variants and falls back to original optional scenery. An authored-surface comparison is available only in development authoring.
 
+### Weathered woodland showcase
+
+The development-only **Woodland showcase** surface selection studies one section of Forest Clearing around `entrance`. Worn earth stays quiet along the approach; copper leaf litter gathers around woodland edges and rocky soil settles around three selected rocks. The selected broad pine uses cylindrical bark grain, broad shaded canopy interiors and restrained needle tips. Controlled canopy shaping breaks uniform tiers while preserving the trunk, original bounds, hierarchy and harvest/collision identity. Rocks keep their shape and use quieter mineral bands with sparse olive weathering. Golden lighting stays fixed for the comparison.
+
+The opt-in recipes, selected placement IDs and bounded ground patches belong to `showcase` in [the environment manifest](../assets/textures/environment/manifest.json). Five original text-only material images and exact prompts/hashes live in [showcase sources](../assets/textures/environment/showcase/sources.json). Generated imagery supplies surface marks; local region masks, directional mapping and placement finish the treatment. No new normal/displacement maps or manual artist dependency is introduced. Ordinary gameplay, other scenery and Homestead retain their existing surfaces pending review of this study.
+
 ## Golden woodland and amber refuge
 
 Homestead and Forest Clearing use the approved A (Balanced honey-gold) direction as one fixed Golden appearance from `src/levels/lighting-preset.ts`. Honey-gold sunlight brings out copper, rust and ochre, while restrained cool sky fill and local bounce keep shaded ground readable without flattening the light. Preserve deep tree/prop shadows and material color. Use full material saturation and lighter grading than the earlier muted Golden look; do not compensate with higher player exposure or a global orange filter.

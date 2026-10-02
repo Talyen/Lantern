@@ -7,7 +7,8 @@ import type { EncounterLayout, Gate, Point, Spawn } from '../gameplay/area.ts';
 export type EnvironmentLighting = { sky: string; horizon: string; ground: string; sunColor: string; sunIntensity: number; intensity: number; rotation: number };
 export type ProbeLighting = { position: [number, number, number]; size: [number, number, number]; resolution: [number, number, number]; intensity: number; bounces: number };
 export type AssetRef = { url: string } | { libraryId: string };
-export type GroundPatch = { center: Point; radius: number; color: string; strength: number };
+export type GroundLayer = 'earth' | 'litter' | 'rocky-soil';
+export type GroundPatch = { center: Point; radius: number; color: string; strength: number; layer?: GroundLayer };
 export type Primitive = { kind: 'box' | 'cylinder' | 'pebble' | 'tent'; size: number[]; color: string; doubleSided?: boolean; surface?: 'woodland'; patches?: GroundPatch[] };
 export type Placement = {
   id: string; position: [number, number, number]; yaw: number; scale: [number, number, number];

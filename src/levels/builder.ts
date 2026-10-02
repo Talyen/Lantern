@@ -1,18 +1,20 @@
 import { MeshStandardNodeMaterial } from 'three/webgpu';
 import { texture, positionWorld, mix, vec2, vec3, smoothstep, mx_noise_float } from 'three/tsl';
 import soilUrl from '../../assets/textures/soil-painterly.png?url';
+import environmentManifest from '../../assets/textures/environment/manifest.json';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { environmentOutlineEligible, environmentSurface, prepareEnvironmentMaterials, type SurfaceMode } from '../assets/environment-surfaces';
 import { markOutline } from '../rendering/outlines';
 import { assetLibrary, updateAssetLods, type AssetInstance } from '../assets/asset-library';
 import { createGrass } from '../rendering/grass';
+import { woodlandLayerUrls, woodlandGroundRecipe, woodlandLayer, woodlandPatchWeight, woodlandPatchColor } from '../rendering/woodland-ground';
 import { Portal } from '../rendering/portal';
 import { resolveLocalLight } from './local-lighting';
 import type { CoreEffects } from '../rendering/effects';
 import { generateDecoration } from './decoration';
 import { treeDefinitions } from './trees';
-import type { AreaDefinition, AssetRef, Placement, Primitive } from './types';
+import type { AreaDefinition, AssetRef, Placement, Primitive, GroundLayer, GroundPatch } from './types';
 const loader = new GLTFLoader();
 const cache = new Map<string, Promise<THREE.Group>>();
 const shared = new Set<THREE.Object3D>();
@@ -41,8 +43,24 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
   const treeModels = new Map<string, { object: THREE.Object3D; stump: THREE.Mesh; rotation: [number, number]; hitAge: number; felled: boolean }>();
   const portals = (area.effects.portals ?? []).map(definition => { const portal = new Portal(definition, root); portal.root.userData.transient = true; return portal; });
   const missing: string[] = [], foliage: THREE.Object3D[] = [], fires: THREE.PointLight[] = []; let shadow: THREE.PointLight | null = null;
+  const showcase = import.meta.env.DEV && surfaceMode === 'showcase' && area.id === environmentManifest.showcase.area ? environmentManifest.showcase : undefined;
+  const groundMaps = new Map<GroundLayer, THREE.Texture>();
+  const groundMap = (layer: GroundLayer): THREE.Texture => {
+    const existing = groundMaps.get(layer);
+    if (existing) return existing;
+    const url = woodlandLayerUrls[layer];
+    let resolveTexture!: () => void, rejectTexture!: (error: unknown) => void;
+    const ready = new Promise<void>((resolve, reject) => { resolveTexture = resolve; rejectTexture = reject; });
+    const map = new THREE.TextureLoader().load(url, resolveTexture, undefined, rejectTexture);
+    ready.catch(() => {}); textureReady.push(ready); lightingSources.add(url);
+    map.colorSpace = THREE.SRGBColorSpace; map.wrapS = map.wrapT = THREE.RepeatWrapping;
+    ownedTextures.add(map); groundMaps.set(layer, map); return map;
+  };
   const material = (p: Primitive) => { root.userData.lightingProcedural.push(p); const m = new MeshStandardNodeMaterial({ color: p.color, roughness: 1, side: p.doubleSided ? THREE.DoubleSide : THREE.FrontSide });
+    const samples = new Map<GroundLayer, ReturnType<typeof woodlandLayer>>();
+    const sample = (layer: GroundLayer) => { let value = samples.get(layer); if (!value) { value = woodlandLayer(groundMap(layer), layer); samples.set(layer, value); } return value; };
     if (p.surface === 'woodland') {
+      if (showcase || p.patches?.some(patch => patch.layer)) root.userData.lightingProcedural.push({ woodlandLayerSampling: woodlandGroundRecipe });
       let resolveTexture!: () => void, rejectTexture!: (error: unknown) => void;
       const ready = new Promise<void>((resolve, reject) => { resolveTexture = resolve; rejectTexture = reject; }); ready.catch(() => {}); textureReady.push(ready);
       const soil = new THREE.TextureLoader().load(soilUrl, resolveTexture, undefined, rejectTexture); lightingSources.add(soilUrl); soil.colorSpace = THREE.SRGBColorSpace; soil.wrapS = soil.wrapT = THREE.RepeatWrapping; ownedTextures.add(soil);
@@ -65,10 +83,18 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
         // Perturb the feathered boundary, keeping the authored center and radius in metres.
         const distance = ground.sub(vec2(...patch.center)).length().div(patch.radius).add(detail.mul(.12));
         const weight = smoothstep(.25, 1, distance).oneMinus().mul(patch.strength);
-        const worn = base.mul(.45).add(vec3(...new THREE.Color(patch.color).toArray()).mul(.75));
+        const worn = patch.layer ? woodlandPatchColor(sample(patch.layer), patch) : base.mul(.45).add(vec3(...new THREE.Color(patch.color).toArray()).mul(.75));
         color = mix(color, worn, weight);
       }
       m.colorNode = mix(color, vec3(...new THREE.Color(palette.tint).toArray()), palette.tintBlend);
+      if (showcase) {
+        const study = showcase.ground, patches = study.patches as GroundPatch[];
+        const region = { center: study.center as [number, number], radius: study.radius, strength: 1 };
+        let painted = sample('earth');
+        for (const patch of patches) painted = mix(painted, woodlandPatchColor(sample(patch.layer!), patch), woodlandPatchWeight(patch));
+        m.colorNode = mix(m.colorNode, painted, woodlandPatchWeight(region));
+        root.userData.lightingProcedural.push({ woodlandShowcase: study });
+      }
       if (grass.coverage) {
         // Explicit map reference includes the mask bytes in the existing bake fingerprint.
         m.map = grass.coverage.texture;
@@ -96,9 +122,14 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
     ownedGeometry.add(g); return g;
   };
   const outlined = (p: Placement) => !treeIds.has(p.id) && !p.terrain && !p.foliage && !p.decoration && (p.asset ? environmentOutlineEligible(p.asset) : p.primitive?.surface !== 'woodland');
-  async function asset(ref: AssetRef, allowVariant = true): Promise<THREE.Group> {
-    const variant = allowVariant && environmentSurface(ref, surfaceMode);
-    if (variant) { try { return await asset({ url: variant }, false); } catch { /* Optional prepared art falls back to its original source. */ } }
+  async function asset(ref: AssetRef, allowVariant = true, showcasePlacement = false): Promise<THREE.Group> {
+    const variant = allowVariant && environmentSurface(ref, surfaceMode, showcasePlacement);
+    if (variant) { try { return await asset({ url: variant }, false); } catch {
+      if (showcasePlacement) missing.push(`showcase:${'libraryId' in ref ? ref.libraryId : ref.url}`);
+      // Optional showcase art retains the current prepared surface before falling back to its source.
+      const current = showcasePlacement && environmentSurface(ref, 'projected');
+      if (current) { try { return await asset({ url: current }, false); } catch { /* Keep the encounter runnable. */ } }
+    } }
     if ('libraryId' in ref) {
       const instance = await assetLibrary.loadAsset(ref.libraryId); instances.push(instance);
       const catalog = await assetLibrary.getCatalog(), visited = new Set<string>();
@@ -156,7 +187,7 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
   try {
     const results = await Promise.allSettled(props.filter(p => p.asset).map(async p => {
       let model: THREE.Group;
-      try { model = await asset(p.asset!); } catch {
+      try { model = await asset(p.asset!, true, !!showcase?.placements.includes(p.id)); } catch {
         missing.push(p.id);
         if (p.fallback) { try { model = await asset(p.fallback); } catch { return; } } else return;
       }
@@ -188,8 +219,8 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
       light.shadow.radius = recipe.shadowRadius; light.shadow.intensity = recipe.shadowIntensity; light.shadow.normalBias = .012; light.shadow.bias = -.0001;
       root.add(light); fires.push(light); if (recipe.shadow) shadow = light;
     }));
+    await Promise.all(textureReady);
   } catch (error) { dispose(); throw error; }
-  await Promise.all(textureReady);
   root.userData.lightingSources = [...lightingSources];
   // Batch opaque repeated asset primitives without flattening skins, wind or native LOD ownership.
   const staticBatches = new Map<string, THREE.Mesh[]>();

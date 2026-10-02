@@ -10,7 +10,7 @@ export function attachAuthoring(ctx: Context): void {
   const runtimeId = crypto.randomUUID();
   const diagnostics = () => ({ ...ctx.diagnostics(), runtimeId });
   const panel = document.createElement('aside'); panel.dataset.authoring = 'levels'; panel.style.cssText = 'position:fixed;left:12px;top:12px;z-index:100;background:#172326ee;color:#eee;padding:8px;border-radius:6px;font:12px system-ui;max-width:360px';
-  panel.innerHTML = '<select aria-label="Area"></select> <select aria-label="View"></select> <button>Play</button> <button data-restart>Restart</button> <button data-inspect>Inspect rock</button> <label><input type="checkbox" checked> Guides</label><label> Surfaces <select aria-label="Surfaces"><option value="projected">Projected</option><option value="authored">Authored</option></select></label><label><input type="checkbox" data-lantern> Lantern</label><pre style="white-space:pre-wrap;margin:6px 0 0"></pre>';
+  panel.innerHTML = '<select aria-label="Area"></select> <select aria-label="View"></select> <button>Play</button> <button data-restart>Restart</button> <button data-inspect>Inspect rock</button> <label><input type="checkbox" checked> Guides</label><label> Surfaces <select aria-label="Surfaces"><option value="projected">Projected</option><option value="authored">Authored</option><option value="showcase">Woodland showcase</option></select></label><label><input type="checkbox" data-lantern> Lantern</label><pre style="white-space:pre-wrap;margin:6px 0 0"></pre>';
   document.body.append(panel);
   const selects = panel.querySelectorAll('select'), play = panel.querySelector('button')!, guides = panel.querySelector('input')!, status = panel.querySelector('pre')!;
   const overlay = new THREE.Group(); ctx.scene.add(overlay); let overlayRevision = -1, frozen = true, selectedView = 'center';
@@ -39,7 +39,11 @@ export function attachAuthoring(ctx: Context): void {
   panel.querySelector<HTMLButtonElement>('[data-restart]')!.onclick = ctx.restart;
   const inspect = () => { panel.querySelector<HTMLButtonElement>('[data-inspect]')!.textContent = ctx.inspect() ? 'Return' : 'Inspect rock'; };
   panel.querySelector<HTMLButtonElement>('[data-inspect]')!.onclick = inspect;
-  const setSurfaces = (surfaces: SurfaceMode) => ctx.setAppearance({ surfaces });
+  const setSurfaces = async (surfaces: SurfaceMode) => {
+    const changed = await ctx.setAppearance({ surfaces });
+    if (changed && surfaces === 'showcase' && ctx.area().id === 'clearing') setView('entrance');
+    return changed;
+  };
   selects[2].onchange = () => { void setSurfaces(selects[2].value as SurfaceMode); };
   const setLantern = (lantern: boolean) => ctx.setAppearance({ lantern });
   panel.querySelector<HTMLInputElement>('[data-lantern]')!.onchange = event => { void setLantern((event.target as HTMLInputElement).checked); };
@@ -56,6 +60,6 @@ export function attachAuthoring(ctx: Context): void {
     placePlayer: (x:number,z:number,yaw:number) => {ctx.encounter.player.x=x;ctx.encounter.player.z=z;ctx.encounter.player.yaw=yaw;},
     zoom: (value:number) => {ctx.camera.zoom=value;ctx.camera.updateProjectionMatrix();},
   };
-  Object.assign(window,{lanternAuthoring:bridge}); refresh(); setView('center');
+  Object.assign(window,{lanternAuthoring:bridge}); refresh(); setView(ctx.appearance().surfaces === 'showcase' && ctx.area().id === 'clearing' ? 'entrance' : 'center');
   const timer=setInterval(refresh,100);window.addEventListener('pagehide',()=>{clearInterval(timer);clearOverlay();overlay.removeFromParent();panel.remove();},{once:true});
 }

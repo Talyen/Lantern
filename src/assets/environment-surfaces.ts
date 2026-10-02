@@ -3,11 +3,13 @@ import { MeshStandardNodeMaterial } from 'three/webgpu';
 import manifest from '../../assets/textures/environment/manifest.json';
 import type { AssetRef } from '../levels/types';
 
-export type SurfaceMode = 'projected' | 'authored';
+export type SurfaceMode = 'projected' | 'authored' | 'showcase';
 const variants = new Map(manifest.assets.map(asset => [asset.id, asset]));
-export function environmentSurface(ref: AssetRef, mode: SurfaceMode = 'projected'): string | undefined {
-  const variant = variants.get('libraryId' in ref ? ref.libraryId : ref.url);
-  return mode === 'projected' ? variant?.url : variant?.sourceUrl;
+const showcaseVariants = new Map(manifest.showcase.assets.map(asset => [asset.id, asset.url]));
+export function environmentSurface(ref: AssetRef, mode: SurfaceMode = 'projected', showcasePlacement = false): string | undefined {
+  const id = 'libraryId' in ref ? ref.libraryId : ref.url, variant = variants.get(id);
+  if (import.meta.env.DEV && mode === 'showcase' && showcasePlacement) return showcaseVariants.get(id) ?? variant?.url;
+  return mode === 'authored' ? variant?.sourceUrl : variant?.url;
 }
 
 /** Authored solid families only; plants and campfire effects remain quiet in outline mode. */

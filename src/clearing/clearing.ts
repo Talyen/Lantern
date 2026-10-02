@@ -57,7 +57,7 @@ let resolveLightingFor = lightingFor;
 let committedLighting: AreaLighting = resolveLightingFor(currentArea);
 let lanternEnabled = !(import.meta.env.DEV && renderQuery.get('lantern') === 'off');
 let personalLantern: PlayerLantern | undefined;
-let surfaceMode: SurfaceMode = import.meta.env.DEV && renderQuery.get('surfaces') === 'authored' ? 'authored' : 'projected';
+let surfaceMode: SurfaceMode = import.meta.env.DEV && renderQuery.get('surfaces') === 'showcase' ? 'showcase' : import.meta.env.DEV && renderQuery.get('surfaces') === 'authored' ? 'authored' : 'projected';
 let active: AreaInstance | undefined;
 let movementWorld: MovementWorld | undefined;
 let generation = 0, revision = 0, renderedRevision = 0, transitioning = false;

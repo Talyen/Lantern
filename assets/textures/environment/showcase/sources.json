@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "surfaces": {
+    "earth": {
+      "file": "earth-v2.png",
+      "prompt": "Use case: stylized-concept. Asset type: original seamless square base-color texture for an isometric fantasy action RPG, 1024 square. Text-only original art. Material: worn woodland bare earth, warm gray umber and muted brown, broad smooth compacted soil planes with subtle dusty brushwork and a few embedded flat stones. Weathered painterly grim fantasy, crafted illustrative surfaces, broad forms legible from a distant camera. Quiet low-contrast ground, no leaf litter, no grass, no roots. Flat orthographic surface filling image, evenly diffuse neutral illumination. No directional lighting, cast shadows, bright highlights, perspective, vignette, border, text, objects or watermark. Opposite edges must tile seamlessly. Avoid photorealistic micro-noise, dense pebble patterns, orange color cast, and black cracks. Restrained values and earthy midtones.",
+      "tool": "built-in ImageGen",
+      "inputs": "text only",
+      "sha256": "098be3e985e7859c2f79f9ed7711f380c52cf72ba4ba52ddf837db121c376807"
+    },
+    "litter": {
+      "file": "litter-v2.png",
+      "prompt": "Use case: stylized-concept. Original seamless square base-color texture, 1024 square, for an isometric weathered painterly fantasy RPG. Text only. Autumn woodland leaf litter: overlapping broad flattened dry leaves and pine needles, broken copper russet and faded ochre clusters with dark umber earth showing through in irregular quiet spaces, sparse dusty olive fragments. Painterly illustrative masses, distinguishable simple leaves, tactile broad brush marks. Low restrained contrast, earthy midtones; no bright yellow, no black outlines, no photographic micro-detail. Flat overhead orthographic material, image filled edge to edge, neutral diffuse illumination, no cast shadows, no baked directional lighting, no perspective, no grass, no trees, no text, no border, no watermark. Seamless opposite edges. Cluster detail, leave breathing room between clusters. Leaf litter intended to gather around tree bases rather than overwhelm paths.",
+      "tool": "built-in ImageGen",
+      "inputs": "text only",
+      "sha256": "2ee3ac419c6575655be2b298dab5dd2c87d46c61356b64a3a66f2c5cdff1b80e"
+    },
+    "rocksoil": {
+      "file": "rocky-soil-v2.png",
+      "prompt": "Use case: stylized-concept. Original seamless square base-color material texture, 1024 square. Text-only weathered painterly fantasy isometric RPG rocky woodland soil. Broad warm gray slate fragments partially buried in muted gray umber compacted earth; sparse olive weathering, dusty brown mineral smears. Many quiet spaces, a few grouped stones; understated scale variation. Handmade illustrative brushwork and broad forms, low to moderate contrast, no photographic noise. Neutral diffuse flat overhead orthographic material filling frame. No directional lighting, cast shadows, highlights, perspective, vignette, border, text, objects or watermark. Opposite edges tile seamlessly. Avoid dense gravel, orange color cast and black cracks.",
+      "tool": "built-in ImageGen",
+      "inputs": "text only",
+      "sha256": "4b2c632ee78e80e9bf90fc637a512877284b57fbb0e702dbe458d33de75fd084"
+    },
+    "stone": {
+      "file": "stone-v2.png",
+      "prompt": "Use case: stylized-concept. Original seamless square base-color stone material, 1024 square, text only, for weathered painterly grim fantasy low-poly rocks in an isometric RPG. Broad warm gray mineral planes, sparse muted charcoal fissures, long gently diagonal sediment bands, faint umber staining. Strong large-scale grouping and quiet open faces, selective weathered edges; muted sparse olive lichen only. Painterly handmade illustrative brushwork, not photoreal. No dense veins or small mottling. Neutral flat diffuse illumination, no directional lighting, highlights, cast shadows, objects, perspective, text, watermark, vignette or border. Fill the whole square; opposite edges tile seamlessly. Midtones readable, restrained value contrast. Intended to complement weathered copper autumn foliage.",
+      "tool": "built-in ImageGen",
+      "inputs": "text only",
+      "sha256": "07e1164983de6fa5c2a420c27bc42952898a7dba370ecac7760e79dcf3d6af4e"
+    },
+    "foliage": {
+      "file": "foliage-v2.png",
+      "prompt": "Use case: stylized-concept. Original seamless square base-color foliage material for a weathered painterly fantasy isometric RPG, 1024 square. Text-only original artwork. Overlapping broad clusters of stylized pine needle fans, laid out as painted surface marks, not a tree illustration. Weathered copper and muted rust-orange midtones, umber and quiet olive recesses, restrained dusty ochre tips. Needle fans combine into large readable masses with quiet shaded interiors, sparse individual strokes. Painterly tactile handmade brush marks. Earthy restrained palette, no vivid orange or yellow, no photographic micro-noise, no heavy black outlines. Flat orthographic evenly diffuse neutral material filling image. No branches, silhouettes, trees, sky, objects, perspective, shadows, directional lighting, bright highlights, vignette, border, text or watermark. Opposite edges must tile seamlessly.",
+      "tool": "built-in ImageGen",
+      "inputs": "text only",
+      "sha256": "e2e33aec29eab9519b9237b4f9898388cfb0ae8c224cbb60ef0dae2264572057"
+    }
+  }
+}
