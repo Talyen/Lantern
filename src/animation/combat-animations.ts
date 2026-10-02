@@ -5,7 +5,7 @@ import characters from '../../assets/playable-characters.json';
 import type { Motion } from '../gameplay/encounter';
 import { weaponFamily, type Loadout } from '../gameplay/equipment';
 
-export type RigId = 'player' | 'enemy';
+export type RigId = keyof typeof characters;
 export const motionStates = ['idle', 'run', 'attack', 'hit', 'death'] as const;
 export type MotionState = typeof motionStates[number];
 export type AnimationRole = Motion | 'backward' | 'left' | 'right' | 'blockForward' | 'blockBackward' | 'blockLeft' | 'blockRight' | 'grip' | 'pierceDraw' | 'pierceRelease';

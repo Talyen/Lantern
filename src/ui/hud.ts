@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { enemyMaxHealth, enemyIds, type EnemyId, type Encounter, type EncounterEvent } from '../gameplay/encounter';
+import { enemyMaxHealth, type EnemyId, type Encounter, type EncounterEvent } from '../gameplay/encounter';
 import './orbs.css';
 
 export function createHud(onRetry: () => void) {
@@ -8,14 +8,23 @@ export function createHud(onRetry: () => void) {
   const playerHealth = element<HTMLDivElement>('player-health');
   const playerMana = element<HTMLDivElement>('player-mana');
   const enemyHealth = element<HTMLDivElement>('enemy-health');
-  const casterHealth = enemyHealth.cloneNode(true) as HTMLDivElement; casterHealth.id='caster-health'; casterHealth.setAttribute('aria-label','Caster health'); enemyHealth.after(casterHealth);
-  const healthBars = {enemy:enemyHealth,caster:casterHealth};
+  const healthBars: Record<EnemyId, HTMLDivElement> = {};
+  enemyHealth.hidden = true;
+  function bars(encounter: Encounter): void {
+    for (const id of Object.keys(healthBars)) if (!encounter.enemyIds.includes(id)) { healthBars[id].remove(); delete healthBars[id]; delete enemyValues[id]; delete damagedFor[id]; }
+    for (const id of encounter.enemyIds) if (!healthBars[id]) {
+      const bar = enemyHealth.cloneNode(true) as HTMLDivElement; bar.id = `health-${id}`;
+      const enemy = encounter.enemies[id];
+      bar.setAttribute('aria-label', `${enemy.rig === 'skeleton' ? enemy.kind === 'caster' ? 'Bone Caster' : 'Skeleton Warrior' : enemy.kind === 'caster' ? 'Caster' : 'Goblin'} health`);
+      enemyHealth.after(bar); healthBars[id] = bar; damagedFor[id] = 0;
+    }
+  }
   const resultPanel = element<HTMLDivElement>('result-panel');
   const resultTitle = element<HTMLHeadingElement>('result-title');
   const resultCopy = element<HTMLParagraphElement>('result-copy');
   const retry = element<HTMLButtonElement>('retry');
   const anchor = new THREE.Vector3();
-  const damagedFor: Record<EnemyId,number> = {enemy:0,caster:0};
+  const damagedFor: Record<EnemyId,number> = {};
   let safe = false;
   const resources = new WeakMap<HTMLElement, string>();
   const enemyValues: Partial<Record<EnemyId, number>> = {};
@@ -38,13 +47,14 @@ export function createHud(onRetry: () => void) {
   retry.addEventListener('click', onRetry);
   return {
     update(encounter: Encounter, events: EncounterEvent[]) {
+      bars(encounter);
       for (const event of events) {
         if (event.type === 'hit' && event.actor !== 'player') damagedFor[event.actor] = 3;
         else if (event.type === 'outcome') finish(event.won);
       }
       resource(playerHealth, 'Health', encounter.player.hp, encounter.stats.maxHealth);
       resource(playerMana, 'Mana', encounter.playerMana, encounter.stats.maxMana);
-      for (const id of enemyIds) {
+      for (const id of encounter.enemyIds) {
         const enemy=encounter.enemies[id], bar=healthBars[id];
         if (enemyValues[id] !== enemy.hp) {
           enemyValues[id] = enemy.hp;
@@ -56,7 +66,7 @@ export function createHud(onRetry: () => void) {
     },
     positionEnemy(encounter: Encounter, camera: THREE.Camera, mount: HTMLElement, dt: number, obscured: boolean) {
       let width: number | undefined, height = 0;
-      for (const id of enemyIds) {
+      for (const id of encounter.enemyIds) {
         const enemy=encounter.enemies[id], bar=healthBars[id];
         damagedFor[id] = Math.max(0, damagedFor[id] - dt);
         if (safe || obscured || !enemy.home || enemy.hp <= 0 || damagedFor[id] <= 0) {
@@ -72,9 +82,9 @@ export function createHud(onRetry: () => void) {
         if (enemyTransforms[id] !== transform) { bar.style.transform = transform; enemyTransforms[id] = transform; }
       }
     },
-    setSafe(value: boolean) { safe = value; if (safe) for (const id of enemyIds) healthBars[id].hidden=true; },
+    setSafe(value: boolean) { safe = value; if (safe) for (const bar of Object.values(healthBars)) bar.hidden=true; },
     dismissResult: () => { resultPanel.hidden = true; },
-    reset: () => { resultPanel.hidden = true; for (const id of enemyIds) {damagedFor[id]=0;healthBars[id].hidden=true;} },
+    reset: () => { resultPanel.hidden = true; for (const id of Object.keys(healthBars)) {damagedFor[id]=0;healthBars[id].hidden=true;} },
     environmentLoaded(count: number) { status.textContent = count === 3 ? '' : 'Missing environment art.'; },
     characterUnavailable() { status.textContent = 'Character art unavailable. Run npm run assets:export-character to prepare playable art.'; },
     setAssetStatus: (message: string) => { status.textContent = message; },

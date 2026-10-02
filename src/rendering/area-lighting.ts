@@ -1,3 +1,4 @@
+import { restoreBakeVisibility, includeCutawayShadows } from './cutaway';
 import * as THREE from 'three';
 import { PMREMGenerator, type WebGPURenderer, type RenderTarget } from 'three/webgpu';
 import { LightProbeGrid } from 'three/addons/lighting/LightProbeGrid.js';
@@ -98,13 +99,14 @@ export class AreaLightingResources {
     const spec = area.lighting.probes!;
     const bake = new THREE.Scene(); bake.environment = environment; bake.environmentIntensity = area.lighting.environment?.intensity ?? 1;
     bake.environmentRotation.y = area.lighting.environment?.rotation ?? 0;
-    const scenery = root.clone(true);
+    const scenery = root.clone(true); restoreBakeVisibility(scenery);
     scenery.traverse(object => { if (object instanceof THREE.Light || object.userData.transient) object.visible = false; }); bake.add(scenery);
     const sun = new THREE.DirectionalLight(area.lighting.sun.color, area.lighting.sun.intensity);
     sun.target.position.set(spec.position[0], 0, spec.position[2]); sun.position.copy(sun.target.position).addScaledVector(new THREE.Vector3(...area.lighting.sun.position).normalize(), 70); sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048); sun.shadow.radius = 4; sun.shadow.normalBias = .025; sun.shadow.bias = -.00015;
     const extent = Math.max(area.lighting.sun.shadowExtent, Math.max(spec.size[0], spec.size[2]) / 2 + 7);
     Object.assign(sun.shadow.camera, { left: -extent, right: extent, top: extent, bottom: -extent, near: .1, far: 150 });
+    includeCutawayShadows(sun);
     sun.shadow.camera.updateProjectionMatrix(); bake.add(sun, sun.target);
     const grid = new LightProbeGrid(...spec.size, ...spec.resolution);
     grid.position.fromArray(spec.position); grid.intensity = spec.intensity; grid.updateBoundingBox();

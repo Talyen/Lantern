@@ -10,5 +10,11 @@
     "height": 1.45,
     "model": "/vendor/characters/goblin/authored-playable.glb",
     "catalog": "/vendor/characters/goblin/catalog.json"
+  },
+  "skeleton": {
+    "name": "Skeleton 01",
+    "height": 1.8,
+    "model": "/vendor/characters/skeleton/authored-playable.glb",
+    "catalog": "/vendor/characters/skeleton/catalog.json"
   }
 }

@@ -1,0 +1,2215 @@
+{
+  "version": 1,
+  "id": "graveyard-ruins",
+  "name": "Graveyard Ruins",
+  "kind": "encounter",
+  "terminal": true,
+  "envelope": {
+    "width": 33.10344827586208,
+    "depth": 26.33363185108522,
+    "apron": 4,
+    "yaw": 0.7853981633974483,
+    "reference": {
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1.45
+    },
+    "screen": [
+      16.55172413793104,
+      13.16681592554261
+    ]
+  },
+  "layout": {
+    "boundary": {
+      "kind": "polygon",
+      "points": [
+        [
+          -21.0142,
+          2.3935
+        ],
+        [
+          2.3935,
+          -21.0142
+        ],
+        [
+          21.0142,
+          -2.3935
+        ],
+        [
+          -2.3935,
+          21.0142
+        ]
+      ]
+    },
+    "player": {
+      "position": [
+        -7.7782,
+        7.7782
+      ],
+      "yaw": 2.356194490192345
+    },
+    "enemies": [
+      {
+        "id": "court-warrior-1",
+        "position": [
+          -0.4243,
+          -1.8385
+        ],
+        "yaw": 0,
+        "kind": "raider",
+        "rig": "skeleton",
+        "loadout": {
+          "main": "sword",
+          "off": null
+        },
+        "humanoid": true,
+        "rank": "normal"
+      },
+      {
+        "id": "court-warrior-2",
+        "position": [
+          2.4749,
+          -2.192
+        ],
+        "yaw": 0,
+        "kind": "raider",
+        "rig": "skeleton",
+        "loadout": {
+          "main": "sword",
+          "off": null
+        },
+        "humanoid": true,
+        "rank": "normal"
+      },
+      {
+        "id": "court-warrior-3",
+        "position": [
+          2.1213,
+          0.4243
+        ],
+        "yaw": 0,
+        "kind": "raider",
+        "rig": "skeleton",
+        "loadout": {
+          "main": "sword",
+          "off": null
+        },
+        "humanoid": true,
+        "rank": "normal"
+      }
+    ]
+  },
+  "seed": 419,
+  "props": [
+    {
+      "id": "cemetery-earth",
+      "position": [
+        0,
+        -0.2,
+        0
+      ],
+      "yaw": 0.7853981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          64,
+          0.4,
+          64
+        ],
+        "color": "#68523d",
+        "surface": "woodland",
+        "patches": [
+          {
+            "center": [
+              -7.7782,
+              7.7782
+            ],
+            "radius": 3,
+            "color": "#6c5741",
+            "strength": 0.8,
+            "layer": "earth"
+          },
+          {
+            "center": [
+              -4.9497,
+              4.9497
+            ],
+            "radius": 3,
+            "color": "#6c5741",
+            "strength": 0.8,
+            "layer": "earth"
+          },
+          {
+            "center": [
+              -2.1213,
+              2.1213
+            ],
+            "radius": 3,
+            "color": "#6c5741",
+            "strength": 0.8,
+            "layer": "earth"
+          },
+          {
+            "center": [
+              1.4142,
+              -1.4142
+            ],
+            "radius": 4,
+            "color": "#6c5741",
+            "strength": 0.8,
+            "layer": "earth"
+          },
+          {
+            "center": [
+              2.1213,
+              -7.7782
+            ],
+            "radius": 3,
+            "color": "#6c5741",
+            "strength": 0.8,
+            "layer": "earth"
+          },
+          {
+            "center": [
+              9.1924,
+              -9.1924
+            ],
+            "radius": 2,
+            "color": "#6c5741",
+            "strength": 0.8,
+            "layer": "earth"
+          }
+        ]
+      },
+      "castShadow": false,
+      "receiveShadow": true,
+      "terrain": true
+    },
+    {
+      "id": "cemetery-wall-0",
+      "position": [
+        -11.3137,
+        0.6,
+        7.0711
+      ],
+      "yaw": 0.7853981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          3.2,
+          1.2,
+          0.6
+        ],
+        "color": "#a29c89",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "cemetery-wall-1",
+      "position": [
+        -5.9397,
+        0.45,
+        12.4451
+      ],
+      "yaw": 0.7853981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          3.5,
+          0.9,
+          0.6
+        ],
+        "color": "#a29c89",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "cemetery-wall-2",
+      "position": [
+        -10.6066,
+        0.55,
+        0.7071
+      ],
+      "yaw": 0.7853981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          4.2,
+          1.1,
+          0.6
+        ],
+        "color": "#a29c89",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "cemetery-wall-3",
+      "position": [
+        -5.6569,
+        0.425,
+        -4.2426
+      ],
+      "yaw": 0.7853981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          3.8,
+          0.85,
+          0.6
+        ],
+        "color": "#a29c89",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "cemetery-wall-4",
+      "position": [
+        4.5962,
+        0.55,
+        -12.3744
+      ],
+      "yaw": 0.7853981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          3.5,
+          1.1,
+          0.6
+        ],
+        "color": "#a29c89",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "cemetery-wall-5",
+      "position": [
+        11.4551,
+        0.35,
+        -1.2728
+      ],
+      "yaw": 0.7853981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          4,
+          0.7,
+          0.6
+        ],
+        "color": "#a29c89",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "chapel-arch",
+      "position": [
+        1.2728,
+        0,
+        -8.6267
+      ],
+      "yaw": 0.7853981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "asset": {
+        "libraryId": "goblin-war-camp:model:props-sm-prop-ruins-archway-01"
+      },
+      "height": 3.6,
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "chapel-pillar-0",
+      "position": [
+        -1.4142,
+        0,
+        -5.9397
+      ],
+      "yaw": 0.7853981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "asset": {
+        "libraryId": "goblin-war-camp:model:props-sm-prop-ruins-pillar-01"
+      },
+      "height": 2.8,
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "chapel-pillar-1",
+      "position": [
+        3.9598,
+        0,
+        -11.3137
+      ],
+      "yaw": 0.7853981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "asset": {
+        "libraryId": "goblin-war-camp:model:props-sm-prop-ruins-pillar-01"
+      },
+      "height": 2.4,
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "chapel-pillar-2",
+      "position": [
+        -2.9698,
+        0,
+        -8.3439
+      ],
+      "yaw": 0.7853981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "asset": {
+        "libraryId": "goblin-war-camp:model:props-sm-prop-ruins-pillar-01"
+      },
+      "height": 1.3,
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "chapel-pillar-3",
+      "position": [
+        1.5556,
+        0,
+        -12.8693
+      ],
+      "yaw": 0.7853981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "asset": {
+        "libraryId": "goblin-war-camp:model:props-sm-prop-ruins-pillar-01"
+      },
+      "height": 1.5,
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "headstone-0",
+      "position": [
+        -2.2627,
+        0.425,
+        7.6368
+      ],
+      "yaw": 0.5753981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "headstone",
+        "size": [
+          0.8,
+          0.85,
+          0.23
+        ],
+        "color": "#a29c89",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "grave-0-foot",
+      "position": [
+        -2.2627,
+        0.08,
+        7.6368
+      ],
+      "yaw": 0.5753981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          1,
+          0.16,
+          0.42
+        ],
+        "color": "#918c7b",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "grave-0-grave",
+      "position": [
+        -1.6617,
+        0.035,
+        8.2378
+      ],
+      "yaw": 0.5753981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          0.9,
+          0.07,
+          1.7
+        ],
+        "color": "#918c7b",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "headstone-1",
+      "position": [
+        -0.7778,
+        0.49,
+        7.2832
+      ],
+      "yaw": 0.8853981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "headstone",
+        "size": [
+          0.8,
+          0.98,
+          0.23
+        ],
+        "color": "#a29c89",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "grave-1-foot",
+      "position": [
+        -0.7778,
+        0.08,
+        7.2832
+      ],
+      "yaw": 0.8853981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          1,
+          0.16,
+          0.42
+        ],
+        "color": "#918c7b",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "grave-1-grave",
+      "position": [
+        -0.1768,
+        0.035,
+        7.8842
+      ],
+      "yaw": 0.8853981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          0.9,
+          0.07,
+          1.7
+        ],
+        "color": "#918c7b",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "headstone-2",
+      "position": [
+        0.8485,
+        0.5549999999999999,
+        6.7882
+      ],
+      "yaw": 1.0253981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "headstone",
+        "size": [
+          0.8,
+          1.1099999999999999,
+          0.23
+        ],
+        "color": "#a29c89",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "grave-2-foot",
+      "position": [
+        0.8485,
+        0.08,
+        6.7882
+      ],
+      "yaw": 1.0253981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          1,
+          0.16,
+          0.42
+        ],
+        "color": "#918c7b",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "grave-2-grave",
+      "position": [
+        1.4496,
+        0.035,
+        7.3893
+      ],
+      "yaw": 1.0253981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          0.9,
+          0.07,
+          1.7
+        ],
+        "color": "#918c7b",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "headstone-3",
+      "position": [
+        3.8891,
+        0.425,
+        5.3033
+      ],
+      "yaw": 0.7053981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "headstone",
+        "size": [
+          0.8,
+          0.85,
+          0.23
+        ],
+        "color": "#a29c89",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "grave-3-foot",
+      "position": [
+        3.8891,
+        0.08,
+        5.3033
+      ],
+      "yaw": 0.7053981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          1,
+          0.16,
+          0.42
+        ],
+        "color": "#918c7b",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "grave-3-grave",
+      "position": [
+        4.4901,
+        0.035,
+        5.9043
+      ],
+      "yaw": 0.7053981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          0.9,
+          0.07,
+          1.7
+        ],
+        "color": "#918c7b",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "headstone-4",
+      "position": [
+        6.0104,
+        0.49,
+        1.6263
+      ],
+      "yaw": 0.5753981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "headstone",
+        "size": [
+          0.8,
+          0.98,
+          0.23
+        ],
+        "color": "#a29c89",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "grave-4-foot",
+      "position": [
+        6.0104,
+        0.08,
+        1.6263
+      ],
+      "yaw": 0.5753981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          1,
+          0.16,
+          0.42
+        ],
+        "color": "#918c7b",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "grave-4-grave",
+      "position": [
+        6.6114,
+        0.035,
+        2.2274
+      ],
+      "yaw": 0.5753981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          0.9,
+          0.07,
+          1.7
+        ],
+        "color": "#918c7b",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "headstone-5",
+      "position": [
+        7.7075,
+        0.5549999999999999,
+        1.0607
+      ],
+      "yaw": 0.8853981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "headstone",
+        "size": [
+          0.8,
+          1.1099999999999999,
+          0.23
+        ],
+        "color": "#a29c89",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "grave-5-foot",
+      "position": [
+        7.7075,
+        0.08,
+        1.0607
+      ],
+      "yaw": 0.8853981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          1,
+          0.16,
+          0.42
+        ],
+        "color": "#918c7b",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "grave-5-grave",
+      "position": [
+        8.3085,
+        0.035,
+        1.6617
+      ],
+      "yaw": 0.8853981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          0.9,
+          0.07,
+          1.7
+        ],
+        "color": "#918c7b",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "headstone-6",
+      "position": [
+        8.2024,
+        0.425,
+        -0.4243
+      ],
+      "yaw": 1.0253981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "headstone",
+        "size": [
+          0.8,
+          0.85,
+          0.23
+        ],
+        "color": "#a29c89",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "grave-6-foot",
+      "position": [
+        8.2024,
+        0.08,
+        -0.4243
+      ],
+      "yaw": 1.0253981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          1,
+          0.16,
+          0.42
+        ],
+        "color": "#918c7b",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "grave-6-grave",
+      "position": [
+        8.8035,
+        0.035,
+        0.1768
+      ],
+      "yaw": 1.0253981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          0.9,
+          0.07,
+          1.7
+        ],
+        "color": "#918c7b",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "headstone-7",
+      "position": [
+        9.8995,
+        0.49,
+        -3.9598
+      ],
+      "yaw": 0.7053981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "headstone",
+        "size": [
+          0.8,
+          0.98,
+          0.23
+        ],
+        "color": "#a29c89",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "grave-7-foot",
+      "position": [
+        9.8995,
+        0.08,
+        -3.9598
+      ],
+      "yaw": 0.7053981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          1,
+          0.16,
+          0.42
+        ],
+        "color": "#918c7b",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "grave-7-grave",
+      "position": [
+        10.5005,
+        0.035,
+        -3.3588
+      ],
+      "yaw": 0.7053981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          0.9,
+          0.07,
+          1.7
+        ],
+        "color": "#918c7b",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "headstone-8",
+      "position": [
+        -7.0711,
+        0.5549999999999999,
+        1.4142
+      ],
+      "yaw": 0.5753981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "headstone",
+        "size": [
+          0.8,
+          1.1099999999999999,
+          0.23
+        ],
+        "color": "#a29c89",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "grave-8-foot",
+      "position": [
+        -7.0711,
+        0.08,
+        1.4142
+      ],
+      "yaw": 0.5753981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          1,
+          0.16,
+          0.42
+        ],
+        "color": "#918c7b",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "grave-8-grave",
+      "position": [
+        -6.47,
+        0.035,
+        2.0153
+      ],
+      "yaw": 0.5753981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          0.9,
+          0.07,
+          1.7
+        ],
+        "color": "#918c7b",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "headstone-9",
+      "position": [
+        -7.0004,
+        0.425,
+        -0.2121
+      ],
+      "yaw": 0.8853981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "headstone",
+        "size": [
+          0.8,
+          0.85,
+          0.23
+        ],
+        "color": "#a29c89",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "grave-9-foot",
+      "position": [
+        -7.0004,
+        0.08,
+        -0.2121
+      ],
+      "yaw": 0.8853981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          1,
+          0.16,
+          0.42
+        ],
+        "color": "#918c7b",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "grave-9-grave",
+      "position": [
+        -6.3993,
+        0.035,
+        0.3889
+      ],
+      "yaw": 0.8853981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          0.9,
+          0.07,
+          1.7
+        ],
+        "color": "#918c7b",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "headstone-10",
+      "position": [
+        -5.374,
+        0.49,
+        -0.5657
+      ],
+      "yaw": 1.0253981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "headstone",
+        "size": [
+          0.8,
+          0.98,
+          0.23
+        ],
+        "color": "#a29c89",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "grave-10-foot",
+      "position": [
+        -5.374,
+        0.08,
+        -0.5657
+      ],
+      "yaw": 1.0253981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          1,
+          0.16,
+          0.42
+        ],
+        "color": "#918c7b",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "grave-10-grave",
+      "position": [
+        -4.773,
+        0.035,
+        0.0354
+      ],
+      "yaw": 1.0253981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          0.9,
+          0.07,
+          1.7
+        ],
+        "color": "#918c7b",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "headstone-11",
+      "position": [
+        -2.7577,
+        0.5549999999999999,
+        -5.3033
+      ],
+      "yaw": 0.7053981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "headstone",
+        "size": [
+          0.8,
+          1.1099999999999999,
+          0.23
+        ],
+        "color": "#a29c89",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "grave-11-foot",
+      "position": [
+        -2.7577,
+        0.08,
+        -5.3033
+      ],
+      "yaw": 0.7053981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          1,
+          0.16,
+          0.42
+        ],
+        "color": "#918c7b",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "grave-11-grave",
+      "position": [
+        -2.1567,
+        0.035,
+        -4.7023
+      ],
+      "yaw": 0.7053981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          0.9,
+          0.07,
+          1.7
+        ],
+        "color": "#918c7b",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "headstone-12",
+      "position": [
+        6.9296,
+        0.425,
+        -11.4551
+      ],
+      "yaw": 0.5753981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "headstone",
+        "size": [
+          0.8,
+          0.85,
+          0.23
+        ],
+        "color": "#a29c89",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "grave-12-foot",
+      "position": [
+        6.9296,
+        0.08,
+        -11.4551
+      ],
+      "yaw": 0.5753981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          1,
+          0.16,
+          0.42
+        ],
+        "color": "#918c7b",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "grave-12-grave",
+      "position": [
+        7.5307,
+        0.035,
+        -10.8541
+      ],
+      "yaw": 0.5753981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          0.9,
+          0.07,
+          1.7
+        ],
+        "color": "#918c7b",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "headstone-13",
+      "position": [
+        10.748,
+        0.49,
+        -6.7882
+      ],
+      "yaw": 0.8853981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "headstone",
+        "size": [
+          0.8,
+          0.98,
+          0.23
+        ],
+        "color": "#a29c89",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "grave-13-foot",
+      "position": [
+        10.748,
+        0.08,
+        -6.7882
+      ],
+      "yaw": 0.8853981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          1,
+          0.16,
+          0.42
+        ],
+        "color": "#918c7b",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "grave-13-grave",
+      "position": [
+        11.3491,
+        0.035,
+        -6.1872
+      ],
+      "yaw": 0.8853981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          0.9,
+          0.07,
+          1.7
+        ],
+        "color": "#918c7b",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "cemetery-pine-0",
+      "position": [
+        -14.8492,
+        0,
+        6.364
+      ],
+      "yaw": 0.0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-tree-pine-01"
+      },
+      "height": 6,
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "cemetery-pine-1",
+      "position": [
+        -14.8492,
+        0,
+        2.1213
+      ],
+      "yaw": 0.6,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-tree-pine-02"
+      },
+      "height": 6.2,
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "cemetery-pine-2",
+      "position": [
+        -12.0208,
+        0,
+        -2.1213
+      ],
+      "yaw": 1.2,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-tree-pine-03"
+      },
+      "height": 5.8,
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "cemetery-pine-3",
+      "position": [
+        -4.2426,
+        0,
+        15.5563
+      ],
+      "yaw": 1.7999999999999998,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-tree-pine-01"
+      },
+      "height": 5.5,
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "cemetery-pine-4",
+      "position": [
+        0.0,
+        0,
+        12.7279
+      ],
+      "yaw": 2.4,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-tree-pine-02"
+      },
+      "height": 5.5,
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "cemetery-pine-5",
+      "position": [
+        5.3033,
+        0,
+        10.9602
+      ],
+      "yaw": 3.0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-tree-pine-03"
+      },
+      "height": 5.8,
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "cemetery-pine-6",
+      "position": [
+        12.7279,
+        0,
+        -5.6569
+      ],
+      "yaw": 3.5999999999999996,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-tree-pine-01"
+      },
+      "height": 5,
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "cemetery-pine-7",
+      "position": [
+        6.364,
+        0,
+        -14.8492
+      ],
+      "yaw": 4.2,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-tree-pine-02"
+      },
+      "height": 6,
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "cemetery-pine-8",
+      "position": [
+        -2.8284,
+        0,
+        -12.7279
+      ],
+      "yaw": 4.8,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-tree-pine-03"
+      },
+      "height": 5.8,
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "cemetery-rock-0",
+      "position": [
+        -7.7782,
+        0,
+        12.0208
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-rock-01"
+      },
+      "height": 0.8,
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "cemetery-rock-1",
+      "position": [
+        -10.6066,
+        0,
+        3.5355
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-rock-01"
+      },
+      "height": 1.1,
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "cemetery-rock-2",
+      "position": [
+        2.8284,
+        0,
+        7.0711
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-rock-01"
+      },
+      "height": 0.8,
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "cemetery-rock-3",
+      "position": [
+        10.6066,
+        0,
+        -0.7071
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-rock-01"
+      },
+      "height": 1.1,
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "cemetery-rock-4",
+      "position": [
+        3.5355,
+        0,
+        -13.435
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "asset": {
+        "libraryId": "generic:model:sm-gen-env-rock-01"
+      },
+      "height": 0.8,
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "onward-collapse",
+      "position": [
+        10.6066,
+        0.45,
+        -10.6066
+      ],
+      "yaw": 0.7853981633974483,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          0.8,
+          0.9,
+          3.8
+        ],
+        "color": "#a29c89",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    }
+  ],
+  "scatter": [],
+  "reserved": [
+    {
+      "id": "entry-arrival",
+      "center": [
+        -8.4853,
+        8.4853
+      ],
+      "radius": 2.1,
+      "role": "arrival"
+    },
+    {
+      "id": "burial-court",
+      "center": [
+        1.4142,
+        -1.4142
+      ],
+      "radius": 3.8,
+      "role": "combat"
+    },
+    {
+      "id": "path-0",
+      "center": [
+        -6.364,
+        6.364
+      ],
+      "radius": 2,
+      "role": "route"
+    },
+    {
+      "id": "path-1",
+      "center": [
+        -3.5355,
+        3.5355
+      ],
+      "radius": 2,
+      "role": "route"
+    },
+    {
+      "id": "path-2",
+      "center": [
+        -0.7071,
+        0.7071
+      ],
+      "radius": 2,
+      "role": "route"
+    },
+    {
+      "id": "path-3",
+      "center": [
+        3.5355,
+        -6.364
+      ],
+      "radius": 1.5,
+      "role": "route"
+    },
+    {
+      "id": "path-4",
+      "center": [
+        -0.4243,
+        -10.3238
+      ],
+      "radius": 1.5,
+      "role": "route"
+    },
+    {
+      "id": "path-5",
+      "center": [
+        7.0711,
+        -7.0711
+      ],
+      "radius": 1.5,
+      "role": "route"
+    },
+    {
+      "id": "path-6",
+      "center": [
+        9.1924,
+        -9.1924
+      ],
+      "radius": 1.5,
+      "role": "route"
+    }
+  ],
+  "gates": [
+    {
+      "id": "forest-path",
+      "role": "entrance",
+      "position": [
+        -10.6066,
+        10.6066
+      ],
+      "yaw": -0.7853981633974483,
+      "width": 3,
+      "depth": 2,
+      "arrival": {
+        "position": [
+          -8.4853,
+          8.4853
+        ],
+        "yaw": 2.356194490192345
+      },
+      "destination": {
+        "area": "clearing",
+        "gate": "graveyard-path"
+      }
+    },
+    {
+      "id": "crypt-stairs",
+      "role": "branch",
+      "position": [
+        0.1414,
+        -9.7581
+      ],
+      "yaw": -2.356194490192345,
+      "width": 3,
+      "depth": 2,
+      "arrival": {
+        "position": [
+          5.7983,
+          -8.3439
+        ],
+        "yaw": 0.7853981633974483
+      },
+      "destination": {
+        "area": "graveyard-crypt",
+        "gate": "entry"
+      }
+    }
+  ],
+  "lighting": {},
+  "effects": {
+    "water": [],
+    "fires": [
+      {
+        "id": "cemetery-fire",
+        "position": [
+          -5.374,
+          10.1823
+        ],
+        "asset": {
+          "libraryId": "alpine-mountain:model:props-sm-prop-campfire-01"
+        },
+        "height": 0.55,
+        "role": "campfire",
+        "emitterHeight": 0.5
+      }
+    ]
+  },
+  "views": [
+    {
+      "id": "entrance",
+      "target": [
+        -7.7782,
+        0.9,
+        7.7782
+      ]
+    },
+    {
+      "id": "center",
+      "target": [
+        0.8485,
+        0.9,
+        -3.3941
+      ]
+    },
+    {
+      "id": "exit",
+      "target": [
+        1.7678,
+        0.9,
+        -8.1317
+      ]
+    },
+    {
+      "id": "review-1",
+      "target": [
+        -3.5355,
+        0.9,
+        7.7782
+      ]
+    },
+    {
+      "id": "review-2",
+      "target": [
+        7.0711,
+        0.9,
+        -4.2426
+      ]
+    }
+  ],
+  "traversal": {
+    "obstacles": [
+      {
+        "id": "cemetery-wall-0",
+        "position": [
+          -11.3137,
+          0.6,
+          7.0711
+        ],
+        "size": [
+          3.2,
+          1.2,
+          0.6
+        ],
+        "yaw": 0.7853981633974483
+      },
+      {
+        "id": "cemetery-wall-1",
+        "position": [
+          -5.9397,
+          0.45,
+          12.4451
+        ],
+        "size": [
+          3.5,
+          0.9,
+          0.6
+        ],
+        "yaw": 0.7853981633974483
+      },
+      {
+        "id": "cemetery-wall-2",
+        "position": [
+          -10.6066,
+          0.55,
+          0.7071
+        ],
+        "size": [
+          4.2,
+          1.1,
+          0.6
+        ],
+        "yaw": 0.7853981633974483
+      },
+      {
+        "id": "cemetery-wall-3",
+        "position": [
+          -5.6569,
+          0.425,
+          -4.2426
+        ],
+        "size": [
+          3.8,
+          0.85,
+          0.6
+        ],
+        "yaw": 0.7853981633974483
+      },
+      {
+        "id": "cemetery-wall-4",
+        "position": [
+          4.5962,
+          0.55,
+          -12.3744
+        ],
+        "size": [
+          3.5,
+          1.1,
+          0.6
+        ],
+        "yaw": 0.7853981633974483
+      },
+      {
+        "id": "cemetery-wall-5",
+        "position": [
+          11.4551,
+          0.35,
+          -1.2728
+        ],
+        "size": [
+          4,
+          0.7,
+          0.6
+        ],
+        "yaw": 0.7853981633974483
+      },
+      {
+        "id": "chapel-pillar-0",
+        "position": [
+          -1.4142,
+          1.4,
+          -5.9397
+        ],
+        "size": [
+          0.8,
+          2.8,
+          0.8
+        ],
+        "yaw": 0.7853981633974483
+      },
+      {
+        "id": "chapel-pillar-1",
+        "position": [
+          3.9598,
+          1.2,
+          -11.3137
+        ],
+        "size": [
+          0.8,
+          2.4,
+          0.8
+        ],
+        "yaw": 0.7853981633974483
+      },
+      {
+        "id": "chapel-pillar-2",
+        "position": [
+          -2.9698,
+          0.65,
+          -8.3439
+        ],
+        "size": [
+          0.8,
+          1.3,
+          0.8
+        ],
+        "yaw": 0.7853981633974483
+      },
+      {
+        "id": "chapel-pillar-3",
+        "position": [
+          1.5556,
+          0.75,
+          -12.8693
+        ],
+        "size": [
+          0.8,
+          1.5,
+          0.8
+        ],
+        "yaw": 0.7853981633974483
+      },
+      {
+        "id": "onward-collapse",
+        "position": [
+          10.6066,
+          0.45,
+          -10.6066
+        ],
+        "size": [
+          0.8,
+          0.9,
+          3.8
+        ],
+        "yaw": 0.7853981633974483
+      }
+    ]
+  },
+  "campfires": [
+    {
+      "id": "cemetery-fire",
+      "name": "Graveyard Ruins",
+      "position": [
+        -5.374,
+        10.1823
+      ],
+      "arrival": {
+        "position": [
+          -5.5861,
+          8.556
+        ],
+        "yaw": 2.356194490192345
+      },
+      "heals": true
+    }
+  ]
+}

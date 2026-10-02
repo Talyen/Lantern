@@ -93,3 +93,9 @@ DOF runs after FSR reconstruction with aligned depth: Soft uses focus range 24 a
 - Local flame lights use the shared campfire/torch/lantern recipes. Gameplay campfire eligibility remains independent of cosmetic lighting.
 - Prepare stable irradiance bakes explicitly with `npm run lighting:bake` in an owned native authoring session. Keep derived data private; routine checks/builds never regenerate it.
 - Extend the small visual reference set when the first interior or enclosed dark area is introduced. Review character readability under the shared Golden preset when lighting changes.
+
+## Interior cutaways
+
+Graveyard Crypt is the first enclosed lighting reference. Its fixed roof cutaway uses area-owned `visibility: "lighting-only"` ceiling geometry on a dedicated lighting layer. Every shared sun/flame shadow camera includes that layer; gameplay beauty, AO and temporal passes retain their ordinary camera layers. Probe preparation clones the scenery and restores ceiling visibility to the default capture layer, without mutating the live scene. Instancing retains layer masks and lighting-only identity, and changing this role invalidates the lighting fingerprint.
+
+The crypt inherits Golden colors and strengths. Enclosure, its area probe coverage, shared amber torches and the Paladin lantern establish the indoor appearance; do not create an interior rendering graph or an alternate preset. Keep probe samples outside masonry and inspect sunlight/torch leakage. Its `center` view is the fixed private interior reference, alongside the existing woodland, character-gallery and animation-lab references. Prepare stable bakes explicitly in the owned authoring session with `npm run lighting:bake -- --area=graveyard-crypt`; derived atlases remain private.

@@ -1,4 +1,4 @@
-import { itemIds } from '../gameplay/equipment.ts';
+import { itemIds, weaponFamily } from '../gameplay/equipment.ts';
 import { resolveAreaLighting } from './lighting.ts';
 import { resolveLocalLight } from './local-lighting.ts';
 import { inReserved } from './decoration.ts';
@@ -36,7 +36,18 @@ export function validateAreas(input: Record<string, AreaDefinition>): string[] {
         if (boundary.points.length < 3 || !boundary.points.every(p => finite(p, 2))) fail('invalid polygon');
         boundary.points.forEach((a, i, points) => { const b = points[(i + 1) % points.length]; if (Math.hypot(a[0] - b[0], a[1] - b[1]) < .001 || points.some(p => (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]) < -.001)) fail('boundary must be convex and counterclockwise'); });
       } else fail('unknown boundary kind');
-      for (const who of (area.kind === 'safe' ? ['player'] : ['player', 'enemy', ...(area.layout.caster ? ['caster'] : [])]) as ('player' | 'enemy' | 'caster')[]) { owner = `${key}/${who}`; const spawn = area.layout[who]!; if (!finite(spawn.position, 2) || !Number.isFinite(spawn.yaw) || boundaryDistance(boundary, spawn.position) < 0) fail('spawn must be finite and inside the walkable boundary'); }
+      if (area.layout.enemies && (area.layout.enemy || area.layout.caster)) fail('choose authored enemies or legacy enemy/caster spawns, not both');
+      const enemies = area.layout.enemies;
+      if (enemies !== undefined && !Array.isArray(enemies)) fail('enemies must be a list');
+      for (const enemy of enemies ?? []) {
+        id(enemy.id);
+        if (enemy.id === 'player' || Object.hasOwn(Object.prototype, enemy.id)) fail('reserved actor ID');
+        if (!['raider','caster'].includes(enemy.kind) || !['enemy','skeleton'].includes(enemy.rig)) fail('unknown enemy behavior or rig');
+        if (!enemy.loadout || !(enemy.kind === 'caster' ? enemy.loadout.main === 'staff' : ['axe','sword'].includes(weaponFamily(enemy.loadout.main) ?? '')) || ![null,'shield'].includes(enemy.loadout.off) || enemy.kind === 'caster' && enemy.loadout.off) fail('invalid enemy loadout');
+      }
+      const spawns = enemies ? [{ id: 'player', ...area.layout.player }, ...enemies] : (area.kind === 'safe' ? ['player'] : ['player', 'enemy', ...(area.layout.caster ? ['caster'] : [])]).map(who => ({ id: who, ...area.layout[who as 'player' | 'enemy' | 'caster']! }));
+      for (const spawn of spawns) { owner = `${key}/${spawn.id}`; if (!finite(spawn.position, 2) || !Number.isFinite(spawn.yaw) || boundaryDistance(boundary, spawn.position) < 0) fail('spawn must be finite and inside the walkable boundary'); }
+      if (area.ambience !== undefined && !['woodland','quiet'].includes(area.ambience)) fail('unknown ambience');
       if (area.kind !== undefined && !['safe', 'encounter'].includes(area.kind)) fail('unknown area kind');
       for (const fire of area.campfires ?? []) {
         id(fire.id);
@@ -61,7 +72,7 @@ export function validateAreas(input: Record<string, AreaDefinition>): string[] {
         if (!finite(prop.position, 3) || !finite(prop.scale, 3) || prop.scale.some(s => s <= 0) || !Number.isFinite(prop.yaw) || prop.height !== undefined && (!Number.isFinite(prop.height) || prop.height <= 0)) fail('invalid transform');
         if (typeof prop.castShadow !== 'boolean' || typeof prop.receiveShadow !== 'boolean') fail('shadow flags must be explicit booleans');
         if (!!prop.asset === !!prop.primitive) fail('choose exactly one asset or primitive');
-        if (prop.primitive?.surface !== undefined && prop.primitive.surface !== 'woodland') fail('unknown ground surface');
+        if (prop.primitive?.surface !== undefined && !['woodland','stone'].includes(prop.primitive.surface)) fail('unknown ground surface');
         if (prop.harvest && (!['tree','stone','iron'].includes(prop.harvest.kind) || prop.harvest.radius !== undefined && (!Number.isFinite(prop.harvest.radius) || prop.harvest.radius <= 0))) fail('invalid tree harvest metadata');
         if (prop.harvest && [prop.harvest.level,prop.harvest.baseYield,prop.harvest.contacts].some(n => n !== undefined && (!Number.isSafeInteger(n) || n < 1))) fail('invalid resource progression metadata');
         if (prop.primitive?.patches !== undefined) {
@@ -71,8 +82,9 @@ export function validateAreas(input: Record<string, AreaDefinition>): string[] {
             if (patch?.layer !== undefined && !['earth', 'litter', 'rocky-soil'].includes(patch.layer)) fail('unknown woodland material layer');
           }
         }
-        if (prop.primitive && (!['box', 'cylinder', 'pebble', 'tent'].includes(prop.primitive.kind) || !finite(prop.primitive.size) || prop.primitive.size.some(s => s <= 0))) fail('invalid primitive');
-        if ((prop.decoration || !area.legacy && !prop.terrain) && inReserved(area, [prop.position[0], prop.position[2]], .3)) fail('scenery overlaps a reserved combat/route/arrival region or gate');
+        if (prop.primitive && (!['box', 'cylinder', 'pebble', 'tent', 'headstone'].includes(prop.primitive.kind) || !finite(prop.primitive.size) || prop.primitive.size.some(s => s <= 0))) fail('invalid primitive');
+        if (prop.visibility !== undefined && prop.visibility !== 'lighting-only') fail('unknown placement visibility');
+        if (prop.visibility !== 'lighting-only' && (prop.decoration || !area.legacy && !prop.terrain) && inReserved(area, [prop.position[0], prop.position[2]], .3)) fail('scenery overlaps a reserved combat/route/arrival region or gate');
         const u = prop.position[0] * Math.cos(e.yaw) - prop.position[2] * Math.sin(e.yaw), v = prop.position[0] * Math.sin(e.yaw) + prop.position[2] * Math.cos(e.yaw);
         if (Math.abs(u) > e.width / 2 + e.apron || Math.abs(v) > e.depth / 2 + e.apron) fail('position exceeds the decorative apron');
       }
@@ -90,7 +102,9 @@ export function validateAreas(input: Record<string, AreaDefinition>): string[] {
       }
       for (const chest of area.chests ?? []) {
         reward(chest);
-        if (chest.guard !== undefined && chest.guard !== null && (!['enemy','caster'].includes(chest.guard) || !area.layout[chest.guard])) fail('chest guard must name a placed enemy');
+        if (chest.guard !== undefined && chest.guards !== undefined) fail('choose guard or guards, not both');
+        const guards = chest.guards ?? (chest.guard ? [chest.guard] : []);
+        if (!Array.isArray(guards) || new Set(guards).size !== guards.length || guards.some(guard => !(enemies ? enemies.some(enemy => enemy.id === guard) : ['enemy','caster'].includes(guard) && !!area.layout[guard as 'enemy' | 'caster']))) fail('chest guards must name placed enemies');
         id(chest.id);
         if (!finite(chest.position, 2) || boundaryDistance(boundary, chest.position) < 0 || !Number.isInteger(chest.scrolls) || chest.scrolls < 0) fail('invalid chest position/reward');
         if (chest.potions !== undefined && (!Number.isSafeInteger(chest.potions) || chest.potions < 0)) fail('invalid potion reward');
@@ -99,7 +113,7 @@ export function validateAreas(input: Record<string, AreaDefinition>): string[] {
         if (!prop?.asset || Math.hypot(prop.position[0] - chest.position[0], prop.position[2] - chest.position[1]) > .1) fail('chest must reference its placed asset');
       }
       for (const [enemy,items] of Object.entries(area.enemyEquipment ?? {})) {
-        if (!['enemy','caster'].includes(enemy) || !area.layout[enemy as 'enemy'|'caster'] || !Array.isArray(items) || !items.every(item=>itemIds.includes(item))) fail('invalid enemy equipment rewards');
+        if (!(enemies ? enemies.some(spawn => spawn.id === enemy) : ['enemy','caster'].includes(enemy) && !!area.layout[enemy as 'enemy'|'caster']) || !Array.isArray(items) || !items.every(item=>itemIds.includes(item))) fail('invalid enemy equipment rewards');
       }
       for (const scatter of area.scatter) {
         id(scatter.id); if (!Number.isInteger(scatter.count) || scatter.count < 0 || scatter.count > 2000 || !finite(scatter.radius, 2) || scatter.radius[0] < 0 || scatter.radius[1] < scatter.radius[0]) fail('invalid scatter count/radius');

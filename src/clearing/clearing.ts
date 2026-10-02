@@ -20,7 +20,7 @@ import type { AreaChange } from './area-change';
 import { MenuController } from './menu-controller';
 import { InteractionActions, areaChangeFailed } from './interaction-actions';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { createEncounter, resetEncounter, stepExploration, stepEncounter, type EncounterEvent, type ActorId, type AimPoint, enemyIds } from '../gameplay/encounter';
+import { createEncounter, resetEncounter, stepExploration, stepEncounter, type EncounterEvent, type ActorId, type AimPoint } from '../gameplay/encounter';
 import { readSettings } from '../rendering/graphics-settings';
 import { createRenderer } from '../rendering/renderer';
 import { PlayerLantern } from '../rendering/player-lantern';
@@ -31,15 +31,14 @@ import { buildArea, createWorld, disposeAreaCache, type AreaInstance } from '../
 import { areas } from '../levels/registry';
 import { validateAreas } from '../levels/validation';
 import { GateTravel } from '../gameplay/area';
-import { makeActor, play, attachCharacter, installMotions, updateActor, type Actor } from './actors';
+import { makeActor, play, attachCharacter, updateActor, type Actor } from './actors';
 import { createInput } from './input';
 import { createCamera } from './camera';
 import { createHud } from '../ui/hud';
 import characters from '../../assets/playable-characters.json';
-import { loadEquipmentMotions } from '../animation/combat-animations';
-import { type Loadout } from '../gameplay/equipment';
+import { EnemyActors, type PreparedEnemies } from './enemy-actors';
 import { Equipment } from '../rendering/equipment';
-import { ProjectileVisuals, CasterVisuals } from '../rendering/projectiles';
+import { ProjectileVisuals } from '../rendering/projectiles';
 import { GameAudio } from '../audio/audio';
 import { GameplayAudio } from '../audio/gameplay';
 import { GatheringTools } from '../rendering/gathering-tools';
@@ -109,7 +108,6 @@ let frozen = import.meta.env.DEV && renderQuery.get('author') === 'levels';
 let fixedCamera = frozen;
 let areaErrors: string[] = [], updateMs = 0, contentHash = '', characterMissing = false;
 const travel = new GateTravel();
-const enemyLoadout: Loadout = { main: 'axe', off: null };
 const adventure = new Adventure(() => localStorage);
 await adventure.prepareSave();
 let adventureVisuals: AdventureVisuals | undefined;
@@ -124,16 +122,13 @@ const pointerAim = new PointerAim(renderer.domElement, camera);
 controls.addEventListener('change', invalidateFrame);
 const encounter = createEncounter('loading', currentArea.layout);
 const player = makeActor(scene, encounter.player);
-const enemy = makeActor(scene, encounter.enemies.enemy);
-const caster = makeActor(scene, encounter.enemies.caster);
-const actors: Record<ActorId, Actor> = { player, enemy, caster };
-const actorIds: readonly ActorId[] = ['player', ...enemyIds];
+const actors: Record<ActorId, Actor> = { player };
 const loader = new GLTFLoader();
 const approach = new ClickApproach(adventure, encounter);
-const playerEquipment = new Equipment(player.root), enemyEquipment = new Equipment(enemy.root,'enemy'), casterEquipment = new Equipment(caster.root,'enemy');
+const playerEquipment = new Equipment(player.root);
+const enemyActors = new EnemyActors(scene, loader, actors);
 const gatheringTools = new GatheringTools(player.root,playerEquipment);
 const projectileVisuals = new ProjectileVisuals(scene);
-const casterVisuals = new CasterVisuals(scene, caster.root);
 const harvesting = new Harvesting();
 const interactionHighlight=new InteractionHighlight(scene);
 const equipmentSets = new EquipmentSets(player, playerEquipment, loader, () => projectileVisuals.prepareArrow());
@@ -229,7 +224,7 @@ function resetPresentation(): void {
   gameplayAudio.reset();
   clearInput();
   graphics?.effects.clear();
-  encounter.projectiles=[]; projectileVisuals.clear(); casterVisuals.clear();
+  encounter.projectiles=[]; projectileVisuals.clear(); enemyActors.clear();
   inventory.syncLoadout();
   movementWorld?.reset();
   active?.portals.forEach(p => p.reset());
@@ -336,7 +331,7 @@ function syncAdventure(): void {
   combatUI?.update();
 }
 function paused(): boolean {
-  return Boolean(hidden() || characterMissing || menuController.paused || inventory.loading || inspecting || graphics?.preparingSettings || frozen || transitioning);
+  return Boolean(!active || hidden() || characterMissing || menuController.paused || inventory.loading || inspecting || graphics?.preparingSettings || frozen || transitioning);
 }
 function resolveAim(pointer = input.pointer()): AimPoint | undefined {
   return pointerAim.resolve(pointer, encounter.player.y);
@@ -364,7 +359,7 @@ function updateGame(dt: number): void {
   if (!paused() && encounter.phase !== 'loading' && adventure.currentArea) adventure.step(encounter, currentArea, dt);
   if (!isPaused && encounter.player.hp > 0) gathering.advance(dt);
   projectileVisuals.sync(encounter.projectiles);
-  casterVisuals.sync(encounter, caster.contacts[0] ?? .8, isPaused ? 0 : dt, currentArea.kind !== 'safe');
+  enemyActors.sync(encounter, isPaused ? 0 : dt, currentArea.kind !== 'safe');
   if(!paused() && input.pointer()){resolveAim();hoveredInteraction=pickInteraction();}else hoveredInteraction=null;
   interactionHighlight.select(hoveredInteraction && !interactionError(hoveredInteraction) ? hoveredInteraction.object : null);interactionHighlight.update((camera.top-camera.bottom)/camera.zoom/Math.max(1,mount.clientHeight)*1.5);
   renderer.domElement.style.cursor=hoveredInteraction ? interactionError(hoveredInteraction) ? 'not-allowed' : 'pointer' : '';
@@ -388,7 +383,7 @@ function renderFrame(dt: number): boolean {
   if (!inspecting && !paused() && !fixedCamera && encounter.player.hp > 0) {
     cameraOwner.follow(player.root.position, dt);
   } else cameraOwner.suspendFollow();
-  for (const id of actorIds) {
+  for (const id of Object.keys(actors)) {
     const actor = actors[id];
     const state = id === 'player' ? encounter.player : encounter.enemies[id];
     updateActor(actor, state, dt, paused(), id==='player' && encounter.blocking);
@@ -396,7 +391,7 @@ function renderFrame(dt: number): boolean {
   }
   if (!paused()) { active?.portals.forEach(p => p.update(dt)); adventureVisuals?.update(dt); }
   const portalPoint = adventure.portalPosition(currentArea);
-  gameplayAudio.ambience(currentArea.effects.fires,encounter.player,portalPoint ? {x:portalPoint[0],z:portalPoint[1]} : null,lanternEnabled && encounter.player.hp>0 ? encounter.player : null);
+  gameplayAudio.ambience(currentArea.effects.fires,encounter.player,portalPoint ? {x:portalPoint[0],z:portalPoint[1]} : null,lanternEnabled && encounter.player.hp>0 ? encounter.player : null, currentArea.ambience ?? 'woodland');
   controls.update();
   camera.updateMatrixWorld();
   pointerAim.capture(camera);
@@ -412,19 +407,11 @@ function renderFrame(dt: number): boolean {
   return rendered;
 }
 try {
-  const [paladin, goblin] = await Promise.all([loader.loadAsync(characters.player.model), loader.loadAsync(characters.enemy.model)]);
-  sceneTextures(paladin.scene); sceneTextures(goblin.scene);
+  const paladin = await loader.loadAsync(characters.player.model);
+  sceneTextures(paladin.scene);
   attachCharacter(player, paladin.scene, paladin.animations, characters.player.height);
-  attachCharacter(enemy, goblin.scene, goblin.animations, characters.enemy.height);
-  attachCharacter(caster, goblin.scene, goblin.animations, characters.enemy.height);
-  renderer.domElement.dataset.characters = JSON.stringify({ player: characters.player.name, enemy: characters.enemy.name });
   await inventory.initialize();
   await gatheringTools.prepare();
-  const goblinMotions = await loadEquipmentMotions(loader, 'enemy', enemyLoadout);
-  installMotions(enemy, goblinMotions);
-  const goblinEquipment = await enemyEquipment.stage(enemyLoadout); enemyEquipment.commit(goblinEquipment);
-  installMotions(caster,await loadEquipmentMotions(loader,'enemy',{main:'staff',off:null}));
-  casterEquipment.commit(await casterEquipment.stage({main:'staff',off:null}));
   reset();
 } catch (error) {
   characterMissing = true; hud.characterUnavailable();
@@ -474,16 +461,14 @@ function dispose(): void {
   personalLantern?.dispose();
   playerEquipment.dispose();
   interactionHighlight.dispose();
-  enemyEquipment.dispose();
-  casterEquipment.dispose();
+  enemyActors.dispose();
   projectileVisuals.dispose();
-  casterVisuals.dispose();
   adventureVisuals?.dispose();
   shop.dispose(); lootLabels.dispose();
   worldInteractions = undefined;
   active?.dispose();
   movementWorld?.dispose();
-  for (const actor of Object.values(actors)) {
+  for (const actor of [player]) {
     actor.mixer?.stopAllAction();
     actor.mixer?.uncacheRoot(actor.mixer.getRoot());
     disposeSceneResources(actor.root);
@@ -525,10 +510,10 @@ function diagnostics() {
       fires: (currentArea.campfires ?? []).map(fire => ({ id: fire.id, safe: adventure.fireSafe(currentArea, fire, encounter) })),
     },
     encounter: {
-      enemies: structuredClone(encounter.enemies), enemyEquipment: enemyEquipment.diagnostics(), casterEquipment: casterEquipment.diagnostics(),
+      enemies: structuredClone(encounter.enemies), equipment: enemyActors.diagnostics(),
       player: { ...encounter.player }, playerMana: encounter.playerMana, stats: {...encounter.stats}, dodgeRemaining: encounter.dodgeRemaining,
       dodgeCooldown: encounter.dodgeCooldown, blocking: encounter.blocking, projectiles: encounter.projectiles, pending: encounter.pending,
-      animations: { player: player.current, enemy: enemy.current, caster: caster.current },
+      animations: Object.fromEntries(Object.entries(actors).map(([id, actor]) => [id, actor.current])),
       navigationReady: movementWorld?.navigationReady ?? false, navigationMs: movementWorld?.generationMs ?? 0,
     },
     camera: { position: camera.position.toArray(), target: controls.target.toArray(), zoom: camera.zoom, viewport: [mount.clientWidth, mount.clientHeight] },
@@ -575,6 +560,8 @@ async function changeArea(change: AreaChange): Promise<boolean> {
     : null;
   transitioning = true;
   clearInput();
+  let preparedEnemies: PreparedEnemies | undefined;
+  let actorsAccepted = false;
   let candidateOwner: Awaited<ReturnType<typeof prepareAreaCandidate>> | undefined;
   try {
     if (transition) {
@@ -592,6 +579,7 @@ async function changeArea(change: AreaChange): Promise<boolean> {
         return graphics!.prepareLighting(resolved, candidate.root);
       },
     );
+    preparedEnemies = await enemyActors.prepare(createEncounter('playing', next.layout));
     const accepted = candidateOwner.accept(
       () => request === generation && (!canCommit || canCommit()),
       () => { if (change.kind === 'refresh') change.onCommit?.(); },
@@ -599,13 +587,14 @@ async function changeArea(change: AreaChange): Promise<boolean> {
     if (!accepted) return false;
 
     const { area: candidate, movement: candidateMovement, lighting: preparedLighting } = candidateOwner;
+    enemyActors.commit(preparedEnemies); actorsAccepted = true;
     graphics!.effects.clearArea();
     adventureVisuals?.dispose();
     active?.dispose();
     movementWorld?.dispose();
     movementWorld = candidateMovement;
     active = candidate;
-    worldInteractions = new WorldInteractions(next, candidate, [player.root, enemy.root, caster.root]);
+    worldInteractions = new WorldInteractions(next, candidate, [...Object.values(actors).map(actor => actor.root)]);
     currentArea = next;
     committedLighting = resolved.lighting;
     lanternEnabled = appearance?.lantern ?? lanternEnabled;
@@ -662,6 +651,7 @@ async function changeArea(change: AreaChange): Promise<boolean> {
     }
     return false;
   } finally {
+    if (!actorsAccepted) preparedEnemies?.dispose();
     candidateOwner?.dispose();
     if (request === generation) {
       transitioning = false;

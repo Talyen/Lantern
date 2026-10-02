@@ -1,6 +1,6 @@
 import type { Adventure } from '../gameplay/adventure';
 import type { Point } from '../gameplay/area';
-import { enemyIds, type ActorId, type Encounter } from '../gameplay/encounter';
+import { type ActorId, type Encounter } from '../gameplay/encounter';
 import { gatheringSafe, type Harvesting } from '../gameplay/harvesting';
 import type { MovementWorld } from '../gameplay/movement';
 import { gathering } from '../gameplay/skills';
@@ -107,10 +107,10 @@ export class GatheringController {
     const playerOccupant = this.occupantRecords.player;
     playerOccupant.areaId = area.id; playerOccupant.position[0] = player.x; playerOccupant.position[1] = player.z;
     occupants.push(playerOccupant);
-    if (area.kind !== 'safe') for (const id of enemyIds) {
+    if (area.kind !== 'safe') for (const id of this.encounter.enemyIds) {
       const enemy = enemies[id];
       if (enemy.hp <= 0) continue;
-      const occupant = this.occupantRecords[id];
+      const occupant = this.occupantRecords[id] ??= { areaId: '', position: [0, 0] };
       occupant.areaId = area.id; occupant.position[0] = enemy.x; occupant.position[1] = enemy.z;
       occupants.push(occupant);
     }

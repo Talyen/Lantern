@@ -51,10 +51,10 @@ export class CasterVisuals {
   private flash = 0;
   private released = false;
   private hand?: THREE.Object3D;
-  constructor(parent: THREE.Object3D, private actor: THREE.Object3D) { this.root.userData.transient = true; this.root.add(this.charge); parent.add(this.root); this.clear(); }
+  constructor(parent: THREE.Object3D, private actor: THREE.Object3D, private id = 'caster') { this.root.userData.transient = true; this.root.add(this.charge); parent.add(this.root); this.clear(); }
   sync(state: Encounter, release: number, dt: number, visible: boolean): void {
-    const enemy = state.enemies.caster;
-    if (!visible || !enemy.home || enemy.hp <= 0 || state.phase === 'lost') { this.clear(); return; }
+    const enemy = state.enemies[this.id];
+    if (!visible || !enemy || !enemy.home || enemy.hp <= 0 || state.phase === 'lost') { this.clear(); return; }
     const casting = enemy.attackTime >= 0;
     if (!casting) this.released = false;
     else if (enemy.contactIndex > 0 && !this.released) { this.flash = .12; this.released = true; }
@@ -70,6 +70,7 @@ export class CasterVisuals {
     this.charge.rotation.y += dt * 2;
     this.material.opacity = charging ? .55 + progress * .4 : this.flash / .12;
   }
+  attach(parent: THREE.Object3D): void { parent.add(this.root); }
   clear(): void { this.root.visible = false; this.flash = 0; this.released = false; }
   dispose(): void { this.root.removeFromParent(); this.geometry.dispose(); this.material.dispose(); }
 }

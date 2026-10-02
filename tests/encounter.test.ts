@@ -623,3 +623,33 @@ test('caster windup begins after its cooldown unlocks within a frame', () => {
   stepEncounter(state, .021, idle, clocks);
   expect(state.projectiles).toHaveLength(1);
 });
+
+test('authored packs advance player clocks once and resolve sweeps, projectiles and the final victory by enemy ID', () => {
+  const layout: import('../src/gameplay/area').EncounterLayout = {
+    boundary: {kind:'circle',center:[0,0],radius:10}, player:{position:[0,0],yaw:0},
+    enemies: ['left','middle','right'].map((id,index) => ({id,position:[(index-1)*.6,1.2],yaw:Math.PI,kind:'raider',rig:'skeleton',loadout:{main:'sword',off:null}})),
+  };
+  const state=createEncounter('playing',layout);
+  const clocks: Timings=Object.fromEntries(['player',...state.enemyIds].map(id=>[id,timing.player]));
+  clocks.player={...timing.player,abilities:{sweep:{attack:.8,contacts:[.38]}}};
+  state.playerMana=0;
+  for(const enemy of Object.values(state.enemies)){enemy.cooldown=999;enemy.hp=100;}
+  stepEncounter(state,.1,{...idle,x:1},clocks);
+  expect(state.player.x).toBeCloseTo(.32); expect(state.playerMana).toBeCloseTo(.8);
+  expect(state.enemyIds.every(id=>state.enemies[id].engaged)).toBe(true);
+  state.player.x=0;state.player.yaw=0;
+  state.weaponSets=[{main:'sword',off:null},{main:'bow',off:null}];state.weapon='sword';state.playerMana=100;
+  useAbility(state,'sweep',clocks.player,false);
+  stepEncounter(state,.43,idle,clocks);
+  expect(state.enemyIds.map(id=>state.enemies[id].hp)).toEqual([40,40,40]);
+  state.player.lock=0;state.attackCooldown=0;state.weapon='bow';state.playerAction=null;state.player.attackTime=-1;
+  state.projectiles=[{id:1,owner:'player',kind:'arrow',x:0,y:1,z:0,dx:0,dz:1,remaining:5,damage:50}];
+  const first=stepEncounter(state,.1,idle,clocks);
+  expect(state.enemies.middle.hp).toBe(0);expect(first.some(event=>event.type==='outcome')).toBe(false);
+  state.weapon='sword';state.player.yaw=0;
+  useAbility(state,'sweep',clocks.player,false); // Skill is cooling down; use a Basic to finish the survivors.
+  attack(state,clocks.player,false);
+  const last=stepEncounter(state,.43,idle,clocks);
+  expect(state.phase).toBe('won');expect(last).toContainEqual({type:'outcome',won:true});
+  resetEncounter(state);expect(state.enemyIds.map(id=>state.enemies[id].hp)).toEqual([100,100,100]);
+});

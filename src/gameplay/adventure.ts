@@ -1,6 +1,6 @@
 import { rollGold, shopStock, sellPrices, buybackLimit } from './economy';
 import { validBar, type ActionBar, type WeaponSet } from './abilities';
-import { applyEquipment, createEncounter, enemyIds, type Encounter, type EnemyId } from './encounter';
+import { applyEquipment, createEncounter, type Encounter, type EnemyId } from './encounter';
 import type { Point, Spawn } from './area';
 import type { AreaDefinition, Campfire, Chest } from '../levels/types';
 import { isEquipmentSlot, itemIds, type ItemId } from './equipment';
@@ -20,7 +20,7 @@ export type GroundDrop = { id: string; item: GroundItem; quantity: number; posit
 export type ReturnSpawn = Spawn & { height?: number };
 export type PortalLink = { area: string; departure: ReturnSpawn };
 type AreaSession = { encounter?: Encounter; drops: GroundDrop[]; dropRolled: Partial<Record<EnemyId, boolean>>; chests: Record<string, { opened: boolean; remaining: number }> };
-export const chestUnlocked = (encounter: Encounter, chest: Chest) => chest.guard === null || encounter.enemies[chest.guard ?? 'enemy'].hp <= 0;
+export const chestUnlocked = (encounter: Encounter, chest: Chest) => chest.guard === null || (chest.guards ?? [chest.guard ?? 'enemy']).every(id => !!encounter.enemies[id] && encounter.enemies[id].hp <= 0);
 export const fireKey = (area: string, fire: string) => `${area}/${fire}`;
 export const near = (point: Point, target: Point, radius: number) => Math.hypot(point[0] - target[0], point[1] - target[1]) <= radius;
 
@@ -191,10 +191,10 @@ export class Adventure {
     const previous = this.session().encounter;
     const next = createEncounter('playing', area.layout);
     if (previous && area.kind !== 'safe') {
-      for (const id of enemyIds) {
-        if (next.enemies[id].home && previous.enemies[id].home) next.enemies[id] = { ...previous.enemies[id], home: next.enemies[id].home, lock: 0, attackTime: -1, contactIndex: 0 };
+      for (const id of next.enemyIds) {
+        if (next.enemies[id].home && previous.enemies[id]?.home) next.enemies[id] = { ...previous.enemies[id], kind: next.enemies[id].kind, rig: next.enemies[id].rig, loadout: next.enemies[id].loadout, home: next.enemies[id].home, lock: 0, attackTime: -1, contactIndex: 0 };
       }
-      next.phase = enemyIds.every(id => next.enemies[id].hp <= 0) ? 'won' : 'playing';
+      next.phase = next.enemyIds.every(id => next.enemies[id].hp <= 0) ? 'won' : 'playing';
     }
     next.player.x = arrival.position[0]; next.player.z = arrival.position[1]; next.player.yaw = arrival.yaw;
     next.player.y = arrival.height ?? 0;
@@ -214,7 +214,7 @@ export class Adventure {
   fireSafe(area: AreaDefinition, fire: Campfire, active?: Encounter): boolean {
     if (area.kind === 'safe') return true;
     const encounter = active ?? this.session(area.id).encounter ?? createEncounter('playing', area.layout);
-    return enemyIds.every(id => { const enemy = encounter.enemies[id]; return enemy.hp <= 0 || (!enemy.engaged && !enemy.returning && !near([enemy.x, enemy.z], fire.position, 10)); });
+    return encounter.enemyIds.every(id => { const enemy = encounter.enemies[id]; return enemy.hp <= 0 || (!enemy.engaged && !enemy.returning && !near([enemy.x, enemy.z], fire.position, 10)); });
   }
   canTravel(encounter: Encounter, sourceArea: AreaDefinition, source: Campfire, targetArea: AreaDefinition, target: Campfire): boolean {
     return this.currentArea === sourceArea.id && encounter.player.hp > 0 && this.castRemaining === 0
@@ -263,12 +263,12 @@ export class Adventure {
     this.healing = healing;
     if (healing) encounter.player.hp = Math.min(encounter.stats.maxHealth, encounter.player.hp + encounter.stats.maxHealth * .03 * dt);
     const session = this.session();
-    if (area.kind !== 'safe') for (const id of enemyIds) {
+    if (area.kind !== 'safe') for (const id of encounter.enemyIds) {
       const enemy = encounter.enemies[id];
       if (enemy.home && enemy.hp <= 0 && !session.dropRolled[id]) {
         session.dropRolled[id] = true;
         if (this.random() < .5) this.spawnDrop('scroll', 1, [enemy.x, enemy.z]);
-        const gold = rollGold({ ...area.layout[id], kind: 'enemy', areaLevel: area.level }, this.random);
+        const gold = rollGold({ ...(area.layout.enemies?.find(enemy => enemy.id === id) ?? area.layout[id as 'enemy' | 'caster']), kind: 'enemy', areaLevel: area.level }, this.random);
         if (gold) this.spawnDrop('gold', gold, [enemy.x, enemy.z]);
         this.guaranteedEquipment(area.enemyEquipment?.[id] ?? [],[enemy.x,enemy.z]);
       }

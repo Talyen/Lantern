@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { enemyIds, type ActorId, type AimPoint, type Encounter } from '../gameplay/encounter';
+import { type ActorId, type AimPoint, type Encounter } from '../gameplay/encounter';
 
 export type PointerPosition = { x: number; y: number };
 
@@ -40,7 +40,7 @@ export class PointerAim {
     const ground = this.resolve(pointer, encounter.player.y);
     // Body pixels project beyond an enemy on the ground plane; commit its centre instead.
     let picked: { x: number; z: number; distance: number } | undefined;
-    if (ground && !safe) for (const id of enemyIds) {
+    if (ground && !safe) for (const id of encounter.enemyIds) {
       const state = encounter.enemies[id];
       if (!state.home || state.hp <= 0) continue;
       const hit = this.ray.intersectObject(actors[id].root, true, this.hits)[0];

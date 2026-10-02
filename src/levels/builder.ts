@@ -1,8 +1,10 @@
 import { createMerchant } from '../rendering/merchant';
+
+import { lightingOnly, includeCutawayShadows } from '../rendering/cutaway';
 import { SceneCache } from '../assets/scene-cache';
 import { disposeSceneInstances, isMesh } from '../assets/resource-ownership';
 import { MeshStandardNodeMaterial } from 'three/webgpu';
-import { texture, mix, vec2, vec3, positionWorld, color, sin, smoothstep } from 'three/tsl';
+import { texture, mix, vec2, vec3, positionWorld, color, sin, smoothstep, triplanarTexture, float } from 'three/tsl';
 import environmentManifest from '../../assets/textures/environment/manifest.json';
 import * as THREE from 'three';
 import { sceneryLoader as loader, disposeSceneryLoader } from '../assets/scenery-loader';
@@ -25,6 +27,7 @@ export async function disposeAreaCache(): Promise<void> { await cache.dispose();
 export function createWorld() {
   const scene = new THREE.Scene();
   const ambient = new THREE.HemisphereLight(); const sun = new THREE.DirectionalLight(); sun.castShadow = true; sun.shadow.mapSize.set(4096, 4096); sun.shadow.camera.near = .5; sun.shadow.camera.far = 80; sun.shadow.normalBias = .025; sun.shadow.bias = -.00015; sun.shadow.radius = 3;
+  includeCutawayShadows(sun);
   scene.add(ambient, sun, sun.target); return { scene, ambient, sun };
 }
 export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode = 'projected', shelterRestored = false) {
@@ -76,6 +79,10 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
       lightingProcedural.push(p);
       const m = new MeshStandardNodeMaterial({ color: p.color, roughness: 1, side: p.doubleSided ? THREE.DoubleSide : THREE.FrontSide });
       ownedMaterial.add(m);
+      if (p.surface === 'stone') {
+        const map = groundMap(new URL('../../assets/textures/environment/stone-v1.png', import.meta.url).href, false);
+        m.colorNode = mix(color('#aaa797'), triplanarTexture(texture(map), undefined, undefined, float(.45)).rgb, .45).mul(color(p.color));
+      }
       if (p.surface === 'woodland') {
         const patches = [...groundPatches, ...(p.patches ?? []), ...(showcase?.ground.patches as GroundPatch[] ?? [])];
         lightingProcedural.push({ woodlandMaterial: woodlandGroundRecipe, patches });
@@ -92,7 +99,13 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
       return m;
     };
     const geometry = (p: Primitive) => { const s = p.size; let g: THREE.BufferGeometry;
-      if (p.kind === 'box') g = new THREE.BoxGeometry(s[0], s[1], s[2]);
+      if (p.kind === 'headstone') {
+        const [w,h,d] = s, shape = new THREE.Shape();
+        shape.moveTo(-w/2,-h/2); shape.lineTo(w/2,-h/2); shape.lineTo(w/2,h*.20);
+        shape.quadraticCurveTo(w/2,h/2,0,h/2); shape.quadraticCurveTo(-w/2,h/2,-w/2,h*.20); shape.closePath();
+        g = new THREE.ExtrudeGeometry(shape, { depth:d, bevelEnabled:true, bevelThickness:.035, bevelSize:.035, bevelSegments:1, steps:1, curveSegments:3 }); g.translate(0,0,-d/2);
+      }
+      else if (p.kind === 'box') g = new THREE.BoxGeometry(s[0], s[1], s[2]);
       else if (p.kind === 'cylinder') g = new THREE.CylinderGeometry(s[0], s[1], s[2], s[3] ?? 32);
       else if (p.kind === 'tent') {
         const [w, h, d] = s, positions: number[] = [];
@@ -172,11 +185,12 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
     const batches = new Map<string, Placement[]>();
     for (const p of props.filter(p => p.primitive)) {
       if (resources.some(n=>n.id===p.id)) { transform(new THREE.Mesh(geometry(p.primitive!), material(p.primitive!)), p); continue; }
-      const key = JSON.stringify([p.primitive, p.castShadow, p.receiveShadow, !!p.foliage, outlined(p)]); const batch = batches.get(key) ?? []; batch.push(p); batches.set(key, batch);
+      const key = JSON.stringify([p.primitive, p.castShadow, p.receiveShadow, !!p.foliage, outlined(p), p.visibility]); const batch = batches.get(key) ?? []; batch.push(p); batches.set(key, batch);
     }
     for (const batch of batches.values()) {
       const p = batch[0], mesh = new THREE.InstancedMesh(geometry(p.primitive!), material(p.primitive!), batch.length), matrix = new THREE.Object3D();
       mesh.name = p.id; mesh.castShadow = p.castShadow; mesh.receiveShadow = p.receiveShadow; mesh.userData.ids = batch.map(p => p.id);
+      if (p.visibility === 'lighting-only') lightingOnly(mesh);
       if (outlined(p)) markOutline(mesh, 'prop');
       batch.forEach((p, i) => { matrix.position.fromArray(p.position); matrix.rotation.set(0, p.yaw, 0); matrix.scale.fromArray(p.scale); matrix.updateMatrix(); mesh.setMatrixAt(i, matrix.matrix); }); mesh.computeBoundingSphere(); root.add(mesh); if (p.foliage) foliage.push(mesh);
     }
@@ -202,6 +216,7 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
           model.traverse(o => animated.add(o));
         }
         transform(model, p);
+        if (p.visibility === 'lighting-only') lightingOnly(model);
       }));
       const failed = results.find(result => result.status === 'rejected');
       if (failed?.status === 'rejected') throw failed.reason;
@@ -210,6 +225,7 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
         const recipe = resolveLocalLight(fire), [x, z] = fire.position;
         const light = new THREE.PointLight(recipe.color, recipe.intensity, recipe.distance, 2);
         light.position.set(x, recipe.emitterHeight + .05, z); light.userData.baseIntensity = recipe.intensity; light.userData.flicker = recipe.flicker;
+        includeCutawayShadows(light);
         light.castShadow = recipe.shadow; light.shadow.mapSize.set(1024, 1024); light.shadow.camera.near = .12; light.shadow.camera.far = recipe.distance + 1;
         light.shadow.radius = recipe.shadowRadius; light.shadow.intensity = recipe.shadowIntensity; light.shadow.normalBias = .012; light.shadow.bias = -.0001;
         root.add(light); fires.push(light); if (recipe.shadow) shadow = light;
@@ -241,11 +257,12 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
       for (let parent: THREE.Object3D | null = o; parent; parent = parent.parent) if (lodRoots.has(parent as THREE.Group) || !parent.visible) return;
       const materials = Array.isArray(o.material) ? o.material : [o.material];
       if (materials.some(m => m.transparent) || !o.visible || o.matrixWorld.determinant() <= 0) return;
-      const key = JSON.stringify([o.geometry.uuid, materials.map(m => m.uuid), o.castShadow, o.receiveShadow, o.userData.outlineStrength ?? 0]);
+      const key = JSON.stringify([o.geometry.uuid, materials.map(m => m.uuid), o.castShadow, o.receiveShadow, o.userData.outlineStrength ?? 0, o.layers.mask]);
       const batch = staticBatches.get(key) ?? []; batch.push(o); staticBatches.set(key, batch);
     });
     for (const meshes of staticBatches.values()) if (meshes.length > 1) {
       const first = meshes[0], batch = new THREE.InstancedMesh(first.geometry, first.material, meshes.length);
+      batch.layers.mask = first.layers.mask; batch.userData.lightingOnly = first.userData.lightingOnly;
       batch.name = `instances:${first.name}`; batch.castShadow = first.castShadow; batch.receiveShadow = first.receiveShadow;
       batch.userData.outlineStrength = (first.userData.outlineStrength as number | undefined) ?? 0;
       meshes.forEach((mesh, i) => { batch.setMatrixAt(i, mesh.matrixWorld); mesh.removeFromParent(); }); batch.computeBoundingSphere(); root.add(batch);

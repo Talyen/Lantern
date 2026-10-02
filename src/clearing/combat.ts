@@ -1,7 +1,7 @@
 import { abilities, abilitySet, type AbilityId } from '../gameplay/abilities';
 import type { Adventure } from '../gameplay/adventure';
 import {
-  enemyIds, dodge, swapWeaponSet, useAbility,
+  dodge, swapWeaponSet, useAbility,
   type ActorId, type Encounter, type EncounterEvent, type Timings,
 } from '../gameplay/encounter';
 import { actionSlotInputs } from '../input/bindings';
@@ -18,7 +18,6 @@ type CombatContext = {
   blocking(): boolean;
   present(events: EncounterEvent[]): void;
 };
-const timingActors = ['player', ...enemyIds] as const;
 
 /** Translates accepted player commands into simulation events and presentation. */
 export class CombatController {
@@ -40,8 +39,8 @@ export class CombatController {
   timings(): Timings {
     // Simulation consumes these synchronously and snapshots accepted attacks.
     // Refresh live actor values without allocating a timing tree every frame.
-    for (const id of timingActors) {
-      const actor = this.actors[id], timing = this.frameTimings[id];
+    for (const id in this.actors) {
+      const actor = this.actors[id], timing = this.frameTimings[id] ??= { attack: 0, hit: 0, contacts: [] };
       timing.attack = duration(actor, 'attack'); timing.hit = duration(actor, 'hit');
       timing.contacts = actor.contacts; timing.commitLead = actor.commitLead;
     }

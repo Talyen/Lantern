@@ -1,11 +1,10 @@
 import type { GameplayAudio } from '../audio/gameplay';
-import { enemyIds, type ActorId, type Encounter, type EncounterEvent } from '../gameplay/encounter';
+import { type ActorId, type Encounter, type EncounterEvent } from '../gameplay/encounter';
 import type { WeaponSet } from '../gameplay/abilities';
 import type { CoreEffects } from '../rendering/effects';
 import type { createHud } from '../ui/hud';
 import { duration, play, type Actor } from './actors';
 
-const actorIds: readonly ActorId[] = ['player', ...enemyIds];
 type PresentationContext = {
   effects(): CoreEffects | undefined;
   weaponSet(set: WeaponSet): void;
@@ -24,7 +23,7 @@ export class EncounterPresentation {
   ) {}
 
   present(events: EncounterEvent[]): void {
-    for (const id of actorIds) {
+    for (const id in this.actors) {
       const actor = this.actors[id];
       const state = id === 'player' ? this.encounter.player : this.encounter.enemies[id];
       actor.root.position.set(state.x, state.y + .04, state.z);
@@ -60,15 +59,15 @@ export class EncounterPresentation {
       actor.previous = null;
       actor.velocity.set(0, 0);
     }
-    for (const id of enemyIds) this.actors[id].root.visible = !safe && !!this.encounter.enemies[id].home;
+    for (const id of this.encounter.enemyIds.filter(id => this.actors[id])) this.actors[id].root.visible = !safe && !!this.encounter.enemies[id].home;
     this.present([
       { type: 'animation', actor: 'player', motion: 'idle' },
-      ...enemyIds.map(id => ({
+      ...this.encounter.enemyIds.filter(id => this.actors[id]).map(id => ({
         type: 'animation' as const, actor: id,
         motion: this.encounter.enemies[id].hp <= 0 ? 'death' as const : 'idle' as const,
       })),
     ]);
-    for (const id of enemyIds) {
+    for (const id of this.encounter.enemyIds.filter(id => this.actors[id])) {
       const death = this.actors[id].actions.death;
       if (this.encounter.enemies[id].hp <= 0 && death) death.time = duration(this.actors[id], 'death');
     }

@@ -64,3 +64,5 @@ See [the detailed area lighting reference](RUNTIME.md#area-lighting).
 ## Action bar and input ownership
 
 See [the detailed action bar and input ownership reference](RUNTIME.md#action-bar-and-input-ownership).
+
+Enemy packs use [the authored enemy registry](RUNTIME.md#authored-enemy-packs-and-area-preparation), with area-owned instances prepared by `src/clearing/enemy-actors.ts` before travel commit. [Graveyard areas](LEVEL_DESIGN.md#graveyard-ruins-and-graveyard-crypt) use the same simulation, presentation and WebGPU pipeline.

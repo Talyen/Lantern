@@ -36,10 +36,16 @@ After changing the workflow, inspect one affected character or gallery interacti
 
 Gameplay and the animation lab use the original authored Paladin and Goblin models. `assets/playable-characters.json` owns their model URLs, heights and per-rig motion catalogs. Gameplay selects complete equipment profiles; animation experimentation belongs in the development lab.
 
-`npm run assets:export-character` updates the two playable entries in an existing gallery catalog, or creates a minimal playable catalog if the full gallery is absent. After a full gallery export, run that command with `--motions-only` to refresh the playable entries. `--player-only` limits preparation to Paladin. Its packed defaults retain dodge.
+`npm run assets:export-character` updates the three playable entries in an existing gallery catalog, or creates a minimal playable catalog if the full gallery is absent. After a full gallery export, run that command with `--motions-only` to refresh the playable entries. `--player-only` limits preparation to Paladin. Its packed defaults retain dodge.
 
 The eight projected Paladin palettes and their original inputs/recipes are privately archived through the cleanup task, as described in [development](ASSET_PREPARATION.md#required-playable-character-and-motions). They no longer appear in the gallery or gameplay.
 
 ## Homestead merchant
 
 `npm run assets:export-merchant` prepares only Peasant Man (`mixamo-5fb4b535-034a-4011-af3b-2880391547a5`) and neutral Mixamo Idle (`2b810890b52a`) using the existing checked world-space baker. Clone only animation sources into the owned task with `agent:sources -- --sources animation-packs`. Original color/UVs remain authored; legacy Phong reflection is corrected to diffuse clothing/skin. The packed `/vendor/characters/merchant/model.glb` contains one rig-compatible `idle`. Intermediate model, motion, catalog and provenance remain private; builds select only the packed area-referenced model and its dependencies, excluding gallery assets. Inspect the merchant's feet, idle and clothing at gameplay scale. This command never alters Paladin or Goblin outputs.
+
+## Playable skeletons
+
+Graveyard Ruins and Graveyard Crypt use the existing Synty Generic **Skeleton 01** body at 1.8 m, while the Clearing retains its Goblin and the player retains Paladin. All motion providers remain Mixamo. `assets/playable-characters.json` owns the skeleton model/catalog; `assets/motion-profiles.json` owns its sword and staff profiles. The canonical exporter isolates the skeleton mesh, restores its authored Generic palette, checks canonical bones and independently bakes idle, locomotion, slash/cast, hit and death motions. Source art and prepared output remain private.
+
+Run `npm run assets:export-character -- --skeleton-only` after cloning the animation-pack and Synty-library sources into the owned task; `--motions-only` reuses the authored body. The runtime uses `/vendor/characters/skeleton/`, never the development-gallery model path. The sword slash has a 1.05 s duration, a reviewed 0.44 s contact and a 0.16 s commitment window, independent of the player's faster slash. Check weapon sockets and motion at gameplay scale. Skeleton reactions use dry existing foley, without Goblin vocals.

@@ -26,7 +26,7 @@ function box(obstacle: Obstacle): Surface {
 export class MovementWorld implements Movement {
   private readonly world = new RAPIER.World({ x: 0, y: 0, z: 0 });
   private readonly controller = this.world.createCharacterController(.015);
-  private readonly actors = { player: this.world.createCollider(RAPIER.ColliderDesc.capsule(halfHeight, radius).setSensor(true)), enemy: this.world.createCollider(RAPIER.ColliderDesc.capsule(halfHeight, radius).setSensor(true)), caster: this.world.createCollider(RAPIER.ColliderDesc.capsule(halfHeight, radius).setSensor(true)) };
+  private readonly actors = new Map<ActorId, RAPIER.Collider>();
   private readonly solid = new Set<number>();
   // Ground surfaces remain eligible for loot; active obstacle proxies do not.
   private readonly blockingObstacles = new Set<number>();
@@ -110,7 +110,8 @@ export class MovementWorld implements Movement {
   }
   move(id: ActorId, actor: ActorState, dx: number, dz: number, dt: number): void {
     if (this.disposed) return;
-    const collider = this.actors[id];
+    let collider = this.actors.get(id);
+    if (!collider) { collider = this.world.createCollider(RAPIER.ColliderDesc.capsule(halfHeight, radius).setSensor(true)); this.actors.set(id, collider); }
     collider.setTranslation({ x: actor.x, y: actor.y + centerHeight, z: actor.z });
     this.controller.computeColliderMovement(collider, { x: dx, y: -Math.max(.03, 9.81 * dt * dt), z: dz }, undefined, undefined, this.isSolid);
     const delta = this.controller.computedMovement();

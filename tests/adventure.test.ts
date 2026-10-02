@@ -642,3 +642,24 @@ test('area travel preserves the dodge cooldown without carrying the roll', () =>
   expect(encounter.dodgeCooldown).toBeCloseTo(.7);
   expect(encounter.dodgeRemaining).toBe(0);
 });
+
+test('authored enemy IDs, all chest guards and supplies survive travel and death recovery without repeated rewards', () => {
+  const state=new Adventure(memory()), encounter=createEncounter('playing');
+  const crypt:AreaDefinition={...field,id:'fixture-crypt',layout:{...field.layout,enemy:undefined,caster:undefined,enemies:['first','second','bone-caster'].map((id,index)=>({id,position:[index,0],yaw:0,kind:index===2?'caster':'raider',rig:'skeleton',loadout:{main:index===2?'staff':'sword',off:null}}))}};
+  const chest={...field.chests![0],id:'supplies',position:[0,0] as [number,number],guard:undefined,guards:['first','second','bone-caster'],potions:2};
+  state.enter(encounter,crypt,{position:[0,0],yaw:0});encounter.enemies.first.hp=0;encounter.enemies.second.hp=40;
+  expect(state.openChest(encounter,crypt,chest)).toBe(false);
+  state.step(encounter,crypt,.01);
+  const drops=state.session().drops;
+  state.enter(encounter,home,undefined,true);
+  state.enter(encounter,crypt,{position:[0,0],yaw:0});
+  expect([encounter.enemies.first.hp,encounter.enemies.second.hp,encounter.enemies['bone-caster'].hp]).toEqual([0,40,100]);
+  expect(state.session().drops).toBe(drops);
+  encounter.enemies.second.hp=0;encounter.enemies['bone-caster'].hp=0;
+  expect(state.openChest(encounter,crypt,chest)).toBe(true);
+  expect(state.session().drops.filter(drop=>drop.item==='potion').map(drop=>drop.quantity)).toEqual([2]);
+  expect(state.openChest(encounter,crypt,chest)).toBe(false);
+  state.enter(encounter,home);state.enter(encounter,crypt,{position:[0,0],yaw:0});
+  expect(encounter.phase).toBe('won');expect(state.chest(crypt,chest).opened).toBe(true);
+  state.closeSave();
+});

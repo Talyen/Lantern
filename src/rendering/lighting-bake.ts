@@ -47,7 +47,7 @@ export async function lightingBakeSignature(area: ResolvedAreaDefinition, root: 
     }
     const instances = mesh instanceof THREE.InstancedMesh ? Array.from({ length: mesh.count }, (_, i) => ({ transform: Array.from(mesh.instanceMatrix.array.slice(i * 16, i * 16 + 16)), color: mesh.instanceColor ? Array.from(mesh.instanceColor.array.slice(i * 3, i * 3 + 3)) : undefined })).map(item => JSON.stringify(item)).sort() : undefined;
     meshes.push(JSON.stringify({ attributes, index: mesh.geometry.index ? await buffer(new Uint32Array(mesh.geometry.index.array)) : undefined,
-      groups: mesh.geometry.groups, transform: mesh.matrixWorld.toArray(), materials,
+      ...(mesh.userData.lightingOnly ? { lightingOnly: true } : {}), groups: mesh.geometry.groups, transform: mesh.matrixWorld.toArray(), materials,
       instances, castShadow: mesh.castShadow, receiveShadow: mesh.receiveShadow }));
   }
   // GLB bytes cover embedded image contents; URLs are recorded by the asset owner

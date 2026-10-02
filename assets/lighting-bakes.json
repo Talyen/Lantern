@@ -1,4 +1,15 @@
 {
   "version": 1,
-  "bakes": {}
+  "bakes": {
+    "2fd1914c1e8e0e027a81055cb993961064cbdb2791bb2e923a0f1cc208f5f9f9": {
+      "url": "/vendor/lighting/2fd1914c1e8e0e027a81055cb993961064cbdb2791bb2e923a0f1cc208f5f9f9.json",
+      "area": "graveyard-ruins",
+      "surfaces": "projected"
+    },
+    "ce12c1dc23c271ad35420d1fc6839d1f1f2b557927f9a1b98863a1b3e4e6f4f8": {
+      "url": "/vendor/lighting/ce12c1dc23c271ad35420d1fc6839d1f1f2b557927f9a1b98863a1b3e4e6f4f8.json",
+      "area": "graveyard-crypt",
+      "surfaces": "projected"
+    }
+  }
 }

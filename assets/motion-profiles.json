@@ -408,6 +408,18 @@
       "category": "skill",
       "duration": 0.35,
       "contact": 0.08
+    },
+    "skeleton-sword-attack": {
+      "sourceId": "0a403075cd90",
+      "name": "Skeleton Sword Slash",
+      "category": "attack",
+      "duration": 1.05,
+      "trim": [
+        0.05,
+        1.6
+      ],
+      "contact": 0.44,
+      "commitLead": 0.16
     }
   },
   "player": {
@@ -608,5 +620,40 @@
       "previous-enemy-8e1bcad1d15b",
       "previous-enemy-883aa65601a4"
     ]
+  },
+  "skeleton": {
+    "defaults": {
+      "idle": "axe-idle",
+      "run": "axe-forward",
+      "attack": "skeleton-sword-attack",
+      "hit": "impact",
+      "death": "death",
+      "backward": "axe-backward",
+      "left": "axe-left",
+      "right": "axe-right"
+    },
+    "profiles": {
+      "sword": {
+        "idle": "axe-idle",
+        "run": "axe-forward",
+        "attack": "skeleton-sword-attack",
+        "hit": "impact",
+        "death": "death",
+        "backward": "axe-backward",
+        "left": "axe-left",
+        "right": "axe-right"
+      },
+      "staff": {
+        "idle": "staff-idle",
+        "run": "axe-forward",
+        "attack": "staff-attack",
+        "hit": "impact",
+        "death": "death",
+        "backward": "axe-backward",
+        "left": "axe-left",
+        "right": "axe-right",
+        "grip": "bow-idle"
+      }
+    }
   }
 }

@@ -1,11 +1,10 @@
 import { abilities, abilitySet, basicAbility, type AbilityId, type WeaponSet } from './abilities';
-import type { Loadout, Weapon } from './equipment';
+import { weaponFamily, type Loadout, type Weapon } from './equipment';
 import { itemLoadout, type InventoryItem } from './inventory';
 import { baseStats, armoredDamage, resolveCombatStats, type CombatStats } from './combat-stats';
-import { constrain, legacyLayout, type EncounterLayout, type Spawn } from './area';
+import { constrain, legacyLayout, type EncounterLayout, type Spawn, type EnemyRig } from './area';
 /** Encounter simulation. Positions, clocks and animation timings use world units and seconds. */
-export const enemyIds = ['enemy', 'caster'] as const;
-export type EnemyId = typeof enemyIds[number];
+export type EnemyId = string;
 export type ActorId = 'player' | EnemyId;
 export type EnemyKind = 'raider' | 'caster';
 export type Motion = 'idle' | 'run' | 'attack' | 'hit' | 'death' | 'dodge' | 'block' | 'chop' | 'sweep' | 'pierce' | 'mine';
@@ -14,7 +13,7 @@ export type ActorState = {
   x: number; y: number; z: number; yaw: number; hp: number; speed: number;
   lock: number; attackTime: number; contactIndex: number;
 };
-export type EnemyState = ActorState & { kind: EnemyKind; home?: Spawn; engaged: boolean; returning: boolean; cooldown: number };
+export type EnemyState = ActorState & { kind: EnemyKind; rig: EnemyRig; loadout: Loadout; home?: Spawn; engaged: boolean; returning: boolean; cooldown: number };
 export const playerMaxHealth = baseStats.maxHealth, enemyMaxHealth = 200, playerMaxMana = baseStats.maxMana;
 export const enemyAttackDamage = 20;
 export const enemyNoticeRadius = 6, enemyLeashRadius = 10;
@@ -23,7 +22,7 @@ export type Projectile = { id: number; owner: ActorId; kind: 'arrow' | 'bolt'; x
 export const casterAttackRange = 6, casterBoltSpeed = 8;
 export type PendingInput = { kind: 'attack' | 'dodge' | 'ability' | 'swap'; ability?: AbilityId; remaining: number; aim?: AimPoint; direction?: {x:number;z:number} };
 export type Encounter = {
-  phase: Phase; layout: EncounterLayout; player: ActorState; enemies: Record<EnemyId, EnemyState>;
+  phase: Phase; layout: EncounterLayout; player: ActorState; enemyIds: EnemyId[]; enemies: Record<EnemyId, EnemyState>;
   weapon: Weapon | null; shield: boolean; blocking: boolean; pending: PendingInput | null; projectiles: Projectile[]; nextProjectile: number;
   stats: CombatStats; setStats: [CombatStats,CombatStats];
   attackCooldown: number; invulnerability: number; playerMana: number;
@@ -36,6 +35,7 @@ export type ActorTiming = { attack: number; hit: number; contacts: readonly numb
 export type Timings = Record<ActorId, ActorTiming>;
 // Read-only simulation defaults; prepared gameplay timings still win each frame.
 const explorationTiming: ActorTiming = { attack: .7, hit: .3, contacts: [.28] };
+const enemyReadiness = new WeakMap<Encounter, { ids: EnemyId[]; values: Record<EnemyId, number> }>();
 const explorationTimings: Timings = { player: explorationTiming, enemy: explorationTiming, caster: explorationTiming };
 export type Movement = { move(id: ActorId, actor: ActorState, dx: number, dz: number, dt: number): void; direction(from: ActorState, to: ActorState, dt: number): { x: number; z: number }; lineOfSight(from: ActorState, to: ActorState): boolean; segmentHit?(from: {x:number;y:number;z:number}, to: {x:number;y:number;z:number}): number | null };
 export type AimPoint = { x: number; z: number };
@@ -45,7 +45,7 @@ function faceAim(player: ActorState, aim: AimPoint): void {
   const x = aim.x - player.x, z = aim.z - player.z;
   if (Math.hypot(x, z) > aimDeadZone) player.yaw = Math.atan2(x, z);
 }
-export const inCombat = (state: Encounter): boolean => enemyIds.some(id=>state.enemies[id].hp>0 && (state.enemies[id].engaged || state.enemies[id].returning)) || state.projectiles.some(p=>p.owner!=='player');
+export const inCombat = (state: Encounter): boolean => state.enemyIds.some(id=>state.enemies[id].hp>0 && (state.enemies[id].engaged || state.enemies[id].returning)) || state.projectiles.some(p=>p.owner!=='player');
 export type EncounterEvent =
   | { type: 'weaponSet'; set: WeaponSet }
   | { type: 'animation'; actor: ActorId; motion: Motion }
@@ -62,22 +62,31 @@ export function createEncounter(phase: Phase = 'loading', layout: EncounterLayou
     ({ x, y: 0, z, yaw: 0, hp, speed, lock: 0, attackTime: -1, contactIndex: 0 });
   const player = actor(...layout.player.position, phase === 'loading' ? 0 : playerMaxHealth, baseStats.moveSpeed);
   player.yaw = layout.player.yaw;
-  const enemies = Object.fromEntries(enemyIds.map(id => {
-    const home = layout[id], spawn = home ?? layout.player;
-    return [id, { ...actor(...spawn.position, home && phase !== 'loading' ? enemyMaxHealth : 0, 1.45), yaw: spawn.yaw, kind: id === 'caster' ? 'caster' : enemyKind, home, engaged: false, returning: false, cooldown: .8 }];
+  const definitions = layout.enemies ?? (['enemy', 'caster'] as const).map(id => ({
+    id, kind: id === 'caster' ? 'caster' as const : enemyKind, rig: 'enemy' as const,
+    loadout: { main: id === 'caster' || enemyKind === 'caster' ? 'staff' as const : 'axe' as const, off: null },
+    ...layout[id],
+  }));
+  const enemyIds = definitions.map(enemy => enemy.id);
+  const enemies = Object.fromEntries(definitions.map((definition, index) => {
+    const home = definition.position ? { position: definition.position, yaw: definition.yaw! } : undefined;
+    const spawn = home ?? layout.player;
+    return [definition.id, { ...actor(...spawn.position, home && phase !== 'loading' ? enemyMaxHealth : 0, 1.45),
+      yaw: spawn.yaw, kind: definition.kind, rig: definition.rig, loadout: definition.loadout,
+      home, engaged: false, returning: false, cooldown: .8 + (layout.enemies ? index * .18 : 0) }];
   })) as Record<EnemyId, EnemyState>;
   const stats = resolveCombatStats([{id:'starter',item:'axe',quantity:1,slot:'main',x:0,y:0}]);
-  return { stats,setStats:[stats,resolveCombatStats([])],weapon: 'axe', shield: false, blocking: false, pending: null, projectiles: [], nextProjectile: 0, phase, layout, player, enemies,
+  return { stats,setStats:[stats,resolveCombatStats([])],weapon: 'axe', shield: false, blocking: false, pending: null, projectiles: [], nextProjectile: 0, phase, layout, player, enemyIds, enemies,
     attackCooldown: 0, invulnerability: 0, playerMana: playerMaxMana,
     weaponSets:[{main:'axe',off:null},{main:null,off:null}],activeSet:0,abilityCooldowns:{},potionCooldown:0,playerAction:null,
     dodgeRemaining: 0, dodgeCooldown: 0, dodgeFrameOffset: 0, invulnerabilityBeforeDodge: 0, dodgeDirection: { x: 0, z: 0 } };
 }
 export function resetEncounter(state: Encounter): EncounterEvent[] {
   const { weapon, shield, weaponSets, activeSet, stats, setStats } = state;
-  Object.assign(state, createEncounter('playing', state.layout, state.enemies.enemy.kind), { weapon, shield, weaponSets, activeSet, stats, setStats });
+  Object.assign(state, createEncounter('playing', state.layout, state.enemies.enemy?.kind ?? 'raider'), { weapon, shield, weaponSets, activeSet, stats, setStats });
   state.player.hp = stats.maxHealth; state.playerMana = stats.maxMana; state.player.speed = stats.moveSpeed;
   return [{ type: 'label', value: 'MOVE TO BEGIN' }, { type: 'animation', actor: 'player', motion: 'idle' },
-    ...enemyIds.map(actor => ({ type: 'animation' as const, actor, motion: 'idle' as const }))];
+    ...state.enemyIds.map(actor => ({ type: 'animation' as const, actor, motion: 'idle' as const }))];
 }
 
 /** Commit derived equipment state only after presentation preparation succeeds. */
@@ -267,10 +276,10 @@ function hit(state: Encounter, actor: ActorId, timing: Timings, events: Encounte
     const won = actor !== 'player';
     state.projectiles = won ? state.projectiles.filter(projectile => projectile.owner !== actor) : [];
     events.push({type:'animation',actor,motion:'death'});
-    if (!won || enemyIds.every(id => state.enemies[id].hp <= 0)) {
+    if (!won || state.enemyIds.every(id => state.enemies[id].hp <= 0)) {
       state.phase = won ? 'won' : 'lost'; state.pending = null; state.blocking = false;
     }
-    if (!won || enemyIds.every(id => state.enemies[id].hp <= 0 || !state.enemies[id].engaged)) events.push({type:'outcome',won});
+    if (!won || state.enemyIds.every(id => state.enemies[id].hp <= 0 || !state.layout.enemies && !state.enemies[id].engaged)) events.push({type:'outcome',won});
   }
 }
 function stepPlayerAttack(state: Encounter, dt: number, timing: Timings, events: EncounterEvent[], movementWorld?: Movement, frameOffset = 0): void {
@@ -285,7 +294,7 @@ function stepPlayerAttack(state: Encounter, dt: number, timing: Timings, events:
     if (action.weapon === 'bow' || action.weapon === 'staff') {
       const dx = Math.sin(player.yaw), dz = Math.cos(player.yaw);
       state.projectiles.push({id: ++state.nextProjectile, owner: 'player', kind: action.weapon === 'bow' ? 'arrow' : 'bolt', x:player.x + dx * .35, y:player.y + 1.22, z:player.z + dz * .35, dx, dz, remaining:action.reach, damage:action.damage, pierced:action.ability==='piercing-shot' ? [] : undefined, firstStep: Math.min(dt,player.attackTime-contacts[player.contactIndex-1])});
-    } else for (const id of enemyIds) {
+    } else for (const id of state.enemyIds) {
       const enemy = state.enemies[id];
       if (!enemy.home || enemy.hp <= 0) continue;
       const dx = enemy.x-player.x, dz = enemy.z-player.z, distance = Math.hypot(dx,dz);
@@ -305,7 +314,7 @@ function advanceProjectile(state: Encounter, projectile: Projectile, dt: number,
   const to = { x: projectile.x + projectile.dx * distance, y: projectile.y, z: projectile.z + projectile.dz * distance };
   const wall = movementWorld?.segmentHit?.(projectile, to) ?? null;
   const hits: { id: ActorId; fraction: number }[] = [];
-  for (const id of projectile.owner === 'player' ? enemyIds : ['player'] as const) {
+  for (const id of projectile.owner === 'player' ? state.enemyIds : ['player'] as const) {
     const target = id === 'player' ? state.player : state.enemies[id];
     if (projectile.pierced?.includes(id) || target.hp <= 0 || id !== 'player' && !state.enemies[id].home) continue;
     const x = target.x - projectile.x, z = target.z - projectile.z;
@@ -340,7 +349,7 @@ function finishPlayerFrame(state: Encounter, dt: number, events: EncounterEvent[
 /** Safe and cleared areas retain attacks and projectile presentation without enemy AI. */
 export function stepExploration(state: Encounter, dt: number, input: Input, movementWorld?: Movement, timing?: Timings): EncounterEvent[] {
   if (input.paused || state.player.hp <= 0 || !['playing','won'].includes(state.phase)) return [];
-  const clocks = timing ?? explorationTimings;
+  const clocks = timing ?? (state.layout.enemies ? Object.fromEntries(['player', ...state.enemyIds].map(id => [id, explorationTimings.player])) : explorationTimings);
   const { events, attackElapsed, attackOffset, movementElapsed } = preparePlayer(state,dt,input,clocks.player);
   stepPlayerAttack(state,attackElapsed,clocks,events,movementWorld,attackOffset); stepProjectiles(state,dt,clocks,events,movementWorld);
   events.push(...movePlayer(state,movementElapsed,input,movementWorld)); return finishPlayerFrame(state,dt,events);
@@ -349,20 +358,43 @@ export function stepEncounter(state: Encounter, dt: number, input: Input, timing
   if (input.paused || state.phase !== 'playing') return [];
   const { events, attackElapsed, attackOffset, movementElapsed } = preparePlayer(state,dt,input,timing.player);
   // New windups consume only the part of the frame after recovery/cooldown.
-  const raiderReadyAfter = Math.max(state.enemies.enemy.lock, state.enemies.enemy.cooldown);
-  const casterReadyAfter = Math.max(state.enemies.caster.lock, state.enemies.caster.cooldown);
-  for (const id of enemyIds) {
+  let readiness = enemyReadiness.get(state);
+  if (!readiness || readiness.ids !== state.enemyIds) {
+    readiness = { ids: state.enemyIds, values: {} }; enemyReadiness.set(state, readiness);
+  }
+  for (const id of state.enemyIds) {
     const enemy = state.enemies[id];
+    readiness.values[id] = Math.max(enemy.lock, enemy.cooldown);
     enemy.lock = Math.max(0, enemy.lock - dt); enemy.cooldown = Math.max(0, enemy.cooldown - dt);
   }
   stepPlayerAttack(state,attackElapsed,timing,events,movementWorld,attackOffset); stepProjectiles(state,dt,timing,events,movementWorld);
   if (state.phase !== 'playing') return finishPlayerFrame(state,dt,events);
   events.push(...movePlayer(state, movementElapsed, input, movementWorld));
-  for (const id of enemyIds) {
+  for (const id of state.enemyIds) {
     if (state.phase !== 'playing') break;
-    if (state.enemies[id].home && state.enemies[id].hp > 0) stepEnemy(state,id,dt,timing,events,movementWorld,id === 'enemy' ? raiderReadyAfter : casterReadyAfter);
+    if (state.enemies[id].home && state.enemies[id].hp > 0) stepEnemy(state,id,dt,timing,events,movementWorld,readiness.values[id]);
   }
+  separateEnemies(state, dt, movementWorld);
   return finishPlayerFrame(state,dt,events);
+}
+/** Keep authored packs legible without moving planted attacks or changing legacy solo fights. */
+function separateEnemies(state: Encounter, dt: number, movementWorld?: Movement): void {
+  if (!state.layout.enemies) return;
+  state.enemyIds.forEach((id, index) => {
+    const enemy = state.enemies[id];
+    if (enemy.hp <= 0 || enemy.lock > 0 || enemy.attackTime >= 0) return;
+    for (const otherId of state.enemyIds) {
+      if (otherId === id || state.enemies[otherId].hp <= 0) continue;
+      const other = state.enemies[otherId], dx = enemy.x - other.x, dz = enemy.z - other.z;
+      const distance = Math.hypot(dx, dz);
+      if (distance >= .75) continue;
+      const angle = index * 2.4, amount = Math.min((.75 - distance) * .5, dt * enemy.speed * .5);
+      const x = (distance > .001 ? dx / distance : Math.sin(angle)) * amount;
+      const z = (distance > .001 ? dz / distance : Math.cos(angle)) * amount;
+      if (movementWorld) movementWorld.move(id, enemy, x, z, dt);
+      else [enemy.x, enemy.z] = constrain(state.layout.boundary, [enemy.x + x, enemy.z + z]);
+    }
+  });
 }
 function stepEnemy(state: Encounter, id: EnemyId, dt: number, timing: Timings, events: EncounterEvent[], movementWorld: Movement | undefined, readyAfter: number): void {
   const player = state.player, enemy = state.enemies[id];
@@ -412,16 +444,16 @@ function stepEnemy(state: Encounter, id: EnemyId, dt: number, timing: Timings, e
     enemy.yaw = Math.atan2(dx, dz);
     events.push({ type: 'label', value: 'RAIDER ATTACKING' });
     animate('attack');
-    events.push({type:'action',actor:id,action:'attack',weapon:'axe'});
+    events.push({type:'action',actor:id,action:'attack',weapon:weaponFamily(enemy.loadout.main)});
   }
   if (enemy.attackTime >= 0) {
     enemy.attackTime += attackElapsed;
     while (enemy.contactIndex < timing[id].contacts.length && enemy.attackTime >= timing[id].contacts[enemy.contactIndex]) {
       enemy.contactIndex++;
-      events.push({type:'action',actor:id,action:'contact',weapon:'axe'});
+      events.push({type:'action',actor:id,action:'contact',weapon:weaponFamily(enemy.loadout.main)});
       const contactDx = player.x-enemy.x, contactDz = player.z-enemy.z, reach = Math.hypot(contactDx,contactDz);
       const facing = reach > 0 ? (Math.sin(enemy.yaw)*contactDx+Math.cos(enemy.yaw)*contactDz)/reach : 1;
-      if (facing >= .5 && Math.hypot(player.x - enemy.x, player.z - enemy.z) <= 1.8 && (!movementWorld || movementWorld.lineOfSight(enemy, player)) && Math.abs(player.y - enemy.y) < .8) hit(state, 'player', timing, events, 'axe', {x:enemy.x-player.x,z:enemy.z-player.z}, dt - attackElapsed + Math.max(0,timing[id].contacts[enemy.contactIndex-1]-(enemy.attackTime-attackElapsed)));
+      if (facing >= .5 && Math.hypot(player.x - enemy.x, player.z - enemy.z) <= 1.8 && (!movementWorld || movementWorld.lineOfSight(enemy, player)) && Math.abs(player.y - enemy.y) < .8) hit(state, 'player', timing, events, weaponFamily(enemy.loadout.main) ?? undefined, {x:enemy.x-player.x,z:enemy.z-player.z}, dt - attackElapsed + Math.max(0,timing[id].contacts[enemy.contactIndex-1]-(enemy.attackTime-attackElapsed)));
       if (state.phase !== 'playing') return;
     }
     if (enemy.attackTime >= timing[id].attack) {

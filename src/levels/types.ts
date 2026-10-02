@@ -12,9 +12,9 @@ export type ProbeLighting = { position: [number, number, number]; size: [number,
 export type AssetRef = { url: string } | { libraryId: string };
 export type GroundLayer = 'earth' | 'litter' | 'rocky-soil';
 export type GroundPatch = { center: Point; radius: number; color: string; strength: number; layer?: GroundLayer };
-export type Primitive = { kind: 'box' | 'cylinder' | 'pebble' | 'tent'; size: number[]; color: string; doubleSided?: boolean; surface?: 'woodland'; patches?: GroundPatch[] };
+export type Primitive = { kind: 'box' | 'cylinder' | 'pebble' | 'tent' | 'headstone'; size: number[]; color: string; doubleSided?: boolean; surface?: 'woodland' | 'stone'; patches?: GroundPatch[] };
 export type Placement = {
-  id: string; position: [number, number, number]; yaw: number; scale: [number, number, number];
+  id: string; visibility?: 'lighting-only'; position: [number, number, number]; yaw: number; scale: [number, number, number];
   asset?: AssetRef; primitive?: Primitive; height?: number; foliage?: boolean; decoration?: boolean; terrain?: boolean;
   harvest?: { kind: 'tree' | 'stone' | 'iron'; radius?: number; level?: number; baseYield?: number; contacts?: number };
   castShadow: boolean; receiveShadow: boolean; fallback?: AssetRef;
@@ -23,10 +23,10 @@ export type Region = { id: string; center: Point; radius: number; role: 'combat'
 export type LightingGrade = { shadows: string; highlights: string; strength: number };
 export type AreaLighting = { background: string; fogNear: number; fogFar: number; ambient: { sky: string; ground: string; intensity: number }; sun: { color: string; intensity: number; position: [number, number, number]; shadowExtent: number }; environment?: EnvironmentLighting; probes?: ProbeLighting; saturation?: number; grade?: LightingGrade };
 export type Shop = { id: string; prop: string; position: Point; merchant: { model: string; position: Point; yaw: number; height: number } };
-export type Chest = RewardMetadata & { id: string; prop: string; position: Point; scrolls: number; potions?: number; equipment?: ItemId[]; guard?: EnemyId | null };
+export type Chest = RewardMetadata & { id: string; prop: string; position: Point; scrolls: number; potions?: number; equipment?: ItemId[]; guard?: EnemyId | null; guards?: EnemyId[] };
 export type Campfire = { id: string; name: string; position: Point; arrival: Spawn; heals?: boolean };
 export type AreaDefinition = {
-  version: 1; id: string; name: string; level?: number; shop?: Shop; legacy?: boolean; terminal?: boolean; chests?: Chest[]; enemyEquipment?: Partial<Record<EnemyId,ItemId[]>>; kind?: 'safe' | 'encounter'; campfires?: Campfire[]; portalArrival?: Spawn;
+  version: 1; id: string; name: string; ambience?: 'woodland' | 'quiet'; level?: number; shop?: Shop; legacy?: boolean; terminal?: boolean; chests?: Chest[]; enemyEquipment?: Partial<Record<EnemyId,ItemId[]>>; kind?: 'safe' | 'encounter'; campfires?: Campfire[]; portalArrival?: Spawn;
   shelter?: { position: Point; yaw: number; stash: Point };
   envelope: { width: number; depth: number; apron: number; yaw: number; reference: { width: number; height: number; zoom: number }; screen: [number, number] };
   layout: EncounterLayout; traversal?: Traversal; seed: number; props: Placement[];

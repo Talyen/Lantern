@@ -10,7 +10,7 @@ export class Equipment {
   private current: PreparedEquipment | null = null;
   private candidates = new Set<PreparedEquipment>();
   private disposed = false;
-  constructor(private actor: THREE.Group, private rig: 'player' | 'enemy' = 'player', private library: AssetLibrary = assetLibrary, private definitions: typeof itemDefinitions = itemDefinitions) {}
+  constructor(private actor: THREE.Group, private rig: 'player' | 'enemy' | 'skeleton' = 'player', private library: AssetLibrary = assetLibrary, private definitions: typeof itemDefinitions = itemDefinitions) {}
   async stage(requested: Loadout): Promise<PreparedEquipment> {
     if (this.disposed) throw new Error('Equipment has been closed.');
     const loadout = normalizeLoadout(requested);

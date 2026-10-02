@@ -23,22 +23,22 @@ export class GameplayAudio {
         else if (event.action === 'land') this.audio.play('land', actor);
         else if (event.action === 'attack') {
           if (event.weapon === 'staff') this.audio.play('magicCharge', actor, {key:`charge-${event.actor}`});
-          else if (event.actor !== 'player') this.audio.play('raiderWindup', actor, {key:`windup-${event.actor}`});
-          else if (event.weapon === 'axe' || event.weapon === 'sword') this.audio.play(event.weapon === 'axe' ? 'axeSwing' : 'swordSwing', actor);
+          else if (event.actor !== 'player' && state.enemies[event.actor].rig !== 'skeleton') this.audio.play('raiderWindup', actor, {key:`windup-${event.actor}`});
+          else if (event.actor === 'player' && (event.weapon === 'axe' || event.weapon === 'sword')) this.audio.play(event.weapon === 'axe' ? 'axeSwing' : 'swordSwing', actor);
         } else {
           this.audio.stop(`charge-${event.actor}`);
           if (event.weapon === 'bow') this.audio.play('bowRelease', actor);
           else if (event.weapon === 'staff') this.audio.play('magicRelease', actor);
-          else if (event.actor !== 'player') this.audio.play('axeSwing', actor);
+          else if (event.actor !== 'player') this.audio.play(event.weapon === 'sword' ? 'swordSwing' : 'axeSwing', actor);
         }
       } else if (event.type === 'impact') {
         const actor = event.actor === 'player' ? state.player : state.enemies[event.actor];
         this.audio.play(event.blocked ? 'block' : event.weapon === 'staff' ? 'magicImpact' : event.weapon === 'bow' ? 'arrowImpact' : 'bodyImpact', actor);
-        if (!event.blocked) this.audio.play(event.actor === 'player' ? event.lethal ? 'playerDeath' : 'playerHurt' : event.lethal ? 'enemyDeath' : 'enemyHurt', actor);
+        if (!event.blocked) this.audio.play(event.actor === 'player' ? event.lethal ? 'playerDeath' : 'playerHurt' : state.enemies[event.actor].rig === 'skeleton' ? event.lethal ? 'skeletonDeath' : 'skeletonHurt' : event.lethal ? 'enemyDeath' : 'enemyHurt', actor);
       } else if (event.type === 'projectileImpact') this.audio.play(event.kind === 'arrow' ? 'arrowImpact' : 'magicImpact', event.position);
       else if (event.type === 'outcome') this.audio.play(event.won ? 'victory' : 'defeat');
     }
-    for (const id of ['player', 'enemy', 'caster'] as const) {
+    for (const id of ['player', ...state.enemyIds]) {
       const actor = id === 'player' ? state.player : state.enemies[id];
       if (actor.attackTime < 0 || actor.contactIndex > 0 || actor.hp <= 0) { this.audio.stop(`charge-${id}`); this.audio.stop(`windup-${id}`); }
     }
@@ -70,7 +70,7 @@ export class GameplayAudio {
     if (id === 'player' && count % 2 === 0) this.audio.play('gear', actor);
     previous.count++;
   }
-  ambience(fires: readonly AuthoredFire[], listener: SoundPosition, portal: SoundPosition | null, lantern: SoundPosition | null): void {
+  ambience(fires: readonly AuthoredFire[], listener: SoundPosition, portal: SoundPosition | null, lantern: SoundPosition | null, ambience: 'woodland' | 'quiet' = 'woodland'): void {
     if (this.fireDefinitions !== fires) {
       this.fireDefinitions = fires;
       this.authoredFlames = fires.map(fire => ({key:`fire-${fire.id}`,position:{x:fire.position[0],z:fire.position[1]},camp:fire.role==='campfire',distance:0}));
@@ -84,12 +84,12 @@ export class GameplayAudio {
       this.nearestFlames[i] = flame;
     }
     this.nearestFlames.sort(nearestFlame); this.nearestFlames.length = Math.min(6, this.nearestFlames.length);
-    this.loopKeys.clear(); this.loopKeys.add('woodland');
+    this.loopKeys.clear(); if (ambience === 'woodland') this.loopKeys.add('woodland');
     for (const fire of this.nearestFlames) this.loopKeys.add(fire.key);
     if (portal) this.loopKeys.add('portal-hum');
     if (lantern) this.loopKeys.add('personal-lantern');
     this.audio.keepLoops(this.loopKeys);
-    this.audio.loop('woodland', 'woodland');
+    if (ambience === 'woodland') this.audio.loop('woodland', 'woodland');
     // Keep at most the six nearest authored flames, including optional scenery.
     for (const fire of this.nearestFlames) this.audio.loop(fire.key, fire.camp ? 'fire' : 'flame', fire.position);
     if (portal) this.audio.loop('portal-hum', 'portalHum', portal);

@@ -180,5 +180,5 @@ export async function checkAssets(playable = false) {
     }
   }
   await gameplayAssets();
-  console.log(`Assets: ${selection.length} selected IDs / ${selected.size} closure entries; ${motionCount} catalog motions; playable character ${characterCount}/2 characters present${characterCount ? '' : ' (asset-free build only)'}.`);
+  console.log(`Assets: ${selection.length} selected IDs / ${selected.size} closure entries; ${motionCount} catalog motions; playable character ${characterCount}/${Object.keys(characters).length} characters present${characterCount ? '' : ' (asset-free build only)'}.`);
 }

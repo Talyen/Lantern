@@ -52,3 +52,18 @@ test('probe fingerprints ignore gameplay changes and grading but invalidate chan
   mesh.material.color.set('#995533'); expect(await lightingBakeSignature(area, root)).not.toBe(initial);
   mesh.geometry.dispose(); mesh.material.dispose();
 });
+
+test('cutaway ceilings remain hidden to gameplay and opaque in sun shadows and probe captures', async () => {
+  const {lightingOnly,restoreBakeVisibility,includeCutawayShadows}=await import('../src/rendering/cutaway');
+  const roof=new THREE.Mesh(new THREE.BoxGeometry(10,.3,10),new THREE.MeshStandardMaterial());
+  roof.castShadow=true;lightingOnly(roof);
+  const camera=new THREE.PerspectiveCamera(),sun=new THREE.DirectionalLight();includeCutawayShadows(sun);
+  expect(camera.layers.test(roof.layers)).toBe(false);expect(sun.shadow.camera.layers.test(roof.layers)).toBe(true);
+  const capture=roof.clone();restoreBakeVisibility(capture);
+  expect(camera.layers.test(capture.layers)).toBe(true);expect(camera.layers.test(roof.layers)).toBe(false);
+  const area={...clearing,lighting:resolveAreaLighting(clearing as unknown as AreaDefinition)} as unknown as ResolvedAreaDefinition;
+  const root=new THREE.Group();root.add(roof);
+  const initial=await lightingBakeSignature(area,root);roof.userData.lightingOnly=false;
+  expect(await lightingBakeSignature(area,root)).not.toBe(initial);
+  roof.geometry.dispose();roof.material.dispose();sun.dispose();
+});

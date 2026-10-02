@@ -1,3 +1,5 @@
+import graveyardRuins from '../src/levels/areas/graveyard-ruins.json';
+import graveyardCrypt from '../src/levels/areas/graveyard-crypt.json';
 import type { WorldInteraction } from '../src/clearing/world-interactions';
 import type { Object3D } from 'three';
 import type { MovementWorld as MovementWorldType } from '../src/gameplay/movement';
@@ -21,7 +23,7 @@ import { Harvesting } from '../src/gameplay/harvesting';
 import type { GatheringTools } from '../src/rendering/gathering-tools';
 import type { GameAudio } from '../src/audio/audio';
 import type { MovementWorld } from '../src/gameplay/movement';
-const areas = { homestead, clearing } as unknown as Record<string, AreaDefinition>;
+const areas = { homestead, clearing, 'graveyard-ruins':graveyardRuins, 'graveyard-crypt':graveyardCrypt } as unknown as Record<string, AreaDefinition>;
 // Exercise grass rules without repeatedly generating an authored area's full carpet.
 const grassArea: AreaDefinition = {
   version: 1, id: 'fixture', name: 'Fixture', kind: 'safe', seed: 42,
@@ -378,4 +380,19 @@ test('asset library waits for sibling assembly loads before releasing a failed p
     finish(modelFixture(source, new THREE.Matrix4().elements));
     await library.dispose(); loading.mockRestore(); skeletonDisposal.mockRestore(); vi.unstubAllGlobals();
   }
+});
+
+test('missing destination skeleton art retains the committed actors and reports the preparation action', async () => {
+  const THREE=await import('three');
+  const {GLTFLoader}=await import('three/addons/loaders/GLTFLoader.js');
+  const {EnemyActors}=await import('../src/clearing/enemy-actors');
+  const {makeActor}=await import('../src/clearing/actors');
+  const {createEncounter}=await import('../src/gameplay/encounter');
+  const state=createEncounter('playing',{...grassArea.layout,enemies:[{id:'guard',position:[1,1],yaw:0,kind:'raider',rig:'skeleton',loadout:{main:'sword',off:null}}]});
+  const scene=new THREE.Scene(),player=makeActor(scene,state.player),actors={player};
+  const loader=new GLTFLoader();vi.spyOn(loader,'loadAsync').mockRejectedValue(new Error('Missing skeleton model'));
+  const roster=new EnemyActors(scene,loader,actors);
+  await expect(roster.prepare(state)).rejects.toThrow('Prepare Skeleton 01 with npm run assets:export-character');
+  expect(scene.children).toEqual([player.root]);expect(Object.keys(actors)).toEqual(['player']);
+  roster.dispose();vi.restoreAllMocks();
 });

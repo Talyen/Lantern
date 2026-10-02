@@ -1,0 +1,1856 @@
+{
+  "version": 1,
+  "id": "graveyard-crypt",
+  "name": "Graveyard Crypt",
+  "kind": "encounter",
+  "terminal": true,
+  "envelope": {
+    "width": 33.10344827586208,
+    "depth": 26.33363185108522,
+    "apron": 4,
+    "yaw": 0.7853981633974483,
+    "reference": {
+      "width": 1920,
+      "height": 1080,
+      "zoom": 1.45
+    },
+    "screen": [
+      16.55172413793104,
+      13.16681592554261
+    ]
+  },
+  "layout": {
+    "boundary": {
+      "kind": "polygon",
+      "points": [
+        [
+          -21.0142,
+          2.3935
+        ],
+        [
+          2.3935,
+          -21.0142
+        ],
+        [
+          21.0142,
+          -2.3935
+        ],
+        [
+          -2.3935,
+          21.0142
+        ]
+      ]
+    },
+    "player": {
+      "position": [
+        6,
+        6
+      ],
+      "yaw": -1.5707963267948966
+    },
+    "enemies": [
+      {
+        "id": "hall-warrior-1",
+        "position": [
+          -0.5,
+          0
+        ],
+        "yaw": 0,
+        "kind": "raider",
+        "rig": "skeleton",
+        "loadout": {
+          "main": "sword",
+          "off": null
+        },
+        "humanoid": true,
+        "rank": "normal"
+      },
+      {
+        "id": "hall-warrior-2",
+        "position": [
+          -3.8,
+          -1.6
+        ],
+        "yaw": 0,
+        "kind": "raider",
+        "rig": "skeleton",
+        "loadout": {
+          "main": "sword",
+          "off": null
+        },
+        "humanoid": true,
+        "rank": "normal"
+      },
+      {
+        "id": "bone-caster",
+        "position": [
+          -1.8,
+          -3.6
+        ],
+        "yaw": 0,
+        "kind": "caster",
+        "rig": "skeleton",
+        "loadout": {
+          "main": "staff",
+          "off": null
+        },
+        "humanoid": true,
+        "rank": "normal"
+      }
+    ]
+  },
+  "seed": 419,
+  "props": [
+    {
+      "id": "crypt-floor",
+      "position": [
+        0,
+        -0.15,
+        0
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          48,
+          0.3,
+          48
+        ],
+        "color": "#9a9481",
+        "surface": "stone"
+      },
+      "castShadow": false,
+      "receiveShadow": true,
+      "terrain": true
+    },
+    {
+      "id": "outer-west",
+      "position": [
+        -10,
+        1.7,
+        0
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          0.65,
+          3.4,
+          18
+        ],
+        "color": "#a29c89",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "outer-north",
+      "position": [
+        -0.5,
+        1.7,
+        -9
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          19,
+          3.4,
+          0.65
+        ],
+        "color": "#a29c89",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "outer-south",
+      "position": [
+        -0.5,
+        0.4,
+        8.4
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          19,
+          0.8,
+          0.65
+        ],
+        "color": "#a29c89",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "outer-east-upper",
+      "position": [
+        9,
+        0.45,
+        -1.2
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          0.65,
+          0.9,
+          12
+        ],
+        "color": "#a29c89",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "outer-east-lower",
+      "position": [
+        9,
+        0.4,
+        8
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          0.65,
+          0.8,
+          1
+        ],
+        "color": "#a29c89",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "hall-west",
+      "position": [
+        -7,
+        1.7,
+        0
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          0.55,
+          3.4,
+          12
+        ],
+        "color": "#a29c89",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "hall-east-upper",
+      "position": [
+        3,
+        0.425,
+        -2.4
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          0.55,
+          0.85,
+          6.8
+        ],
+        "color": "#a29c89",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "hall-east-lower",
+      "position": [
+        3,
+        0.425,
+        4.7
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          0.55,
+          0.85,
+          2.4
+        ],
+        "color": "#a29c89",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "hall-front",
+      "position": [
+        -2,
+        0.4,
+        4.6
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          10,
+          0.8,
+          0.5
+        ],
+        "color": "#a29c89",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "hall-north-left",
+      "position": [
+        -6.7,
+        1.7,
+        -6
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          0.6,
+          3.4,
+          0.5
+        ],
+        "color": "#a29c89",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "hall-north-right",
+      "position": [
+        -0.1,
+        0.425,
+        -6
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          6.2,
+          0.85,
+          0.5
+        ],
+        "color": "#a29c89",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "alcove-east",
+      "position": [
+        -2,
+        1.7,
+        -7.7
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          0.5,
+          3.4,
+          3.1
+        ],
+        "color": "#a29c89",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "hall-tomb-base",
+      "position": [
+        -3.6,
+        0.5,
+        -0.2
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          2.3,
+          1,
+          1.2
+        ],
+        "color": "#96917e",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "hall-tomb-lid",
+      "position": [
+        -3.6,
+        1.09,
+        -0.2
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          2.55,
+          0.18,
+          1.4
+        ],
+        "color": "#b6aa8d",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "burial-slab-0",
+      "position": [
+        -6,
+        0.26,
+        -4.5
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          1.15,
+          0.52,
+          1.75
+        ],
+        "color": "#847e6b",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "burial-slab-1",
+      "position": [
+        0.8,
+        0.26,
+        -4.5
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          1.15,
+          0.52,
+          1.75
+        ],
+        "color": "#847e6b",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "burial-slab-2",
+      "position": [
+        -6,
+        0.26,
+        2.7
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          1.15,
+          0.52,
+          1.75
+        ],
+        "color": "#847e6b",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "crypt-ceiling",
+      "position": [
+        -0.5,
+        4,
+        0
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          19.8,
+          0.45,
+          18.4
+        ],
+        "color": "#807765",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true,
+      "visibility": "lighting-only"
+    },
+    {
+      "id": "crypt-chest",
+      "position": [
+        -5,
+        0,
+        -7.65
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "asset": {
+        "libraryId": "generic:model:sm-gen-prop-chest-01"
+      },
+      "height": 0.85,
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "recess-0",
+      "position": [
+        -9.6,
+        1.45,
+        -3
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          0.18,
+          1.5,
+          1.1
+        ],
+        "color": "#544f45",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "recess-1",
+      "position": [
+        -9.6,
+        1.45,
+        2
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          0.18,
+          1.5,
+          1.1
+        ],
+        "color": "#544f45",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "recess-2",
+      "position": [
+        -0.5,
+        1.45,
+        -8.65
+      ],
+      "yaw": 1.5707963267948966,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          0.18,
+          1.5,
+          1.1
+        ],
+        "color": "#544f45",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "recess-3",
+      "position": [
+        4.6,
+        1.45,
+        -8.65
+      ],
+      "yaw": 1.5707963267948966,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          0.18,
+          1.5,
+          1.1
+        ],
+        "color": "#544f45",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "tomb-lid-inset",
+      "position": [
+        -3.6,
+        1.195,
+        -0.2
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          1.88,
+          0.03,
+          0.7
+        ],
+        "color": "#807966",
+        "surface": "stone"
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "hall-floor-0-0",
+      "position": [
+        -6,
+        0.005,
+        -5
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          1.95,
+          0.01,
+          1.95
+        ],
+        "color": "#a19a86",
+        "surface": "stone"
+      },
+      "castShadow": false,
+      "receiveShadow": true,
+      "terrain": true
+    },
+    {
+      "id": "hall-floor-0-1",
+      "position": [
+        -6,
+        0.005,
+        -3
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          1.95,
+          0.01,
+          1.95
+        ],
+        "color": "#a19a86",
+        "surface": "stone"
+      },
+      "castShadow": false,
+      "receiveShadow": true,
+      "terrain": true
+    },
+    {
+      "id": "hall-floor-0-2",
+      "position": [
+        -6,
+        0.005,
+        -1
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          1.95,
+          0.01,
+          1.95
+        ],
+        "color": "#a19a86",
+        "surface": "stone"
+      },
+      "castShadow": false,
+      "receiveShadow": true,
+      "terrain": true
+    },
+    {
+      "id": "hall-floor-0-3",
+      "position": [
+        -6,
+        0.005,
+        1
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          1.95,
+          0.01,
+          1.95
+        ],
+        "color": "#a19a86",
+        "surface": "stone"
+      },
+      "castShadow": false,
+      "receiveShadow": true,
+      "terrain": true
+    },
+    {
+      "id": "hall-floor-0-4",
+      "position": [
+        -6,
+        0.005,
+        3
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          1.95,
+          0.01,
+          1.95
+        ],
+        "color": "#a19a86",
+        "surface": "stone"
+      },
+      "castShadow": false,
+      "receiveShadow": true,
+      "terrain": true
+    },
+    {
+      "id": "hall-floor-1-0",
+      "position": [
+        -4,
+        0.005,
+        -5
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          1.95,
+          0.01,
+          1.95
+        ],
+        "color": "#a19a86",
+        "surface": "stone"
+      },
+      "castShadow": false,
+      "receiveShadow": true,
+      "terrain": true
+    },
+    {
+      "id": "hall-floor-1-1",
+      "position": [
+        -4,
+        0.005,
+        -3
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          1.95,
+          0.01,
+          1.95
+        ],
+        "color": "#a19a86",
+        "surface": "stone"
+      },
+      "castShadow": false,
+      "receiveShadow": true,
+      "terrain": true
+    },
+    {
+      "id": "hall-floor-1-2",
+      "position": [
+        -4,
+        0.005,
+        -1
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          1.95,
+          0.01,
+          1.95
+        ],
+        "color": "#a19a86",
+        "surface": "stone"
+      },
+      "castShadow": false,
+      "receiveShadow": true,
+      "terrain": true
+    },
+    {
+      "id": "hall-floor-1-3",
+      "position": [
+        -4,
+        0.005,
+        1
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          1.95,
+          0.01,
+          1.95
+        ],
+        "color": "#a19a86",
+        "surface": "stone"
+      },
+      "castShadow": false,
+      "receiveShadow": true,
+      "terrain": true
+    },
+    {
+      "id": "hall-floor-1-4",
+      "position": [
+        -4,
+        0.005,
+        3
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          1.95,
+          0.01,
+          1.95
+        ],
+        "color": "#a19a86",
+        "surface": "stone"
+      },
+      "castShadow": false,
+      "receiveShadow": true,
+      "terrain": true
+    },
+    {
+      "id": "hall-floor-2-0",
+      "position": [
+        -2,
+        0.005,
+        -5
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          1.95,
+          0.01,
+          1.95
+        ],
+        "color": "#a19a86",
+        "surface": "stone"
+      },
+      "castShadow": false,
+      "receiveShadow": true,
+      "terrain": true
+    },
+    {
+      "id": "hall-floor-2-1",
+      "position": [
+        -2,
+        0.005,
+        -3
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          1.95,
+          0.01,
+          1.95
+        ],
+        "color": "#a19a86",
+        "surface": "stone"
+      },
+      "castShadow": false,
+      "receiveShadow": true,
+      "terrain": true
+    },
+    {
+      "id": "hall-floor-2-2",
+      "position": [
+        -2,
+        0.005,
+        -1
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          1.95,
+          0.01,
+          1.95
+        ],
+        "color": "#a19a86",
+        "surface": "stone"
+      },
+      "castShadow": false,
+      "receiveShadow": true,
+      "terrain": true
+    },
+    {
+      "id": "hall-floor-2-3",
+      "position": [
+        -2,
+        0.005,
+        1
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          1.95,
+          0.01,
+          1.95
+        ],
+        "color": "#a19a86",
+        "surface": "stone"
+      },
+      "castShadow": false,
+      "receiveShadow": true,
+      "terrain": true
+    },
+    {
+      "id": "hall-floor-2-4",
+      "position": [
+        -2,
+        0.005,
+        3
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          1.95,
+          0.01,
+          1.95
+        ],
+        "color": "#a19a86",
+        "surface": "stone"
+      },
+      "castShadow": false,
+      "receiveShadow": true,
+      "terrain": true
+    },
+    {
+      "id": "hall-floor-3-0",
+      "position": [
+        0,
+        0.005,
+        -5
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          1.95,
+          0.01,
+          1.95
+        ],
+        "color": "#a19a86",
+        "surface": "stone"
+      },
+      "castShadow": false,
+      "receiveShadow": true,
+      "terrain": true
+    },
+    {
+      "id": "hall-floor-3-1",
+      "position": [
+        0,
+        0.005,
+        -3
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          1.95,
+          0.01,
+          1.95
+        ],
+        "color": "#a19a86",
+        "surface": "stone"
+      },
+      "castShadow": false,
+      "receiveShadow": true,
+      "terrain": true
+    },
+    {
+      "id": "hall-floor-3-2",
+      "position": [
+        0,
+        0.005,
+        -1
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          1.95,
+          0.01,
+          1.95
+        ],
+        "color": "#a19a86",
+        "surface": "stone"
+      },
+      "castShadow": false,
+      "receiveShadow": true,
+      "terrain": true
+    },
+    {
+      "id": "hall-floor-3-3",
+      "position": [
+        0,
+        0.005,
+        1
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          1.95,
+          0.01,
+          1.95
+        ],
+        "color": "#a19a86",
+        "surface": "stone"
+      },
+      "castShadow": false,
+      "receiveShadow": true,
+      "terrain": true
+    },
+    {
+      "id": "hall-floor-3-4",
+      "position": [
+        0,
+        0.005,
+        3
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          1.95,
+          0.01,
+          1.95
+        ],
+        "color": "#a19a86",
+        "surface": "stone"
+      },
+      "castShadow": false,
+      "receiveShadow": true,
+      "terrain": true
+    },
+    {
+      "id": "hall-floor-4-0",
+      "position": [
+        2,
+        0.005,
+        -5
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          1.95,
+          0.01,
+          1.95
+        ],
+        "color": "#a19a86",
+        "surface": "stone"
+      },
+      "castShadow": false,
+      "receiveShadow": true,
+      "terrain": true
+    },
+    {
+      "id": "hall-floor-4-1",
+      "position": [
+        2,
+        0.005,
+        -3
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          1.95,
+          0.01,
+          1.95
+        ],
+        "color": "#a19a86",
+        "surface": "stone"
+      },
+      "castShadow": false,
+      "receiveShadow": true,
+      "terrain": true
+    },
+    {
+      "id": "hall-floor-4-2",
+      "position": [
+        2,
+        0.005,
+        -1
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          1.95,
+          0.01,
+          1.95
+        ],
+        "color": "#a19a86",
+        "surface": "stone"
+      },
+      "castShadow": false,
+      "receiveShadow": true,
+      "terrain": true
+    },
+    {
+      "id": "hall-floor-4-3",
+      "position": [
+        2,
+        0.005,
+        1
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          1.95,
+          0.01,
+          1.95
+        ],
+        "color": "#a19a86",
+        "surface": "stone"
+      },
+      "castShadow": false,
+      "receiveShadow": true,
+      "terrain": true
+    },
+    {
+      "id": "hall-floor-4-4",
+      "position": [
+        2,
+        0.005,
+        3
+      ],
+      "yaw": 0,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "box",
+        "size": [
+          1.95,
+          0.01,
+          1.95
+        ],
+        "color": "#a19a86",
+        "surface": "stone"
+      },
+      "castShadow": false,
+      "receiveShadow": true,
+      "terrain": true
+    }
+  ],
+  "scatter": [],
+  "reserved": [
+    {
+      "id": "foyer-arrival",
+      "center": [
+        6,
+        6
+      ],
+      "radius": 2,
+      "role": "arrival"
+    },
+    {
+      "id": "hall-fight",
+      "center": [
+        0,
+        -1.8
+      ],
+      "radius": 2.3,
+      "role": "combat"
+    },
+    {
+      "id": "hall-door",
+      "center": [
+        2.8,
+        2
+      ],
+      "radius": 1.4,
+      "role": "route"
+    },
+    {
+      "id": "reward-approach",
+      "center": [
+        -5,
+        -5.7
+      ],
+      "radius": 1.1,
+      "role": "route"
+    }
+  ],
+  "gates": [
+    {
+      "id": "entry",
+      "role": "entrance",
+      "position": [
+        9,
+        6
+      ],
+      "yaw": 1.5707963267948966,
+      "width": 3,
+      "depth": 2,
+      "arrival": {
+        "position": [
+          6,
+          6
+        ],
+        "yaw": 4.71238898038469
+      },
+      "destination": {
+        "area": "graveyard-ruins",
+        "gate": "crypt-stairs"
+      }
+    }
+  ],
+  "lighting": {
+    "overrides": {
+      "probes": {
+        "position": [
+          -0.5,
+          1.8,
+          0.7
+        ],
+        "size": [
+          18,
+          2.4,
+          14.4
+        ],
+        "resolution": [
+          7,
+          3,
+          7
+        ]
+      }
+    }
+  },
+  "effects": {
+    "water": [],
+    "fires": [
+      {
+        "id": "crypt-torch-0",
+        "position": [
+          7,
+          3.4
+        ],
+        "asset": {
+          "libraryId": "goblin-war-camp:model:props-sm-prop-torch-02"
+        },
+        "height": 1.4,
+        "role": "torch",
+        "emitterHeight": 1.55
+      },
+      {
+        "id": "crypt-torch-1",
+        "position": [
+          1.8,
+          -3.2
+        ],
+        "asset": {
+          "libraryId": "goblin-war-camp:model:props-sm-prop-torch-02"
+        },
+        "height": 1.4,
+        "role": "torch",
+        "emitterHeight": 1.55
+      },
+      {
+        "id": "crypt-torch-2",
+        "position": [
+          -6.1,
+          -5
+        ],
+        "asset": {
+          "libraryId": "goblin-war-camp:model:props-sm-prop-torch-02"
+        },
+        "height": 1.4,
+        "role": "torch",
+        "emitterHeight": 1.55
+      },
+      {
+        "id": "crypt-torch-3",
+        "position": [
+          -5.8,
+          -8.3
+        ],
+        "asset": {
+          "libraryId": "goblin-war-camp:model:props-sm-prop-torch-02"
+        },
+        "height": 1.4,
+        "role": "torch",
+        "emitterHeight": 1.55
+      }
+    ]
+  },
+  "views": [
+    {
+      "id": "entrance",
+      "target": [
+        6,
+        0.9,
+        6
+      ]
+    },
+    {
+      "id": "center",
+      "target": [
+        -1.5,
+        0.9,
+        -1.2
+      ]
+    },
+    {
+      "id": "exit",
+      "target": [
+        -5,
+        0.9,
+        -7
+      ]
+    },
+    {
+      "id": "review-1",
+      "target": [
+        1,
+        0.9,
+        2
+      ]
+    },
+    {
+      "id": "review-2",
+      "target": [
+        -6,
+        0.9,
+        4
+      ]
+    }
+  ],
+  "traversal": {
+    "obstacles": [
+      {
+        "id": "outer-west",
+        "position": [
+          -10,
+          1.7,
+          0
+        ],
+        "size": [
+          0.65,
+          3.4,
+          18
+        ],
+        "yaw": 0
+      },
+      {
+        "id": "outer-north",
+        "position": [
+          -0.5,
+          1.7,
+          -9
+        ],
+        "size": [
+          19,
+          3.4,
+          0.65
+        ],
+        "yaw": 0
+      },
+      {
+        "id": "outer-south",
+        "position": [
+          -0.5,
+          0.4,
+          8.4
+        ],
+        "size": [
+          19,
+          0.8,
+          0.65
+        ],
+        "yaw": 0
+      },
+      {
+        "id": "outer-east-upper",
+        "position": [
+          9,
+          0.45,
+          -1.2
+        ],
+        "size": [
+          0.65,
+          0.9,
+          12
+        ],
+        "yaw": 0
+      },
+      {
+        "id": "outer-east-lower",
+        "position": [
+          9,
+          0.4,
+          8
+        ],
+        "size": [
+          0.65,
+          0.8,
+          1
+        ],
+        "yaw": 0
+      },
+      {
+        "id": "hall-west",
+        "position": [
+          -7,
+          1.7,
+          0
+        ],
+        "size": [
+          0.55,
+          3.4,
+          12
+        ],
+        "yaw": 0
+      },
+      {
+        "id": "hall-east-upper",
+        "position": [
+          3,
+          0.425,
+          -2.4
+        ],
+        "size": [
+          0.55,
+          0.85,
+          6.8
+        ],
+        "yaw": 0
+      },
+      {
+        "id": "hall-east-lower",
+        "position": [
+          3,
+          0.425,
+          4.7
+        ],
+        "size": [
+          0.55,
+          0.85,
+          2.4
+        ],
+        "yaw": 0
+      },
+      {
+        "id": "hall-front",
+        "position": [
+          -2,
+          0.4,
+          4.6
+        ],
+        "size": [
+          10,
+          0.8,
+          0.5
+        ],
+        "yaw": 0
+      },
+      {
+        "id": "hall-north-left",
+        "position": [
+          -6.7,
+          1.7,
+          -6
+        ],
+        "size": [
+          0.6,
+          3.4,
+          0.5
+        ],
+        "yaw": 0
+      },
+      {
+        "id": "hall-north-right",
+        "position": [
+          -0.1,
+          0.425,
+          -6
+        ],
+        "size": [
+          6.2,
+          0.85,
+          0.5
+        ],
+        "yaw": 0
+      },
+      {
+        "id": "alcove-east",
+        "position": [
+          -2,
+          1.7,
+          -7.7
+        ],
+        "size": [
+          0.5,
+          3.4,
+          3.1
+        ],
+        "yaw": 0
+      },
+      {
+        "id": "hall-tomb",
+        "position": [
+          -3.6,
+          0.65,
+          -0.2
+        ],
+        "size": [
+          2.3,
+          1.3,
+          1.2
+        ],
+        "yaw": 0
+      },
+      {
+        "id": "burial-slab-0",
+        "position": [
+          -6,
+          0.26,
+          -4.5
+        ],
+        "size": [
+          1.15,
+          0.52,
+          1.75
+        ],
+        "yaw": 0
+      },
+      {
+        "id": "burial-slab-1",
+        "position": [
+          0.8,
+          0.26,
+          -4.5
+        ],
+        "size": [
+          1.15,
+          0.52,
+          1.75
+        ],
+        "yaw": 0
+      },
+      {
+        "id": "burial-slab-2",
+        "position": [
+          -6,
+          0.26,
+          2.7
+        ],
+        "size": [
+          1.15,
+          0.52,
+          1.75
+        ],
+        "yaw": 0
+      }
+    ]
+  },
+  "ambience": "quiet",
+  "chests": [
+    {
+      "id": "burial-reward",
+      "prop": "crypt-chest",
+      "position": [
+        -5,
+        -7.65
+      ],
+      "scrolls": 2,
+      "potions": 2,
+      "guards": [
+        "hall-warrior-1",
+        "hall-warrior-2",
+        "bone-caster"
+      ],
+      "gold": false
+    }
+  ]
+}

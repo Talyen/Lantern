@@ -1,4 +1,4 @@
-"""Prepare Paladin and Goblin gameplay assets using the canonical Mixamo baker; sources stay private."""
+"""Prepare gameplay character assets using the canonical Mixamo baker; sources stay private."""
 import argparse
 import hashlib
 import importlib.util
@@ -12,16 +12,19 @@ spec = importlib.util.spec_from_file_location('gallery', Path(__file__).with_nam
 gallery = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(gallery)
 MANIFEST = json.loads((ROOT / 'assets/motion-profiles.json').read_text())
-CHARACTERS = {'paladin': ('mixamo-eface83a-acc0-4036-a15e-3c650df1510d', MANIFEST['player']), 'goblin': ('mixamo-130a335c-bbdb-492f-971f-8faab0616b6e', MANIFEST['enemy'])}
+CHARACTERS = {'paladin': ('mixamo-eface83a-acc0-4036-a15e-3c650df1510d', MANIFEST['player']), 'goblin': ('mixamo-130a335c-bbdb-492f-971f-8faab0616b6e', MANIFEST['enemy']), 'skeleton': ('synty-generic-sm_gen_chr_skeleton_01', MANIFEST['skeleton'])}
 
 
 def export(name, identity, config, motions_only=False):
     defaults = config["defaults"]
     output = ROOT / 'public/vendor/characters' / name
     output.mkdir(parents=True, exist_ok=True)
-    metadata = ROOT / '.local/animation-packs/mixamo/Library/Characters' / identity.removeprefix('mixamo-') / 'asset.json'
-    source = json.loads(metadata.read_text())
-    row = {'id': identity, 'name': source['name'], 'family': 'Mixamo', 'source': str(ROOT / source['file']), 'sourceHash': source['sha256']}
+    if identity.startswith('synty-'):
+        row = next(row for row in gallery.roster() if row['id'] == identity)
+    else:
+        metadata = ROOT / '.local/animation-packs/mixamo/Library/Characters' / identity.removeprefix('mixamo-') / 'asset.json'
+        source = json.loads(metadata.read_text())
+        row = {'id': identity, 'name': source['name'], 'family': 'Mixamo', 'source': str(ROOT / source['file']), 'sourceHash': source['sha256']}
     rig, error = gallery.prepare(row)
     if error:
         raise RuntimeError(error)
@@ -92,11 +95,13 @@ def export(name, identity, config, motions_only=False):
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument('--skeleton-only', action='store_true')
     parser.add_argument('--player-only', action='store_true')
     parser.add_argument('--motions-only', action='store_true')
     args = parser.parse_args(sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else [])
     for name, (identity, config) in CHARACTERS.items():
         if args.player_only and name != 'paladin': continue
+        if args.skeleton_only and name != 'skeleton': continue
         export(name, identity, config, args.motions_only)
 
 

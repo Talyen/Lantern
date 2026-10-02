@@ -1111,6 +1111,23 @@
       "gain": 0.24,
       "bus": "ui",
       "rate": 1
+    },
+    "skeletonHurt": {
+      "clips": [
+        "wood-hit-1",
+        "wood-hit-2"
+      ],
+      "gain": 0.16,
+      "bus": "effects",
+      "rate": 1.1
+    },
+    "skeletonDeath": {
+      "clips": [
+        "wood-crack"
+      ],
+      "gain": 0.22,
+      "bus": "effects",
+      "rate": 1
     }
   }
 }

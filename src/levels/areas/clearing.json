@@ -3,7 +3,7 @@
   "id": "clearing",
   "name": "Forest Clearing",
   "kind": "encounter",
-  "terminal": true,
+  "terminal": false,
   "envelope": {
     "width": 33.10344827586208,
     "depth": 26.33363185108522,
@@ -1453,26 +1453,6 @@
       "height": 0.47835102197594764
     },
     {
-      "id": "fern-38",
-      "position": [
-        13.5311,
-        0,
-        -8.4093
-      ],
-      "yaw": 1.7433892174686345,
-      "scale": [
-        1,
-        1,
-        1
-      ],
-      "castShadow": false,
-      "receiveShadow": true,
-      "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      },
-      "height": 0.4285928661814822
-    },
-    {
       "id": "fern-40",
       "position": [
         9.0983,
@@ -2117,6 +2097,15 @@
       ],
       "radius": 3,
       "role": "combat"
+    },
+    {
+      "id": "graveyard-approach",
+      "center": [
+        11.8794,
+        -6.2225
+      ],
+      "radius": 1.6,
+      "role": "route"
     }
   ],
   "gates": [
@@ -2140,6 +2129,28 @@
       "destination": {
         "area": "homestead",
         "gate": "clearing-path"
+      }
+    },
+    {
+      "id": "graveyard-path",
+      "role": "exit",
+      "position": [
+        13.435,
+        -7.7782
+      ],
+      "yaw": 2.356194490192345,
+      "width": 3,
+      "depth": 2,
+      "arrival": {
+        "position": [
+          11.3137,
+          -5.6569
+        ],
+        "yaw": 5.497787143782138
+      },
+      "destination": {
+        "area": "graveyard-ruins",
+        "gate": "forest-path"
       }
     }
   ],
