@@ -26,6 +26,18 @@ The models do not contain complete unclothed bodies beneath their garments. Remo
 
 The owned native WebGPU preview was queued behind another task's GPU lease during this review. Native material appearance, full animation cycles and weapon grips remain unverified. Private scripts, renders and the skin audit are retained with the task's source-review evidence.
 
+## First male geometry study — 2026-10-02
+
+`npm run assets:export-protagonist-draft` creates a development-only **Male geometry draft** entry in the existing character gallery. It uses Brian's weighted anatomy, a broader jaw, sculpted short swept hair, an open short jacket and broad collar, split cloth panels, a belt/pouch, bracers and boots. Surfaces are neutral geometry-study materials; facial likeness, clothing construction and material finish still need refinement and user review. The playable Paladin and character saves are unchanged.
+
+Run after preparing the Brian gallery model and cloning animation sources into the owned worktree. Editable output lives under `.local/animation-packs/Protagonists/male-draft/`; derived GLBs remain under `public/vendor/characters/protagonist-male-draft/`. Task cleanup archives editable sources and private review evidence. Preparation preserves the imported rig transforms, authors garment vertices in world metres, and independently bakes the curated Shield Idle, Shield Forward, Sword Attack and roll sources with their manifest timing. Later playable promotion requires full equipment profiles and acceptance, not these four study clips alone.
+
+The stiff ring/little fingers in the earlier source review were caused by stale gallery bakes. Both foundations retained `bakeVersion: 2` sample clips from before these finger chains were mapped. Current preparation maps all three ring and little finger segments on both hands. Targeted re-export refreshed Brian and Megan while preserving the other 175 entries; the new study adds one development entry. Compare curled fingers in the fresh sampled grip, rather than counting bound tracks: the old bake wrote tracks for unmapped fingers too, but held them near their rest rotations.
+
+The study fails preparation if any ring/little finger segment is missing from a source mapping. Do not force a universal closed-hand pose: bow, casting and open-hand motions must retain their authored finger articulation. The current Paladin Sword Attack already contains curled ring/little finger rotations; no wholesale gameplay-character rebake was needed for this demonstrated stale-gallery defect.
+
+CPU Blender inspection reviewed the study's face, front/rear/elevated views and a fresh Sword Attack grip after correcting imported coordinate transforms and garment cut edges. This is a first geometry draft, not final visual acceptance. Native gameplay-scale appearance, complete cycles and fitted weapon grips remain outstanding while the shared GPU preview slot is occupied. No gameplay renderer or alternate runtime backend was added.
+
 ## Production sequence and acceptance
 
 Build the male first to establish the process, then the female. First compare a neutral geometry draft against the approved front, rear and elevated silhouettes. Refine face, hair and garment construction before texturing. Keep editable sources and derived licensed models private; preserve original archives.

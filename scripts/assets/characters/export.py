@@ -14,6 +14,7 @@ baker = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(baker)
 OUTPUT = ROOT / 'public/vendor/character-gallery'
 VERSION = 2
+BAKER_SIGNATURE = hashlib.sha256((ROOT / 'scripts/assets/mixamo/baker.py').read_bytes()).hexdigest()
 BUNDLES = {
     ('generic', 'Generic_Characters'): 'Synty Generic',
     ('goblin-war-camp', 'Characters'): 'Synty Goblin War Camp',
@@ -187,25 +188,42 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--limit', type=int)
     parser.add_argument('--family')
+    parser.add_argument('--character', help='Comma-separated stable IDs; retain other gallery entries')
     args = parser.parse_args(sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else [])
+    if args.character and (args.family or args.limit):
+        parser.error('Do not combine --character with family or limit filters')
     OUTPUT.mkdir(parents=True, exist_ok=True)
     catalog = json.loads((ROOT / '.local/animation-packs/mixamo/converted-source-catalog.json').read_text())
     clips = next(pack['clips'] for pack in catalog['packs'] if pack['id'] == 'mixamo')
     choices = {'idle': 'sword and shield idle', 'run': 'sword and shield run', 'attack': 'sword and shield slash'}
     motions = {role: next(clip for clip in clips if clip['name'] == name) for role, name in choices.items()}
     rows = roster()
+    selected = set(args.character.split(',')) if args.character else None
+    if selected and selected - {row['id'] for row in rows}:
+        parser.error(f'Unknown character IDs: {sorted(selected - {row["id"] for row in rows})}')
+    previous = json.loads((OUTPUT / 'catalog.json').read_text()) if selected and (OUTPUT / 'catalog.json').exists() else {}
+    retained = {row['id']: row for row in previous.get('characters', [])}
     records = []
     for index, row in enumerate(rows):
+        if selected and row['id'] not in selected:
+            continue
         if args.family and args.family not in row['family']:
             continue
         if args.limit and len(records) >= args.limit:
             break
-        signature = hashlib.sha256(json.dumps([VERSION, row, {role: m['sourceHash'] for role, m in motions.items()}], sort_keys=True).encode()).hexdigest()
+        signature = hashlib.sha256(json.dumps([VERSION, BAKER_SIGNATURE, row, {role: m['sourceHash'] for role, m in motions.items()}], sort_keys=True).encode()).hexdigest()
         record = export(row, motions, signature)
         records.append(record)
         print(f"CHARACTER {index + 1}/{len(rows)}: {row['family']} / {row['name']} — {record['status']}, {len(record['motions'])} motions", flush=True)
         # Interrupted exports preserve the last complete entries and can resume.
-        write_json(OUTPUT / 'catalog.json', {'version': 1, 'expectedCount': len(rows), 'complete': len(records) == len(rows), 'characters': records})
+        retained[row['id']] = record
+        if selected:
+            order = list(dict.fromkeys([item['id'] for item in previous.get('characters', [])] + [item['id'] for item in records]))
+            published = [retained[identity] for identity in order]
+        else:
+            published = records
+        expected = max(len(rows), previous.get('expectedCount', 0))
+        write_json(OUTPUT / 'catalog.json', {'version': 1, 'expectedCount': expected, 'complete': len(published) == expected, 'characters': published})
     failed = [r for r in records if r['status'] != 'ready']
     print(f'Prepared {len(records)}/{len(rows)} characters; {len(failed)} unavailable.', flush=True)
     if failed:

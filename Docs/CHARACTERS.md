@@ -13,6 +13,7 @@ Run preparation in an owned task worktree. Clone only the needed private sources
 3. Export the gallery, then capture it using the commands below. A complete roster capture requires a complete gallery export; subset exports are for inspection.
 
 - `npm run assets:export-characters` converts the available Synty full-body models and downloaded Mixamo characters. Blender uses the existing local installation; `--blender PATH` selects another executable. `--family NAME` and `--limit N` are inspection subsets and produce an incomplete catalog.
+- `npm run assets:export-characters -- --character ID[,ID]` refreshes selected stable IDs while retaining the rest of the gallery, including local studies. Motion cache signatures include the shared baker source, so older finger mappings are not reused after baker changes.
 - `npm run characters:capture -- --character ID` inspects one character, starting and closing its own loopback server and isolated headless browser. It writes private captures under `.local/character-gallery/` and a thumbnail beside the ignored vendor exports. Use `--all` explicitly for roster contact sheets; invocation without either selector is rejected.
 - Add `--motions` to either capture selector for representative idle, run and attack frames. For example, `npm run characters:capture -- --all --motions --family "Synty Generic"` refreshes one family after a complete capture and retains the other families. Still frames support visual review; they do not prove the entire animation cycle is clean.
 

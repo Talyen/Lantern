@@ -9,6 +9,7 @@
     "preview": "vite preview --host 127.0.0.1",
     "assets:import": "node scripts/agents/run.mjs --resource heavy -- node scripts/assets/surfaces/export-scenery.mjs",
     "assets:export-character": "node scripts/agents/run.mjs --resource heavy -- node scripts/assets/characters/playable.mjs",
+    "assets:export-protagonist-draft": "node scripts/agents/run.mjs --resource heavy -- node scripts/assets/characters/protagonist.mjs",
     "assets:download-mixamo": "node scripts/agents/run.mjs --resource heavy -- python3 scripts/assets/mixamo/mixamo-download-collector.py",
     "desktop": "npm run build && electron electron/main.cjs",
     "desktop:run": "electron electron/main.cjs",
