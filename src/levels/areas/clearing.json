@@ -1980,7 +1980,6 @@
     }
   ],
   "lighting": {
-    "profile": "woodland-dusk",
     "overrides": {
       "sun": {
         "shadowExtent": 25

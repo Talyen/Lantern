@@ -3,7 +3,6 @@ import homestead from '../src/levels/areas/homestead.json';
 import clearing from '../src/levels/areas/clearing.json';
 import movementTrial from '../src/levels/areas/movement-trial.json';
 import blockout from '../src/levels/areas/blockout.json';
-import type { LightingRecipe } from '../src/levels/lighting';
 import type { AreaDefinition } from '../src/levels/types';
 import { generateGrass, grassCoverage, grassBudget } from '../src/levels/grass';
 import { GateTravel } from '../src/gameplay/area';
@@ -28,8 +27,8 @@ test('connected areas validate, decoration is repeatable and reserved routes sta
   broken.blockout.gates[0].destination.gate='missing'; broken.blockout.props[0].position[0]=NaN;
   expect(validateAreas(broken).join('\n')).toMatch(/broken link/);
   expect(validateAreas(broken).join('\n')).toMatch(/invalid transform/);
-  (broken.homestead.lighting as LightingRecipe).overrides = { environment: { intensity: NaN }, probes: { size: [36, -1, 36] } };
-  expect(validateAreas(broken).join('\n')).toMatch(/invalid environment lighting/);
+  broken.homestead.lighting.overrides = { fogNear: NaN, probes: { size: [36, -1, 36] } };
+  expect(validateAreas(broken).join('\n')).toMatch(/invalid lighting/);
   expect(validateAreas(broken).join('\n')).toMatch(/invalid irradiance probes/);
 });
 test('arrival gate cannot immediately send the player back until its trigger is left', () => {
@@ -38,23 +37,6 @@ test('arrival gate cannot immediately send the player back until its trigger is 
   expect(travel.check([gate],gate.position)).toBeUndefined();
   expect(travel.check([gate],gate.arrival.position)).toBeUndefined();
   expect(travel.check([gate],gate.position)?.id).toBe(gate.id);
-});
-
-test('lighting commits only successful entries and retains mood for retry or hot reload', async () => {
-  const { EnvironmentMood } = await import('../src/levels/environment-lighting');
-  let roll = .1, selections = 0;
-  const mood = new EnvironmentMood(() => { selections++; return roll; });
-  mood.commit(mood.choose());
-  expect(mood.mode).toBe('golden');
-  roll = .9;
-  const failedDestination = mood.choose();
-  expect(failedDestination).toBe('silver');
-  expect(mood.mode).toBe('golden');
-  expect(mood.choose(true)).toBe('golden');
-  expect(selections).toBe(2);
-  mood.commit(mood.choose());
-  expect(mood.mode).toBe('silver');
-  expect(mood.choose(true)).toBe('silver');
 });
 
 test('all standing trees retain harvest identity and three chop contacts regrow across travel with safe occupancy', () => {

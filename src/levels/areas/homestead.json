@@ -2348,7 +2348,6 @@
     "yaw": -0.8
   },
   "lighting": {
-    "profile": "woodland-dusk",
     "overrides": {
       "sun": {
         "position": [

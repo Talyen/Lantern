@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { AreaDefinition, AreaLighting, ProbeLighting } from '../levels/types';
+import type { ProbeLighting, ResolvedAreaDefinition } from '../levels/types';
 import type { LightProbeGrid } from 'three/addons/lighting/LightProbeGrid.js';
 import type { RenderTarget, WebGPURenderer } from 'three/webgpu';
 
@@ -8,7 +8,7 @@ export const lightingBakeVersion = 3;
 export type PreparedProbeBake = { version: number; three: string; signature: string; probes: ProbeLighting; dimensions: [number, number, number]; data: number[] };
 
 /** Render inputs only: gameplay names, arrivals, enemies and rewards do not invalidate GI. */
-export async function lightingBakeSignature(area: AreaDefinition & { lighting: AreaLighting }, root: THREE.Group): Promise<string> {
+export async function lightingBakeSignature(area: ResolvedAreaDefinition, root: THREE.Group): Promise<string> {
   root.updateMatrixWorld(true);
   const meshes: string[] = [];
   const visible = (object: THREE.Object3D) => { for (let parent: THREE.Object3D | null = object; parent; parent = parent.parent) if (!parent.visible || parent.userData.transient || parent instanceof THREE.Light) return false; return true; };

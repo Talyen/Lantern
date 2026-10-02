@@ -35,15 +35,15 @@ Use `npm run check` for a fast sanity check; `agent:finish` runs it on the integ
 
 - Lantern requires native WebGPU on every route, including the animation lab and level authoring. Do not add WebGL renderers, backend fallbacks, renderer switches, GLSL shader patches, or WebGL-only dependencies/features.
 - Use `src/rendering/renderer.ts` for native-only initialization and `src/rendering/webgpu-pipeline.ts` for the single shared visual pipeline. Lab lanes may instantiate that same pipeline with independent temporal histories; do not build a separate lab render graph or render scenes directly.
-- FSR Temporal is the only reconstruction method, with Balanced resolution quality and sharpening 0.50 as fresh/reset defaults. Output pixel ratio is always 1. There are no reconstruction fallbacks; unavailable WebGPU or FSR preparation must produce an actionable startup error. Shadows and particles use independent shared Low/Medium/High presets; atmosphere uses profile distance fog, with no volume buffer or ray marching.
+- FSR Temporal is the only reconstruction method, with Balanced resolution quality and sharpening 0.50 as fresh/reset defaults. Output pixel ratio is always 1. There are no reconstruction fallbacks; unavailable WebGPU or FSR preparation must produce an actionable startup error. Shadows and particles use independent shared Low/Medium/High presets; atmosphere uses preset distance fog, with no volume buffer or ray marching.
 - Build new materials/effects with TSL/node materials. `npm run check` enforces the runtime rendering policy. Revalidate the pinned three.js native-only initialization and temporal adapters on dependency upgrades; never weaken the guard to accommodate a second backend.
 
 ## Lighting authoring
 
-- New areas use shared lighting profiles and small overrides through `src/levels/lighting.ts`; see [lighting authoring](Docs/LIGHTING.md). Do not duplicate scene lighting constants or apply outdoor moods globally.
+- All routes use the shared Golden lighting preset and small area overrides through `src/levels/lighting.ts`; see [lighting authoring](Docs/LIGHTING.md). Do not duplicate scene lighting constants or apply outdoor moods globally.
 - Local flame lights use the shared campfire/torch/lantern recipes. Gameplay campfire eligibility remains independent of cosmetic lighting.
 - Prepare stable irradiance bakes explicitly with `npm run lighting:bake` in an owned native authoring session. Keep derived data private; routine checks/builds never regenerate it.
-- Extend the small visual reference set when the first interior or enclosed dark area is introduced. Review character readability under the existing studio and outdoor references when shared lighting changes.
+- Extend the small visual reference set when the first interior or enclosed dark area is introduced. Review character readability under the shared Golden preset when lighting changes.
 
 ## Prototype conventions
 

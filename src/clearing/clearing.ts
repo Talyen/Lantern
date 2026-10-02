@@ -1,5 +1,4 @@
-import { resolveAreaLighting as lightingFor, lightingModesFor, defaultLightingModeFor, entryLightingModesFor, lightingProfileOptions } from '../levels/lighting';
-import { EnvironmentMood, type LightingMode } from '../levels/environment-lighting';
+import { resolveAreaLighting as lightingFor } from '../levels/lighting';
 import type { SurfaceMode } from '../assets/environment-surfaces';
 import type { AreaDefinition, AreaLighting } from '../levels/types';
 import { Adventure, homeArea, near, scrollLimit } from '../gameplay/adventure';
@@ -15,8 +14,6 @@ import { readSettings } from '../rendering/graphics-settings';
 import { FramePacer } from '../rendering/frame-pacer';
 import { createRenderer } from '../rendering/renderer';
 import { PlayerLantern } from '../rendering/player-lantern';
-import type { LightingProfileId } from '../levels/lighting-profiles';
-import { lightingModeLabels } from '../levels/lighting-profiles';
 import type { Graphics } from '../rendering/graphics';
 import type { Options } from '../ui/options';
 import { buildArea, createWorld, disposeAreaCache, type AreaInstance } from '../levels/builder';
@@ -56,14 +53,10 @@ const { scene, ambient, sun } = createWorld();
 let definitions = areas;
 let validateDefinitions = validateAreas;
 let currentArea = definitions[renderQuery.get('area') ?? 'clearing'] ?? definitions.clearing;
-let resolveLightingFor = lightingFor, supportedLightingModes = lightingModesFor;
-let forcedProfile: LightingProfileId | undefined = import.meta.env.DEV && lightingProfileOptions().some(p => p.id === renderQuery.get('profile')) ? renderQuery.get('profile') as LightingProfileId : undefined;
-const effectiveArea = (area: AreaDefinition, profile = forcedProfile): AreaDefinition => profile ? { ...area, lighting: { profile } } : area;
-let committedLighting: AreaLighting = resolveLightingFor(effectiveArea(currentArea));
+let resolveLightingFor = lightingFor;
+let committedLighting: AreaLighting = resolveLightingFor(currentArea);
 let lanternEnabled = !(import.meta.env.DEV && renderQuery.get('lantern') === 'off');
 let personalLantern: PlayerLantern | undefined;
-const mood = new EnvironmentMood();
-let forcedLighting: LightingMode | undefined = import.meta.env.DEV && Object.hasOwn(lightingModeLabels, renderQuery.get('lighting') ?? '') ? renderQuery.get('lighting') as LightingMode : undefined;
 let surfaceMode: SurfaceMode = import.meta.env.DEV && renderQuery.get('surfaces') === 'authored' ? 'authored' : 'projected';
 let active: AreaInstance | undefined;
 let movementWorld: MovementWorld | undefined;
@@ -378,12 +371,11 @@ try {
   if (import.meta.env.DEV && renderQuery.get('author') === 'levels') {
     const { attachAuthoring } = await import('../levels/authoring');
     attachAuthoring({ scene, camera, renderer, definitions: () => definitions, area: () => currentArea, encounter,
-      lightingProfiles: lightingProfileOptions, lightingModes: () => supportedLightingModes(effectiveArea(currentArea).lighting),
       exportLighting: () => graphics!.exportLighting(), lighting: () => graphics!.lightingDiagnostics(),
       changeArea: id => changeArea({ kind: 'travel', area: id }), restart: reset, inspect: () => { inspect(); return inspecting; }, waitFrames, setFrozen: freezePreview, setView: previewView,
-      appearance: () => ({ lighting: mood.mode, forcedLighting, profile: forcedProfile, lantern: lanternEnabled, surfaces: surfaceMode }),
+      appearance: () => ({ lantern: lanternEnabled, surfaces: surfaceMode }),
       setAppearance: changeAppearance,
-      diagnostics: () => ({ lightingMode: mood.mode, lightingProfile: forcedProfile ?? ('profile' in currentArea.lighting ? currentArea.lighting.profile : 'authored'), lantern: personalLantern?.diagnostics(), surfaces: surfaceMode, area: currentArea.id, revision, renderedRevision, ready: !!active && renderedRevision === revision && !transitioning && !areaErrors.length && !mount.dataset.renderError, errors: [...areaErrors, ...(mount.dataset.renderError ? [mount.dataset.renderError] : [])], missing: [...(active?.missing ?? []), ...(characterMissing ? ['character'] : [])], contentHash, settings: options!.settings, backend: 'webgpu', updateMs, renderedFrames, phase: encounter.phase, equipment: playerEquipment.diagnostics(), harvest: {chopping: chopping?.tree.id ?? null, trees: active?.trees.map(tree=>({...tree,...harvesting.state(currentArea.id,tree.id)}))}, adventure: { character: adventure.character, portal: adventure.portal, castRemaining: adventure.castRemaining, drops: adventure.session(currentArea.id).drops, chests: adventure.session(currentArea.id).chests, fires: (currentArea.campfires ?? []).map(fire => ({ id: fire.id, safe: adventure.fireSafe(currentArea, fire, encounter) })) }, encounter: { enemyKind: encounter.enemyKind, enemyEquipment: enemyEquipment.diagnostics(), player: { ...encounter.player }, enemy: { ...encounter.enemy }, engaged: encounter.engaged, returning: encounter.returning, playerMana: encounter.playerMana, dodgeRemaining: encounter.dodgeRemaining, dodgeCooldown: encounter.dodgeCooldown, blocking: encounter.blocking, projectiles: encounter.projectiles, pending: encounter.pending, animations: { player: player.current, enemy: enemy.current }, navigationReady: movementWorld?.navigationReady ?? false, navigationMs: movementWorld?.generationMs ?? 0 }, camera: { position: camera.position.toArray(), target: controls.target.toArray(), zoom: camera.zoom, viewport: [mount.clientWidth, mount.clientHeight] }, objects: active?.root.children.length ?? 0, resources: { memory: { ...renderer.info.memory }, drawCalls: renderer.info.render.drawCalls, triangles: renderer.info.render.triangles }, graphics: renderer.domElement.dataset.graphics ? JSON.parse(renderer.domElement.dataset.graphics) : null }),
+      diagnostics: () => ({ lantern: personalLantern?.diagnostics(), surfaces: surfaceMode, area: currentArea.id, revision, renderedRevision, ready: !!active && renderedRevision === revision && !transitioning && !areaErrors.length && !mount.dataset.renderError, errors: [...areaErrors, ...(mount.dataset.renderError ? [mount.dataset.renderError] : [])], missing: [...(active?.missing ?? []), ...(characterMissing ? ['character'] : [])], contentHash, settings: options!.settings, backend: 'webgpu', updateMs, renderedFrames, phase: encounter.phase, equipment: playerEquipment.diagnostics(), harvest: {chopping: chopping?.tree.id ?? null, trees: active?.trees.map(tree=>({...tree,...harvesting.state(currentArea.id,tree.id)}))}, adventure: { character: adventure.character, portal: adventure.portal, castRemaining: adventure.castRemaining, drops: adventure.session(currentArea.id).drops, chests: adventure.session(currentArea.id).chests, fires: (currentArea.campfires ?? []).map(fire => ({ id: fire.id, safe: adventure.fireSafe(currentArea, fire, encounter) })) }, encounter: { enemyKind: encounter.enemyKind, enemyEquipment: enemyEquipment.diagnostics(), player: { ...encounter.player }, enemy: { ...encounter.enemy }, engaged: encounter.engaged, returning: encounter.returning, playerMana: encounter.playerMana, dodgeRemaining: encounter.dodgeRemaining, dodgeCooldown: encounter.dodgeCooldown, blocking: encounter.blocking, projectiles: encounter.projectiles, pending: encounter.pending, animations: { player: player.current, enemy: enemy.current }, navigationReady: movementWorld?.navigationReady ?? false, navigationMs: movementWorld?.generationMs ?? 0 }, camera: { position: camera.position.toArray(), target: controls.target.toArray(), zoom: camera.zoom, viewport: [mount.clientWidth, mount.clientHeight] }, objects: active?.root.children.length ?? 0, resources: { memory: { ...renderer.info.memory }, drawCalls: renderer.info.render.drawCalls, triangles: renderer.info.render.triangles }, graphics: renderer.domElement.dataset.graphics ? JSON.parse(renderer.domElement.dataset.graphics) : null }),
     });
   }
 
@@ -403,16 +395,13 @@ function previewView(id: string): void {
   camera.zoom = id === 'overview' ? Math.min(defaultPreviewZoom(), defaultPreviewZoom() * Math.min(currentArea.envelope.screen[0] / (currentArea.envelope.width + 8), currentArea.envelope.screen[1] / (currentArea.envelope.depth + 8)) * .9) : defaultPreviewZoom();
   camera.updateProjectionMatrix(); controls.update(); graphics?.resetHistory();
 }
-async function changeAppearance(appearance: { lighting?: LightingMode | 'random'; surfaces?: SurfaceMode; profile?: LightingProfileId | 'area'; lantern?: boolean }): Promise<boolean> {
-  const requestedProfile = appearance.profile === 'area' ? undefined : appearance.profile ?? forcedProfile;
-  if (appearance.lantern !== undefined && Object.keys(appearance).length === 1) { lanternEnabled = appearance.lantern; personalLantern?.setEnabled(lanternEnabled); return true; }
-  const requestedLantern = appearance.lantern ?? (appearance.profile === 'woodland-night' ? true : lanternEnabled);
-  const requestedLighting = appearance.lighting === 'random' ? undefined : appearance.lighting ?? forcedLighting;
+async function changeAppearance(appearance: { surfaces?: SurfaceMode; lantern?: boolean }): Promise<boolean> {
+  if (appearance.lantern !== undefined && appearance.surfaces === undefined) { lanternEnabled = appearance.lantern; personalLantern?.setEnabled(lanternEnabled); return true; }
   return changeArea({ kind: 'refresh', spawn: { position: [encounter.player.x, encounter.player.z], yaw: encounter.player.yaw },
-    appearance: { lantern: requestedLantern, forcedLighting: requestedLighting, forcedProfile: requestedProfile, surfaces: appearance.surfaces ?? surfaceMode } });
+    appearance: { lantern: appearance.lantern ?? lanternEnabled, surfaces: appearance.surfaces ?? surfaceMode } });
 }
 function defaultPreviewZoom(): number { return currentArea.envelope.reference.zoom; }
-type AreaAppearance = { lantern?: boolean; forcedProfile?: LightingProfileId; forcedLighting?: LightingMode; surfaces?: SurfaceMode };
+type AreaAppearance = { lantern?: boolean; surfaces?: SurfaceMode };
 type AreaChange =
   | { kind: 'travel'; area: string; arrivalId?: string; transition?: boolean; spawn?: Spawn; recover?: boolean; canCommit?: () => boolean }
   | { kind: 'refresh'; spawn?: Spawn; appearance?: AreaAppearance };
@@ -424,13 +413,8 @@ async function changeArea(change: AreaChange): Promise<boolean> {
   const started = performance.now(), request = ++generation, next = definitions[id];
   const errors = validateDefinitions(definitions);
   if (!next || errors.length) { transitioning = false; fade.style.opacity = '0'; areaErrors = errors.length ? errors : [`Unknown area: ${id}`]; return false; }
-  const nextForced = appearance && 'forcedLighting' in appearance ? appearance.forcedLighting : forcedLighting;
   const nextSurfaces = appearance?.surfaces ?? surfaceMode;
-  const nextProfile = appearance && 'forcedProfile' in appearance ? appearance.forcedProfile : forcedProfile;
-  const effective = effectiveArea(next, nextProfile), supportedModes = supportedLightingModes(effective.lighting), entryModes = entryLightingModesFor(effective.lighting);
-  const retain = !!(change.kind === 'refresh' || frozen && active?.area.id === id);
-  const nextMode = nextForced && supportedModes.includes(nextForced) ? nextForced : retain && supportedModes.includes(mood.mode) ? mood.mode : entryModes.length ? mood.choose(false, entryModes) : defaultLightingModeFor(effective.lighting);
-  const resolved = { ...next, lighting: resolveLightingFor(effective, nextMode) };
+  const resolved = { ...next, lighting: resolveLightingFor(next) };
   const savedView = frozen && active?.area.id === id ? { target: controls.target.clone(), zoom: camera.zoom } : null;
   transitioning = true; clearInput();
   try {
@@ -446,7 +430,7 @@ async function changeArea(change: AreaChange): Promise<boolean> {
       preparedLighting = await graphics!.prepareLighting(resolved, candidate.root);
     } catch (error) { candidateMovement?.dispose(); candidate.dispose(); throw error; }
     if (request !== generation || canCommit && !canCommit()) { graphics!.discardLighting(preparedLighting); candidate.dispose(); candidateMovement.dispose(); return false; }
-    graphics!.effects.clearArea(); adventureVisuals?.dispose(); active?.dispose(); movementWorld?.dispose(); movementWorld = candidateMovement; active = candidate; currentArea = next; committedLighting = resolved.lighting; mood.commit(nextMode); forcedLighting = nextForced && supportedModes.includes(nextForced) ? nextForced : undefined; forcedProfile = nextProfile; lanternEnabled = appearance?.lantern ?? lanternEnabled; personalLantern?.setEnabled(lanternEnabled); surfaceMode = nextSurfaces; renderer.domElement.dataset.lightingMode = nextMode; graphics!.commitLighting(preparedLighting); scene.add(candidate.root); candidate.activate(graphics!.effects);
+    graphics!.effects.clearArea(); adventureVisuals?.dispose(); active?.dispose(); movementWorld?.dispose(); movementWorld = candidateMovement; active = candidate; currentArea = next; committedLighting = resolved.lighting; lanternEnabled = appearance?.lantern ?? lanternEnabled; personalLantern?.setEnabled(lanternEnabled); surfaceMode = nextSurfaces; graphics!.commitLighting(preparedLighting); scene.add(candidate.root); candidate.activate(graphics!.effects);
     const arrival = next.gates.find(g => g.id === arrivalId);
     harvesting.register(next.id,candidate.trees);
     for (const tree of candidate.trees) { const felled=harvesting.state(next.id,tree.id)?.felled ?? false; candidate.setTreeState(tree.id,felled); candidateMovement.setTreeFelled(tree.id,felled); }
@@ -477,7 +461,7 @@ if (import.meta.hot) import.meta.hot.on('vite:error', payload => { generation++;
 
 if (import.meta.hot) import.meta.hot.accept('../levels/lighting', async module => {
   if (!module) return;
-  resolveLightingFor = module.resolveAreaLighting; supportedLightingModes = module.lightingModesFor;
+  resolveLightingFor = module.resolveAreaLighting;
   await changeArea({ kind: 'refresh' });
 });
 
@@ -487,6 +471,6 @@ if (import.meta.hot) import.meta.hot.accept('../levels/validation', async module
   await changeArea({ kind: 'refresh' });
 });
 
-if (import.meta.hot) window.addEventListener('lightingprofileschanged', () => {
+if (import.meta.hot) window.addEventListener('lightingpresetchanged', () => {
   void changeArea({ kind: 'refresh' });
 });

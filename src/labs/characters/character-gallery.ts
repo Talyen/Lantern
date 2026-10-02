@@ -54,9 +54,9 @@ if (catalog.version !== 1 || !Array.isArray(catalog.characters)) throw new Error
 for (const name of [...new Set(catalog.characters.map(row => row.family))].sort()) family.add(new Option(name, name));
 const loader = new GLTFLoader();
 const settings = defaults();
-// Neutral comparison lighting, without scene atmosphere or focus blur.
+// Shared Golden lighting; focus blur is disabled for close asset inspection.
 settings.dof = 'off'; settings.bloom = 0; settings.ao = 0.3;
-const studio = resolveLighting({ profile: 'studio' });
+const look = resolveLighting();
 const camera = new THREE.PerspectiveCamera(33, 1, 0.05, 100);
 const stages = await Promise.all([0, 1].map(async index => {
   const mount = el<HTMLDivElement>(`stage-${index}`);
@@ -64,15 +64,14 @@ const stages = await Promise.all([0, 1].map(async index => {
   renderer.setPixelRatio(1);
   renderer.setSize(mount.clientWidth, mount.clientHeight);
   const lighting = new AreaLightingResources(renderer);
-  const scene = new THREE.Scene(); scene.background = new THREE.Color(studio.background); scene.environment = lighting.environmentTexture(studio); scene.environmentIntensity = studio.environment!.intensity;
-  scene.add(new THREE.HemisphereLight(studio.ambient.sky, studio.ambient.ground, studio.ambient.intensity));
-  const sun = new THREE.DirectionalLight(studio.sun.color, studio.sun.intensity); sun.position.fromArray(studio.sun.position); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024); scene.add(sun);
-  const fill = new THREE.DirectionalLight(studio.fill!.color, studio.fill!.intensity); fill.position.set(3, 2, -3); scene.add(fill);
+  const scene = new THREE.Scene(); scene.background = new THREE.Color(look.background); scene.fog = new THREE.Fog(look.background, look.fogNear, look.fogFar); scene.environment = lighting.environmentTexture(look); scene.environmentIntensity = look.environment!.intensity;
+  scene.add(new THREE.HemisphereLight(look.ambient.sky, look.ambient.ground, look.ambient.intensity));
+  const sun = new THREE.DirectionalLight(look.sun.color, look.sun.intensity); sun.position.fromArray(look.sun.position); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024); scene.add(sun);
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new MeshStandardNodeMaterial({ color: '#303b43', roughness: 1 })); floor.rotation.x = -Math.PI / 2; floor.position.y = -0.015; floor.receiveShadow = true; scene.add(floor);
   const laneCamera = camera.clone(); laneCamera.aspect = mount.clientWidth / mount.clientHeight;
   const focus = new THREE.Vector3(0, 0.9, 0);
   applyShadowQuality(scene, settings.shadowQuality);
-  const pipeline = new WebGPUPipeline(renderer, scene, laneCamera, focus); pipeline.configure(settings, studio.saturation ?? .85); await pipeline.ready();
+  const pipeline = new WebGPUPipeline(renderer, scene, laneCamera, focus); pipeline.configure(settings, look.saturation ?? 1, look); await pipeline.ready();
   return { index, mount, renderer, lighting, scene, camera: laneCamera, pipeline, focus, generation: 0, motionGeneration: 0, character: undefined as Character | undefined, model: undefined as THREE.Group | undefined, mixer: undefined as THREE.AnimationMixer | undefined, action: undefined as THREE.AnimationAction | undefined, error: '', clips: new Map<Motion, THREE.AnimationClip>(), release: () => {} };
 }));
 const controls = new OrbitControls(camera, document.querySelector<HTMLElement>('.character-stages')!);

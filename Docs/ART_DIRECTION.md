@@ -41,21 +41,21 @@ Run `node scripts/assets/surfaces/environment.mjs --help` for the local exporter
 
 ## Golden woodland and amber refuge
 
-Homestead and Forest Clearing use the approved A (Balanced honey-gold) direction as one fixed Golden appearance from `woodland-dusk` (Woodland golden hour). Honey-gold sunlight brings out copper, rust and ochre, while restrained cool sky fill and local bounce keep shaded ground readable without flattening the light. Preserve deep tree/prop shadows and material color. Use full material saturation and lighter grading than the earlier muted Golden look; do not compensate with higher player exposure or a global orange filter.
+Homestead and Forest Clearing use the approved A (Balanced honey-gold) direction as one fixed Golden appearance from `src/levels/lighting-preset.ts`. Honey-gold sunlight brings out copper, rust and ochre, while restrained cool sky fill and local bounce keep shaded ground readable without flattening the light. Preserve deep tree/prop shadows and material color. Use full material saturation and lighter grading than the earlier muted Golden look; do not compensate with higher player exposure or a global orange filter.
 
-The sun and local flames both have a strong presence. Sunlight is honey-gold; campfires and lanterns are deeper amber, so their nearby pools remain distinct even during daylight. The earlier readable-dark `woodland-night` appearance remains available for targeted development comparisons.
+The sun and local flames both have a strong presence. Sunlight is honey-gold; campfires and lanterns are deeper amber, so their nearby pools remain distinct even during daylight.
 
 Campfires, torches and lanterns share amber `#ffad55` illumination. Distinguish them through intensity, reach, emitter height and subtle flicker. Campfires have broad pools with world shadows; the personal lantern follows the rig and uses an elevated effective emitter plus short-range warm owner bounce to reach torso and face while turning. Native point-light falloff feathers warmth into the dark surroundings. Keep bright centers controlled rather than whitening every nearby surface with bloom.
 
 Travel, Return Home and restart use the same Golden baseline; there is no random gameplay mood or day/night clock. Area overrides may adjust light direction or coverage without changing this identity. Future enclosed areas should retain strong local warmth and readable shadow contrast while adapting their environment and probe volumes to the space.
 
-Silver and Moonlit/Deep/Misty night remain development comparison looks. They are not normal gameplay variants. Studio remains a neutral asset-inspection profile. Gameplay uses only the approved Golden baseline; inspection and targeted development comparisons remain available.
+This is the sole lighting preset, including the character gallery, animation lab, authoring and blockout areas. Alternative looks, random entry moods and preset selection controls are removed. Small area overrides adapt placement and coverage without defining a second aesthetic.
 
 ## Acceptance and evidence
 
 Use the [lean task workflow](DEVELOPMENT.md#working-alongside-other-agents): one representative preview at normal gameplay scale, plus the changed interaction when relevant. Judge material separation, silhouettes, actor/path readability and the intended composition; fix a visible weakness in the same session. Screenshots are optional and licensed-art captures remain private.
 
-Matched authored/projected views, alternate moods, zoom extremes, night/studio references and resource measurements are optional targeted tools for a specific uncertainty or requested audit. Do not run every gameplay flow or a benchmark to accept an ordinary visual edit. The fast sanity gate protects basic integration; a screenshot or passing build alone does not establish good design.
+Matched authored/projected views, zoom extremes and resource measurements are optional targeted tools for a specific uncertainty or requested audit. Do not run every gameplay flow or a benchmark to accept an ordinary visual edit. The fast sanity gate protects basic integration; a screenshot or passing build alone does not establish good design.
 
 ## Design principles
 
@@ -79,11 +79,11 @@ These examples guide visual decisions; they do not authorize unrelated redesigns
 
 Ground loot should feel physical and readable within the weathered autumn world: small recognizable objects briefly toss, tumble, and settle, with restrained landing and collection sounds. Keep combat as the focal point; avoid persistent loot beams, glow, and constant idle motion.
 
-Use mixed-case Pirata One Gothic names on compact smoky charcoal backplates, with warm ivory lettering, muted gold for gold, and a restrained brass hover edge. Show only the item name. Separate crowded labels into quiet non-overlapping rows, keep text at a stable screen size across zoom, and link hover to the matching object. Labels remain readable over scenery. The [loot design](LOOT.md#labels-and-visual-treatment) owns starting colors, sizes, distances, and interaction rules; this direction is planned rather than implemented. Inspect Gothic readability, object recognition and combat visibility in one normal gameplay preview; alternate moods/zooms are optional if a specific readability concern appears.
+Use mixed-case Pirata One Gothic names on compact smoky charcoal backplates, with warm ivory lettering, muted gold for gold, and a restrained brass hover edge. Show only the item name. Separate crowded labels into quiet non-overlapping rows, keep text at a stable screen size across zoom, and link hover to the matching object. Labels remain readable over scenery. The [loot design](LOOT.md#labels-and-visual-treatment) owns starting colors, sizes, distances, and interaction rules; this direction is planned rather than implemented. Inspect Gothic readability, object recognition and combat visibility in one normal gameplay preview; additional views/zooms are optional if a specific readability concern appears.
 
 ## Optional outlines
 
-Outlines add soft warm-charcoal definition inside the visible silhouettes of characters, equipment and selected solid camp/rock props. Actors receive stronger contours than scenery. Preserve painterly materials and existing light; dark contours never become a bright rim in deep shadow. Terrain, grass, plants, scattered detail and effects remain quiet. Default/reset is On. Width stays close to 1.5–2 output pixels, with continuous coverage and pre-FSR temporal reconstruction. Judge the result in motion as well as matched stills: no distracting edge crawl, flicker, jagged steps, changing thickness or trails at gameplay scale. For normal tuning, inspect the changed contour in motion in one gameplay preview. Alternate woodland/night references and zoom extremes are targeted diagnostics.
+Outlines add soft warm-charcoal definition inside the visible silhouettes of characters, equipment and selected solid camp/rock props. Actors receive stronger contours than scenery. Preserve painterly materials and existing light; dark contours never become a bright rim in deep shadow. Terrain, grass, plants, scattered detail and effects remain quiet. Default/reset is On. Width stays close to 1.5–2 output pixels, with continuous coverage and pre-FSR temporal reconstruction. Judge the result in motion as well as matched stills: no distracting edge crawl, flicker, jagged steps, changing thickness or trails at gameplay scale. For normal tuning, inspect the changed contour in motion in one gameplay preview. Additional viewpoints and zoom extremes are targeted diagnostics.
 
 ## Visual review
 
@@ -111,6 +111,6 @@ The five foliage variants now use weathered copper, burnt orange, ochre and rust
 
 Matched native WebGPU views cover both areas in golden and silver at zoom 0.9, 1.35 and 2, plus studio, authored-surface, moonlit-lantern, Soft and Cinematic comparisons. Movement/dodge, contact-timed hits, victory, chest use, defeat/retry, inspection and travel passed in both dusk moods. Original scenery also loaded with all prepared variants absent. Warmed travel retains texture, geometry and render-target counts; the existing small native uniform-buffer growth remains a separate follow-up. Private captures, integrity checks, resource records and production samples live under `.local/autumn-art/`. Windows and other GPU families remain unverified.
 
-## Shared lighting profiles
+## Shared lighting preset
 
-The fixed Golden `woodland-dusk` baseline is resolved centrally for both playable areas. Keep family-wide tuning in profiles and intentional local differences in area overrides. Silver and Moonlit/Deep/Misty night remain development references; neutral comparisons use `studio`. See [lighting authoring](LIGHTING.md) for recipes, probe preparation, reference views and cache ownership.
+The approved Golden preset is resolved centrally on every route. Keep shared tuning in `src/levels/lighting-preset.ts` and small placement/coverage differences in area overrides. See [lighting authoring](LIGHTING.md) for recipes, probe preparation, reference views and cache ownership.

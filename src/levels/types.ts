@@ -17,7 +17,7 @@ export type Placement = {
 };
 export type Region = { id: string; center: Point; radius: number; role: 'combat' | 'arrival' | 'route' };
 export type LightingGrade = { shadows: string; highlights: string; strength: number };
-export type AreaLighting = { background: string; fogNear: number; fogFar: number; ambient: { sky: string; ground: string; intensity: number }; sun: { color: string; intensity: number; position: [number, number, number]; shadowExtent: number }; environment?: EnvironmentLighting; probes?: ProbeLighting; fill?: { color: string; intensity: number }; saturation?: number; grade?: LightingGrade };
+export type AreaLighting = { background: string; fogNear: number; fogFar: number; ambient: { sky: string; ground: string; intensity: number }; sun: { color: string; intensity: number; position: [number, number, number]; shadowExtent: number }; environment?: EnvironmentLighting; probes?: ProbeLighting; saturation?: number; grade?: LightingGrade };
 export type Chest = { id: string; prop: string; position: Point; scrolls: number };
 export type Campfire = { id: string; name: string; position: Point; arrival: Spawn; heals?: boolean };
 export type AreaDefinition = {
@@ -26,7 +26,7 @@ export type AreaDefinition = {
   layout: EncounterLayout; traversal?: Traversal; seed: number; props: Placement[];
   scatter: { id: string; count: number; radius: [number, number]; primitive: Primitive; harvest?: Placement['harvest']; excludedIds: string[] }[];
   grass?: GrassPatch[];
-  reserved: Region[]; gates: Gate[]; lighting: AreaLighting | LightingRecipe;
+  reserved: Region[]; gates: Gate[]; lighting: LightingRecipe;
   effects: { portals?: PortalDefinition[]; water: { id: string; position: Point; width: number; length: number; flow: number }[]; fires: { id: string; position: Point; asset: AssetRef; height: number; emitterHeight?: number; intensity?: number; role?: LocalLightRole; color?: string; distance?: number; shadow?: boolean }[] };
   views: { id: string; target: [number, number, number] }[];
   inspection?: { position: Point };

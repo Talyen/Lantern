@@ -68,7 +68,6 @@ if (retainedFavorites.length !== favorites.length) {
   try { localStorage.setItem('lantern-animation-favorites', JSON.stringify(favorites)); } catch { /* Preview still works without storage. */ }
 }
 const scene = new THREE.Scene();
-scene.background = new THREE.Color('#182e30');
 const camera = new THREE.PerspectiveCamera(33, 1, 0.1, 50);
 camera.position.set(2.8, 2.6, 5.2);
 // Each comparison lane uses the shared graph, with independent render state/history.
@@ -84,10 +83,12 @@ controls.minDistance = 3.5;
 controls.maxDistance = 14;
 controls.maxPolarAngle = Math.PI * 0.49;
 controls.update();
-const studioLook = resolveLighting({ profile: 'studio' });
-scene.add(new THREE.HemisphereLight(studioLook.ambient.sky, studioLook.ambient.ground, studioLook.ambient.intensity));
-const sun = new THREE.DirectionalLight(studioLook.sun.color, studioLook.sun.intensity);
-sun.position.fromArray(studioLook.sun.position);
+const look = resolveLighting();
+scene.background = new THREE.Color(look.background);
+scene.fog = new THREE.Fog(look.background, look.fogNear, look.fogFar);
+scene.add(new THREE.HemisphereLight(look.ambient.sky, look.ambient.ground, look.ambient.intensity));
+const sun = new THREE.DirectionalLight(look.sun.color, look.sun.intensity);
+sun.position.fromArray(look.sun.position);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
 scene.add(sun);
@@ -110,11 +111,10 @@ const previews = lanes.map((lane, i) => {
   renderer.setPixelRatio(1);
   renderer.setSize(canvas.clientWidth / 2, canvas.clientHeight);
   const lighting = new AreaLightingResources(renderer);
-  const studio = resolveLighting({ profile: 'studio' });
-  laneScene.environment = lighting.environmentTexture(studio); laneScene.environmentIntensity = studio.environment!.intensity;
+  laneScene.environment = lighting.environmentTexture(look); laneScene.environmentIntensity = look.environment!.intensity;
   const pipeline = new WebGPUPipeline(renderer, laneScene, laneCamera, controls.target);
   applyShadowQuality(laneScene, settings.shadowQuality);
-  pipeline.configure(settings, studio.saturation ?? .85);
+  pipeline.configure(settings, look.saturation ?? 1, look);
   return { renderer, camera: laneCamera, pipeline, lighting };
 });
 await Promise.all(previews.map((preview) => preview.pipeline.ready()));

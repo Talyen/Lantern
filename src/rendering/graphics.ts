@@ -81,13 +81,6 @@ export class Graphics {
       ambient.color.set(look.ambient.sky); ambient.groundColor.set(look.ambient.ground); ambient.intensity = look.ambient.intensity;
       sun.color.set(look.sun.color); sun.intensity = look.sun.intensity;
       scene.environmentIntensity = look.environment?.intensity ?? 1; scene.environmentRotation.y = look.environment?.rotation ?? 0;
-      const contribution = import.meta.env.DEV ? new URLSearchParams(location.search).get('lightingOnly') : null;
-      if (contribution && ['key', 'hemisphere', 'environment', 'probes'].includes(contribution)) {
-        if (contribution !== 'key') sun.intensity = 0;
-        if (contribution !== 'hemisphere') ambient.intensity = 0;
-        if (contribution !== 'environment') scene.environmentIntensity = 0;
-        this.areaLighting.setProbeContribution(contribution === 'probes' ? 1 : 0);
-      } else this.areaLighting.setProbeContribution(1);
       // Static caster bounds include offscreen trees/roofs that shade visible ground.
       // Actors and wind fit inside the padded depth envelope below.
       this.casterBounds.makeEmpty(); scene.updateMatrixWorld(true);
@@ -167,6 +160,6 @@ export class Graphics {
     if (now - this.statsAt > 500 && this.intervals.length >= 30 && (!this.gpuPipeline || this.gpuPipeline.diagnostics().ready)) { const sorted = [...this.intervals].sort((a, b) => a - b);
       this.ctx.renderer.domElement.dataset.graphics = JSON.stringify({ settings: this.settings, samples: [...this.intervals], pipeline: this.gpuPipeline?.diagnostics() ?? { method: 'fsr-temporal', sceneWidth: this.ctx.renderer.domElement.width, sceneHeight: this.ctx.renderer.domElement.height, outputWidth: this.ctx.renderer.domElement.width, outputHeight: this.ctx.renderer.domElement.height }, renderer: 'webgpu', median: sorted[Math.floor(sorted.length / 2)], p95: sorted[Math.floor(sorted.length * 0.95)],
         width: this.ctx.renderer.domElement.width, height: this.ctx.renderer.domElement.height, cameraOffset: this.ctx.camera.position.clone().sub(this.ctx.controls.target).toArray(), camera: this.ctx.camera.position.toArray(), zoom: this.ctx.camera.zoom,
-        fireShadow: { enabled: this.ctx.lighting.shadow?.castShadow, map: !!this.ctx.lighting.shadow?.shadow.map, intensity: this.ctx.lighting.shadow?.intensity }, fill: 0, environment: this.ctx.scene.environmentIntensity, lighting: this.areaLighting.diagnostics() }); this.statsAt = now; }
+        fireShadow: { enabled: this.ctx.lighting.shadow?.castShadow, map: !!this.ctx.lighting.shadow?.shadow.map, intensity: this.ctx.lighting.shadow?.intensity }, environment: this.ctx.scene.environmentIntensity, lighting: this.areaLighting.diagnostics() }); this.statsAt = now; }
   }
 }

@@ -641,26 +641,7 @@
       }
     }
   ],
-  "lighting": {
-    "background": "#20282b",
-    "fogNear": 16.6,
-    "fogFar": 42.6,
-    "ambient": {
-      "sky": "#a4b6bf",
-      "ground": "#393c37",
-      "intensity": 0.95
-    },
-    "sun": {
-      "color": "#d3d1bd",
-      "intensity": 1.1,
-      "position": [
-        -7,
-        13,
-        9
-      ],
-      "shadowExtent": 25
-    }
-  },
+  "lighting": {},
   "effects": {
     "water": [],
     "fires": []

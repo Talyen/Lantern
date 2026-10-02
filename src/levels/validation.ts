@@ -1,4 +1,4 @@
-import { resolveAreaLighting, lightingModesFor } from './lighting.ts';
+import { resolveAreaLighting } from './lighting.ts';
 import { resolveLocalLight } from './local-lighting.ts';
 import { inReserved } from './decoration.ts';
 import { boundaryDistance, insideGate } from '../gameplay/area.ts';
@@ -95,17 +95,14 @@ export function validateAreas(input: Record<string, AreaDefinition>): string[] {
         const recipe = resolveLocalLight(fire);
         if (!finite([recipe.intensity, recipe.distance, recipe.emitterHeight]) || recipe.intensity < 0 || recipe.distance <= 0 || !/^#[0-9a-f]{6}$/i.test(recipe.color) || typeof recipe.shadow !== 'boolean') fail('invalid local light');
       }
-      for (const mode of [undefined, ...lightingModesFor(area.lighting)]) {
-      const l = resolveAreaLighting(area, mode);
+      const l = resolveAreaLighting(area);
       if (!finite([l.fogNear, l.fogFar, l.ambient.intensity, l.sun.intensity, l.sun.shadowExtent, ...l.sun.position]) || l.fogNear < 0 || l.fogFar <= l.fogNear || l.sun.shadowExtent <= 0) fail('invalid lighting');
       const color = (value: string) => /^#[0-9a-f]{6}$/i.test(value);
       if (![l.background, l.ambient.sky, l.ambient.ground, l.sun.color].every(color) || l.sun.intensity < 0 || l.ambient.intensity < 0 || l.sun.position.every(n => n === 0)) fail('invalid lighting colors/intensity/direction');
       if (l.environment && (!finite([l.environment.intensity, l.environment.sunIntensity, l.environment.rotation]) || l.environment.intensity < 0 || l.environment.sunIntensity < 0 || ![l.environment.sky, l.environment.horizon, l.environment.ground, l.environment.sunColor].every(color))) fail('invalid environment lighting');
       if (l.grade && (!color(l.grade.shadows) || !color(l.grade.highlights) || !finite([l.grade.strength]) || l.grade.strength < 0 || l.grade.strength > 1)) fail('invalid lighting grade');
-      if (l.fill && (!color(l.fill.color) || !finite([l.fill.intensity]) || l.fill.intensity < 0)) fail('invalid fill lighting');
       if (l.saturation !== undefined && (!finite([l.saturation]) || l.saturation < 0 || l.saturation > 1)) fail('invalid lighting saturation');
       if (l.probes && (!finite(l.probes.position, 3) || !finite(l.probes.size, 3) || l.probes.size.some(n => n <= 0) || !finite(l.probes.resolution, 3) || l.probes.resolution.some(n => !Number.isInteger(n) || n < 2) || l.probes.resolution.reduce((a,b) => a*b, 1) > 4096 || !finite([l.probes.intensity, l.probes.bounces]) || l.probes.intensity < 0 || !Number.isInteger(l.probes.bounces) || l.probes.bounces < 0 || l.probes.bounces > 2)) fail('invalid irradiance probes');
-      }
       for (const asset of assetReferences(area)) if ('url' in asset ? !asset.url.startsWith('/vendor/') || asset.url.includes('..') : !asset.libraryId) fail('asset must reference private vendor art or a catalog ID');
     } catch (error) { fail(`invalid definition: ${error instanceof Error ? error.message : String(error)}`); }
   }

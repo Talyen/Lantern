@@ -16,7 +16,7 @@ export class AreaLightingResources {
   private probes = new LightingCache<ProbeResource>(lightingCacheBudgets.probes.entries, lightingCacheBudgets.probes.bytes, item => { item.grid.dispose(); item.imported?.dispose(); });
   private pending: Promise<unknown> = Promise.resolve();
   private active: PreparedLighting | null = null;
-  private studioLease: { release(): void } | undefined;
+  private previewLease: { release(): void } | undefined;
   private disposed = false;
   private pmrem: PMREMGenerator;
   private stage = 'idle';
@@ -27,7 +27,7 @@ export class AreaLightingResources {
   }
 
   environmentTexture(look: AreaLighting): THREE.Texture | null {
-    const lease = this.environment(look); this.studioLease?.release(); this.studioLease = lease;
+    const lease = this.environment(look); this.previewLease?.release(); this.previewLease = lease;
     return lease?.value.texture ?? null;
   }
   private environment(look: AreaLighting) {
@@ -125,17 +125,14 @@ export class AreaLightingResources {
     this.active?.grid?.removeFromParent(); this.active?.release(); this.active = prepared;
     scene.environment = prepared.environment; if (prepared.grid) scene.add(prepared.grid);
   }
-  setProbeContribution(scale: number): void {
-    if (this.active?.grid) this.active.grid.intensity = (this.active.probes?.intensity ?? 1) * scale;
-  }
   async exportCurrent(): Promise<PreparedProbeBake> {
     const active = this.active;
-    if (!active?.grid || !active.probes) throw new Error('This lighting profile has no irradiance probes.');
+    if (!active?.grid || !active.probes) throw new Error('This scene has no irradiance probes.');
     return active.resource?.prepared ?? exportProbeBake(this.renderer, active.grid, active.probes, active.signature);
   }
   diagnostics() { return { stage: this.stage, skies: this.environments.stats(), probes: this.probes.stats(), signature: this.active?.signature, source: this.active?.resource?.source ?? 'none', preparedFailure: this.preparedFailure }; }
   dispose(): void {
-    this.disposed = true; this.active?.grid?.removeFromParent(); this.active?.release(); this.studioLease?.release();
+    this.disposed = true; this.active?.grid?.removeFromParent(); this.active?.release(); this.previewLease?.release();
     this.probes.dispose(); this.environments.dispose(); this.pmrem.dispose();
   }
 }
