@@ -14,6 +14,9 @@ import { GateTravel } from '../src/gameplay/area';
 import { inReserved, validateAreas } from '../src/levels/validation';
 import { standingTreeAsset, treeDefinitions, traversalWithTrees } from '../src/levels/trees';
 import { Harvesting } from '../src/gameplay/harvesting';
+import type { GatheringTools } from '../src/rendering/gathering-tools';
+import type { GameAudio } from '../src/audio/audio';
+import type { MovementWorld } from '../src/gameplay/movement';
 const areas = { homestead, clearing } as unknown as Record<string, AreaDefinition>;
 // Exercise grass rules without repeatedly generating an authored area's full carpet.
 const grassArea: AreaDefinition = {
@@ -195,9 +198,9 @@ test('gathering retries a selected resource after the previous attack finishes c
   const actor = makeActor(new THREE.Scene(),state.player);
   actor.mixer = new THREE.AnimationMixer(actor.root);
   actor.actions.chop = actor.mixer.clipAction(new THREE.AnimationClip('chop',1,[]));
-  const tools = {show:vi.fn()} as unknown as import('../src/rendering/gathering-tools').GatheringTools;
-  const audio = {play:vi.fn()} as unknown as import('../src/audio/audio').GameAudio;
-  const navigation = {resourceVisible:()=>true} as unknown as import('../src/gameplay/movement').MovementWorld;
+  const tools = {show:vi.fn()} as unknown as GatheringTools;
+  const audio = {play:vi.fn()} as unknown as GameAudio;
+  const navigation = {resourceVisible:()=>true} as unknown as MovementWorld;
   const gathering = new GatheringController(state,adventure,harvesting,actor,tools,audio,{area:()=>grassArea,instance:()=>undefined,navigation:()=>navigation,paused:()=>false});
   state.attackCooldown = .1;
   gathering.select(node); expect(gathering.choppingId).toBeNull();

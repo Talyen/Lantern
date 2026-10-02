@@ -45,7 +45,7 @@ export class AssetLibrary {
   private cached<T>(cache: Map<string, Promise<T>>, key: string, load: () => Promise<T>): Promise<T> {
     let promise = cache.get(key);
     if (!promise) {
-      promise = this.track(Promise.resolve().then(load)).catch(error => {
+      promise = this.track(Promise.resolve().then(load)).catch((error: unknown) => {
         cache.delete(key);
         throw error;
       });
@@ -58,7 +58,7 @@ export class AssetLibrary {
   }
   getCatalog(): Promise<AssetCatalog> {
     if (this.disposed) throw new Error('Asset library disposed');
-    return this.catalog ??= this.fetchJson<AssetCatalog>(this.catalogUrl).then((catalog) => { if (catalog.version !== 1) throw new Error('Unsupported asset catalog version'); return catalog; }).catch(error => { this.catalog = undefined; throw error; });
+    return this.catalog ??= this.fetchJson<AssetCatalog>(this.catalogUrl).then((catalog) => { if (catalog.version !== 1) throw new Error('Unsupported asset catalog version'); return catalog; }).catch((error: unknown) => { this.catalog = undefined; throw error; });
   }
   private async entry(id: string): Promise<LibraryAsset> {
     const asset = (await this.getCatalog()).assets[id];
