@@ -13,7 +13,6 @@ import { Adventure, homeArea, near } from '../gameplay/adventure';
 import { AdventureMenus } from '../ui/adventure';
 import { AdventureVisuals } from '../rendering/adventure';
 import { LootLabels } from '../ui/loot';
-import type { Point } from '../gameplay/area';
 import { MovementWorld } from '../gameplay/movement';
 import { prepareAreaCandidate } from './area-candidate';
 import type { AreaChange } from './area-change';
@@ -608,16 +607,7 @@ async function changeArea(change: AreaChange): Promise<boolean> {
     adventure.enter(encounter, next, spawn ?? arrival?.arrival ?? next.layout.player, recover);
     adventureVisuals = new AdventureVisuals(candidate.root);
     adventure.placeGround = (origin, index) => movementWorld!.lootGround(origin, index, encounter.player);
-    adventure.canCollectGround = drop => {
-      const path = movementWorld!.pickupPath(encounter.player, drop.position, drop.height);
-      if (!path) return false;
-      let length = 0, previous: Point = [encounter.player.x, encounter.player.z];
-      for (const point of [...path, drop.position]) {
-        length += Math.hypot(point[0] - previous[0], point[1] - previous[1]);
-        previous = point;
-      }
-      return length <= 1.65;
-    };
+    adventure.canCollectGround = drop => movementWorld!.pickupReachable(encounter.player, drop.position, drop.height, 1.65);
     if (arrival) travel.arrive(arrival.id);
     inspecting = false;
     resetPresentation();

@@ -144,6 +144,17 @@ export class MovementWorld implements Movement {
     if (!result.success || !end || Math.hypot(end[0] - point[0], end[2] - point[1]) > .65) return null;
     return result.path.map(p => [p.position[0], p.position[2]]);
   }
+  /** Include the final ground segment, even when navigation ends beside the drop. */
+  pickupReachable(from: ActorState, point: [number, number], height: number, reach: number): boolean {
+    const path = this.pickupPath(from, point, height);
+    if (!path) return false;
+    let length = 0, previous: [number, number] = [from.x, from.z];
+    for (const waypoint of [...path, point]) {
+      length += Math.hypot(waypoint[0] - previous[0], waypoint[1] - previous[1]);
+      previous = waypoint;
+    }
+    return length <= reach;
+  }
   /** Reach a free point beside an object; never path into its blocking center. */
   interactionPath(from: ActorState, point: [number,number], height: number, reach: number, obstacleId: string): [number,number][] | null {
     if (!this.navigationReady) return null;
@@ -160,11 +171,9 @@ export class MovementWorld implements Movement {
     return null;
   }
   interactionVisible(from: ActorState, point: [number,number], height: number, obstacleId: string): boolean {
-    const dx=point[0]-from.x,dy=height-from.y,dz=point[1]-from.z,length=Math.hypot(dx,dy,dz);
-    if(length<.001)return true;
-    const ignored=this.obstacles.get(obstacleId)?.collider.handle;
-    return !this.world.castRay(new RAPIER.Ray({x:from.x,y:from.y+.9,z:from.z},{x:dx/length,y:dy/length,z:dz/length}),length,true,undefined,undefined,undefined,undefined,c=>this.solid.has(c.handle) && c.handle!==ignored);
+    return this.visible(from, { x: point[0], y: height, z: point[1] }, .9, this.obstacles.get(obstacleId)?.collider.handle);
   }
+
   lootGround(origin: [number, number], index: number, player: ActorState): { position: [number, number]; height: number } {
     for (let attempt = 0; attempt < 24; attempt++) {
       const angle = index * 2.4 + attempt * 2.4, distance = .65 + (attempt % 4) * .25;
@@ -179,14 +188,20 @@ export class MovementWorld implements Movement {
   }
   /** Resource contacts may intersect their own proxy, but never another blocking prop. */
   resourceVisible(from: ActorState, id: string, point: {x:number;y:number;z:number}): boolean {
-    const dx=point.x-from.x,dy=point.y-from.y,dz=point.z-from.z,length=Math.hypot(dx,dy,dz),own=this.obstacles.get(id)?.collider.handle;
-    if(length<.001)return true;
-    return !this.world.castRay(new RAPIER.Ray({x:from.x,y:from.y+.7,z:from.z},{x:dx/length,y:dy/length,z:dz/length}),length,true,undefined,undefined,undefined,undefined,c=>this.solid.has(c.handle) && c.handle!==own);
+    return this.visible(from, point, .7, this.obstacles.get(id)?.collider.handle);
   }
   lineOfSight(from: ActorState, to: ActorState): boolean {
+    return this.visible(from, to, .9);
+  }
+  private visible(from: ActorState, to: { x: number; y: number; z: number }, eyeHeight: number, ignored?: number): boolean {
     const dx = to.x - from.x, dy = to.y - from.y, dz = to.z - from.z, length = Math.hypot(dx, dy, dz);
     if (length < .001) return true;
-    return !this.world.castRay(new RAPIER.Ray({ x: from.x, y: from.y + .9, z: from.z }, { x: dx / length, y: dy / length, z: dz / length }), length, true, undefined, undefined, undefined, undefined, this.isSolid);
+    const ray = new RAPIER.Ray(
+      { x: from.x, y: from.y + eyeHeight, z: from.z },
+      { x: dx / length, y: dy / length, z: dz / length },
+    );
+    const filter = ignored === undefined ? this.isSolid : (collider: RAPIER.Collider) => this.isSolid(collider) && collider.handle !== ignored;
+    return !this.world.castRay(ray, length, true, undefined, undefined, undefined, undefined, filter);
   }
   /** Earliest solid intersection along the exact projectile segment, expressed as 0–1 travel. */
   segmentHit(from: { x: number; y: number; z: number }, to: { x: number; y: number; z: number }): number | null {

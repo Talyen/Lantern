@@ -133,6 +133,12 @@ test('felling removes trunk collision and enemy detours, and regrowth restores b
   const state = createEncounter('playing', { boundary, player: { position: [-2,0], yaw: 0 }, enemy: { position: [2,0], yaw: 0 } });
   try {
     expect(world.lineOfSight(state.player, state.enemies.enemy)).toBe(false);
+    expect(world.resourceVisible(state.player, 'tree', { x: 0, y: 0, z: 0 })).toBe(true);
+    expect(world.resourceVisible(state.player, 'other', { x: 0, y: 0, z: 0 })).toBe(false);
+    expect(world.interactionVisible(state.player, [0, 0], 0, 'tree')).toBe(true);
+    expect(world.interactionVisible(state.player, [0, 0], 0, 'other')).toBe(false);
+    expect(world.pickupReachable(state.player, [-1, 0], 0, 1.65)).toBe(true);
+    expect(world.pickupReachable(state.player, [2, 0], 0, 1.65)).toBe(false);
     expect(world.segmentHit({ x: -2, y: .9, z: 0 }, { x: 2, y: .9, z: 0 })).toBeCloseTo(.375);
     expect(world.segmentHit({ x: -2, y: 3, z: 0 }, { x: 2, y: 3, z: 0 })).toBeNull();
     expect(Math.abs(world.direction(state.player,state.enemies.enemy,.05).z)).toBeGreaterThan(.3);
@@ -164,6 +170,7 @@ test('felling removes trunk collision and enemy detours, and regrowth restores b
     expect(world.lineOfSight(state.player,state.enemies.enemy)).toBe(false);
     const worker = WorkerStub.instance;
     expect(world.navigationReady).toBe(false);
+    expect(world.pickupReachable(state.player, [-1, 0], 0, 1.65)).toBe(false);
     await Promise.resolve();
     expect(worker.postMessage).toHaveBeenCalledTimes(1);
     const request = worker.postMessage.mock.calls[0][0];
