@@ -3,7 +3,7 @@ import { MeshBasicNodeMaterial, MeshStandardNodeMaterial } from 'three/webgpu';
 import { Portal } from './portal';
 import type { Point } from '../gameplay/area';
 import { dropLandingSeconds, type GroundDrop } from '../gameplay/adventure';
-import { equipmentCatalog, itemDefinitions, type HandItem, type ItemId } from '../gameplay/equipment';
+import { equipmentCatalog, itemDefinitions, type HandItem } from '../gameplay/equipment';
 import { assetLibrary, type AssetInstance } from '../assets/asset-library';
 import { disposeSceneInstances } from '../assets/resource-ownership';
 
@@ -65,7 +65,7 @@ export class AdventureVisuals {
           const stopper=new THREE.Mesh(this.box,this.bark);stopper.scale.set(.08,.05,.08);stopper.position.y=.11;model.add(stopper);
           void this.loadPotion(drop,visual).catch((error: unknown) => console.warn('Unable to prepare dropped potion.', error));
         } else {
-          const definition = equipmentCatalog[drop.item as ItemId];
+          const definition = equipmentCatalog[drop.item];
           if (!definition.weapon && definition.slot !== 'off') this.wearable(definition.slot,visual.model,drop.item === 'weathered-mail');
           else {
             const family = definition.weapon?.family ?? 'shield';
