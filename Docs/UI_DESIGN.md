@@ -87,6 +87,10 @@ HUD design should protect the central combat space and make urgent state legible
 
 ## Shared component contracts
 
+### Skills node direction
+
+The owner selected an Inventory-sized Skills sheet with larger Basic/Skill/Ultimate ability nodes and smaller passive-bonus nodes for every track. Each node has its own icon and hover/focus information; locked art retains identity beneath a small badge. Passives describe bonuses and are never action-bar assignments. Assignment uses the actual bottom gameplay bar outside the sheet: drag an available action to it, or activate an empty slot to open an available-ability picker. No in-panel Assigned Abilities section. [Upward-tree concepts](ui/concepts/skills-nodes/README.md) compare bottom roots and named navigation; this is design direction, not implemented runtime.
+
 Build these as small DOM/CSS patterns in the existing `src/ui/` boundaries, driven by current gameplay definitions. Introduce a shared primitive only when there is a concrete consumer; use Inventory and Options to prove reuse. A framework, Storybook installation or new UI dependency is not a prerequisite.
 
 | Family | Contract |

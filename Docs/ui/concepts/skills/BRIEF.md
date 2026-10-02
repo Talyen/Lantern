@@ -1,5 +1,7 @@
 # Skills screen brief
 
+**Superseded first round:** use [the active node redesign brief](../skills-nodes/BRIEF.md). The roster below remains selected; its internal assignment strip and earlier layout are historical.
+
 ## Scope and status
 
 Concept exploration, requested October 2, 2026. Player goal: understand skill growth and the next useful benefit, then assign available combat abilities. Intended visible effect: a crafted charcoal sheet whose selected-skill progress leads, with restrained brass and original readable icons consistent with Inventory/Stash.

@@ -66,9 +66,15 @@ Touch/mobile, console certification, a new UI framework, general character level
 
 ## Skills design checkpoint — October 2, 2026
 
-Owner selected [28 named tracks](concepts/skills/BRIEF.md#roster), with progress and the next useful unlock as the main purpose. Adopted organization: grouped list beside selected-skill detail; inspectable planned tracks with truthful unavailable-progression state; independent future weapon/magic practice; named ability icons with hover/focus properties; select ability then destination among six shared slots, with drag and keyboard equivalents.
+Owner selected [28 named tracks](concepts/skills-nodes/BRIEF.md#roster), with progress and the next useful unlock as the main purpose, inspectable planned tracks and independent future weapon/magic practice. The first round used grouped list/detail and an internal assignment strip; the later node redesign below supersedes that interaction/layout checkpoint.
 
-The owner requested original ImageGen mockups and variants. [Layout and interaction studies](concepts/skills/README.md) record the results, exact prompts and critiques. A/B/C composition remains open; generated numbers/artifacts are not balance or behavior decisions. This concept task changes no runtime, saves, XP sources or abilities.
+The owner requested original ImageGen mockups and variants. [First-round studies](concepts/skills/README.md) remain historical provenance; use the active redesign below for current direction. Generated numbers/artifacts are not balance or behavior decisions; concept tasks change no runtime, saves, XP sources or abilities.
+
+## Skills node redesign — October 2, 2026
+
+Owner selected an Inventory-sized Skills sheet, with larger ability nodes (Basics, Skills, Ultimates) and smaller passive-bonus nodes for every skill, a unique icon for each node, and hover information. The owner removed Assigned Abilities: drag available ability nodes to the actual bottom gameplay action bar, or click an empty slot to choose an available action. Passives are bonuses, not bar assignments. Keyboard focus/activation provides equivalent information and picker access.
+
+The owner proposed roots along the bottom with linear trees growing upward. [The active gallery](concepts/skills-nodes/README.md) compares focused and parallel bottom-root trees with grouped-list navigation. Final layout/category/root order remains open. Representative passive content is illustrative; no new rewards, progression amounts or unlock prerequisites are adopted. The action bar stays outside the sheet; no duplicate in-panel strip.
 
 ## Decision entry format
 

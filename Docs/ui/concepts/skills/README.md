@@ -1,5 +1,7 @@
 # Skills — layout and interaction concepts
 
+**Superseded first round:** the owner removed in-panel assignment and requested ability/passive nodes with an Inventory-sized sheet. Use [the active upward-node gallery](../skills-nodes/README.md); images below remain historical provenance, not current interaction requirements.
+
 October 2, 2026. Original built-in ImageGen studies requested by the owner. **Concepts only: no gameplay, saves, experience sources or runtime UI changed.** See the [brief](BRIEF.md), [design system](../../../UI_DESIGN.md) and [decisions](../../DESIGN_DECISIONS.md).
 
 ## Agreed design foundation

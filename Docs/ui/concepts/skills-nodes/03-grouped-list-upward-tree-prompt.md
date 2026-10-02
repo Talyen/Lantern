@@ -1,0 +1,31 @@
+# C — Grouped list, upward tree — exact ImageGen prompt
+
+- Date: October 2, 2026 (America/Los_Angeles).
+- Tool: built-in image_gen.imagegen.
+- Purpose: Skills node/layout concept, not runtime artwork or verified interaction.
+- Output: 03-grouped-list-upward-tree.png
+- SHA-256: 8472026d7cd0793c9ba7c6a28abfe793c682b9a310ac659b857874653ae064a3
+- Inputs: None; original text-only generation.
+- Licensed art: no models, textures, renders or gameplay captures submitted.
+
+## Prompt
+
+```text
+Use case: ui-mockup. Asset type: original Lantern Skills UI second-round full-screen design, not production artwork.
+Create a beautifully finished straight-on desktop game UI concept in landscape 16:10, nominal 1280 x 800 viewport. Original TEXT-ONLY generation, no image inputs or licensed art. Render a complete screen: near-full-width Skills sheet occupying MOST of the screen, approximately x16..1264 and y32..680; leave a narrow band below for the actual gameplay action bar at bottom-center y710..780. The sheet is as substantial as a combined Inventory/Equipment menu. Dark abstract warm-brown background only, no character or detailed scene.
+Material identity: restrained crafted fantasy; near-opaque warm charcoal #171411, dark iron, thin worn brass #C7A36A at structural seams, smoky inset surfaces, ivory #F0E6D2 readable text. Gothic only short headings, clean mixed-case sans-serif body and numeric text. No busy gold ornament, neon light, parchment, white gutters, blue resource bar, colorful rarity system, duplicate inspectors or explanatory/status paragraphs.
+One centered title "Skills" and X close upper right. Skill navigation is specified separately for each variant below. Skill identity, level and XP header leads selected-detail region; use "Sword", "Level 3", "80 / 300 XP". Values illustrate a future state only. Other rows Level 1 except Axe Level 2, Bow Level 2; all illustrative. Thin brass XP progress, no character level. Groups and exact 28 tracks retained:
+Combat: Sword, Axe, Mace, Dagger, Spear, Greatsword, Greathammer, Bow, Crossbow, Staff, Wand, Shield, Defense, Evasion.
+Magic: Burn, Freeze, Nature, Healing.
+Gathering: Woodcutting, Mining, Herbalism.
+Crafting: Smithing, Leatherworking, Tailoring, Woodworking, Alchemy, Cooking, Jewelcrafting.
+All four skill groups remain reachable. Do not compress all 28 names simultaneously.
+Crucial NEW node vocabulary for EVERY skill: bigger ability nodes (Basic, Skill, Ultimate) and SMALLER passive bonus nodes. Ability nodes: approximately 64px square painted icons, modest iron/brass frame. Passive nodes: approximately 28px CIRCULAR painted icons within minimum40px hit area, NOT plain colored dots. Every individual node has a UNIQUE recognizably different icon, including locked future nodes whose actual icon stays visible/desaturated with a tiny lock badge. Never replace all locked icons with same padlock. No permanent detail inspector; hover/focus reveals a compact tooltip.
+Constant Sword example content: 3 large ability nodes "Sword Basic" (distinct straight sword icon, available), "Sweep" (sword sweeping arc icon, available), "Ultimate" (distinct downward sword/sunburst icon, planned locked). Six SMALL passive nodes "Sword Damage" (sword with upward chevron), "Attack Recovery" (hourglass), "Reach" (blade plus ruler), "Mana Efficiency" (droplet with small notch), "Armor" (breastplate), "Maximum Mana" (faceted crystal). These passive identities are only representative placeholders, not adopted rewards/tuning. First two passive nodes look unlocked, remaining four locked, all have individual art. Progression connectors indicate order visually, NOT spending points, optional prerequisites or a branching allocation game. No Learn, Buy, Upgrade, Spend, skill point currency, general level or equipment proficiency gates.
+Show ONE hovered small passive Sword Damage node with an anchored compact smoky tooltip exact content "Sword Damage", "Passive", "+5% sword damage". This is illustrative tuning only. Use a pale focus/hover outline visibly separate from learned and locked state. Names may sit under big ability nodes; small passive information lives in tooltip, no text-heavy card rows.
+ONE AND ONLY ONE ACTION BAR: the real gameplay bar BELOW AND OUTSIDE Skills at bottom-center, six slots Q E R G LMB RMB; current icons Sweep, Piercing Shot, empty, empty, Sword Basic, Shield Basic. Names can be tooltip-only, binding badges readable. It must be visibly reachable while menu is open, no dialog overlay obscures it. Absolutely NO "Assigned Abilities", "Ability Assignments", "Loadout", six-slot strip, assignment shelf or duplicate action bar INSIDE the Skills sheet. Ability nodes can drag to bottom bar. Clicking an empty bottom slot opens a contextual ability picker; do not show picker in this main-state concept.
+No potion/control panels inside the skill tree. No generic Available pills or permanently selected-ability inspector. Do not add lore or mechanics to fill composition. Keep node identity readable, use space confidently, skills sheet near full screen.
+Variable being explored: retain the familiar left grouped scrollable SKILL LIST (about24% width), but give the selected detail a strictly upward linear tree rather than ability cards. Combat expanded shows readable Sword, Axe, Mace, Dagger, Spear, Greatsword, Greathammer, Bow, Crossbow, Staff, Wand, Shield, Defense, Evasion with scroll as necessary; Magic/Gathering/Crafting headings accessible below.
+The large right canvas has selected Sword header and XP at top. One Sword skill ROOT icon sits centered at canvas bottom, its name visible. A fine straight VERTICAL line rises from root through Sword Basic low, Sweep middle, locked Ultimate high. Six small distinct pictorial passive circles flank this spine in pairs. Hover Sword Damage shows one concise tooltip. This compares fast named navigation with the bottom-root proposal while retaining upward progression.
+No row of assignment slots in right content; actual six-slot gameplay action bar remains outside below the menu. Large Inventory-sized panel, quiet purposeful surfaces, generous readable vertical spacing, every passive has its own icon, no generic dot nodes or default lock-only art.
+```
