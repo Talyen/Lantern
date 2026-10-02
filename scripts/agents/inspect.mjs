@@ -2,6 +2,7 @@ import { readFile, readdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { cli, parseArgs, root, UsageError } from '../lib/cli.mjs';
+import { integer } from './read-text.mjs';
 
 function parts(path) {
   const keys = path.split('.');
@@ -22,9 +23,8 @@ function entries(value, section) {
 }
 
 export function inspectRecords(data, source, args = {}) {
-  const limit = Number(args['--limit'] ?? 10), offset = Number(args['--offset'] ?? 0);
-  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 50) throw new UsageError('Limit must be an integer between 1 and 50.');
-  if (!Number.isSafeInteger(offset) || offset < 0) throw new UsageError('Offset must be a nonnegative integer.');
+  const limit = integer(args['--limit'], 10, 1, 50, 'Limit');
+  const offset = integer(args['--offset'], 0, 0, Number.MAX_SAFE_INTEGER, 'Offset');
   const section = args['--section'];
   if (!section) {
     if (['--query', '--id', '--fields', '--limit', '--offset'].some(key => key in args)) throw new UsageError('Choose --section before filtering or paging records.');
@@ -39,6 +39,7 @@ export function inspectRecords(data, source, args = {}) {
   const query = args['--query']?.toLowerCase();
   const matches = entries(value, section).filter(item =>
     (!args['--id'] || item.id === args['--id']) && (!query || `${item.id} ${JSON.stringify(item.value)}`.toLowerCase().includes(query)));
+  if (offset > matches.length) throw new UsageError(`Offset exceeds ${matches.length} records.`);
   const items = [];
   const page = () => ({ source, section, total: matches.length, offset, shown: items.length,
     remaining: Math.max(0, matches.length - offset - items.length),

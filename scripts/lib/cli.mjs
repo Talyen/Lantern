@@ -8,9 +8,9 @@ export function parseArgs(argv, options = {}) {
   const values = {};
   for (let i = 0; i < argv.length; i++) {
     const [name, ...parts] = argv[i].split('=');
-    const kind = name === '--help' ? 'boolean' : options[name];
+    const kind = name === '--help' ? 'boolean' : Object.hasOwn(options, name) ? options[name] : undefined;
     if (!kind) throw new UsageError(`Unknown option: ${name}`);
-    if (name in values) throw new UsageError(`Repeated option: ${name}`);
+    if (Object.hasOwn(values, name)) throw new UsageError(`Repeated option: ${name}`);
     if (kind === 'boolean') {
       if (parts.length) throw new UsageError(`${name} takes no value`);
       values[name] = true;

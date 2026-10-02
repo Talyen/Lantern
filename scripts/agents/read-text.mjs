@@ -26,19 +26,36 @@ export function linePage(lines, offset, maxChars, limit = 200) {
     oversizedLine: !selected.length && offset < lines.length && lines[offset].length + 1 > maxChars,
     text: selected.join('\n') };
 }
-export function recordPage(records, args = {}) {
-  const offset = integer(args['--offset'], 0, 0, Number.MAX_SAFE_INTEGER, 'Offset');
-  const limit = integer(args['--limit'], 20, 1, 50, 'Limit');
-  const maxChars = budget(args);
-  if (offset > records.length) throw new UsageError(`Offset exceeds ${records.length} records.`);
+/** Count every record while retaining only one bounded page, including streamed logs. */
+export function recordWindow({ offset = 0, limit = 20, maxChars = 12000,
+  oversizedMessage = 'A record exceeds the content budget; increase --max-chars.' } = {}) {
   const items = [];
-  let characters = 0;
-  for (const record of records.slice(offset, offset + limit)) {
-    const size = JSON.stringify(record).length + 1;
-    if (characters + size > maxChars) break;
-    items.push(record); characters += size;
-  }
-  if (!items.length && offset < records.length) throw new UsageError('A record exceeds the content budget; increase --max-chars.');
-  return { total: records.length, offset, shown: items.length, omitted: records.length - offset - items.length,
-    nextOffset: offset + items.length < records.length ? offset + items.length : null, items };
+  let total = 0, characters = 0, blocked = false;
+  return {
+    add(record) {
+      const index = total++;
+      if (index < offset || items.length >= limit || blocked) return;
+      const size = JSON.stringify(record).length + 1;
+      if (characters + size > maxChars) { blocked = true; return; }
+      items.push(record);
+      characters += size;
+    },
+    page() {
+      if (offset > total) throw new UsageError(`Offset exceeds ${total} records.`);
+      if (blocked && !items.length) throw new UsageError(oversizedMessage);
+      return { total, offset, shown: items.length, omitted: total - offset - items.length,
+        nextOffset: offset + items.length < total ? offset + items.length : null, items };
+    },
+    get total() { return total; },
+  };
+}
+
+export function recordPage(records, args = {}) {
+  const page = recordWindow({
+    offset: integer(args['--offset'], 0, 0, Number.MAX_SAFE_INTEGER, 'Offset'),
+    limit: integer(args['--limit'], 20, 1, 50, 'Limit'),
+    maxChars: budget(args),
+  });
+  for (const record of records) page.add(record);
+  return page.page();
 }

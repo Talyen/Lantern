@@ -4,7 +4,7 @@ import { createInterface } from 'node:readline';
 import { resolve } from 'node:path';
 import { stripVTControlCharacters } from 'node:util';
 import { cli, parseArgs, UsageError } from '../lib/cli.mjs';
-import { budget, integer, recordPage } from './read-text.mjs';
+import { budget, integer, recordPage, recordWindow } from './read-text.mjs';
 
 await cli(async () => {
   const args = parseArgs(process.argv.slice(2), { '--evidence': 'value', '--stage': 'value', '--offset': 'value', '--limit': 'value', '--max-chars': 'value' });
@@ -28,26 +28,9 @@ await cli(async () => {
     console.log(JSON.stringify({ evidence: directory, stage, message: 'No stage log was recorded; inspect the summary error above.' }, null, 2)); return;
   }
   // Count the full stream but retain only the requested window, even for large logs.
-  function window() {
-    const items = [];
-    let total = 0, characters = 0, blocked = false;
-    return {
-      add(record) {
-        const index = total++;
-        if (index < offset || items.length >= limit || blocked) return;
-        const size = JSON.stringify(record).length + 1;
-        if (characters + size > maxChars) { blocked = true; return; }
-        items.push(record); characters += size;
-      },
-      page() {
-        if (offset > total) throw new UsageError(`Offset exceeds ${total} records.`);
-        if (blocked && !items.length) throw new UsageError('A diagnostic record exceeds the content budget; increase --max-chars or inspect the reported stage log.');
-        return { total, offset, shown: items.length, omitted: total - offset - items.length, nextOffset: offset + items.length < total ? offset + items.length : null, items };
-      },
-      get total() { return total; },
-    };
-  }
-  const matches = window(), fallback = window();
+  const options = { offset, limit, maxChars,
+    oversizedMessage: 'A diagnostic record exceeds the content budget; increase --max-chars or inspect the reported stage log.' };
+  const matches = recordWindow(options), fallback = recordWindow(options);
   let lineNumber = 0, previous = '', location = '';
   const input = createReadStream(log, { encoding: 'utf8' });
   // Explicit error listener keeps failed stream opens from becoming unhandled events.
