@@ -6,7 +6,7 @@ import stylelint from 'stylelint';
 import { Workspace, PositionEncoding } from '@astral-sh/ruff-wasm-nodejs';
 import { requireDisableReason } from '../eslint/rules.mjs';
 import { cli, isMain, parseArgs, root } from './lib/cli.mjs';
-import { git } from './agents/state.mjs';
+import { repositoryFiles } from './agents/state.mjs';
 
 // This pass deliberately ignores inline configurations: a directive cannot disable
 // the check that validates its own explanation and explicit rule names.
@@ -46,7 +46,7 @@ async function python() {
   try {
     // Git excludes private sources, worktrees and build output without a second
     // filesystem-wide exclusion policy. No Python runtime or Blender is started.
-    const files = [...new Set((await git(['ls-files', '--cached', '--others', '--exclude-standard', '-z'])).split('\0'))].filter(path => path.endsWith('.py') && !path.includes('.generated.'));
+    const files = (await repositoryFiles()).filter(path => path.endsWith('.py') && !path.includes('.generated.'));
     for (const path of files) {
       let source;
       try { source = await readFile(resolve(root, path), 'utf8'); }

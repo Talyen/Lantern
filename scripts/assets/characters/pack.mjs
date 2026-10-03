@@ -2,16 +2,14 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { root } from '../../lib/cli.mjs';
+import { parseGlb, encodeGlb } from '../../lib/glb.mjs';
 export function packCharacter(characterUrl, catalogPath, output) {
   function readGlb(path) {
-    const data = readFileSync(path);
-    if (data.readUInt32LE(0) !== 0x46546c67 || data.readUInt32LE(4) !== 2 || data.readUInt32LE(8) !== data.length) throw new Error(`Invalid GLB: ${path}`);
-    const length = data.readUInt32LE(12);
-    if (data.readUInt32LE(16) !== 0x4e4f534a) throw new Error(`Missing GLB JSON: ${path}`);
-    const json = JSON.parse(data.subarray(20, 20 + length).toString());
-    const binaryStart = 20 + length;
-    if (data.readUInt32LE(binaryStart + 4) !== 0x004e4942 || json.buffers.length !== 1 || json.buffers[0].uri) throw new Error(`Expected one embedded buffer: ${path}`);
-    const bin = data.subarray(binaryStart + 8, binaryStart + 8 + json.buffers[0].byteLength);
+    const { json, tail } = parseGlb(readFileSync(path), path);
+    if (tail.length < 8 || tail.readUInt32LE(4) !== 0x004e4942 || tail.readUInt32LE(0) !== tail.length - 8
+      || json.buffers?.length !== 1 || json.buffers[0].uri || json.buffers[0].byteLength > tail.length - 8)
+      throw new Error(`Expected one embedded buffer: ${path}`);
+    const bin = tail.subarray(8, 8 + json.buffers[0].byteLength);
     return { json, bin };
   }
   const catalog = JSON.parse(readFileSync(catalogPath, 'utf8'));
@@ -53,11 +51,8 @@ export function packCharacter(characterUrl, catalogPath, output) {
   }
   character.buffers = [{ byteLength }];
   character.asset.generator = 'Lantern: compatible retained Mixamo clips';
-  const jsonBytes = Buffer.from(JSON.stringify(character));
-  const jsonChunk = Buffer.concat([jsonBytes, Buffer.alloc((4 - jsonBytes.length % 4) % 4, 0x20)]);
   const binary = Buffer.concat([...buffers, Buffer.alloc((4 - byteLength % 4) % 4)]);
-  const header = Buffer.alloc(20); header.writeUInt32LE(0x46546c67, 0); header.writeUInt32LE(2, 4); header.writeUInt32LE(28 + jsonChunk.length + binary.length, 8); header.writeUInt32LE(jsonChunk.length, 12); header.writeUInt32LE(0x4e4f534a, 16);
   const binHeader = Buffer.alloc(8); binHeader.writeUInt32LE(binary.length, 0); binHeader.writeUInt32LE(0x004e4942, 4);
   mkdirSync(dirname(output), { recursive: true });
-  writeFileSync(output, Buffer.concat([header, jsonChunk, binHeader, binary]));
+  writeFileSync(output, encodeGlb(character, Buffer.concat([binHeader, binary])));
 }

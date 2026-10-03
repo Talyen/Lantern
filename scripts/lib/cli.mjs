@@ -26,6 +26,12 @@ export function parseArgs(argv, options = {}) {
   }
   return values;
 }
+/** Validate the command before parsing its own options, including --help. */
+export function parseCommand(argv, commands) {
+  const [command, ...rest] = argv;
+  if (!Object.hasOwn(commands, command)) throw new UsageError(`Unknown command: ${command ?? '(missing)'}`);
+  return { command, args: parseArgs(rest, commands[command]) };
+}
 export async function cli(main) {
   try { await main(); } catch (error) {
     console.error(error instanceof Error ? error.message : error);

@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve, relative, dirname, extname } from 'node:path';
 import ts from 'typescript';
 import { cli, isMain, parseArgs, root, UsageError } from '../lib/cli.mjs';
-import { git } from './state.mjs';
+import { repositoryFiles } from './state.mjs';
 import { budget, integer, linePage, recordPage, repositoryPath } from './read-text.mjs';
 
 const supported = /\.(?:[cm]?js|tsx?)$/;
@@ -31,7 +31,7 @@ export function sourceSymbols(text, file) {
 
 // Direct literal imports/re-exports/require only; no transitive graph or alias guessing.
 export async function directConsumers(owners) {
-  const known = new Set((await git(['ls-files', '--cached', '--others', '--exclude-standard', '-z'])).split('\0').filter(Boolean));
+  const known = new Set(await repositoryFiles());
   const files = [...known].filter(file => supported.test(file) && !/^(?:\.local|node_modules|public\/vendor|dist)\//.test(file)).sort();
   const wanted = new Set(owners), found = [];
   for (const file of files) {

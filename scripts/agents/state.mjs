@@ -10,6 +10,9 @@ export async function git(args, cwd = root) {
   try { return (await execute('git', args, { cwd, maxBuffer: 16 * 1024 * 1024 })).stdout.trimEnd(); }
   catch (error) { throw new Error(error.stderr?.trim() || error.message, { cause: error }); }
 }
+export async function repositoryFiles(cwd = root) {
+  return [...new Set((await git(['ls-files', '--cached', '--others', '--exclude-standard', '-z'], cwd)).split('\0').filter(Boolean))].sort();
+}
 export async function context(cwd = root) {
   const common = resolve(cwd, await git(['rev-parse', '--git-common-dir'], cwd));
   const entries = (await git(['worktree', 'list', '--porcelain'], cwd)).split('\n\n');

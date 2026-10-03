@@ -1,6 +1,4 @@
-import { createReadStream } from 'node:fs';
-import { access, readFile } from 'node:fs/promises';
-import { createInterface } from 'node:readline';
+import { access, readFile, open } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { stripVTControlCharacters } from 'node:util';
 import { cli, parseArgs, UsageError } from '../lib/cli.mjs';
@@ -32,11 +30,9 @@ await cli(async () => {
     oversizedMessage: 'A diagnostic record exceeds the content budget; increase --max-chars or inspect the reported stage log.' };
   const matches = recordWindow(options), fallback = recordWindow(options);
   let lineNumber = 0, previous = '', location = '';
-  const input = createReadStream(log, { encoding: 'utf8' });
-  // Explicit error listener keeps failed stream opens from becoming unhandled events.
-  const reader = createInterface({ input, crlfDelay: Infinity });
-  const streamError = new Promise((_, reject) => input.once('error', reject));
-  await Promise.race([streamError, (async () => {
+  const input = await open(log);
+  try {
+    const reader = input.readLines();
     for await (const raw of reader) {
       lineNumber++;
       const text = stripVTControlCharacters(raw);
@@ -47,6 +43,6 @@ await cli(async () => {
       if (/\berror\b|\bfailed\b|missing|invalid|unsupported|unexpected|^\s*\d+:\d+/i.test(text)) matches.add({ ...record, ...(previous ? { preceding: previous } : {}) });
       previous = text;
     }
-  })()]).finally(() => { reader.close(); input.destroy(); });
+  } finally { await input.close(); }
   console.log(JSON.stringify({ evidence: directory, stage, log, mode: matches.total ? 'diagnostics' : 'nonempty-lines', ...(matches.total ? matches : fallback).page() }, null, 2));
 });

@@ -2,7 +2,7 @@ import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve, join } from 'node:path';
 import { create, list, extract } from 'tar';
-import { cli, parseArgs, root, run, UsageError } from '../lib/cli.mjs';
+import { cli, isMain, parseCommand, root, run, UsageError } from '../lib/cli.mjs';
 import { git } from '../agents/state.mjs';
 import { withResource } from '../agents/resources.mjs';
 import { privateTree } from '../agents/copy.mjs';
@@ -20,12 +20,14 @@ export async function unpack(archive, destination) {
   await extract({ file: archive, cwd: destination, strict: true });
   return destination;
 }
-const command = process.argv[2];
-await cli(async () => {
-  const args = parseArgs(process.argv.slice(3), { '--archive': 'value', '--revision': 'value', '--tag': 'value' });
+if (isMain(import.meta.url)) await cli(async () => {
+  const commands = {
+    prepare: {}, verify: { '--archive': 'value', '--revision': 'value' }, fetch: { '--tag': 'value', '--revision': 'value' },
+    publish: { '--archive': 'value', '--tag': 'value' }, dispatch: { '--tag': 'value' },
+  };
+  const { command, args } = parseCommand(process.argv.slice(2), commands);
   if (args['--help']) { console.log('Usage: node scripts/desktop/candidate.mjs prepare | verify --archive FILE --revision SHA | fetch --tag TAG --revision SHA | publish --archive FILE --tag TAG | dispatch --tag TAG'); return; }
-  const options = { prepare: [], verify: ['--archive', '--revision'], fetch: ['--tag', '--revision'], publish: ['--archive', '--tag'], dispatch: ['--tag'] };
-  if (!(command in options) || Object.keys(args).some(key => !options[command].includes(key)) || options[command].some(key => !args[key])) throw new UsageError('Invalid candidate command/options; use --help.');
+  if (Object.keys(commands[command]).some(key => !args[key])) throw new UsageError('Missing candidate options; use --help.');
   const revision = args['--revision'];
   if (revision && !/^[a-f0-9]{40}$/.test(revision)) throw new UsageError('Revision must be a full commit SHA.');
   const tag = args['--tag'];

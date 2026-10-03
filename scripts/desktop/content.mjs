@@ -1,16 +1,10 @@
-import { createHash } from 'node:crypto';
-import { createReadStream } from 'node:fs';
 import { cp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { inventory, rejectArchives } from '../lib/assets.mjs';
+import { inventory, rejectArchives, safeRelativePath, hashFile } from '../lib/assets.mjs';
 import { root } from '../lib/cli.mjs';
 import { git } from '../agents/state.mjs';
 
-export async function hashFile(file) {
-  const hash = createHash('sha256');
-  for await (const chunk of createReadStream(file)) hash.update(chunk);
-  return hash.digest('hex');
-}
+export { hashFile } from '../lib/assets.mjs';
 export async function identity() {
   const pkg = JSON.parse(await readFile(resolve(root, 'package.json'), 'utf8'));
   return { version: pkg.version, revision: await git(['rev-parse', 'HEAD']), dirty: !!await git(['status', '--porcelain']) };
@@ -40,7 +34,7 @@ export async function writeBuildMetadata() {
   return build;
 }
 export function safeContentPath(path) {
-  return typeof path === 'string' && path.startsWith('dist/') && !path.includes('\\') && !path.includes(':') && !path.split('/').some(part => !part || part === '.' || part === '..') && !path.split('/').some(part => part.startsWith('.'));
+  return safeRelativePath(path) && path.startsWith('dist/') && path.split('/').every(part => !part.startsWith('.'));
 }
 export async function createManifest(base, build) {
   const files = await inventory(resolve(base, 'dist'));

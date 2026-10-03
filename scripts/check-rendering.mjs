@@ -1,5 +1,5 @@
 import { readFile, readdir } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { resolve, relative } from 'node:path';
 import ts from 'typescript';
 import { cli, isMain, root } from './lib/cli.mjs';
 
@@ -136,15 +136,9 @@ export function renderingViolations(path, source) {
 }
 
 if (isMain(import.meta.url)) await cli(async () => {
-  const files = [];
-  async function walk(dir) {
-    for (const entry of await readdir(resolve(root, dir), { withFileTypes: true })) {
-      const path = `${dir}/${entry.name}`;
-      if (entry.isDirectory()) await walk(path);
-      else if (/\.(?:[cm]?js|tsx?)$/.test(entry.name)) files.push(path);
-    }
-  }
-  for (const dir of ['src', 'scripts/levels', 'electron']) await walk(dir);
+  // Inspect the complete runtime trees, including ignored/untracked files.
+  const entries = (await Promise.all(['src', 'scripts/levels', 'electron'].map(dir => readdir(resolve(root, dir), { recursive: true, withFileTypes: true })))).flat();
+  const files = entries.filter(entry => entry.isFile() && /\.(?:[cm]?js|tsx?)$/.test(entry.name)).map(entry => relative(root, resolve(entry.parentPath, entry.name)).replaceAll('\\', '/'));
   const errors = [];
   for (const path of files) {
     for (const error of renderingViolations(path, await readFile(resolve(root, path), 'utf8'))) errors.push(`${path}: ${error}`);

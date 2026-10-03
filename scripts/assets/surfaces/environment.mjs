@@ -1,8 +1,10 @@
+import { surfaceAssets } from './jobs.mjs';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { existsSync } from 'node:fs';
 import { cli, parseArgs, root, blender } from '../../lib/cli.mjs';
 import { validateGlb } from './validate.mjs';
+import { assetPath } from '../../lib/assets.mjs';
 await cli(async () => {
   const args = parseArgs(process.argv.slice(2), { '--blender': 'value', '--output': 'value', '--only': 'value', '--area': 'value', '--showcase': 'boolean', '--ground-fields': 'boolean' });
   if (args['--help']) { console.log('Usage: node scripts/assets/surfaces/environment.mjs [--blender PATH] [--output PATH] [--only pine,rock,log,crate] [--area clearing | --showcase] [--ground-fields]'); return; }
@@ -10,14 +12,9 @@ await cli(async () => {
   if (args['--ground-fields']) { await blender('assets/surfaces/ground_fields.py', [root], args['--blender']); return; }
   const manifest = JSON.parse(await readFile(resolve(root, 'assets/textures/environment/manifest.json'), 'utf8'));
   const catalog = JSON.parse(await readFile(resolve(root, 'public/vendor/synty/library/catalog.json'), 'utf8'));
-  const selected = args['--only']?.split(',');
-  if (args['--area'] && !Object.hasOwn(manifest.areaAssets ?? {}, args['--area'])) throw new Error('Unknown prepared surface area.');
-  const assets = args['--area'] ? manifest.areaAssets[args['--area']] : args['--showcase'] ? manifest.showcase.assets : manifest.assets;
-  if (selected?.some(kind => !assets.some(asset => asset.kind === kind))) throw new Error('Unknown surface kind in --only');
-  const jobs = assets.filter(asset => !selected || selected.includes(asset.kind)).map(asset => {
+  const jobs = surfaceAssets(manifest, args).map(asset => {
     const url = asset.sourceUrl ?? (asset.id.startsWith('/') ? asset.id : catalog.assets[asset.id]?.url);
-    if (!url || !url.startsWith('/vendor/synty/') || url.includes('..')) throw new Error(`Missing or invalid source ${asset.id}`);
-    const source = resolve(root, 'public', url.slice(1));
+    const source = assetPath(resolve(root, 'public/vendor/synty'), url, '/vendor/synty/');
     if (!existsSync(source)) throw new Error(`Missing local model: ${asset.id}`);
     return { ...(args['--area'] ? manifest.areaPreparation?.[args['--area']] : {}), ...asset, projection: manifest.projection, bakeSize: asset.bakeSize ?? manifest.bakeSize, source, filename: asset.url.split('/').pop() };
   });

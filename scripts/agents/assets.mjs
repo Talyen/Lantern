@@ -1,4 +1,5 @@
-import { lstat, readdir, mkdir, rm, rename, readFile } from 'node:fs/promises';
+import { hashFile } from '../lib/assets.mjs';
+import { lstat, readdir, mkdir, rm, rename } from 'node:fs/promises';
 import { join, resolve, relative, sep, basename } from 'node:path';
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
@@ -17,7 +18,7 @@ export async function assetIndex(directory) {
 }
 export function assetIdentity(index) { return createHash('sha256').update(JSON.stringify(Object.entries(index).sort())).digest('hex'); }
 export async function fileHash(path) {
-  try { return createHash('sha256').update(await readFile(path)).digest('hex'); }
+  try { return await hashFile(path); }
   catch (error) { if (error.code === 'ENOENT') return null; throw error; }
 }
 export function safeAsset(base, name) {

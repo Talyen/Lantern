@@ -1,12 +1,11 @@
 import { resolve } from 'node:path';
-import { cli, parseArgs, UsageError } from '../lib/cli.mjs';
+import { cli, parseCommand, UsageError } from '../lib/cli.mjs';
 import { context, currentTask, readJSON, tasks, freeSpace } from './state.mjs';
 import { startTask, finishTask, cleanupTask, prepareSources, ensureDependencies, recover } from './workflow.mjs';
 import { startPreview, stopPreview } from './preview.mjs';
 import { withResource } from './resources.mjs';
 import { statusReport, formatStatus } from './status.mjs';
 await cli(async () => {
-  const operation = process.argv[2];
   const options = {
     start: { '--task': 'value', '--no-wait': 'boolean' },
     dev: { '--task': 'value', '--browser': 'boolean', '--author': 'boolean', '--area': 'value', '--stop': 'boolean' },
@@ -14,8 +13,7 @@ await cli(async () => {
     sources: { '--task': 'value', '--sources': 'value' },
     status: { '--all': 'boolean', '--task': 'value', '--json': 'boolean' }, cleanup: { '--task': 'value' }, main: { '--stop': 'boolean', '--browser': 'boolean' },
   };
-  if (!options[operation]) throw new UsageError(`Unknown agent operation: ${operation}`);
-  const args = parseArgs(process.argv.slice(3), options[operation]);
+  const { command: operation, args } = parseCommand(process.argv.slice(2), options);
   if (args['--help']) { console.log('Agent workflow: start --task SLUG [--no-wait]; dev [--browser] [--author] [--area ID] [--stop]; finish [--paths JSON_FILE] [--message TEXT] [--resolved-assets JSON_FILE]; sources --sources animation-packs,synty-library; status [--all | --task SLUG] [--json]; cleanup [--task SLUG]; main [--stop].'); return; }
   if (operation === 'start' && !args['--task']) throw new UsageError('agent:start requires --task SLUG.');
   const ctx = await context();

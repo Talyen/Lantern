@@ -8,17 +8,15 @@ import { resolve } from 'node:path';
 import { Box3, Vector3 } from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { cli, isMain, parseArgs, root } from '../../lib/cli.mjs';
-import { privateCopy } from '../../agents/copy.mjs';
+import { preserveSources, sourceEntry } from '../../lib/asset-sources.mjs';
+import { parseGlb, encodeGlb } from '../../lib/glb.mjs';
 const exec = promisify(execFile);
 const prefix = 'Ashen_Veil_Essentials/';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 
 /** r186 treats node extras.pivot as a numeric exporter pivot, including child offsets. */
 function prepareGlb(bytes, name) {
-  if (bytes.length < 20 || bytes.readUInt32LE(0) !== 0x46546c67 || bytes.readUInt32LE(4) !== 2 || bytes.readUInt32LE(8) !== bytes.length || bytes.readUInt32LE(16) !== 0x4e4f534a) throw new Error(`Invalid GLB: ${name}`);
-  const length = bytes.readUInt32LE(12);
-  if (length > bytes.length - 20 || length % 4) throw new Error(`Invalid GLB JSON chunk: ${name}`);
-  const json = JSON.parse(bytes.subarray(20, 20 + length));
+  const { json, tail } = parseGlb(bytes, name);
   if (json.buffers?.some(buffer => buffer.uri) || json.images?.some(image => image.uri) || json.extensionsRequired?.some(extension => extension !== 'KHR_materials_emissive_strength')) throw new Error(`Unsupported GLB dependency: ${name}`);
   let renamed = 0;
   for (const node of json.nodes ?? []) {
@@ -26,10 +24,7 @@ function prepareGlb(bytes, name) {
       node.extras.placement_pivot_description = node.extras.pivot; delete node.extras.pivot; renamed++;
     }
   }
-  const encoded = Buffer.from(JSON.stringify(json)), padded = Buffer.alloc(Math.ceil(encoded.length / 4) * 4, 0x20); encoded.copy(padded);
-  const header = Buffer.from(bytes.subarray(0, 20)); header.writeUInt32LE(padded.length, 12);
-  const output = Buffer.concat([header, padded, bytes.subarray(20 + length)]); output.writeUInt32LE(output.length, 8);
-  return { bytes: output, renamed };
+  return { bytes: encodeGlb(json, tail), renamed };
 }
 async function inspectGlb(bytes, name, entry) {
   const gltf = await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '');
@@ -73,7 +68,8 @@ export async function importEnvironment(archive) {
     const match = /^([a-f0-9]{64}) {2}(.+)$/.exec(line);
     if (!match) throw new Error('Invalid SHA256SUMS entry');
     const [, expected, name] = match;
-    if (name.startsWith('/') || name.includes('\\') || name.split('/').some(part => !part || part === '..' || part === '.')) throw new Error(`Unsafe archive entry: ${name}`);
+    sourceEntry(name);
+    if (files.has(name)) throw new Error(`Duplicate source entry: ${name}`);
     const bytes = await read(name); if (hash(bytes) !== expected) throw new Error(`Source hash mismatch: ${name}`); files.set(name, bytes);
   }
   const manifest = JSON.parse(files.get('manifest.json'));
@@ -98,16 +94,8 @@ export async function importEnvironment(archive) {
   if (catalog.version !== 1 || !catalog.assets) throw new Error('Unsupported shared library catalog');
   Object.assign(catalog.assets, assets);
   const source = resolve(root, '.local/synty-library/ashen-veil-environment');
-  const sourceArchive = resolve(source, 'Ashen_Veil_Environment_Essentials.zip');
   files.set('SHA256SUMS.txt', sums);
-  if (existsSync(sourceArchive) && hash(await readFile(sourceArchive)) !== hash(await readFile(archive))) throw new Error('Existing Ashen Veil source archive differs; preserve it and import in a fresh task.');
-  for (const [name, bytes] of files) {
-    const path = resolve(source, name);
-    if (existsSync(path) && hash(await readFile(path)) !== hash(bytes)) throw new Error(`Preserved source differs: ${name}. Import in a fresh task to retain both versions.`);
-  }
-  await mkdir(source, { recursive: true });
-  if (!existsSync(sourceArchive)) await privateCopy(archive, sourceArchive);
-  for (const [name, bytes] of files) { const path = resolve(source, name); if (!existsSync(path)) { await mkdir(resolve(path, '..'), { recursive: true }); await writeFile(path, bytes); } }
+  await preserveSources(source, files, archive, 'Ashen_Veil_Environment_Essentials.zip');
   for (const [name, bytes] of prepared) {
     const path = entries.has(name) ? resolve(library, 'models/ashen-veil', name.slice(4)) : resolve(root, 'public/vendor/ashen-veil/reference-scenes', name.slice(4));
     await mkdir(resolve(path, '..'), { recursive: true }); await writeFile(path, bytes);

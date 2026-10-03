@@ -1,4 +1,5 @@
-import { readFile, readdir } from 'node:fs/promises';
+import { repositoryFiles } from './agents/state.mjs';
+import { readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { resolve, dirname, extname } from 'node:path';
 import { cli, parseArgs, root } from './lib/cli.mjs';
@@ -9,18 +10,7 @@ await cli(async () => {
   const args = parseArgs(process.argv.slice(2));
   if (args['--help']) { console.log('Usage: npm run docs:check'); return; }
   await readRoutes();
-  const files = (await readdir(root)).filter((file) => file.endsWith('.md')).map((file) => resolve(root, file));
-  async function walk(dir) {
-    for (const entry of await readdir(dir, { withFileTypes: true })) {
-      const path = resolve(dir, entry.name);
-      if (entry.isDirectory()) await walk(path);
-      else if (entry.name.endsWith('.md')) files.push(path);
-    }
-  }
-  for (const directory of ['Docs', '.agents']) {
-    const path = resolve(root, directory);
-    if (existsSync(path)) await walk(path);
-  }
+  const files = (await repositoryFiles()).filter(file => /^(?:[^/]+|(?:Docs|\.agents)\/.*)\.md$/.test(file)).map(file => resolve(root, file)).filter(existsSync);
   const scripts = JSON.parse(await readFile(resolve(root, 'package.json'), 'utf8')).scripts;
   const errors = [];
   const headings = new Map();

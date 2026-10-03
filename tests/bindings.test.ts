@@ -1,5 +1,5 @@
 import {expect,test,vi} from 'vitest';
-import {keyboardInput,InputPreferences,bindingConflict,bindingLabel,bindingKey,defaultBindings,inputFor,validBindings} from '../src/input/bindings';
+import {keyboardInput,InputPreferences,bindingConflict,bindingLabel,bindingKey,defaultBindings,inputActions,inputFor,validBindings} from '../src/input/bindings';
 
 test('a saved mouse movement binding and secondary keyboard binding both resolve to the same action',()=>{
   const data=new Map<string,string>(),storage={getItem:(key:string)=>data.get(key) ?? null,setItem:(key:string,value:string)=>{data.set(key,value);}};
@@ -19,23 +19,26 @@ test('conflicting inputs and missing movement directions cannot replace usable p
   expect(corrupt.value).toEqual(defaultBindings());expect(corrupt.diagnostics().error).toMatch('Invalid bindings');
 });
 
-test('code-less shifted number keys retain their digit bindings', () => {
-  for (const [digit, key] of Array.from(')!@#$%^&*(').entries())
-    expect(keyboardInput({ code: '', key, location: 0 })).toBe(`key:Digit${digit}`);
+// Admission: fallback keys must survive validation, save/restore and action dispatch, not only string conversion.
+test('physical and code-less captured keys remain usable after saving and reopening bindings', () => {
+  const keys = [
+    ['', 'i', 0, 'KeyI'], ['KeyI', 'z', 0, 'KeyI'], ['', 'Shift', 2, 'ShiftRight'],
+    ['', '.', 0, 'Period'], ['', '?', 0, 'Slash'], ['', '1', 3, 'Numpad1'], ['', 'Enter', 3, 'NumpadEnter'], ['', 'End', 0, 'End'],
+    ...Array.from(')!@#$%^&*(', (key, digit) => ['', key, 0, `Digit${digit}`] as const),
+    ...[['End','1'],['ArrowDown','2'],['PageDown','3'],['ArrowLeft','4'],['Clear','5'],['ArrowRight','6'],['Home','7'],['ArrowUp','8'],['PageUp','9'],['Insert','0'],['Delete','Decimal']].map(([key, digit]) => ['', key, 3, `Numpad${digit}`] as const),
+  ] as const;
+  let saved = '';
+  const storage = { getItem: () => saved || null, setItem: (_key: string, value: string) => { saved = value; } };
+  for (const [code, key, location, expected] of keys) {
+    const captured = keyboardInput({ code, key, location }), draft = defaultBindings();
+    for (const action of inputActions) draft[action] = draft[action].map(value => value === captured ? null : value) as [string | null, string | null];
+    draft.slot0 = [captured, null];
+    const preferences = new InputPreferences(storage);
+    expect(preferences.save(draft)).toBe(true);
+    expect(inputFor(new InputPreferences(storage).value, `key:${expected}`)).toBe('slot0');
+    preferences.close();
+  }
 });
-
-test('code-less held inputs resolve consistently while physical codes take precedence',()=>{expect(keyboardInput({code:'',key:'r',location:0})).toBe('key:KeyR');expect(keyboardInput({code:'KeyW',key:'z',location:0})).toBe('key:KeyW');expect(keyboardInput({code:'',key:'Shift',location:2})).toBe('key:ShiftRight');});
-
-test('code-less punctuation and numpad inputs retain their remappable physical binding', () => {
-  expect(keyboardInput({code:'',key:'.',location:0})).toBe('key:Period');
-  expect(keyboardInput({code:'',key:'?',location:0})).toBe('key:Slash');
-  expect(keyboardInput({code:'',key:'1',location:3})).toBe('key:Numpad1');
-  expect(keyboardInput({code:'',key:'Enter',location:3})).toBe('key:NumpadEnter');
-  for (const [key, digit] of [['End','1'],['ArrowDown','2'],['PageDown','3'],['ArrowLeft','4'],['Clear','5'],['ArrowRight','6'],['Home','7'],['ArrowUp','8'],['PageUp','9'],['Insert','0'],['Delete','Decimal']])
-    expect(keyboardInput({code:'',key,location:3})).toBe(`key:Numpad${digit}`);
-  expect(keyboardInput({code:'',key:'End',location:0})).toBe('key:End');
-});
-
 
 test('keybinding changes apply immediately and retry storage silently without keeping Apply open',async()=>{
   vi.useFakeTimers();

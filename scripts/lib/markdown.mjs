@@ -26,10 +26,13 @@ export function markdownHeadings(text) {
       previous = '';
     } else previous = line;
   }
-  return headings.map((heading, index) => {
-    const next = headings.slice(index + 1).find(item => item.level <= heading.level);
-    return { ...heading, endLine: next ? next.startLine - 1 : lines.length };
-  });
+  const open = [];
+  for (const heading of headings) {
+    while (open.length && open.at(-1).level >= heading.level) open.pop().endLine = heading.startLine - 1;
+    heading.endLine = lines.length;
+    open.push(heading);
+  }
+  return headings;
 }
 
 export function headingIds(text) { return new Set(markdownHeadings(text).map(heading => heading.id)); }

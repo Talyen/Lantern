@@ -8,12 +8,17 @@ export function integer(value, fallback, min, max, name) {
   return number;
 }
 export function budget(args) { return integer(args['--max-chars'], 12000, 1000, 50000, 'Max characters'); }
-export function repositoryPath(name) {
-  const path = resolve(root, name), local = relative(root, path).replaceAll('\\', '/');
-  if (!local || local.startsWith('../') || isAbsolute(local) || /^(?:\.local|node_modules|public\/vendor|dist)(?:\/|$)/.test(local)) throw new UsageError('Choose a repository source or documentation path, excluding private/generated directories.');
-  const canonical = realpathSync(path), canonicalLocal = relative(realpathSync(root), canonical).replaceAll('\\', '/');
-  if (!canonicalLocal || canonicalLocal.startsWith('../') || isAbsolute(canonicalLocal) || /^(?:\.local|node_modules|public\/vendor|dist)(?:\/|$)/.test(canonicalLocal))
+function repositoryLocal(path, base) {
+  const local = relative(base, path).replaceAll('\\', '/');
+  if (!local || local === '..' || local.startsWith('../') || isAbsolute(local)
+    || /^(?:\.local|node_modules|public\/vendor|dist)(?:\/|$)/.test(local))
     throw new UsageError('Choose a repository source or documentation path, excluding private/generated directories.');
+  return local;
+}
+export function repositoryPath(name) {
+  const path = resolve(root, name), local = repositoryLocal(path, root);
+  const canonical = realpathSync(path);
+  repositoryLocal(canonical, realpathSync(root));
   return { path: canonical, local };
 }
 // Budgets count source characters, excluding the small report envelope. Never split a line.
@@ -54,11 +59,11 @@ export function recordWindow({ offset = 0, limit = 20, maxChars = 12000,
   };
 }
 
-export function recordPage(records, args = {}) {
+export function recordPage(records, args = {}, oversizedMessage) {
   const page = recordWindow({
     offset: integer(args['--offset'], 0, 0, Number.MAX_SAFE_INTEGER, 'Offset'),
     limit: integer(args['--limit'], 20, 1, 50, 'Limit'),
-    maxChars: budget(args),
+    maxChars: budget(args), oversizedMessage,
   });
   for (const record of records) page.add(record);
   return page.page();

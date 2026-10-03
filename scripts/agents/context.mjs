@@ -9,8 +9,9 @@ import { git } from './state.mjs';
 export async function readRoutes() {
   const document = resolve(root, 'Docs/ARCHITECTURE.md');
   const text = await readFile(document, 'utf8');
-  const section = text.split('## Task routing\n')[1]?.split(/^## /m)[0];
-  if (!section) throw new Error('Missing Task routing table in Docs/ARCHITECTURE.md.');
+  const heading = markdownHeadings(text).find(item => item.id === 'task-routing');
+  if (!heading) throw new Error('Missing Task routing table in Docs/ARCHITECTURE.md.');
+  const section = text.split(/\r?\n/).slice(heading.startLine, heading.endLine).join('\n');
   const links = cell => [...cell.matchAll(/\[[^\]]*\]\(([^)]+)\)/g)].map(([, target]) => {
     const [path, fragment] = target.split('#');
     return relative(root, resolve(dirname(document), path)).replaceAll('\\', '/') + (fragment ? `#${fragment}` : '');

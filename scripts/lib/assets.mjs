@@ -1,8 +1,19 @@
+import { createHash } from 'node:crypto';
 import { open, readFile, readdir, stat, lstat } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { existsSync, createReadStream } from 'node:fs';
 import { resolve, relative, sep, extname, dirname } from 'node:path';
 import { root } from './cli.mjs';
+import { glbJsonLength } from './glb.mjs';
+export async function hashFile(path) {
+  const hash = createHash('sha256');
+  for await (const chunk of createReadStream(path)) hash.update(chunk);
+  return hash.digest('hex');
+}
 export const sourceArchive = /\.(?:fbx|blend|blend1|zip|unitypackage|7z|rar|tar|gz)$/i;
+/** Portable relative file names shared by imported sources and desktop manifests. */
+export function safeRelativePath(path) {
+  return typeof path === 'string' && !/[\\:\0]/.test(path) && path.split('/').every(part => part && part !== '.' && part !== '..');
+}
 export function inside(base, path) {
   const result = resolve(base, path);
   const rel = relative(base, result);
@@ -39,9 +50,7 @@ export async function readGlb(path, resourceRoot = dirname(path)) {
     const header = Buffer.alloc(20);
     const { bytesRead } = await file.read(header, 0, 20, 0);
     const size = (await file.stat()).size;
-    if (bytesRead !== 20 || header.readUInt32LE(0) !== 0x46546c67 || header.readUInt32LE(4) !== 2 || header.readUInt32LE(8) !== size || header.readUInt32LE(16) !== 0x4e4f534a) throw new Error(`Malformed GLB: ${path}`);
-    const length = header.readUInt32LE(12);
-    if (length > size - 20 || length > 32 * 1024 * 1024) throw new Error(`Invalid GLB JSON length: ${path}`);
+    const length = glbJsonLength(header.subarray(0, bytesRead), size, path);
     const json = Buffer.alloc(length);
     if ((await file.read(json, 0, length, 20)).bytesRead !== length) throw new Error(`Truncated GLB: ${path}`);
     const data = JSON.parse(json.toString());
