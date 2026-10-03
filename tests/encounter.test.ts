@@ -296,7 +296,7 @@ test('ranged releases are timed, swept walls stop damage, and released arrows hi
   const hit = stepEncounter(clear,.15,idle,ranged);
   expect(clear.enemies.enemy.hp).toBe(155); expect(clear.projectiles).toHaveLength(0);
   expect(hit.filter(event=>event.type==='hit' && event.actor==='enemy')).toHaveLength(1);
-  expect(hit).not.toContainEqual({type:'axeXp'});
+  expect(hit).not.toContainEqual(expect.objectContaining({type:'proficiency',family:'axe'}));
   stepEncounter(clear,.1,idle,ranged);
   expect(clear.enemies.enemy.hp).toBe(155);
   const behind=closeEncounter(); equip(behind,'bow'); behind.enemies.enemy.x=.4; behind.enemies.enemy.z=-.05; behind.enemies.enemy.lock=999;

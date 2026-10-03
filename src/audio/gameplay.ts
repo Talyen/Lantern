@@ -18,7 +18,9 @@ export class GameplayAudio {
     for (const event of events) {
       if (event.type === 'action') {
         const actor = event.actor === 'player' ? state.player : state.enemies[event.actor];
-        if (event.action === 'dodge') this.audio.play('dodge', actor);
+        if (event.action === 'battleCry') this.audio.play('battleCry', actor);
+        else if(event.action === 'berserking') this.audio.play('gear', actor, { gain: .6 });
+        else if (event.action === 'dodge') this.audio.play('dodge', actor);
         else if (event.action === 'land') this.audio.play('land', actor);
         else if (event.action === 'attack') {
           if (event.weapon === 'staff') this.audio.play('magicCharge', actor, {key:`charge-${event.actor}`});
@@ -32,7 +34,7 @@ export class GameplayAudio {
         }
       } else if (event.type === 'impact') {
         const actor = event.actor === 'player' ? state.player : state.enemies[event.actor];
-        const skill=event.origin?.ability==='sweep' || event.origin?.ability==='piercing-shot';
+        const skill=event.origin?.ability==='sweep' || event.origin?.ability==='piercing-shot' || event.origin?.ability==='crushing-blow';
         this.audio.play(event.blocked ? 'block' : event.weapon === 'staff' ? 'magicImpact' : event.weapon === 'bow' ? 'arrowImpact' : 'bodyImpact', actor, {gain:skill ? 1.12 : 1,rate:event.blocked ? 1 : event.weapon==='axe' ? .92 : event.weapon==='sword' ? 1.05 : 1});
         if (!event.blocked) this.audio.play(event.actor === 'player' ? event.lethal ? 'playerDeath' : 'playerHurt' : state.enemies[event.actor].rig === 'skeleton' ? event.lethal ? 'skeletonDeath' : 'skeletonHurt' : event.lethal ? 'enemyDeath' : 'enemyHurt', actor);
       } else if (event.type === 'projectileImpact') this.audio.play(event.kind === 'arrow' ? 'arrowImpact' : 'magicImpact', event.position);

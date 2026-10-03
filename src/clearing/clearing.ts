@@ -218,11 +218,12 @@ const presentation = new EncounterPresentation(encounter, actors, gameplayAudio,
   weaponSet: set => {
     equipmentSets.activate(set);
     adventure.setWeaponSet(set);
+    combatUI?.update();
     audio.play('equip');
     menus.updateCharacter(adventure.character);
     shop.update(adventure.character);
   },
-  axeXp: () => adventure.grantAxeCombatXp(),
+  proficiency: (family, amount) => { adventure.grantProficiency(family, amount); encounter.proficiency = { ...adventure.character.xp }; },
   playerHit: unblocked => {
     interruptApproach(false);
     if (unblocked) combat.releaseShield();
@@ -305,6 +306,7 @@ function castReturn():void {
   syncAdventure();
 }
 const combatUI = new CombatUI({
+  paused,
   character: () => adventure.character, encounter: () => encounter, preferences,
   activate: id => combat.startAbility(id), potion: usePotion, portal: castReturn,
   canEdit: () => inventory.canEditEquipment(),

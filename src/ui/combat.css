@@ -77,3 +77,11 @@ html[data-resource-numbers=false] #action-bar .orb-number{display:none}
 
 .binding-icon,.ability-ghost,.skills-picker button>span:first-child{position:relative}
 .binding-icon .hud-icon,.ability-ghost .hud-icon{inset:0}
+
+.axe-ability-mark{position:absolute;inset:3px;width:calc(100% - 6px);height:calc(100% - 6px);fill:none;stroke:#f2d39a;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 1px 2px #000);pointer-events:none}
+.berserking-buff{position:absolute;left:50%;bottom:calc(100% + 18px);transform:translateX(-50%);display:flex;align-items:center;gap:8px;min-height:32px;padding:5px 10px 5px 34px;border:1px solid #92713f;background:linear-gradient(#2c231bf2,#15110ef2);box-shadow:inset 0 0 0 1px #0c0907,0 2px 5px #0008;color:#edd7ae;font:13px Georgia,serif}
+.berserking-buff[hidden],.axe-control-hint[hidden]{display:none}
+.berserking-buff>.hud-icon{inset:3px auto 3px 3px;width:25px}#action-bar .berserking-buff>.axe-ability-mark{left:3px;top:3px;width:25px;height:25px}
+.berserking-buff strong{font-weight:400;font-variant-numeric:tabular-nums}.berserking-buff[data-active=false]{border-style:dashed;color:#c0b5a4}.berserking-buff[data-active=false]>.hud-icon,.berserking-buff[data-active=false]>.axe-ability-mark{opacity:.45}
+.axe-control-hint{position:absolute;left:50%;bottom:calc(100% + 58px);transform:translateX(-50%);white-space:nowrap;padding:5px 10px;background:#161310ed;border-bottom:1px solid #8b7148;color:#eddbc0;font:13px Georgia,serif;pointer-events:none}
+#action-bar .action-slot[data-state=locked] .ability-icon{opacity:.35}.skills-node.locked .skills-node-art{opacity:.45}

@@ -1,4 +1,5 @@
-import { abilities, abilityIds, type AbilityId } from '../gameplay/abilities';
+import { weaponFamily } from '../gameplay/equipment';
+import { abilities, abilityIds, abilityUnlocked, type AbilityId } from '../gameplay/abilities';
 import { skillCategories, skillDefinitions, skillLevel, earnsSkillXP, type Skill, type SkillCategory } from '../gameplay/skills';
 import { nodesForSkill, type SkillNode } from '../gameplay/skill-nodes';
 import type { CharacterSave } from '../gameplay/character';
@@ -33,6 +34,8 @@ export class SkillsPanel {
   private categorySelection: Partial<Record<SkillCategory, Skill>> = {};
   private displayedLevel = -1;
   constructor(private readonly ctx: Context) {
+    const family = weaponFamily(ctx.character().loadout.main);
+    this.skill = family === 'axe' ? 'axeCombat' : family ?? 'sword';
     this.panel.className = 'skills-sheet';
     const header = document.createElement('header');
     header.innerHTML = '<h2 id="skills-title">Skills</h2><button type="button" aria-label="Close Skills">×</button>';
@@ -116,14 +119,16 @@ export class SkillsPanel {
     button.type = 'button'; button.className = 'skills-node ' + (node.kind === 'minor' ? 'minor' : 'major');
     button.dataset.node = node.id; button.dataset.kind = node.kind;
     button.style.left = x + '%'; button.style.top = y + '%';
+    const unlocked = !node.ability || abilityUnlocked(node.ability, this.ctx.character().xp);
+    button.classList.toggle('locked', !unlocked);
     button.innerHTML = '<span class="skills-node-art">' + skillNodeIcon(this.skill, node) + '</span>' +
-      (node.ability ? '' : '<span class="skills-lock" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M5 7V5a3 3 0 0 1 6 0v2M3 7h10v7H3zM8 10v2"/></svg></span>');
+      (node.ability && unlocked ? '' : '<span class="skills-lock" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M5 7V5a3 3 0 0 1 6 0v2M3 7h10v7H3zM8 10v2"/></svg></span>');
     button.classList.toggle('planned', !node.ability);
     if (node.kind !== 'minor') {
       const label = document.createElement('span'); label.className = 'skills-node-label';
-      label.textContent = node.ability ? abilities[node.ability].name : node.role; button.append(label);
+      label.textContent = node.ability ? abilities[node.ability].name + (node.ability === 'berserking' ? ' · Lv ' + node.level : '') : node.role; button.append(label);
     }
-    const info = () => node.ability ? [node.role, ...this.ctx.abilityInfo(node.ability).split(' · ').slice(1), 'Available from the start'] :
+    const info = () => node.ability ? [node.role, ...this.ctx.abilityInfo(node.ability).split(' · ').slice(1), node.ability === 'berserking' ? unlocked ? 'Unlocked at Axe level 2' : 'Requires Axe level 2 · 100 XP' : 'Available from the start'] :
       [node.role, 'Proposed level ' + node.level, node.kind === 'minor' ? 'Bonus not yet defined' : 'Not yet available'];
     button.setAttribute('aria-label', node.name + ', ' + info().join(', '));
     button.onmouseenter = button.onfocus = () => this.showTooltip(button, node.name, info());
@@ -131,7 +136,7 @@ export class SkillsPanel {
     button.onblur = () => this.hideTooltip();
     button.onclick = () => this.showTooltip(button, node.name, info());
     button.onpointerdown = event => {
-      if (event.button === 0 && node.ability && this.ctx.canEdit()) { this.hideTooltip(); this.ctx.beginDrag(node.ability, event); }
+      if (event.button === 0 && node.ability && abilityUnlocked(node.ability, this.ctx.character().xp) && this.ctx.canEdit()) { this.hideTooltip(); this.ctx.beginDrag(node.ability, event); }
     };
     this.tree.append(button);
   }
@@ -150,7 +155,7 @@ export class SkillsPanel {
     if (!this.ctx.canEdit()) { this.showNotice('Assignments unavailable in combat.'); return; }
     this.hideTooltip(); this.closePicker(false); this.pickerTarget = target;
     const heading = document.createElement('h3'); heading.textContent = 'Choose ability'; this.picker.replaceChildren(heading);
-    for (const id of abilityIds) {
+    for (const id of abilityIds.filter(id => abilityUnlocked(id, this.ctx.character().xp))) {
       const button = document.createElement('button'); button.type = 'button'; button.dataset.ability = id;
       button.innerHTML = '<span>' + abilityIcon(id) + '</span><span></span>'; button.lastElementChild!.textContent = abilities[id].name;
       button.title = this.ctx.abilityInfo(id);
@@ -179,6 +184,7 @@ export class SkillsPanel {
   update(): void {
     const level = skillLevel(this.ctx.character().xp[this.skill]);
     if (level === this.displayedLevel) return;
+    if (this.displayedLevel >= 0) { this.render(); return; }
     this.displayedLevel = level; this.heading.querySelector('.skills-level')!.textContent = 'Level ' + level;
     this.track.replaceChildren(); this.track.setAttribute('aria-label', 'Level ' + level + '; milestones 10, 20, 30, 40, 50');
     for (const milestone of [10,20,30,40,50]) {

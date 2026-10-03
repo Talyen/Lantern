@@ -12,7 +12,7 @@ export type AnimationRole = Motion | 'backward' | 'left' | 'right' | 'blockForwa
 export type MotionClip = { id: string; name: string; description?: string; category: string; url: string; duration: number; contact?: number; speed?: number; sourceId?: string; audit?: boolean; phaseOffset?: number };
 export type MotionPack = { id: string; label: string; clips: MotionClip[] };
 export type MotionCatalog = { version: number; packs: MotionPack[]; defaults: Record<AnimationRole, string>; profiles: Record<string, Partial<Record<AnimationRole, string>>> };
-export type CombatMotions = { clips: Record<MotionState, THREE.AnimationClip> & Partial<Record<AnimationRole, THREE.AnimationClip>>; contacts: number[]; commitLead?: number; runSpeed: number; speeds: Partial<Record<AnimationRole, number>>; chopContact: number; mineContact: number; skillContacts: Partial<Record<'sweep' | 'pierce',number[]>>; phases: Partial<Record<AnimationRole, number>> };
+export type CombatMotions = { clips: Record<MotionState, THREE.AnimationClip> & Partial<Record<AnimationRole, THREE.AnimationClip>>; contacts: number[]; commitLead?: number; runSpeed: number; speeds: Partial<Record<AnimationRole, number>>; chopContact: number; mineContact: number; skillContacts: Partial<Record<'sweep' | 'pierce' | 'crush',number[]>>; phases: Partial<Record<AnimationRole, number>> };
 const cache = new Map<string, Promise<THREE.AnimationClip>>();
 const joinedShots = new Map<string, THREE.AnimationClip>();
 const catalogs = new Map<string, Promise<MotionCatalog>>();
@@ -50,7 +50,7 @@ export async function loadEquipmentMotions(loader: GLTFLoader, who: RigId, loado
     return [role, clip];
   })) as Record<MotionState, MotionClip>;
   const all: Partial<Record<AnimationRole, MotionClip>> = { ...base };
-  for (const role of ['dodge', 'block', 'chop', 'mine', 'backward', 'left', 'right', 'blockForward', 'blockBackward', 'blockLeft', 'blockRight', 'grip', 'sweep', 'pierceDraw', 'pierceRelease'] as const) {
+  for (const role of ['dodge', 'block', 'chop', 'mine', 'backward', 'left', 'right', 'blockForward', 'blockBackward', 'blockLeft', 'blockRight', 'grip', 'sweep', 'crush', 'battleCry', 'pierceDraw', 'pierceRelease'] as const) {
     const clip = pack.clips.find(item => item.id === profile[role]);
     if(profile[role] && !clip)throw new Error(`Unavailable ${role} motion. Prepare compatible Mixamo motions.`);
     if (clip) all[role] = clip;
@@ -62,7 +62,7 @@ export async function loadEquipmentMotions(loader: GLTFLoader, who: RigId, loado
     const marker=all[role]?.contact, clip=clips[role];
     if (!clip || marker === undefined || !Number.isFinite(marker) || marker <= 0 || marker >= clip.duration) throw new Error('Gathering motions need reviewed contact markers. Prepare the curated motion profiles with npm run assets:export-character.');
   }
-  for(const role of ['sweep','pierceRelease'] as const)if(clips[role] && (typeof all[role]?.contact!=='number' || all[role].contact<=0 || all[role].contact>=clips[role].duration))throw new Error('Skill has no reviewed contact marker. Prepare compatible Mixamo motions.');
+  for(const role of ['sweep','crush','pierceRelease'] as const)if(clips[role] && (typeof all[role]?.contact!=='number' || all[role].contact<=0 || all[role].contact>=clips[role].duration))throw new Error('Skill has no reviewed contact marker. Prepare compatible Mixamo motions.');
   if (clips.pierceDraw && clips.pierceRelease) {
     // Joining is deterministic for the cached source pair. Retain its keyframes
     // once, with a separate wrapper/action for each prepared equipment profile.
@@ -76,7 +76,7 @@ export async function loadEquipmentMotions(loader: GLTFLoader, who: RigId, loado
   const motions: CombatMotions = { clips, contacts: [contact], commitLead: (motionProfiles.clips as Record<string,{commitLead?:number}>)[base.attack.id]?.commitLead ?? 0, runSpeed: base.run.speed ?? 4,
     speeds: Object.fromEntries(Object.entries(all).map(([role, source]) => [role, source.speed ?? 4])),
     chopContact: all.chop?.contact ?? 0, mineContact: all.mine?.contact ?? 0,
-    skillContacts:{sweep:all.sweep?.contact !== undefined ? [all.sweep.contact] : undefined,pierce:clips.pierceDraw && all.pierceRelease?.contact !== undefined ? [clips.pierceDraw.duration+all.pierceRelease.contact] : undefined},
+    skillContacts:{crush:all.crush?.contact !== undefined ? [all.crush.contact] : undefined,sweep:all.sweep?.contact !== undefined ? [all.sweep.contact] : undefined,pierce:clips.pierceDraw && all.pierceRelease?.contact !== undefined ? [clips.pierceDraw.duration+all.pierceRelease.contact] : undefined},
     phases: Object.fromEntries(Object.entries(all).map(([role, source]) => [role, source.phaseOffset ?? 0])) };
   if (loadout.main==='staff') {
     const gripPose = motions.clips.grip;

@@ -21,12 +21,12 @@ export function play(actor: Actor, name: Motion, rate = 1): void {
   if (actor.current === name && ['idle', 'run', 'block', 'chop', 'mine'].includes(name)) return;
   const next = actor.actions[name]; if (!next) return;
   const starting = actor.current===null;
-  const blend = name === 'dodge' ? .035 : name === 'hit' ? .035 : ['attack','chop','mine','sweep','pierce'].includes(name) ? .055 : .12;
+  const blend = name === 'dodge' ? .035 : name === 'hit' ? .035 : ['attack','chop','mine','sweep','pierce','crush','battleCry'].includes(name) ? .055 : .12;
   for (const role in actor.actions) {
     const action = actor.actions[role as PlaybackRole];
     if (action && action !== next && action.isScheduled()) action.fadeOut(blend);
   }
-  next.reset().stopFading().setEffectiveWeight(1).setEffectiveTimeScale(name === 'dodge' ? next.getClip().duration / dodgeDuration : ['attack','sweep','pierce'].includes(name) ? rate : 1);
+  next.reset().stopFading().setEffectiveWeight(1).setEffectiveTimeScale(name === 'dodge' ? next.getClip().duration / dodgeDuration : ['attack','sweep','pierce','crush'].includes(name) ? rate : 1);
   if (!starting) next.fadeIn(blend);
   next.play();
   actor.current = name;

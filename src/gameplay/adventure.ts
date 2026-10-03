@@ -6,7 +6,7 @@ import {
 } from './ground-loot';
 import { purchase, sale, repurchase } from './shop-transactions';
 import { canRepairShelter, restoredShelter, validatedContainers } from './homestead-transactions';
-import { validBar, type ActionBar, type WeaponSet } from './abilities';
+import { validBar, abilityUnlocked, axeProgression, type ActionBar, type WeaponSet } from './abilities';
 import { createEncounter, type Encounter, type EnemyId } from './encounter';
 import { near, type Point, type Spawn } from './area';
 import type { AreaDefinition, Campfire, Chest } from '../levels/types';
@@ -104,7 +104,7 @@ export class Adventure {
   closeSave(): void { this.persistence.close(this.character); }
   saveDiagnostics() { return this.persistence.diagnostics(); }
   setActionBar(bar: ActionBar): void {
-    if (!validBar(bar)) throw new Error('Invalid action bar');
+    if (!validBar(bar) || bar.some(id => id && !abilityUnlocked(id, this.character.xp))) throw new Error('Invalid action bar');
     this.character.actionBar = [...bar];
     this.save();
   }
@@ -230,8 +230,15 @@ export class Adventure {
     ) / 1e6;
   }
 
-  grantAxeCombatXp(amount = 10): void {
-    this.awardXp('axeCombat', amount);
+  grantAxeCombatXp(amount = 10): void { this.grantProficiency('axe', amount); }
+
+  grantProficiency(family: 'axe' | 'sword' | 'bow', amount: number): void {
+    const previous = this.character.xp.axeCombat;
+    this.awardXp(family === 'axe' ? 'axeCombat' : family, amount);
+    if (family === 'axe' && previous < axeProgression.ultimateXp && this.character.xp.axeCombat >= axeProgression.ultimateXp) {
+      if (this.character.actionBar[2] === null) this.character.actionBar[2] = 'berserking';
+      this.message('Berserking unlocked');
+    }
     this.save();
   }
 

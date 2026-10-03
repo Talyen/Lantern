@@ -8,7 +8,7 @@ import { duration, play, type Actor } from './actors';
 type PresentationContext = {
   effects(): CoreEffects | undefined;
   weaponSet(set: WeaponSet): void;
-  axeXp(): void;
+  proficiency(family: 'axe' | 'sword' | 'bow', amount: number): void;
   playerHit(unblocked: boolean): void;
 };
 
@@ -32,7 +32,7 @@ export class EncounterPresentation {
     for (const event of events) {
       switch (event.type) {
         case 'weaponSet': this.context.weaponSet(event.set); break;
-        case 'axeXp': this.context.axeXp(); break;
+        case 'proficiency': this.context.proficiency(event.family, event.amount); break;
         case 'hit': {
           if (event.actor === 'player') {
             this.context.playerHit(events.some(impact => impact.type === 'impact' && impact.actor === 'player' && !impact.blocked));
@@ -44,12 +44,15 @@ export class EncounterPresentation {
           break;
         case 'impact': {
           const effects = this.context.effects(), position = this.actors[event.actor].root.position;
-          const skill = event.origin?.ability === 'sweep' || event.origin?.ability === 'piercing-shot';
+          const skill = event.origin?.ability === 'sweep' || event.origin?.ability === 'piercing-shot' || event.origin?.ability === 'crushing-blow';
           effects?.burst(event.blocked ? 'sparks' : 'hit', position, event.blocked ? 7 : skill ? 16 : event.weapon === 'axe' ? 11 : 8);
           break;
         }
         // These events are presented by GameplayAudio and the HUD below.
-        case 'action': case 'projectileImpact': case 'label': case 'outcome': break;
+        case 'action':
+          if (event.action === 'berserking') this.context.effects()?.burst('sparks', this.actors.player.root.position, 12);
+          break;
+        case 'projectileImpact': case 'label': case 'outcome': break;
       }
     }
     this.audio.encounter(events, this.encounter);

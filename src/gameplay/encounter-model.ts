@@ -1,3 +1,4 @@
+import type { SkillXP } from './skills';
 import type { AbilityId, WeaponSet } from './abilities';
 import type { Loadout, Weapon } from './equipment';
 import { baseStats, type CombatStats } from './combat-stats';
@@ -7,7 +8,7 @@ import type { EncounterLayout, Spawn, EnemyRig } from './area';
 export type EnemyId = string;
 export type ActorId = 'player' | EnemyId;
 export type EnemyKind = 'raider' | 'caster';
-export type Motion = 'idle' | 'run' | 'attack' | 'hit' | 'death' | 'dodge' | 'block' | 'chop' | 'sweep' | 'pierce' | 'mine';
+export type Motion = 'idle' | 'run' | 'attack' | 'hit' | 'death' | 'dodge' | 'block' | 'chop' | 'sweep' | 'pierce' | 'mine' | 'crush' | 'battleCry';
 export type Phase = 'loading' | 'playing' | 'won' | 'lost';
 export type ActorState = {
   x: number;
@@ -28,6 +29,9 @@ export type EnemyState = ActorState & {
   engaged: boolean;
   returning: boolean;
   cooldown: number;
+  lowestHp: number;
+  /** Future protected attacks explicitly opt into a heavy-interruption window. */
+  interruption?: 'protected' | 'heavy-window';
 };
 export const playerMaxHealth = baseStats.maxHealth, enemyMaxHealth = 200, playerMaxMana = baseStats.maxMana;
 export const enemyAttackDamage = 20;
@@ -99,6 +103,9 @@ export type Encounter = {
   weaponSets: [Loadout, Loadout];
   activeSet: WeaponSet;
   abilityCooldowns: Partial<Record<AbilityId, number>>;
+  ultimateCooldown: number;
+  berserkingRemaining: number;
+  proficiency: Partial<SkillXP>;
   potionCooldown: number;
   playerAction: PlayerAction | null;
   // Within-frame dodge onset lets contacts retain pre-unlock damage/immunity.
@@ -163,7 +170,7 @@ export type EncounterEvent = {
 } | {
   type: 'action';
   actor: ActorId;
-  action: 'attack' | 'contact' | 'dodge' | 'land';
+  action: 'attack' | 'contact' | 'dodge' | 'land' | 'battleCry' | 'berserking';
   weapon: Weapon | null;
 } | {
   type: 'impact';
@@ -182,7 +189,9 @@ export type EncounterEvent = {
     z: number;
   };
 } | {
-  type: 'axeXp';
+  type: 'proficiency';
+  family: 'axe' | 'sword' | 'bow';
+  amount: number;
 } | {
   type: 'label';
   value: 'MOVE TO BEGIN' | 'DEFEAT THE RAIDER' | 'RAIDER ATTACKING' | 'DEFEAT THE CASTER' | 'CASTER ATTACKING';

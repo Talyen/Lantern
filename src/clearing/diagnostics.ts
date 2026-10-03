@@ -103,7 +103,7 @@ export class ClearingDiagnostics {
       },
       encounter: {
         enemies: structuredClone(encounter.enemies), equipment: enemyActors.diagnostics(),
-        player: { ...encounter.player }, playerMana: encounter.playerMana, stats: {...encounter.stats}, dodgeRemaining: encounter.dodgeRemaining,
+        player: { ...encounter.player }, playerMana: encounter.playerMana, berserkingRemaining: encounter.berserkingRemaining, ultimateCooldown: encounter.ultimateCooldown, stats: {...encounter.stats}, dodgeRemaining: encounter.dodgeRemaining,
         dodgeCooldown: encounter.dodgeCooldown, blocking: encounter.blocking, projectiles: encounter.projectiles, pending: encounter.pending,
         animations: Object.fromEntries(Object.entries(actors).map(([id, actor]) => [id, actor.current])),
         navigationReady: movementWorld?.navigationReady ?? false, navigationMs: movementWorld?.generationMs ?? 0,

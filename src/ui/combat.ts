@@ -1,4 +1,4 @@
-import { abilities, abilitySet, type AbilityId, type ActionBar } from '../gameplay/abilities';
+import { abilities, abilitySet, abilityUnlocked, cooldownForAbility, type AbilityId, type ActionBar } from '../gameplay/abilities';
 import type { CharacterSave } from '../gameplay/character';
 import type { Encounter } from '../gameplay/encounter';
 import { bindingLabel, actionSlotInputs, type InputPreferences } from '../input/bindings';
@@ -9,7 +9,7 @@ import { setText, setAttribute, setDisabled } from './dom';
 import { bindMenuDismissal } from './menu';
 import './combat.css';
 
-type Context={character():CharacterSave;encounter():Encounter;preferences:InputPreferences;activate(id:AbilityId):void;potion():void;portal():void;canEdit():boolean;portalReady():boolean;assign(bar:ActionBar):void;clear():void;focus():void};
+type Context={character():CharacterSave;encounter():Encounter;preferences:InputPreferences;paused():boolean;activate(id:AbilityId):void;potion():void;portal():void;canEdit():boolean;portalReady():boolean;assign(bar:ActionBar):void;clear():void;focus():void};
 type Drag={id:AbilityId;slot?:number;x:number;y:number;active:boolean;pointer:number};
 type SlotElements={button:HTMLButtonElement;icon:HTMLElement;cooldown:HTMLElement;key:HTMLElement;caption:HTMLElement};
 type UtilityElements={button:HTMLButtonElement;count:Element;key:Element};
@@ -30,7 +30,17 @@ export class CombatUI {
   private heldPointer:number | null=null;
   private heldKey:string | null=null;
   private ignoreClickUntil=0;
+  private buff=document.createElement('div');
+  private hint=document.createElement('div');
+  private hintedSkill=false;
+  private hintedUltimate=false;
+  private hintSeconds=0;
+  private lastClock: number | undefined;
   constructor(private ctx:Context){
+    this.buff.className='berserking-buff'; this.buff.hidden=true;
+    this.buff.innerHTML=abilityIcon('berserking')+'<span>Berserking</span><strong></strong>';
+    this.hint.className='axe-control-hint'; this.hint.hidden=true; this.hint.setAttribute('role','status');
+    this.bar.append(this.buff,this.hint);
     this.bar.id='action-bar';this.bar.setAttribute('aria-label','Action bar');
     this.potion.className=this.portal.className='utility-slot';this.potion.innerHTML=hudFrame('utility')+hudIcon('potion')+'<span class="supply-count"></span><kbd></kbd>';this.portal.innerHTML=hudFrame('utility')+hudIcon('scroll')+'<span class="supply-count"></span><kbd></kbd>';
     this.utilities=[this.potion,this.portal].map(button=>({button,count:button.querySelector('.supply-count')!,key:button.querySelector('kbd')!}));
@@ -141,6 +151,8 @@ export class CombatUI {
   private tooltip(id:AbilityId):string{
     const definition=abilities[id],state=this.ctx.encounter();let text=definition.name;
     if(definition.mana)text+=` · ${definition.mana} mana · ${definition.cooldown}s cooldown`;
+    if(id==='crushing-blow' || id==='berserking')text+=' · '+definition.description;
+    if(!abilityUnlocked(id,this.ctx.character().xp))text+=' · Requires Axe level 2';
     if(definition.activation==='hold')text+=' · Hold to block';
     if(abilitySet(state.weaponSets,state.activeSet,id)===undefined)text+=` · Equip ${definition.family==='shield' ? 'a Shield' : definition.family==='axe' ? 'an Axe' : `a ${definition.family[0].toUpperCase()+definition.family.slice(1)}`} in a weapon set`;
     return text;
@@ -151,20 +163,45 @@ export class CombatUI {
     if(this.paused)this.skills.update();
     this.slots.forEach(({button,icon,cooldown:cooldownValue,key,caption},index)=>{
       const id=character.actionBar[index];
-      if(icon.dataset.ability!==(id ?? '')){icon.dataset.ability=id ?? '';icon.innerHTML=id ? hudIcon(id==='sweep' || id==='piercing-shot' ? id : abilities[id].family) : '';
+      if(icon.dataset.ability!==(id ?? '')){icon.dataset.ability=id ?? '';icon.innerHTML=id ? abilityIcon(id) : '';
         setText(caption,id ? abilities[id].name : '');}
-      const cooldown=id ? state.abilityCooldowns[id] ?? 0 : 0, unavailable=!!id && (abilitySet(state.weaponSets,state.activeSet,id)===undefined || state.playerMana<abilities[id].mana || cooldown>0 || state.player.hp<=0);
+      const casting=id==='berserking' && state.playerAction?.ability===id && state.player.attackTime>=0;
+      const cooldown=id ? cooldownForAbility(state,id) : 0, unavailable=!!id && (abilitySet(state.weaponSets,state.activeSet,id)===undefined || state.playerMana<abilities[id].mana || cooldown>0 || !abilityUnlocked(id,character.xp) || state.player.hp<=0);
       button.classList.toggle('unavailable',!this.paused && unavailable);button.classList.toggle('empty',!id);
-      button.dataset.state = !id ? 'empty' : abilitySet(state.weaponSets,state.activeSet,id)===undefined ? 'incompatible' : cooldown>0 ? 'cooldown' : state.playerMana<abilities[id].mana ? 'mana' : 'ready';
+      button.dataset.state = !id ? 'empty' : casting ? 'casting' : !abilityUnlocked(id,character.xp) ? 'locked' : abilitySet(state.weaponSets,state.activeSet,id)===undefined ? 'incompatible' : cooldown>0 ? 'cooldown' : state.playerMana<abilities[id].mana ? 'mana' : 'ready';
       const fill=String(id && abilities[id].cooldown ? cooldown/abilities[id].cooldown : 0);
       if(button.style.getPropertyValue('--cooldown')!==fill)button.style.setProperty('--cooldown',fill);
-      setText(cooldownValue,cooldown>0 ? String(Math.ceil(cooldown)) : '');
+      setText(cooldownValue,casting ? '…' : cooldown>0 ? String(Math.ceil(cooldown)) : '');
       setText(key,bindingLabel(preferences[actionSlotInputs[index]].find(Boolean) ?? null));
       const tooltip=id ? this.tooltip(id) : 'Empty';
       setAttribute(button,'title',tooltip);setAttribute(button,'aria-label',id ? tooltip : `Empty slot ${index+1}`);setDisabled(button,this.paused && !this.ctx.canEdit());
     });
+    this.updateAxeFeedback();
     this.utility(this.utilities[0],'potion',character.potions,state.potionCooldown,character.potions===0 || state.player.hp<=0 || state.player.hp>=state.stats.maxHealth || state.potionCooldown>0,'Health Potion');
     this.utility(this.utilities[1],'portal',character.scrolls,0,!this.ctx.portalReady(),'Scroll of Return');
+  }
+  private updateAxeFeedback():void {
+    const state=this.ctx.encounter(), character=this.ctx.character(), now=performance.now();
+    const active=state.berserkingRemaining>0 && state.player.hp>0;
+    this.buff.hidden=!active; this.buff.dataset.active=String(state.weapon==='axe');
+    if(active){setText(this.buff.querySelector('strong')!,`${Math.ceil(state.berserkingRemaining)}s`);setAttribute(this.buff,'title',state.weapon==='axe' ? 'Berserking · Axe bonuses active' : 'Berserking · Equip Axe for bonuses');}
+    const playing=state.player.hp>0 && !this.ctx.paused() && document.visibilityState==='visible';
+    if(playing && this.lastClock!==undefined)this.hintSeconds=Math.max(0,this.hintSeconds-(now-this.lastClock)/1000);
+    this.lastClock=playing ? now : undefined;
+    const show=(id:AbilityId,text:string)=>{
+      const index=character.actionBar.indexOf(id);
+      if(index<0)return false;
+      const key=bindingLabel(this.ctx.preferences.value[actionSlotInputs[index]].find(Boolean) ?? null);
+      if(key==='Unbound')return false;
+      this.hint.textContent=`${key} · ${text}`;this.hintSeconds=6;return true;
+    };
+    if(playing && !this.hintedUltimate && abilityUnlocked('berserking',character.xp)){
+      if(show('berserking','Berserking · 8s frenzy'))this.hintedUltimate=true;
+      else if(this.hintSeconds===0){this.hint.textContent=`${bindingLabel(this.ctx.preferences.value.skills.find(Boolean) ?? null)} · Assign Berserking in Skills`;this.hintSeconds=6;this.hintedUltimate=true;}
+    } else if(playing && !this.hintedSkill && state.weapon==='axe' && state.enemyIds.some(id=>state.enemies[id].engaged) && this.hintSeconds===0){
+      this.hintedSkill=show('crushing-blow','Crushing Blow · Interrupt a windup');
+    }
+    this.hint.hidden=!playing || this.hintSeconds===0;
   }
   private utility(elements:UtilityElements,action:'potion'|'portal',count:number,cooldown:number,unavailable:boolean,name:string):void{
     const title=`${name} · ${count}`;

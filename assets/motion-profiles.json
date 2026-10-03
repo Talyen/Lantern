@@ -461,6 +461,27 @@
       "sourceId": "57f928ff818a",
       "name": "Bow Release \u2014 source timing",
       "category": "study"
+    },
+    "axe-crushing-blow": {
+      "sourceId": "50032fca84ef",
+      "name": "Crushing Blow",
+      "category": "skill",
+      "duration": 0.95,
+      "trim": [
+        0.15,
+        2.05
+      ],
+      "contact": 0.38
+    },
+    "axe-battle-cry": {
+      "sourceId": "cc64b1879065",
+      "name": "Berserking Battle Cry",
+      "category": "skill",
+      "duration": 0.5,
+      "trim": [
+        0.5,
+        1.6
+      ]
     }
   },
   "player": {
@@ -498,7 +519,9 @@
         "blockBackward": "block-backward",
         "blockLeft": "block-left",
         "blockRight": "block-right",
-        "mine": "pickaxe-mine"
+        "mine": "pickaxe-mine",
+        "crush": "axe-crushing-blow",
+        "battleCry": "axe-battle-cry"
       },
       "axe-shield": {
         "idle": "shield-idle",
@@ -516,7 +539,9 @@
         "blockBackward": "block-backward",
         "blockLeft": "block-left",
         "blockRight": "block-right",
-        "mine": "pickaxe-mine"
+        "mine": "pickaxe-mine",
+        "crush": "axe-crushing-blow",
+        "battleCry": "axe-battle-cry"
       },
       "sword": {
         "idle": "axe-idle",

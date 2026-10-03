@@ -12,7 +12,7 @@ export class CombatImpact {
       if (event.type !== 'impact' || event.blocked || event.actor === 'player' || event.origin?.actor !== 'player') continue;
       const { id, ability } = event.origin;
       if (this.seen.includes(id)) continue;
-      const skill = ability === 'sweep' || ability === 'piercing-shot';
+      const skill = ability === 'sweep' || ability === 'piercing-shot' || ability === 'crushing-blow';
       if (!skill && event.weapon !== 'axe' && event.weapon !== 'sword') continue;
       this.seen.push(id); if (this.seen.length > 64) this.seen.shift();
       this.stop = Math.min(.07, Math.max(this.stop, skill ? .055 : .035));

@@ -57,10 +57,12 @@ export class EquipmentSets {
     for (const prepared of this.sets ?? []) {
       const basic = basicAbility(weaponFamily(prepared.loadout.main));
       if (basic) timings[basic] = { attack: prepared.motions.clips.attack.duration, contacts: prepared.motions.contacts };
-      for (const [id, role] of [['sweep', 'sweep'], ['piercing-shot', 'pierce']] as const) {
+      for (const [id, role] of [['sweep', 'sweep'], ['piercing-shot', 'pierce'], ['crushing-blow', 'crush']] as const) {
         const clip = prepared.motions.clips[role], contacts = prepared.motions.skillContacts[role];
         if (clip && contacts) timings[id] = { attack: clip.duration, contacts };
       }
+      const cry = prepared.motions.clips.battleCry;
+      if (cry) timings.berserking = { attack: cry.duration, contacts: [] };
     }
     this.timings = timings;
   }

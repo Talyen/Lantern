@@ -1155,6 +1155,14 @@
       "gain": 0.22,
       "bus": "ambience",
       "rate": 1
+    },
+    "battleCry": {
+      "clips": [
+        "human-hurt"
+      ],
+      "gain": 0.45,
+      "bus": "effects",
+      "rate": 1.15
     }
   }
 }

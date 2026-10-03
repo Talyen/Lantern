@@ -1,4 +1,4 @@
-import { abilities, abilitySet, type AbilityId } from '../gameplay/abilities';
+import { abilities, abilitySet, abilityUnlocked, cooldownForAbility, type AbilityId } from '../gameplay/abilities';
 import type { Adventure } from '../gameplay/adventure';
 import {
   dodge, swapWeaponSet, useAbility,
@@ -63,6 +63,8 @@ export class CombatController {
 
   startAbility(id: AbilityId): void {
     if (this.context.paused()) return;
+    this.encounter.proficiency = { ...this.adventure.character.xp };
+    if (!abilityUnlocked(id, this.encounter.proficiency)) { this.adventure.message('Berserking requires Axe level 2'); return; }
     this.context.interruptApproach();
     if (!this.holdingShield()) this.encounter.blocking = false;
     const pointer = this.input.pointer();
@@ -85,6 +87,8 @@ export class CombatController {
       this.adventure.message(`Equip ${item} in a weapon set`);
     } else if (this.encounter.playerMana < definition.mana) {
       this.adventure.message('Not enough mana');
+    } else if (cooldownForAbility(this.encounter, id) > 0) {
+      this.adventure.message(`${definition.name} is not ready`);
     } else if (this.encounter.blocking && definition.activation !== 'hold') {
       this.adventure.message('Release Shield to attack');
     }
