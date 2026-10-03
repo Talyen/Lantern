@@ -1,4 +1,5 @@
-import { registerRuntimeSnapshot } from '../diagnostics/report';
+import { loadingScreen } from '../ui/loading';
+import { registerRuntimeSnapshot, recordFailure } from '../diagnostics/report';
 import { ShopMenu } from '../ui/shop';
 import { ClearingDiagnostics } from './diagnostics';
 import { disposeSceneResources, sceneTextures } from '../assets/resource-ownership';
@@ -89,8 +90,6 @@ window.addEventListener('lanternvisibilitychange', visibilityChanged);
 for (const event of ['pointerdown', 'pointerup', 'pointermove', 'keydown', 'keyup', 'wheel', 'input', 'change']) window.addEventListener(event, () => { if (frameLoop.running && paused()) invalidateFrame(); });
 
 
-const fade = document.createElement('div');
-fade.style.cssText = 'position:fixed;inset:0;background:#111e24;opacity:0;pointer-events:none;transition:opacity 150ms;z-index:90'; document.body.append(fade);
 const mount = document.getElementById('scene')!;
 const { scene, ambient, sun } = createWorld();
 let definitions = areas;
@@ -270,6 +269,7 @@ const interactionActions = new InteractionActions(adventure, encounter, menus, g
   openShop: () => { shop.update(adventure.character); shop.open(); },
 });
 function dispatchInput(action: InputAction): void {
+  if (loadingScreen.blocking || transitioning) { clearInput(); return; }
   if (action === 'inventory') { menuController.toggleInventory(); return; }
   if (action === 'skills') { menuController.toggleSkills(); return; }
   if (action === 'options') { menuController.toggleOptions(); return; }
@@ -351,7 +351,7 @@ function syncAdventure(): void {
   combatUI?.update();
 }
 function paused(): boolean {
-  return Boolean(!active || hidden() || characterMissing || menuController.paused || inventory.loading || inspecting || graphics?.preparingSettings || frozen || transitioning);
+  return Boolean(loadingScreen.blocking || !active || hidden() || characterMissing || menuController.paused || inventory.loading || inspecting || graphics?.preparingSettings || frozen || transitioning);
 }
 function resolveAim(pointer = input.pointer()): AimPoint | undefined {
   return pointerAim.resolve(pointer, encounter.player.y);
@@ -468,8 +468,9 @@ try {
   await gatheringTools.prepare();
   reset();
 } catch (error) {
-  characterMissing = true; hud.characterUnavailable();
-  console.error(error);
+  characterMissing = true;
+  recordFailure('character', error);
+  throw new Error('Required character art could not be prepared.', { cause: error });
 }
 
 {
@@ -494,7 +495,7 @@ try {
   resize();
   await graphics.initialize();
   frameLoop.start();
-  await changeArea({ kind: 'travel', area: currentArea.id });
+  if (!await changeArea({ kind: 'travel', area: currentArea.id })) throw new Error('Initial area could not be prepared.');
   if (import.meta.env.DEV && renderQuery.get('author') === 'levels') {
     const { attachAuthoring } = await import('../levels/authoring');
     attachAuthoring({ invalidate: invalidateFrame, scene, camera, renderer, definitions: () => definitions, area: () => currentArea, encounter,
@@ -558,14 +559,13 @@ async function changeAppearance(appearance: { surfaces?: SurfaceMode; lantern?: 
 }
 async function changeArea(change: AreaChange): Promise<boolean> {
   const id = change.kind === 'travel' ? change.area : currentArea.id;
-  const { arrivalId, transition = false, recover = false } = change.kind === 'travel' ? change : {};
+  const { arrivalId, recover = false } = change.kind === 'travel' ? change : {};
   const { canCommit, spawn } = change;
   const appearance = change.kind === 'refresh' ? change.appearance : undefined;
   const started = performance.now(), request = ++generation, next = definitions[id];
   const errors = validateDefinitions(definitions);
   if (!next || errors.length) {
     transitioning = false;
-    fade.style.opacity = '0';
     areaErrors = errors.length ? errors : [`Unknown area: ${id}`];
     return false;
   }
@@ -574,16 +574,23 @@ async function changeArea(change: AreaChange): Promise<boolean> {
   const savedView = frozen && active?.area.id === id
     ? cameraOwner.captureView()
     : null;
+  const startup = !active;
+  const presentation = startup || loadingScreen.blocking || change.kind === 'travel' && renderQuery.get('author') !== 'levels';
+  const token = startup ? loadingScreen.current : presentation ? loadingScreen.begin(next.name) : undefined;
+  const fadeUntil = performance.now() + (startup || matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 150);
   transitioning = true;
+  audio.update(encounter.player, true);
   hud.clearCombatText();
   clearInput();
   let preparedEnemies: PreparedEnemies | undefined;
   let actorsAccepted = false;
+  let committed = false;
   let candidateOwner: Awaited<ReturnType<typeof prepareAreaCandidate>> | undefined;
   try {
-    if (transition) {
-      fade.style.opacity = '1';
-      await new Promise(resolve => setTimeout(resolve, 160));
+    if (canCommit && !canCommit()) {
+      adventure.message('Travel cancelled.');
+      if (token !== undefined && await loadingScreen.ready(token)) renderer.domElement.focus();
+      return false;
     }
     const digest = await crypto.subtle.digest('SHA-256',
       new TextEncoder().encode(JSON.stringify({ ...resolved, surfaces: nextSurfaces })));
@@ -597,13 +604,21 @@ async function changeArea(change: AreaChange): Promise<boolean> {
       },
     );
     preparedEnemies = await enemyActors.prepare(createEncounter('playing', next.layout));
+    if (presentation && performance.now() < fadeUntil) await new Promise(resolve => setTimeout(resolve, fadeUntil - performance.now()));
     const accepted = candidateOwner.accept(
       () => request === generation && (!canCommit || canCommit()),
       () => { if (change.kind === 'refresh') change.onCommit?.(); },
     );
-    if (!accepted) return false;
+    if (!accepted) {
+      if (request === generation && token !== undefined) {
+        adventure.message('Travel cancelled.');
+        if (await loadingScreen.ready(token)) renderer.domElement.focus();
+      }
+      return false;
+    }
 
     const { area: candidate, movement: candidateMovement, lighting: preparedLighting } = candidateOwner;
+    committed = true;
     enemyActors.commit(preparedEnemies); actorsAccepted = true;
     graphics!.effects.clearArea();
     adventureVisuals?.dispose();
@@ -646,25 +661,34 @@ async function changeArea(change: AreaChange): Promise<boolean> {
     if (savedView) {
       cameraOwner.restoreView(savedView);
     }
-    transitioning = false;
-    audio.update(encounter.player, paused());
     await waitFrames(2);
     if (request !== generation) return false;
+    if (token !== undefined && !await loadingScreen.ready(token)) return false;
+    transitioning = false;
+    audio.update(encounter.player, paused());
     updateMs = performance.now() - started;
     renderer.domElement.focus();
     return true;
   } catch (error) {
-    if (request === generation) {
-      areaErrors = [error instanceof Error ? error.message : String(error)];
-      hud.setAssetStatus(`Unable to travel. ${areaErrors[0]}`);
-    }
+    if (request !== generation) return false;
+    areaErrors = [error instanceof Error ? error.message : String(error)];
+    recordFailure(startup ? 'startup-area' : 'travel', error);
+    if (startup) throw error;
+    if (token === undefined) { hud.setAssetStatus(`Unable to travel. ${areaErrors[0]}`); return false; }
+    if (committed) { loadingScreen.fail(token, error); return false; }
+    if (!actorsAccepted) { preparedEnemies?.dispose(); preparedEnemies = undefined; }
+    candidateOwner?.dispose(); candidateOwner = undefined;
+    const choice = await loadingScreen.recover(token, error);
+    if (request !== generation || choice === 'superseded') return false;
+    areaErrors = [];
+    if (choice === 'retry') return await changeArea(change);
+    if (await loadingScreen.ready(token)) renderer.domElement.focus();
     return false;
   } finally {
     if (!actorsAccepted) preparedEnemies?.dispose();
     candidateOwner?.dispose();
     if (request === generation) {
       transitioning = false;
-      fade.style.opacity = '0';
       clearInput();
     }
   }
@@ -673,11 +697,11 @@ if (import.meta.hot) import.meta.hot.accept('../levels/registry', module => {
   if (!module) return;
   const updated = module.areas as typeof areas;
   const errors = validateDefinitions(updated);
-  if (errors.length) { generation++; transitioning = false; fade.style.opacity = '0'; areaErrors = errors; return; }
+  if (errors.length) { generation++; transitioning = false; if (active) loadingScreen.dismiss(); areaErrors = errors; return; }
   definitions = updated; void changeArea({ kind: 'refresh' }).catch((error: unknown) => console.error('Unable to refresh area definitions.', error));
 });
 
-if (import.meta.hot) import.meta.hot.on('vite:error', payload => { generation++; transitioning = false; fade.style.opacity = '0'; areaErrors = [payload.err.message]; });
+if (import.meta.hot) import.meta.hot.on('vite:error', payload => { generation++; transitioning = false; if (active) loadingScreen.dismiss(); areaErrors = [payload.err.message]; });
 
 if (import.meta.hot) import.meta.hot.accept('../levels/lighting', module => {
   if (!module) return;

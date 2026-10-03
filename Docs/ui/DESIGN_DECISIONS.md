@@ -85,3 +85,7 @@ Owner chose existing actions plus planned nodes, requested proposed thresholds a
 ## Decision entry format
 
 For a consequential change, append a short dated entry with: question; adopted choice; owner/evidence; affected tokens/components/screens; remaining uncertainty. Link the exact prompt/concept or prototype evidence. Rewrite the active recommendation when it changes, rather than leaving conflicting prescriptions. Keep routine visual tuning beside the owning component instead of producing a decision entry for every pixel.
+
+## Loading screen — October 2, 2026
+
+The owner selected one stationary lantern with subtle flame variation for startup and travel. Longer travel preparation reveals the composition after 400ms; quick journeys use only the fade. Original artwork, DOM text, reduced-motion support and actionable recovery are adopted in [the loading brief](concepts/loading/README.md). No title menu, saved slots, invented percentages or minimum loading duration.

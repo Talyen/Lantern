@@ -91,7 +91,15 @@ export class FrameLoop {
       return;
     }
 
-    if (this.context.render(dt)) {
+    let rendered: boolean;
+    try { rendered = this.context.render(dt); }
+    catch (error) {
+      const failure = error instanceof Error ? error : new Error(String(error));
+      for (const waiter of this.waiters) waiter.reject(failure);
+      this.waiters.clear();
+      throw error;
+    }
+    if (rendered) {
       this.settle = paused ? Math.max(0, this.settle - 1) : settlingFrames;
       for (const waiter of this.waiters) {
         if (--waiter.left > 0) continue;
