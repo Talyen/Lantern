@@ -92,6 +92,7 @@ Make strong visual choices within this identity and the requested task. Choose a
 - **World:** weathered craft, painterly surfaces, readable silhouettes, and amber refuge within a dangerous landscape.
 - **Composition:** asymmetrical arrangements with visual balance, clustered detail, quiet space, and a clear focal point.
 - **UI:** an instrument belonging to this world. Use the existing iron, brass, and smoky-glass [orb treatment](../assets/ui/orbs/PROMPTS.md) as a concrete starting reference; apply ornament selectively according to importance. The [UI design system](UI_DESIGN.md) owns the adopted warm, crafted direction, proposed foundations and shared component rules.
+- **Interaction:** every meaningful action receives timely, perceptible, truthful feedback under the shared [interaction feedback principle](INTERACTION_FEEDBACK.md). A clear natural result can suffice; essential outcomes remain understandable without sound.
 - **Motion:** purposeful feedback with clear timing and controlled settling. Avoid constant animation that competes with combat or attention.
 - **Restraint:** visual simplicity must feel intentional through proportion, alignment, material response, and finish.
 

@@ -2,6 +2,8 @@
 
 This is the canonical owner of Lantern's UI design direction and shared presentation rules. Read the [art direction](ART_DIRECTION.md#design-principles) for world identity, [runtime contracts](RUNTIME.md#hud-and-player-controls) for current behavior, and [design workflow](ui/WORKFLOW.md) for moving from a brief to an inspected screen. The [screen catalog](ui/SCREEN_CATALOG.md) tracks coverage; the [decision record](ui/DESIGN_DECISIONS.md) separates agreed direction from proposals.
 
+Apply the shared [interaction feedback principle](INTERACTION_FEEDBACK.md) to every meaningful UI action, including pending, blocked and cancelled interactions. Essential outcomes remain understandable without sound; existing clear state changes can provide acknowledgment.
+
 ## Status and intent
 
 On October 2, 2026, the owner selected warm, crafted fantasy with restrained ornament, desktop keyboard/mouse first and A — Crafted instrument materials. After the layout/sketch/interaction studies, the owner explicitly authorized implementing Inventory and stash. These screens now use [InventoryPanel](../src/ui/inventory-panel.ts), [its style/token owner](../src/ui/inventory.css), [original item art](../assets/ui/inventory/PROMPT.md), and [the shared art renderer](../src/ui/inventory-art.ts). Continue focused guiding questions during implementation. Other screens remain in design until requested; this does not certify whole-game accessibility or quality.

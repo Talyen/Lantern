@@ -177,6 +177,8 @@ Area construction retains selectable tree, chest and fire roots through batching
 
 ## Prototype conventions
 
+Apply the [interaction feedback principle](INTERACTION_FEEDBACK.md) to meaningful gameplay and UI actions, including unsuccessful attempts. Acknowledge accepted input promptly and present outcomes from their real owners; essential outcomes must remain understandable without sound.
+
 - Keep gameplay and render state explicit in TypeScript. The camera is fixed isometric with follow and Options-only Camera Distance; WASD or arrows move, six assignable action slots default to Q/E/R/G/LMB/RMB, Shift dodges, F uses a Health Potion, T uses a Scroll of Return, Tab swaps weapon sets, K opens Skills, B toggles Inventory, and Escape toggles Options or closes a menu. Click world objects to approach and interact; all gameplay controls are remappable through Keybindings.
 - Gathering never requires owned or equipped tools. Show presentation-only basic tools with compatible Mixamo gathering motions, and restore combat presentation without changing inventory or weapon sets.
 - Keep the encounter runnable when optional scenery is absent; report missing playable character art clearly.

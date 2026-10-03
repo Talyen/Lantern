@@ -8,7 +8,7 @@ Design from first principles. Do not carry forward rough prototype elements/flow
 
 ## 1. Write the screen brief
 
-Use the [brief template](SCREEN_BRIEF_TEMPLATE.md). Record the player goal, entry/exit, information hierarchy, useful content, relevant states, input and layout targets. Identify current behavior versus proposed UX behavior. Link the model for available data and explain proposed rule changes; do not preserve unrelated prototype content or invent mechanics to make a mockup attractive.
+Use the [brief template](SCREEN_BRIEF_TEMPLATE.md). Record the player goal, entry/exit, information hierarchy, useful content, relevant states, input and layout targets. Apply the [interaction feedback principle](../INTERACTION_FEEDBACK.md): identify acknowledgment and actual outcome, including relevant pending, blocked and cancellation states. Identify current behavior versus proposed UX behavior. Link the model for available data and explain proposed rule changes; do not preserve unrelated prototype content or invent mechanics to make a mockup attractive.
 
 State the intended visible effect in working commentary. Update the [screen catalog](SCREEN_CATALOG.md) as work advances. A major screen needs a layout concept; related primitives can share a component sheet. A small refinement does not require new ImageGen output or a ceremony.
 
@@ -62,7 +62,7 @@ Evaluate:
 - Type, spacing, surfaces, icon treatment, interaction states and motion are coherent.
 - Focus/selection remain visible; controls can be reached and dismissed; UI clicks do not trigger play.
 - Relevant content fits/reflows, critical actions remain reachable, and state is not communicated only by color/sound.
-- Feedback is immediate, truthful and recoverable; existing player data and settings policies survive.
+- Follow the [interaction feedback principle](../INTERACTION_FEEDBACK.md): feedback is timely, truthful and recoverable, essential meaning survives muted sound and reduced motion, and existing player data and settings policies survive.
 
 Identify and refine the weakest visible part before handoff. Local screenshots containing licensed game art remain under ignored `.local/`; a short text note is normally enough. An image or passing check cannot establish visual quality. Record hardware/input/accessibility limits without claiming untested support.
 

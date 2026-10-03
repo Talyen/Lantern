@@ -2,6 +2,8 @@
 
 Lantern uses recorded weapon and movement foley, compact creature reactions, subdued magic and quiet woodland/refuge ambience. Combat leads the mix; there is no background music, hit pause, camera shake or continuous reward chatter.
 
+Follow the shared [interaction feedback principle](INTERACTION_FEEDBACK.md): sound may reinforce meaningful actions and outcomes, while essential meaning remains visible with sound muted or unavailable. A clear existing visual response can suffice; this does not require a sound for every input or change the event timing and bounded playback rules below.
+
 ## Owners and event timing
 
 `src/audio/audio.ts` owns one Web Audio context, cached decoded buffers, gain buses, variant selection, positional attenuation and bounded playback. `src/audio/gameplay.ts` maps numeric gameplay results to the authored cues in [the audio manifest](../assets/audio/manifest.json). Simulation and rendering never depend on playback succeeding.

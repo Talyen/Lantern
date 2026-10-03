@@ -37,6 +37,7 @@ Start with [the daily workflow](Docs/DEVELOPMENT.md) and [task routing](Docs/ARC
 
 ## Topic invariants and visual work
 
+- Every meaningful UI or gameplay action must produce timely, perceptible, truthful feedback, including blocked, pending and cancelled interactions. Essential outcomes must remain understandable without sound. Follow the [interaction feedback principle](Docs/INTERACTION_FEEDBACK.md); existing clear state changes can satisfy it.
 - All routes use shared Golden lighting and local flame recipes through `src/levels/lighting.ts`. Read [lighting authoring](Docs/LIGHTING.md#agent-lighting-workflow) before lighting changes; bakes remain explicit and private.
 - Gameplay and presentation stay explicit in TypeScript. Follow [prototype conventions](Docs/RUNTIME.md#prototype-conventions) for controls, tool-free gathering, optional scenery and rig-compatible Mixamo clips. Preserve authored playable textures and private source catalogs.
 - Before any player-facing visual change, read [art direction and visual workflow](Docs/ART_DIRECTION.md#agent-visual-workflow). State the intended visible effect in working notes/commentary, finish the composition and interaction details, then inspect and refine at gameplay scale. Keep implementation details and unrequested flavor/status copy out of the game.
