@@ -244,7 +244,7 @@ async function selectClip(lane: Lane): Promise<void> {
     if (lane.rig === 'player' && ['chop', 'mine'].includes(clip.category)) {
       tools = new GatheringTools(model, equipment); await tools.prepare();
       if (generation !== lane.generation || disposed) { tools.dispose(); lantern?.dispose(); equipment.dispose(); model.traverse(object => { if (object instanceof THREE.SkinnedMesh) object.skeleton.dispose(); }); return; }
-      tools.show(clip.category === 'chop' ? 'tree' : 'mineral');
+      tools.show(clip.category === 'chop' ? 'tree' : 'stone');
     }
     clearLane(lane);
     lantern?.setEnabled(el<HTMLInputElement>('lab-lantern').checked);
