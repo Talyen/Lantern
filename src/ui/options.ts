@@ -59,13 +59,13 @@ export class Options {
     document.getElementById('options-close')!.addEventListener('click', () => this.close());
     bindMenuDismissal(this.dialog, () => this.close());
     // The preference schema owns conversion and validation for every select.
-    for (const select of mount.querySelectorAll<HTMLSelectElement>('select')) select.addEventListener('change', () => {
+    mount.querySelectorAll<HTMLSelectElement>('select').forEach(select => select.addEventListener('change', () => {
       const key = select.id.slice('option-'.length) as keyof GraphicsSettings;
       this.settings = parseSettings(this.settings, new URLSearchParams([[key, select.value]]));
       this.apply();
       if (key === 'fpsLimit') this.ctx.resetMeasurements();
       this.save(key);
-    });
+    }));
     for (const key of Object.keys(ranges) as NumericSetting[]) this.input<HTMLInputElement>(key).addEventListener('input', () => {
       const value = Number(this.input<HTMLInputElement>(key).value);
       this.settings[key] = value; this.apply(); this.save(key);
