@@ -85,12 +85,18 @@ export class CombatController {
       this.adventure.message(`Equip ${item} in a weapon set`);
     } else if (this.encounter.playerMana < definition.mana) {
       this.adventure.message('Not enough mana');
+    } else if (this.encounter.blocking && definition.activation !== 'hold') {
+      this.adventure.message('Release Shield to attack');
     }
   }
 
   swap(): void {
     if (this.context.paused()) return;
     this.context.interruptApproach();
+    if (!this.encounter.weaponSets[(1-this.encounter.activeSet) as 0|1].main) {
+      this.adventure.message('Other weapon set is empty');
+      return;
+    }
     this.releaseShield();
     if (this.context.impactHolding()) {
       if(this.encounter.weaponSets[(1-this.encounter.activeSet) as 0|1].main) this.encounter.pending = { kind:'swap', remaining:.15 };
@@ -106,5 +112,7 @@ export class CombatController {
     const aim = this.pointerAim.resolve(this.input.pointer(), this.encounter.player.y);
     if (this.context.impactHolding()) { this.encounter.pending = { kind:'dodge', remaining:.15, direction:this.input.movement(), aim }; return; }
     this.context.present(dodge(this.encounter, this.input.movement(), false, aim));
+    if (this.encounter.pending?.kind === 'dodge' && Math.max(this.encounter.player.lock, this.encounter.dodgeCooldown, this.encounter.dodgeRemaining) > .15)
+      this.adventure.message('Dodge is not ready');
   }
 }

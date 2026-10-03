@@ -293,9 +293,17 @@ function usePotion(): void {
   if (paused()) return;
   if(impact.holding){pendingUtility='potion';return;}
   if (adventure.usePotion(encounter)) interruptApproach();
+  else if (encounter.player.hp > 0) adventure.message(encounter.player.hp >= encounter.stats.maxHealth ? 'Health is full' : adventure.character.potions === 0 ? 'No Health Potions' : 'Potion is not ready');
   syncAdventure();
 }
-function castReturn():void {if(impact.holding && !paused()){pendingUtility='portal';return;}if(!paused()){interruptApproach();adventure.beginCast(encounter.player.hp>0);syncAdventure();}}
+function castReturn():void {
+  if(impact.holding && !paused()){pendingUtility='portal';return;}
+  if(paused())return;
+  interruptApproach();
+  if(!adventure.beginCast(encounter.player.hp>0) && encounter.player.hp>0)
+    adventure.message(currentArea.id===homeArea ? 'Already at Homestead' : adventure.castRemaining>0 ? 'Scroll of Return is casting' : 'No Scrolls of Return');
+  syncAdventure();
+}
 const combatUI = new CombatUI({
   character: () => adventure.character, encounter: () => encounter, preferences,
   activate: id => combat.startAbility(id), potion: usePotion, portal: castReturn,

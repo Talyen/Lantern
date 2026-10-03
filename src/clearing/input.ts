@@ -73,6 +73,11 @@ export function createInput(
       event.target.closest('input,textarea,[contenteditable=true]')) return;
     const binding = keyboardInput(event), action = inputFor(preferences.value, binding);
     if (!action) return;
+    const control = event.target instanceof HTMLElement
+      ? event.target.closest('select,button,summary,a') : null;
+    // Remapped menu inputs must leave native control activation and selection intact.
+    if (control && (control.matches('select') && event.key !== 'Escape'
+      || ['Enter', ' '].includes(event.key))) return;
     if (menus.has(action)) {
       event.preventDefault();
       if (!event.repeat) onAction(action);

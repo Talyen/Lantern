@@ -6,6 +6,7 @@ import { abilityIcon } from './ability-icons';
 import { hudFrame, hudIcon } from './hud-art';
 import { SkillsPanel } from './skills-panel';
 import { setText, setAttribute, setDisabled } from './dom';
+import { bindMenuDismissal } from './menu';
 import './combat.css';
 
 type Context={character():CharacterSave;encounter():Encounter;preferences:InputPreferences;activate(id:AbilityId):void;potion():void;portal():void;canEdit():boolean;portalReady():boolean;assign(bar:ActionBar):void;clear():void;focus():void};
@@ -55,7 +56,11 @@ export class CombatUI {
           return;
         }
         event.preventDefault();event.stopPropagation();if(event.repeat)return;
-        const id=this.ctx.character().actionBar[i];if(!id)return;
+        const id=this.ctx.character().actionBar[i];
+        if(!id){
+          if(this.ctx.canEdit()){this.open();this.pickerOnly=true;this.skills.panel.hidden=true;this.skills.openPicker(button,i);}
+          return;
+        }
         if(abilities[id].activation==='hold'){this.held=id;this.heldKey=event.key;this.heldPointer=null;}
         this.ctx.activate(id);this.ctx.focus();
       };
@@ -83,7 +88,6 @@ export class CombatUI {
       if(this.skills.pickerOpen){this.skills.closePicker();if(this.pickerOnly)this.close();return;}
       this.close();
     };
-    this.dialog.addEventListener('cancel',event=>{event.preventDefault();dismiss();});
     this.dialog.addEventListener('keydown',event=>{
       if(event.key!=='Escape')return;
       event.preventDefault();event.stopPropagation();if(!event.repeat)dismiss();
@@ -93,8 +97,14 @@ export class CombatUI {
         && !this.bar.contains(event.target)){
         this.skills.closePicker(false);if(this.pickerOnly)this.close();
       }
-      if(event.target===this.dialog && !this.drag)this.close();
     });
+    bindMenuDismissal(this.dialog, dismiss);
+    const dismissOverlays=()=>{
+      this.skills.hideTooltip();
+      if(this.skills.pickerOpen){this.skills.closePicker();if(this.pickerOnly)this.close();}
+    };
+    this.dialog.addEventListener('scroll',dismissOverlays,true);
+    window.addEventListener('resize',dismissOverlays);
     this.ghost.className='ability-ghost';this.dialog.append(this.ghost);document.getElementById('app')!.append(this.dialog);
     window.addEventListener('pointermove',event=>{if(!this.drag || event.pointerId!==this.drag.pointer)return;if(Math.hypot(event.clientX-this.drag.x,event.clientY-this.drag.y)>5)this.drag.active=true;if(!this.drag.active)return;this.skills.hideTooltip();this.ghost.innerHTML=abilityIcon(this.drag.id);this.ghost.hidden=false;this.ghost.style.left=`${event.clientX}px`;this.ghost.style.top=`${event.clientY}px`;this.buttons.forEach(button=>{const rect=button.getBoundingClientRect();button.classList.toggle('drop-target',event.clientX>=rect.left && event.clientX<=rect.right && event.clientY>=rect.top && event.clientY<=rect.bottom);});});
     window.addEventListener('pointerup',event=>{

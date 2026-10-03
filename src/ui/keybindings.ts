@@ -132,9 +132,12 @@ export class KeybindingsMenu {
     this.draft[conflict.cell.action][conflict.cell.index] = conflict.binding;
     this.conflict = null;
     this.render();
+    this.content.querySelector<HTMLButtonElement>(`[data-binding-focus="${conflict.cell.action}/${conflict.cell.index}"]`)?.focus();
   }
 
   private render(): void {
+    const focused = document.activeElement instanceof HTMLElement && this.dialog.contains(document.activeElement)
+      ? document.activeElement.dataset.bindingFocus : undefined;
     this.content.replaceChildren();
     this.status.replaceChildren();
     const bar = this.bar();
@@ -168,18 +171,20 @@ export class KeybindingsMenu {
           cell.className = 'binding-cell';
           const button = document.createElement('button');
           button.type = 'button';
+          button.dataset.bindingFocus = `${action}/${index}`;
           button.textContent = this.capture?.action === action && this.capture.index === index ? 'Press an input…' : bindingLabel(binding);
           button.setAttribute('aria-label', `${actionNames[action]}, ${index === 0 ? 'Primary' : 'Secondary'}: ${bindingLabel(binding)}`);
           button.classList.toggle('capturing', this.capture?.action === action && this.capture.index === index);
           button.onclick = () => { this.capture = { action, index }; this.conflict = null; this.render(); };
           const clear = document.createElement('button');
           clear.type = 'button';
+          clear.dataset.bindingFocus = `${action}/${index}/clear`;
           clear.dataset.captureControl = 'true';
           clear.textContent = '×';
           clear.className = 'clear-binding';
           clear.setAttribute('aria-label', `Clear ${actionNames[action]} ${index === 0 ? 'Primary' : 'Secondary'}`);
           clear.disabled = !binding;
-          clear.onclick = () => { this.draft[action][index] = null; this.capture = null; this.conflict = null; this.render(); };
+          clear.onclick = () => { this.draft[action][index] = null; this.capture = null; this.conflict = null; this.render(); this.content.querySelector<HTMLButtonElement>(`[data-binding-focus="${action}/${index}"]`)?.focus(); };
           cell.append(button, clear);
           row.append(cell);
         }
@@ -200,7 +205,7 @@ export class KeybindingsMenu {
       }
     } else if (this.conflict) {
       this.status.textContent = `${bindingLabel(this.conflict.binding)} is assigned to ${actionNames[this.conflict.other.action]}.`;
-      for (const [name, callback] of [['Swap', () => this.resolveConflict(true)], ['Replace', () => this.resolveConflict(false)], ['Cancel', () => { this.conflict = null; this.render(); }]] as const) {
+      for (const [name, callback] of [['Swap', () => this.resolveConflict(true)], ['Replace', () => this.resolveConflict(false)], ['Cancel', () => { const cell = this.conflict!.cell; this.conflict = null; this.render(); this.content.querySelector<HTMLButtonElement>(`[data-binding-focus="${cell.action}/${cell.index}"]`)?.focus(); }]] as const) {
         const button = document.createElement('button');
         button.textContent = name;
         button.onclick = callback;
@@ -210,6 +215,8 @@ export class KeybindingsMenu {
       this.status.textContent = `Bind ${missing.map(action => actionNames[action].toLowerCase()).join(', ')} before applying.`;
     else
       this.status.textContent = '';
+    if (this.conflict) this.status.querySelector<HTMLButtonElement>('button')?.focus();
+    else if (focused) this.dialog.querySelector<HTMLButtonElement>(`[data-binding-focus="${CSS.escape(focused)}"]`)?.focus();
   }
 
   private save(): void {
