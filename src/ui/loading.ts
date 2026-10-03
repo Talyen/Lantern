@@ -108,8 +108,8 @@ class LoadingScreen {
       this.actions.append(element);
       return element;
     };
-    const first = recovery ? button('Retry', recovery.retry) : button('Reload', () => location.reload());
-    if (recovery) button('Back', recovery.back);
+    const first = recovery ? button('Retry', () => recovery.retry()) : button('Reload', () => location.reload());
+    if (recovery) button('Back', () => recovery.back());
     this.actions.append(diagnosticExportButton());
     first.focus();
   }
