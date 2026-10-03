@@ -13,7 +13,7 @@ import { particlePresets, type QualityLevel } from '../../rendering/quality-pres
 export type UltimateKind = 'crescent' | 'arrow-rain';
 export const ultimateSequences = {
   crescent: { name: 'Crescent Wave', release: .42, motion: .92, duration: 3.2 },
-  'arrow-rain': { name: 'Arrow Rain', release: .73, motion: 1, duration: 4.6 },
+  'arrow-rain': { name: 'Arrow Rain', release: .93, motion: 1.5, duration: 4.8 },
 } as const;
 export const ultimateTargets = [new THREE.Vector3(-1, 0, 3.15), new THREE.Vector3(1.1, 0, 4.1), new THREE.Vector3(-.2, 0, 5.05)];
 const smooth = (a: number, b: number, value: number) => THREE.MathUtils.smoothstep(value, a, b);
@@ -48,6 +48,11 @@ export class UltimateEffects {
   private groundImpacts: GroundImpact[] = [];
   private arrows: RainArrow[] = [];
   private arrowAsset?: AssetInstance;
+  private bowPosition = new THREE.Vector3();
+  private bowDirection = new THREE.Vector3(0, 1, 0);
+  private launchPosition = new THREE.Vector3();
+  private launchDirection = new THREE.Vector3(0, 1, 0);
+  private launchTrail?: THREE.Mesh<THREE.BufferGeometry, MeshBasicNodeMaterial>;
   private density: number;
   private disposed = false;
   private ready?: Promise<void>;
@@ -93,12 +98,13 @@ export class UltimateEffects {
       const object = instance.object.clone(true); object.visible = false; object.rotation.x = Math.PI / 2;
       object.traverse(mesh => { if (!isMesh(mesh)) return; const copy = (material: THREE.Material) => { const owned = material.clone(); owned.transparent = true; this.materials.add(owned); return owned; }; mesh.material = Array.isArray(mesh.material) ? mesh.material.map(copy) : copy(mesh.material); });
       this.root.add(object);
-      this.arrows.push({ object, position, impact: 1.52 + index / count * 1.45 + random(index, 3) * .1, launch: false });
+      this.arrows.push({ object, position, impact: ultimateSequences['arrow-rain'].release + .79 + index / count * 1.45 + random(index, 3) * .1, launch: false });
     }
-    for (let index = 0; index < 3; index++) {
-      const object = instance.object.clone(true); object.visible = false; this.root.add(object);
-      this.arrows.push({ object, position: new THREE.Vector3((index - 1) * .16, 1.05, .55), impact: ultimateSequences['arrow-rain'].release + index * .035, launch: true });
-    }
+    const launchArrow = instance.object.clone(true); launchArrow.visible = false; this.root.add(launchArrow);
+    this.arrows.push({ object: launchArrow, position: new THREE.Vector3(), impact: ultimateSequences['arrow-rain'].release, launch: true });
+    const trailMaterial = this.ownMaterial(new MeshBasicNodeMaterial({ color: '#d8b37a', transparent: true, depthWrite: false, opacity: 0 }));
+    this.launchTrail = new THREE.Mesh(this.ownGeometry(new THREE.CylinderGeometry(.002, .012, 1, 6)), trailMaterial);
+    this.launchTrail.visible = false; this.root.add(this.launchTrail);
     this.set('crescent');
   }
   private project(material: MeshBasicNodeMaterial, center: THREE.Vector3, size: THREE.Vector3): THREE.Mesh {
@@ -180,11 +186,18 @@ export class UltimateEffects {
     }
 
   }
-  stageMaterials(camera: THREE.Camera): void { this.particles?.stageMaterials(camera); this.groundImpacts.forEach(entry => { entry.mesh.visible = true; entry.fade.value = 0; }); }
+  stageMaterials(camera: THREE.Camera): void { this.particles?.stageMaterials(camera); this.groundImpacts.forEach(entry => { entry.mesh.visible = true; entry.fade.value = 0; }); if (this.launchTrail) this.launchTrail.visible = true; }
   resetParticles(): void { this.particles?.set(this.impactEvents); }
   hitTime(index: number): number { return this.targetHits[index]?.[0] ?? (ultimateSequences.crescent.release + (ultimateTargets[index].length() - .8) / 7.6); }
   hitTimes(index: number): readonly number[] { return this.targetHits[index] ?? []; }
   lastHit(index: number, time: number): number { let latest = Infinity; for (const hit of this.hitTimes(index)) { if (hit > time) break; latest = hit; } return latest; }
+  setBowFrame(nock: THREE.Vector3, direction: THREE.Vector3, release = false): void {
+    this.root.updateMatrixWorld(true);
+    const position = this.root.worldToLocal(nock.clone().addScaledVector(direction, .36));
+    const localDirection = direction.clone().transformDirection(this.root.matrixWorld.clone().invert());
+    this.bowPosition.copy(position); this.bowDirection.copy(localDirection);
+    if (release) { this.launchPosition.copy(position); this.launchDirection.copy(localDirection); }
+  }
   seek(time: number, camera: THREE.Camera): void {
     if (this.disposed || !this.ribbon || !this.ribbonHalo) return;
     this.root.visible = this.enabled;
@@ -192,7 +205,8 @@ export class UltimateEffects {
     this.wave.value = radius; this.footprintOpacity.value = sword && time >= ultimateSequences.crescent.release ? 1 - smooth(1.2, 2.3, time) : 0;
     this.anticipationOpacity.value = sword ? smooth(.06, .26, time) * (1 - smooth(.36, .55, time)) * .28 : 0;
     this.swordFootprint!.visible = sword;
-    this.rainFootprint!.visible = !sword; this.rainOpacity.value = !sword ? smooth(.12, .5, time) * (1 - smooth(1.55, 2.35, time)) : 0;
+    const rainAge = time - ultimateSequences['arrow-rain'].release;
+    this.rainFootprint!.visible = !sword; this.rainOpacity.value = !sword ? smooth(.08, .38, rainAge) * (1 - smooth(.82, 1.62, rainAge)) : 0;
     this.ribbon.visible = this.ribbonHalo.visible = sword && age >= 0 && age < .72;
     if (this.ribbon.visible) {
       const alpha = (1 - smooth(.48, .72, age)) * smooth(0, .04, age);
@@ -213,16 +227,25 @@ export class UltimateEffects {
     }
     for (const arrow of this.arrows) {
       const age = time - arrow.impact;
-      arrow.object.visible = !sword && (arrow.launch ? age >= 0 && age < .43 : age >= -.43 && age < .85);
+      arrow.object.visible = !sword && (arrow.launch ? time >= .06 && age < .43 : age >= -.43 && age < .85);
       if (!arrow.object.visible) continue;
       arrow.object.position.copy(arrow.position);
       if (arrow.launch) {
-        arrow.object.position.y += age * 14; arrow.object.position.z += age * 8;
-        arrow.object.rotation.set(-Math.atan2(14, 8), 0, 0);
+        const direction = age < 0 ? this.bowDirection : this.launchDirection;
+        arrow.object.position.copy(age < 0 ? this.bowPosition : this.launchPosition).addScaledVector(direction, Math.max(0, age) * 18);
+        arrow.object.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), direction);
       } else {
         arrow.object.position.y = .08 + Math.max(0, -age) * 17;
         arrow.object.traverse(mesh => { if (isMesh(mesh)) for (const material of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) material.opacity = 1 - smooth(.35, .85, age); });
       }
+    }
+    if (this.launchTrail) {
+      this.launchTrail.visible = !sword && rainAge >= 0 && rainAge < .43;
+      const length = Math.min(.8, Math.max(0, rainAge * 18));
+      this.launchTrail.position.copy(this.launchPosition).addScaledVector(this.launchDirection, Math.max(0, rainAge) * 18 - length / 2);
+      this.launchTrail.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), this.launchDirection);
+      this.launchTrail.scale.y = length;
+      this.launchTrail.material.opacity = .3 * (1 - smooth(.25, .43, rainAge));
     }
   }
   snapshot() { return { kind: this.kind, particles: this.particles?.snapshot(), groundEngine: 'tslfx 0.6.0', groundImpacts: this.groundImpacts.filter(entry => entry.mesh.visible).length, arrows: this.arrows.filter(a => a.object.visible).length, wave: this.wave.value, anticipation: this.anticipationOpacity.value, footprint: this.kind === 'crescent' ? this.footprintOpacity.value : this.rainOpacity.value }; }

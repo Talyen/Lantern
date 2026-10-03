@@ -19,15 +19,16 @@ import { loadEquipmentMotions } from '../../animation/combat-animations';
 import { GameAudio } from '../../audio/audio';
 import characters from '../../../assets/playable-characters.json';
 import { UltimateEffects, ultimateSequences, ultimateTargets, type UltimateKind } from './ultimate-effects';
+import { skywardShot } from './arrow-rain-motion';
 import './ultimate-lab.css';
 
 const authored = areas.clearing;
 const camp = authored.layout.enemy;
 if (!camp) throw new Error('Forest Clearing practice anchor is unavailable.');
-type PreviewActor = { root: THREE.Group; mixer: THREE.AnimationMixer; idle: THREE.AnimationAction; hit?: THREE.AnimationAction; actions: Map<UltimateKind, THREE.AnimationAction>; equipment: Equipment; lantern?: PlayerLantern; location: THREE.Vector3 };
+type PreviewActor = { root: THREE.Group; model: THREE.Object3D; mixer: THREE.AnimationMixer; idle: THREE.AnimationAction; hit?: THREE.AnimationAction; actions: Map<UltimateKind, THREE.AnimationAction>; equipment: Equipment; lantern?: PlayerLantern; location: THREE.Vector3 };
 const app = document.querySelector<HTMLElement>('#app')!;
 document.title = 'Lantern — Ultimate study';
-app.innerHTML = `<main class="ultimate-lab"><header><a href="/">← Lantern</a><h1>Ultimate study</h1><span class="ultimate-engine">Plume + TSLFX</span><label>Ability<select id="ultimate-kind"><option value="crescent">Sword · Crescent Wave</option><option value="arrow-rain">Bow · Arrow Rain</option></select></label><button id="ultimate-replay" disabled>Replay</button><button id="ultimate-pause" disabled>Pause</button><label>Speed<select id="ultimate-speed"><option value="1">Normal</option><option value="0.5">½ speed</option><option value="0.25">¼ speed</option></select></label><label><input id="ultimate-loop" type="checkbox">Loop</label><label><input id="ultimate-effects" type="checkbox" checked>Effects</label><label><input id="ultimate-sound" type="checkbox" checked>Sound</label><button id="ultimate-view">Close view</button></header><section id="lab-canvas" aria-label="Woodland ability preview"><p id="ultimate-status" role="status">Preparing woodland…</p></section><footer><label>Sequence<input id="ultimate-time" type="range" min="0" max="3.2" step="0.01" value="0" disabled></label><output id="ultimate-clock">0.00 s</output></footer></main>`;
+app.innerHTML = `<main class="ultimate-lab"><header><a href="/">← Lantern</a><h1>Ultimate study</h1><span class="ultimate-engine">Plume + TSLFX</span><label>Ability<select id="ultimate-kind"><option value="arrow-rain">Bow · Arrow Rain</option></select></label><button id="ultimate-replay" disabled>Replay</button><button id="ultimate-pause" disabled>Pause</button><label>Speed<select id="ultimate-speed"><option value="1">Normal</option><option value="0.5">½ speed</option><option value="0.25">¼ speed</option></select></label><label><input id="ultimate-loop" type="checkbox">Loop</label><label><input id="ultimate-effects" type="checkbox" checked>Effects</label><label><input id="ultimate-sound" type="checkbox" checked>Sound</label><button id="ultimate-view">Close view</button></header><section id="lab-canvas" aria-label="Woodland ability preview"><p id="ultimate-status" role="status">Preparing woodland…</p></section><footer><label>Sequence<input id="ultimate-time" type="range" min="0" max="4.8" step="0.01" value="0" disabled></label><output id="ultimate-clock">0.00 s</output></footer></main>`;
 const element = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const mount = element<HTMLElement>('lab-canvas');
 const status = element<HTMLElement>('ultimate-status');
@@ -40,7 +41,7 @@ const enabled = element<HTMLInputElement>('ultimate-effects');
 const sound = element<HTMLInputElement>('ultimate-sound');
 const timeline = element<HTMLInputElement>('ultimate-time');
 const clock = element<HTMLOutputElement>('ultimate-clock');
-let kind: UltimateKind = 'crescent', seconds = 0, playing = true, disposed = false, changing = false, closeView = false;
+let kind: UltimateKind = 'arrow-rain', seconds = 0, playing = true, disposed = false, changing = false, closeView = false;
 let renderer: Awaited<ReturnType<typeof createRenderer>> | undefined;
 let graphics: Graphics | undefined;
 let cameraOwner: ReturnType<typeof createCamera> | undefined;
@@ -76,7 +77,7 @@ async function actor(source: THREE.Group, clips: THREE.AnimationClip[], location
   root.position.copy(location); root.rotation.y = actorYaw;
   const mixer = new THREE.AnimationMixer(model), idleClip = clips.find(c => c.name === 'idle');
   if (!idleClip) throw new Error('Compatible idle motion is missing.');
-  const equipment = new Equipment(root, rig), result: PreviewActor = { root, mixer, idle: action(mixer, idleClip), actions: new Map(), equipment, location: location.clone() };
+  const equipment = new Equipment(root, rig), result: PreviewActor = { root, model, mixer, idle: action(mixer, idleClip), actions: new Map(), equipment, location: location.clone() };
   const hit = clips.find(c => c.name === 'hit'); if (hit) result.hit = action(mixer, hit);
   scene.add(root); return result;
 }
@@ -96,16 +97,10 @@ async function initialize(): Promise<void> {
   status.textContent = 'Preparing characters and ability art…';
   const playerSource = await loader.loadAsync(characters.player.model); sources.push(playerSource.scene); sceneTextures(playerSource.scene);
   player = await actor(playerSource.scene, playerSource.animations, origin, yaw, 'player');
-  const sword = await loadEquipmentMotions(loader, 'player', { main: 'sword', off: null });
   const bow = await loadEquipmentMotions(loader, 'player', { main: 'bow', off: null });
-  const slashSource = await loader.loadAsync('/vendor/characters/erika/motions/study-cross-slash.glb');
-  const slash = THREE.AnimationUtils.subclip(slashSource.animations[0], 'crescent', 5, 36, 30);
-  const ratio = ultimateSequences.crescent.motion / slash.duration; for (const track of slash.tracks) for (let i = 0; i < track.times.length; i++) track.times[i] *= ratio; slash.duration = ultimateSequences.crescent.motion;
-  player.actions.set('crescent', action(player.mixer, slash)); player.actions.set('arrow-rain', action(player.mixer, bow.clips.pierce!));
-  // Each equipped stance has its own idle wrapper; borrowed keyframes remain immutable.
-  const swordIdle = action(player.mixer, sword.clips.idle); const bowIdle = action(player.mixer, bow.clips.idle);
-  const idleActions = { crescent: swordIdle, 'arrow-rain': bowIdle };
-  player.idle.setEffectiveWeight(0); player.idle = swordIdle;
+  player.actions.set('arrow-rain', action(player.mixer, skywardShot(player.model, bow.clips.pierce!, bow.clips.pierceDraw!.duration, bow.skillContacts.pierce![0] - bow.clips.pierceDraw!.duration)));
+  const bowIdle = action(player.mixer, bow.clips.idle);
+  player.idle.setEffectiveWeight(0); player.idle = bowIdle;
   const enemySource = await loader.loadAsync(characters.enemy.model); sources.push(enemySource.scene); sceneTextures(enemySource.scene);
   const enemy = await loadEquipmentMotions(loader, 'enemy', { main: 'axe', off: null });
   const enemyClips = ['idle', 'hit'].map(role => { const clip = enemy.clips[role as 'idle' | 'hit'].clone(); clip.name = role; return clip; });
@@ -115,7 +110,7 @@ async function initialize(): Promise<void> {
   }
   player.lantern = new PlayerLantern(player.root, true); await player.lantern.initialize();
   effects = new UltimateEffects(ground, origin.clone().setY(0), yaw, settings.particleQuality, renderer, scene); scene.add(effects.root); await effects.prepare();
-  await changeKind('crescent'); effects.stageMaterials(cameraOwner.camera);
+  await changeKind('arrow-rain'); effects.stageMaterials(cameraOwner.camera);
   // Set up the same pipeline and prepared Golden lighting used by gameplay.
   status.textContent = 'Preparing Golden lighting…';
   await graphics.initialize(); graphics.commitLighting(await graphics.prepareLighting({ ...authored, lighting: look }, area.root));
@@ -152,13 +147,18 @@ async function initialize(): Promise<void> {
   }
   select.addEventListener('change', () => { void changeKind(select.value as UltimateKind).catch(failed); });
   async function changeKind(next: UltimateKind): Promise<void> {
+    if (next !== 'arrow-rain') throw new Error('Crescent Wave has been set aside.');
     changing = true; select.disabled = replay.disabled = pause.disabled = timeline.disabled = true;
     audio.update(origin, true); status.hidden = false; status.textContent = `Preparing ${ultimateSequences[next].name}…`;
     const previous = kind;
     try {
-      const prepared = await player!.equipment.stage({ main: next === 'crescent' ? 'sword' : 'bow', off: null });
+      const prepared = await player!.equipment.stage({ main: 'bow', off: null });
       if (disposed) return;
-      player!.equipment.commit(prepared); player!.idle.setEffectiveWeight(0); player!.idle = idleActions[next];
+      player!.equipment.commit(prepared); player!.idle.setEffectiveWeight(0); player!.idle = bowIdle;
+      if (next === 'arrow-rain') {
+        pose(player!, ultimateSequences['arrow-rain'].release, player!.actions.get('arrow-rain'));
+        updateBowFrame(true);
+      }
       kind = next; select.value = kind; seconds = 0; playing = true; pause.textContent = 'Pause'; effects?.set(kind); timeline.max = String(ultimateSequences[kind].duration); graphics?.resetHistory(); setView(); invalidate();
     } catch (error) { select.value = previous; throw error; }
     finally { changing = false; select.disabled = replay.disabled = pause.disabled = timeline.disabled = false; status.hidden = true; }
@@ -185,9 +185,20 @@ function renderPose(): void {
   pose(player, seconds, player.actions.get(kind));
   player.root.position.copy(origin).addScaledVector(new THREE.Vector3(0, 0, 1).applyQuaternion(forward), kind === 'crescent' ? Math.sin(Math.min(1, seconds / ultimateSequences.crescent.motion) * Math.PI) * .18 : 0);
   player.root.updateMatrixWorld(true);
+  if (kind === 'arrow-rain') updateBowFrame();
   targets.forEach((target, index) => pose(target, seconds - effects!.lastHit(index, seconds), target.hit, true));
   effects.enabled = enabled.checked; effects.seek(seconds, cameraOwner.camera);
   timeline.value = String(seconds); clock.value = `${seconds.toFixed(2)} / ${ultimateSequences[kind].duration.toFixed(1)} s`;
+}
+function updateBowFrame(release = false): void {
+  if (!player || !effects) return;
+  player.root.updateMatrixWorld(true);
+  const bow = player.root.getObjectByName('equipment-bow'), hand = player.root.getObjectByName('Hand_R');
+  if (!bow || !hand) throw new Error('Arrow Rain requires the equipped bow and draw hand.');
+  const nock = hand.getWorldPosition(new THREE.Vector3());
+  const rest = bow.getWorldPosition(new THREE.Vector3());
+  const direction = rest.sub(nock).normalize();
+  effects.setBowFrame(nock, direction, release);
 }
 function setView(): void {
   if (!cameraOwner) return;
