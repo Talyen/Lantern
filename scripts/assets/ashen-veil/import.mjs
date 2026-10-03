@@ -98,9 +98,16 @@ export async function importEnvironment(archive) {
   if (catalog.version !== 1 || !catalog.assets) throw new Error('Unsupported shared library catalog');
   Object.assign(catalog.assets, assets);
   const source = resolve(root, '.local/synty-library/ashen-veil-environment');
-  await mkdir(source, { recursive: true }); await privateCopy(archive, resolve(source, 'Ashen_Veil_Environment_Essentials.zip'));
+  const sourceArchive = resolve(source, 'Ashen_Veil_Environment_Essentials.zip');
   files.set('SHA256SUMS.txt', sums);
-  for (const [name, bytes] of files) { const path = resolve(source, name); await mkdir(resolve(path, '..'), { recursive: true }); await writeFile(path, bytes); }
+  if (existsSync(sourceArchive) && hash(await readFile(sourceArchive)) !== hash(await readFile(archive))) throw new Error('Existing Ashen Veil source archive differs; preserve it and import in a fresh task.');
+  for (const [name, bytes] of files) {
+    const path = resolve(source, name);
+    if (existsSync(path) && hash(await readFile(path)) !== hash(bytes)) throw new Error(`Preserved source differs: ${name}. Import in a fresh task to retain both versions.`);
+  }
+  await mkdir(source, { recursive: true });
+  if (!existsSync(sourceArchive)) await privateCopy(archive, sourceArchive);
+  for (const [name, bytes] of files) { const path = resolve(source, name); if (!existsSync(path)) { await mkdir(resolve(path, '..'), { recursive: true }); await writeFile(path, bytes); } }
   for (const [name, bytes] of prepared) {
     const path = entries.has(name) ? resolve(library, 'models/ashen-veil', name.slice(4)) : resolve(root, 'public/vendor/ashen-veil/reference-scenes', name.slice(4));
     await mkdir(resolve(path, '..'), { recursive: true }); await writeFile(path, bytes);
