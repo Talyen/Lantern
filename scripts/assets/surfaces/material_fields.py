@@ -75,12 +75,13 @@ def author_fields(source,family,recipe=None):
 
 def ground_fields(root):
     root=Path(root);out=root/'assets/textures/environment/ground';out.mkdir(parents=True,exist_ok=True)
-    recipes=[('earth','earth-v2.png',.29),('litter','litter-v2.png',.64),('rocky-soil','rocky-soil-v2.png',.48)]
-    for family,filename,scale in recipes:
+    recipes=[('earth','earth-v2.png',.29,'earth'),('litter','litter-v2.png',.64,'litter'),('rocky-soil','rocky-soil-v2.png',.48,'rocky-soil'),('stone-v1','../stone-v1.png',.45,'stone'),('stone-v2','stone-v2.png',.45,'stone')]
+    for family,filename,scale,material in recipes:
         source=bpy.data.images.load(str(root/'assets/textures/environment/showcase'/filename));source.colorspace_settings.name='Non-Color'
-        source.scale(2048,2048);field=author_fields(source,family);data=pixels(field);height=data[:,:,0]
-        dx=(np.roll(height,-1,1)-np.roll(height,1,1))*2048*.5*DEPTH[family]*scale
-        dy=(np.roll(height,-1,0)-np.roll(height,1,0))*2048*.5*DEPTH[family]*scale
+        recipe={'roughness':[.7,.94],'relief':1.25,'cavity':1.5} if material=='stone' else None
+        source.scale(2048,2048);field=author_fields(source,material,recipe);data=pixels(field);height=data[:,:,0]
+        dx=(np.roll(height,-1,1)-np.roll(height,1,1))*2048*.5*DEPTH[material]*scale
+        dy=(np.roll(height,-1,0)-np.roll(height,1,0))*2048*.5*DEPTH[material]*scale
         dx=np.clip(dx,-.65,.65);dy=np.clip(dy,-.65,.65)
         normal=np.stack([-dx,-dy,np.ones_like(dx)],axis=-1);normal/=np.linalg.norm(normal,axis=-1,keepdims=True)
         rgba=np.concatenate([normal*.5+.5,np.ones_like(height)[:,:,None]],axis=-1).astype(np.float32)

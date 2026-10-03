@@ -4,7 +4,7 @@ import { lightingOnly, includeCutawayShadows } from '../rendering/cutaway';
 import { SceneCache } from '../assets/scene-cache';
 import { disposeSceneInstances, isMesh } from '../assets/resource-ownership';
 import { MeshStandardNodeMaterial, type Node } from 'three/webgpu';
-import { texture, mix, vec2, vec3, positionWorld, color, sin, smoothstep, triplanarTexture, float } from 'three/tsl';
+import { texture, mix, vec2, vec3, positionWorld, color, sin, smoothstep } from 'three/tsl';
 import environmentManifest from '../../assets/textures/environment/manifest.json';
 import * as THREE from 'three';
 import { sceneryLoader as loader, disposeSceneryLoader } from '../assets/scenery-loader';
@@ -12,7 +12,7 @@ import { environmentOutlineEligible, environmentSurface, prepareEnvironmentMater
 import { markOutline } from '../rendering/outlines';
 import { assetLibrary, type AssetInstance } from '../assets/asset-library';
 import { updateAssetLods } from '../rendering/asset-lods';
-import { filterMaterialTexture } from '../rendering/surface-detail';
+import { stoneSurface, stoneSurfaceRecipe } from '../rendering/stone-surface';
 import { createGrass } from '../rendering/grass';
 import { woodlandGroundRecipeFor, woodlandMaterial } from '../rendering/woodland-ground';
 import { Portal } from '../rendering/portal';
@@ -83,16 +83,17 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
       ownedMaterial.add(m);
       if (p.surface === 'stone') {
         const study = area.id === 'clearing';
-        const map = filterMaterialTexture(groundMap(study ? new URL('../../assets/textures/environment/showcase/stone-v2.png', import.meta.url).href : new URL('../../assets/textures/environment/stone-v1.png', import.meta.url).href, false));
-        const mineral = triplanarTexture(texture(map), undefined, undefined, float(.45)).rgb;
-        m.colorNode = study ? mix(color(p.color), mineral, .7) : mix(color('#aaa797'), mineral, .45).mul(color(p.color));
-        if (study) m.roughness = .82;
+        const surface = stoneSurface(groundMap, study);
+        lightingProcedural.push({ stoneSurface: stoneSurfaceRecipe, study });
+        m.colorNode = study ? mix(color(p.color), surface.color, .7) : mix(color('#aaa797'), surface.color, .45).mul(color(p.color));
+        m.normalNode = surface.normal; m.roughnessNode = surface.roughness; m.aoNode = surface.cavity;
       }
       if (p.surface === 'woodland') {
         const patches = [...groundPatches, ...(p.patches ?? []), ...(showcase?.ground.patches as GroundPatch[] ?? [])];
         const recipe = woodlandGroundRecipeFor(area.id);
-        lightingProcedural.push({ woodlandMaterial: recipe, patches });
-        const surface = woodlandMaterial(groundMap, patches, recipe);
+        const paths = p.paths ?? [];
+        lightingProcedural.push({ woodlandMaterial: recipe, patches, ...(paths.length ? { paths } : {}) });
+        const surface = woodlandMaterial(groundMap, patches, recipe, paths);
         m.colorNode = surface.color; m.normalNode = surface.normal; m.roughnessNode = surface.roughness; m.aoNode = surface.cavity;
         if (grass?.coverage) {
           m.map = grass.coverage.texture;

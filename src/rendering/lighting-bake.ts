@@ -5,7 +5,7 @@ import type { LightProbeGrid } from 'three/addons/lighting/LightProbeGrid.js';
 import type { RenderTarget, WebGPURenderer } from 'three/webgpu';
 
 /** Increment when static shading or the pinned probe adapter changes. */
-export const lightingBakeVersion = 4;
+export const lightingBakeVersion = 5;
 export type PreparedProbeBake = { version: number; three: string; signature: string; probes: ProbeLighting; dimensions: [number, number, number]; data: number[] };
 
 /** Render inputs only: gameplay names, arrivals, enemies and rewards do not invalidate GI. */

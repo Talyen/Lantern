@@ -1,19 +1,29 @@
 {
   "version": 1,
   "bakes": {
-    "2fd1914c1e8e0e027a81055cb993961064cbdb2791bb2e923a0f1cc208f5f9f9": {
-      "url": "/vendor/lighting/2fd1914c1e8e0e027a81055cb993961064cbdb2791bb2e923a0f1cc208f5f9f9.json",
-      "area": "graveyard-ruins",
-      "surfaces": "projected"
-    },
-    "0e791ae364dbad6463fd834b945e50507cc6e3164b99bfaa226d13c0369f9422": {
-      "url": "/vendor/lighting/0e791ae364dbad6463fd834b945e50507cc6e3164b99bfaa226d13c0369f9422.json",
+    "fab021c39c9fa34642967e6e47c136326f7cdb8cb6b31ef3765d51067afc8e7d": {
+      "url": "/vendor/lighting/fab021c39c9fa34642967e6e47c136326f7cdb8cb6b31ef3765d51067afc8e7d.json",
       "area": "graveyard-crypt",
       "surfaces": "projected"
     },
-    "76f852c538b7f6c618e6b9f80aac1deb6199e474fdda3dd1d4a2fc925b19bd48": {
-      "url": "/vendor/lighting/76f852c538b7f6c618e6b9f80aac1deb6199e474fdda3dd1d4a2fc925b19bd48.json",
+    "b3d87a0a8aac5fd8961897b0ca26eb02332d7d780bd1ecb7772ea1578d1bb540": {
+      "url": "/vendor/lighting/b3d87a0a8aac5fd8961897b0ca26eb02332d7d780bd1ecb7772ea1578d1bb540.json",
+      "area": "homestead",
+      "surfaces": "projected"
+    },
+    "c4a033d0c1d5eb4a5ef6ee7b6977e764e5485eff7deb39190819fe466d4853bd": {
+      "url": "/vendor/lighting/c4a033d0c1d5eb4a5ef6ee7b6977e764e5485eff7deb39190819fe466d4853bd.json",
       "area": "clearing",
+      "surfaces": "projected"
+    },
+    "3bb9066f3c067a8dd59ae10894ddff2800247b023437324b80d49dd45dc68f08": {
+      "url": "/vendor/lighting/3bb9066f3c067a8dd59ae10894ddff2800247b023437324b80d49dd45dc68f08.json",
+      "area": "blockout",
+      "surfaces": "projected"
+    },
+    "fe8cc79824bfee3be023daa5c09fb94bfbe30e6cc45db9c8b153c45d8f2c95d3": {
+      "url": "/vendor/lighting/fe8cc79824bfee3be023daa5c09fb94bfbe30e6cc45db9c8b153c45d8f2c95d3.json",
+      "area": "graveyard-ruins",
       "surfaces": "projected"
     }
   }

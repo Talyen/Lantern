@@ -83,6 +83,13 @@ export function validateAreas(input: Record<string, AreaDefinition>): string[] {
           }
         }
         if (prop.primitive && (!['box', 'cylinder', 'pebble', 'tent', 'headstone'].includes(prop.primitive.kind) || !finite(prop.primitive.size) || prop.primitive.size.some(s => s <= 0))) fail('invalid primitive');
+        if (prop.primitive?.paths !== undefined) {
+          if (prop.primitive.surface !== 'woodland' || !Array.isArray(prop.primitive.paths)) fail('paths require a woodland surface and a list');
+          else for (const path of prop.primitive.paths) {
+            if (!path || !Array.isArray(path.points) || path.points.length < 2 || path.points.length > 32 || !path.points.every(point => finite(point, 2)) || !finite([path.width, path.strength]) || path.width <= 0 || path.strength < 0 || path.strength > 1) fail('invalid woodland path');
+            else if (path.points.some((point, i) => i > 0 && Math.hypot(point[0] - path.points[i - 1][0], point[1] - path.points[i - 1][1]) < .001)) fail('woodland path contains a zero-length segment');
+          }
+        }
         if (prop.visibility !== undefined && prop.visibility !== 'lighting-only') fail('unknown placement visibility');
         if (prop.visibility !== 'lighting-only' && (prop.decoration || !area.legacy && !prop.terrain) && inReserved(area, [prop.position[0], prop.position[2]], .3)) fail('scenery overlaps a reserved combat/route/arrival region or gate');
         const u = prop.position[0] * Math.cos(e.yaw) - prop.position[2] * Math.sin(e.yaw), v = prop.position[0] * Math.sin(e.yaw) + prop.position[2] * Math.cos(e.yaw);

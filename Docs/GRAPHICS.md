@@ -32,6 +32,8 @@ Outlines applies stronger warm-charcoal contours to actors/equipment and quieter
 
 Material textures use fixed 16× anisotropic filtering and conservative FSR-aware mip sampling. Texture Depth adds shallow parallax to suitable prepared ground, rock and bark regions. Off skips height searches while retaining normal maps, spatial roughness, restrained cavity shading and physical geometry. Both choices persist; fresh/reset selects On. Material ownership and preparation follow [Architecture](ARCHITECTURE.md#rendering-contract) and [Art Direction](ART_DIRECTION.md#materials-and-projection).
 
+The surface adapter preserves texture transforms and uses the map's own coordinate frame for tangent-space normals when no authored tangents exist. Revalidate this boundary against the pinned three.js implementation on upgrades: a normal texture bound to a bake channel does not prove the derivative tangent frame uses that channel. Native resolution retains DOF; temporarily compare `?upscaleQuality=native&dof=off` when isolating material softness from lens blur, then inspect normal gameplay settings.
+
 ## Frame pacing and camera
 
 Electron supplies its initial display refresh rate. First launch/reset chooses the highest listed cap no higher than that rate, allowing 1 Hz for nominal rates such as 59.94; otherwise it uses 60. Saved caps take precedence. Unlimited removes the application cap but retains requestAnimationFrame display pacing. Simulation and animation include skipped callback time, with the existing 50 ms stall clamp.

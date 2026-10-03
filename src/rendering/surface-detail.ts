@@ -1,9 +1,11 @@
 import { isMesh } from '../assets/resource-ownership';
 import * as THREE from 'three';
-import { Fn, If, Loop, float, vec2, color, uniform, uv, texture, dFdx, dFdy, positionView, positionViewDirection, normalViewGeometry, cross, dot, normalMap } from 'three/tsl';
+import { Fn, If, Loop, float, vec2, vec3, color, uniform, uv, texture, dFdx, dFdy, positionView, positionViewDirection, normalViewGeometry, cross, dot, normalMap, negateOnBackSide } from 'three/tsl';
 import { MeshStandardNodeMaterial, type Node, type NodeBuilder } from 'three/webgpu';
 
 type SurfaceContext = { materialMipBias?: Node<'float'>; textureDepth?: boolean };
+// The pinned r186 builder exposes this method; its declarations omit it.
+type SurfaceBuilder = NodeBuilder & { isFlatShading(): boolean };
 /** Material textures only: depth, data buffers and reconstruction samplers keep their own policy. */
 export function filterMaterialTexture(map: THREE.Texture): THREE.Texture {
   if (!map.isRenderTargetTexture && !(map instanceof THREE.DepthTexture) && (map.generateMipmaps || map.mipmaps.length > 1)) {
@@ -12,7 +14,28 @@ export function filterMaterialTexture(map: THREE.Texture): THREE.Texture {
   return map;
 }
 export function surfaceBias(builder: NodeBuilder): Node<'float'> { return (builder.context as SurfaceContext).materialMipBias ?? float(0); }
-export function surfaceSample(map: THREE.Texture, coordinates: Node<'vec2'> = uv(map.channel)) {
+/** TextureNode does not apply a texture matrix when given explicit coordinates. */
+export function surfaceUV(map: THREE.Texture): Node<'vec2'> {
+  if (map.matrixAutoUpdate) map.updateMatrix();
+  return uniform(map.matrix).mul(vec3(uv(map.channel), 1)).xy;
+}
+/** r186's normalMap() derives its tangent frame from UV0, even for other UV
+ * channels or world projections. Use the coordinates which authored this map. */
+export function mappedSurfaceNormal(sample: Node<'vec4'>, coordinates: Node<'vec2'>, strength: Node<'vec2'>): Node<'vec3'> {
+  return Fn((builder: NodeBuilder) => {
+    // Preserve r186's flat/double-sided conventions while replacing only UV0.
+    const flat = (builder as SurfaceBuilder).isFlatShading();
+    const n = flat ? normalViewGeometry : negateOnBackSide(normalViewGeometry);
+    const px = dFdx(positionView), py = dFdy(positionView), dx = dFdx(coordinates), dy = dFdy(coordinates);
+    const a = cross(py, n), b = cross(n, px);
+    const t = a.mul(dx.x).add(b.mul(dy.x)), bt = a.mul(dx.y).add(b.mul(dy.y));
+    const scale = dot(t, t).max(dot(bt, bt)).max(1e-12).inverseSqrt();
+    const tangent = flat ? t : negateOnBackSide(t), bitangent = flat ? bt : negateOnBackSide(bt);
+    const normal = sample.rgb.mul(2).sub(1), amount = flat ? negateOnBackSide(vec3(strength, 1)).xy : strength;
+    return tangent.mul(normal.x.mul(amount.x)).add(bitangent.mul(normal.y.mul(amount.y))).mul(scale).add(n.mul(normal.z)).normalize();
+  })();
+}
+export function surfaceSample(map: THREE.Texture, coordinates: Node<'vec2'> = surfaceUV(map)) {
   filterMaterialTexture(map);
   return Fn((builder: NodeBuilder) => texture(map, coordinates).bias(surfaceBias(builder)))();
 }
@@ -71,15 +94,18 @@ export function reliefSample(map: THREE.Texture, base: Node<'vec2'>, displaced: 
 }
 export function prepareSurfaceMaterial(material: MeshStandardNodeMaterial, data?: THREE.Texture, depth = 0, format: 1 | 2 | 3 = 2): void {
   for (const key of ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'emissiveMap', 'alphaMap'] as const) if (material[key]) filterMaterialTexture(material[key]);
-  const base = uv(material.map?.channel ?? 0), displaced = data ? reliefUV(data, base, depth, float(1), format === 2 ? 'b' : 'a').toVar() : base;
-  const sample = (map: THREE.Texture) => data ? reliefSample(map, base, displaced) : surfaceSample(map, uv(map.channel));
+  const base = material.map ? surfaceUV(material.map) : uv(0), displaced = data ? reliefUV(data, base, depth, float(1), format === 2 ? 'b' : 'a').toVar() : base;
+  const sample = (map: THREE.Texture) => data ? reliefSample(map, base, displaced) : surfaceSample(map);
   if (material.map) material.colorNode = sample(material.map).rgb.mul(color(material.color));
   if (material.normalMap) {
-    // NormalMapNode must see a TextureNode and its displaced UVs to construct the tangent frame.
-    const map = material.normalMap, normalCoordinates = data ? base : uv(map.channel), normalDisplaced = data ? displaced : normalCoordinates;
+    const map = material.normalMap, normalCoordinates = data ? base : surfaceUV(map), normalDisplaced = data ? displaced : normalCoordinates;
     material.normalNode = Fn((builder: NodeBuilder) => {
       const node = texture(map, normalDisplaced).grad(dFdx(normalCoordinates).mul(surfaceBias(builder).exp2()), dFdy(normalCoordinates).mul(surfaceBias(builder).exp2()));
-      const normal = normalMap(node, uniform(material.normalScale)); normal.normalMapType = material.normalMapType; return normal;
+      // Supplied tangents remain authoritative for authored/skinned assets.
+      if (material.normalMapType === THREE.ObjectSpaceNormalMap || builder.geometry.hasAttribute('tangent')) {
+        const normal = normalMap(node, uniform(material.normalScale)); normal.normalMapType = material.normalMapType; return normal;
+      }
+      return mappedSurfaceNormal(node, normalCoordinates, uniform(material.normalScale));
     })();
   }
   if (material.roughnessMap) material.roughnessNode = sample(material.roughnessMap).g.mul(material.roughness);

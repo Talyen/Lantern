@@ -12,7 +12,8 @@ export type ProbeLighting = { position: [number, number, number]; size: [number,
 export type AssetRef = { url: string } | { libraryId: string };
 export type GroundLayer = 'earth' | 'litter' | 'rocky-soil';
 export type GroundPatch = { center: Point; radius: number; color: string; strength: number; layer?: GroundLayer };
-export type Primitive = { kind: 'box' | 'cylinder' | 'pebble' | 'tent' | 'headstone'; size: number[]; color: string; doubleSided?: boolean; surface?: 'woodland' | 'stone'; patches?: GroundPatch[] };
+export type GroundPath = { points: Point[]; width: number; strength: number };
+export type Primitive = { kind: 'box' | 'cylinder' | 'pebble' | 'tent' | 'headstone'; size: number[]; color: string; doubleSided?: boolean; surface?: 'woodland' | 'stone'; patches?: GroundPatch[]; paths?: GroundPath[] };
 export type Placement = {
   id: string; visibility?: 'lighting-only'; position: [number, number, number]; yaw: number; scale: [number, number, number];
   asset?: AssetRef; primitive?: Primitive; height?: number; foliage?: boolean; decoration?: boolean; terrain?: boolean;
