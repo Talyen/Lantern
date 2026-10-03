@@ -3,7 +3,8 @@ import * as THREE from 'three';
 import type { GrassCarpets } from './grass';
 import type { Vegetation, VegetationActor } from './vegetation';
 import { MeshStandardNodeMaterial } from 'three/webgpu';
-import { positionLocal, uniform, vec3, sin, float, max, pow } from 'three/tsl';
+import { fsrComparison } from '../labs/fsr/settings';
+import { Fn, positionPrevious, positionLocal, uniform, vec3, sin, float, max, pow } from 'three/tsl';
 import { copyStandardNodeMaterial } from '../assets/environment-surfaces';
 import { RainField } from './rain';
 import type { AreaDefinition } from '../levels/types';
@@ -49,6 +50,8 @@ export class CoreEffects {
   private quality: QualityLevel = 'high';
   private time = 0;
   private clock = uniform(0);
+  private previousClock = uniform(0);
+  private previousWind = uniform(new THREE.Vector3(.08, 0, .035));
   private wind = uniform(new THREE.Vector3(0.08, 0, 0.035));
   private pools = new Map<ParticleKind, Pool>();
   private emitters: Emitter[] = [];
@@ -64,6 +67,16 @@ export class CoreEffects {
   private weather: ParticleKind | null = null;
   private weatherEffects = true;
   private readonly rain = new RainField();
+  resetComparisonPools(): void {
+    if (!fsrComparison) throw new Error('Pool reset requires an authoring comparison.');
+    for (const pool of this.pools.values()) pool.cursor = 0;
+  }
+  comparisonState() {
+    if (!fsrComparison) throw new Error('Effect snapshots require an authoring comparison.');
+    let hash = 2166136261;
+    for (const pool of this.pools.values()) for (let i = 0; i < pool.positions.length; i++) hash = Math.imul(hash ^ Math.round(pool.positions[i] * 100000), 16777619);
+    return { time: this.time, particleHash: hash >>> 0, foliageMeshes: this.foliage.length };
+  }
   setWeatherEffects(enabled: boolean): void { this.weatherEffects=enabled; if(!enabled)this.rain.clear(); }
   configureWeather(area: AreaDefinition): void { this.weather=area.effects.weather?.kind ?? null; this.rain.configure(area); }
   weatherView(camera: THREE.Camera, position: THREE.Vector3): void { this.rain.view(camera,position); }
@@ -180,7 +193,12 @@ export class CoreEffects {
         const m = copyStandardNodeMaterial(source);
         const anchor = pow(max(positionLocal.y.sub(float(box.min.y)).div(float(height)), float(0)), float(1.5));
         const gust = sin(this.clock.mul(1.4).add(positionLocal.x.mul(0.3))).mul(0.65).add(sin(this.clock.mul(0.47)).mul(0.35));
-        m.positionNode = positionLocal.add(vec3(this.wind.x, float(0), this.wind.z).mul(anchor).mul(float(height)).mul(gust));
+        const displaced = positionLocal.add(vec3(this.wind.x, float(0), this.wind.z).mul(anchor).mul(float(height)).mul(gust));
+        m.positionNode = fsrComparison?.foliageMotion ? Fn(() => {
+          const previousGust = sin(this.previousClock.mul(1.4).add(positionLocal.x.mul(.3))).mul(.65).add(sin(this.previousClock.mul(.47)).mul(.35));
+          positionPrevious.assign(positionLocal.add(this.previousWind.mul(anchor).mul(float(height)).mul(previousGust)));
+          return displaced;
+        })() : displaced;
         shared.set(source, m); return m;
       });
       const record: Foliage = { mesh: o, original, depth: o.customDepthMaterial, distance: o.customDistanceMaterial };
@@ -195,6 +213,7 @@ export class CoreEffects {
     if (this.disposed) return;
     this.root.visible = this.enabled;
     const actionDt = this.gameplayDelta ?? dt; this.gameplayDelta = undefined;
+    if (fsrComparison?.foliageMotion) { this.previousClock.value = this.clock.value; this.previousWind.value.copy(this.wind.value); }
     if (this.paused || !this.enabled) { this.vegetation?.advance(0, this.time, this.wind.value); for (const carpet of this.grass) carpet.update(this.time, this.wind.value); return; }
     dt = Math.min(dt, 0.05);
     this.time += dt; this.clock.value = this.time;
@@ -249,7 +268,7 @@ export class CoreEffects {
     for (const materials of this.foliageMaterials.values()) for (const material of materials.values()) material.dispose();
     this.foliageMaterials.clear();
     for (const w of this.waters) { w.mesh.removeFromParent(); w.mesh.traverse((o) => { if (isMesh(o)) { o.geometry.dispose(); (o.material as THREE.Material).dispose(); } }); w.normal.dispose(); w.shoreline.dispose(); }
-    this.emitters.length = 0; this.foliage.length = 0; this.foliageMeshes.clear(); this.grass.length = 0; this.waters.length = 0; this.time = 0; this.clock.value = 0; this.clear();
+    this.emitters.length = 0; this.foliage.length = 0; this.foliageMeshes.clear(); this.grass.length = 0; this.waters.length = 0; this.time = 0; this.clock.value = 0; this.previousClock.value = 0; this.clear();
   }
   dispose(): void {
     if (this.disposed) return; this.disposed = true; this.rain.dispose(); this.root.removeFromParent();

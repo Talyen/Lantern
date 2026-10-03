@@ -7,7 +7,7 @@ Options contains Graphics and Sound, opens Keybindings, and pauses play while op
 | Control | Fresh/reset default | Choices or range |
 | --- | --- | --- |
 | Camera Distance | Default | Default, Far |
-| Resolution Quality | Balanced | Native, Quality, Balanced, Performance |
+| Resolution Quality | Quality | Native, Quality, Balanced, Performance |
 | Sharpening | 0.50 | 0–1 |
 | Shadow Quality | High | Low, Medium, High |
 | Particle Effects | High | Low, Medium, High |
@@ -63,3 +63,11 @@ All routes require supported native WebGPU and hardware acceleration. Browser de
 ## Presentation preferences
 
 Camera Shake, Resource Numbers and Weather Effects are saved On/Off controls, On for fresh/reset settings. Resource Numbers hides visible HP/MP text only. Camera Shake Off removes an active offset immediately; hit pause has no option. Existing-player Weather Effects is seeded from the old Atmospheric particles preference once, then persists independently. Weather Off removes precipitation/contact effects and rain ambience while retaining authored wet ground, water, wind and fog. Preserve all other preferences when migrating.
+
+## Private FSR comparisons
+
+In a task-owned authoring preview, `npm run fsr:compare -- --preset baseline` captures the Quality/1920×1080 reference. Follow with `sharpness-0`, `sharpness-1`, `foliage-motion`, `reactive-coverage`, `mip-minus-half` or `mip-minus-one`. The command records eight simulation seconds at 60 fixed steps per second, plus full-resolution stills and velocity/reactivity inputs, under ignored `.local/level-design/fsr-comparison/`. Baseline must be captured first; candidates must match its source signature, scene content and simulation/effect/camera checkpoints. Encoding timestamps describe the replay, not measured runtime FPS. If a bounded command exits while a slow take is still advancing, `npm run fsr:compare -- --preset <same-preset> --collect` collects that existing take without starting it again.
+
+The development-only `?author=levels&fsrCompare=baseline` controls offer preset selection and replay. Comparisons use the shared visual graph, reset history and settle 64 frames after two seconds of seeded effect warm-up. They temporarily use a camp inspection with enemy AI suspended and preserve player preferences. Current Clearing placements do not enable the general foliage-wind helper; every comparison take enables that existing helper on the same authored tree meshes to exercise its motion vectors. This fixture is private and does not adopt tree wind for normal play. Motion and coverage candidates remain unadopted; production ignores comparison URLs. Sharpening defaults to 0.50. Mip offsets affect material sampling only; current Quality bias is approximately −0.585, with candidates −1.085 and −1.585. Captures and licensed scene imagery remain private.
+
+After capturing all presets, create identical PNG crops with `python3 scripts/levels/fsr-crops.py --directory <capture-directory> --boxes <crop-boxes.json>` (named pixel rectangles), then generate the synchronized local review page with `node scripts/levels/fsr-report.mjs --directory <capture-directory>`. Keep observations in the capture directory's `observations.txt`; the page links each take's lossless images, video and manifest.

@@ -1,6 +1,7 @@
 import { UpscalerNode, type Upscaler } from '@pmndrs/upscaler';
 import type { Node, NodeBuilder, OrthographicCamera, PerspectiveCamera, TextureNode } from 'three/webgpu';
 import { OnAfterRenderPipeline, OnBeforeRenderPipeline, nodeObject, velocity } from 'three/tsl';
+import { fsrComparison } from '../labs/fsr/settings';
 import accumulationShader from './fsr-accumulate.wgsl?raw';
 
 // Pinned to @pmndrs/upscaler 0.2: reuse its pass bindings, dispatch, textures
@@ -13,6 +14,7 @@ type FSRDevice = {
   createShaderModule(options: { label: string; code: string }): FSRShaderModule;
   createComputePipelineAsync(options: { label: string; layout: 'auto'; compute: { module: FSRShaderModule; entryPoint: string } }): Promise<unknown>;
 };
+const fixedFrameUpscalers = new WeakSet<Upscaler>();
 const historyPreparations = new WeakMap<Upscaler, Promise<void>>();
 function prepareStableHistory(upscaler: Upscaler, device: FSRDevice): Promise<void> {
   const existing = historyPreparations.get(upscaler);
@@ -55,6 +57,14 @@ class FSRTemporalNode extends UpscalerNode {
       delete context.renderPipeline;
       result = super.setup(builder) as Node | null;
       if (this.upscaler) {
+        // The package normally derives dispatch delta from wall time. Private
+        // replay fixes it too, so exposure adaptation cannot vary by encode speed.
+        const upscaler = this.upscaler;
+        if (fsrComparison && !fixedFrameUpscalers.has(upscaler)) {
+          const dispatch = upscaler.dispatch.bind(upscaler);
+          upscaler.dispatch = (inputs, camera) => dispatch({ ...inputs, deltaTime: 1 / 60 }, camera);
+          fixedFrameUpscalers.add(upscaler);
+        }
         const device = Reflect.get(builder.renderer.backend, 'device') as FSRDevice;
         this.historyPreparation = prepareStableHistory(this.upscaler, device).catch((error: unknown) => { this.startupError = error; });
       }

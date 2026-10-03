@@ -24,6 +24,7 @@
     "assets:check": "node scripts/check-assets.mjs",
     "check": "node scripts/check.mjs",
     "levels:dev": "node scripts/levels/dev.mjs",
+    "fsr:compare": "node scripts/agents/run.mjs --resource gpu --reuse-preview -- node scripts/levels/fsr-comparison.mjs",
     "levels:capture": "node scripts/agents/run.mjs --resource gpu --reuse-preview -- node scripts/levels/capture.mjs",
     "levels:check": "node scripts/levels/check.mjs",
     "levels:assets": "node scripts/levels/check.mjs --assets",

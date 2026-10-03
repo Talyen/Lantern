@@ -1,6 +1,6 @@
 # Asset Review Lab
 
-The development-only `/?lab=assets` route reviews scenery, characters and equipment. It uses the shared native WebGPU pipeline, Golden lighting and FSR Temporal Balanced / 0.50 defaults. It never edits scenes, removes assets or changes player saves.
+The development-only `/?lab=assets` route reviews scenery, characters and equipment. It uses the shared native WebGPU pipeline, Golden lighting and FSR Temporal Quality / 0.50 defaults. It never edits scenes, removes assets or changes player saves.
 
 ## Review sessions
 

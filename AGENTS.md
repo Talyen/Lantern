@@ -32,7 +32,7 @@ Start with [the daily workflow](Docs/DEVELOPMENT.md) and [task routing](Docs/ARC
 
 - Lantern requires native WebGPU on every route, including the animation lab and level authoring. Do not add WebGL renderers, backend fallbacks, renderer switches, GLSL shader patches, or WebGL-only dependencies/features.
 - Use `src/rendering/renderer.ts` for native-only initialization and `src/rendering/webgpu-pipeline.ts` for the single shared visual pipeline. Lab lanes may instantiate that same pipeline with independent temporal histories; do not build a separate lab render graph or render scenes directly.
-- FSR Temporal is the only reconstruction method, with Balanced resolution quality and sharpening 0.50 as fresh/reset defaults. Output pixel ratio is always 1. There are no reconstruction fallbacks; unavailable WebGPU or FSR preparation must produce an actionable startup error. Shadows and particles use independent shared Low/Medium/High presets; atmosphere uses preset distance fog, with no volume buffer or ray marching.
+- FSR Temporal is the only reconstruction method, with Quality resolution quality and sharpening 0.50 as fresh/reset defaults. Output pixel ratio is always 1. There are no reconstruction fallbacks; unavailable WebGPU or FSR preparation must produce an actionable startup error. Shadows and particles use independent shared Low/Medium/High presets; atmosphere uses preset distance fog, with no volume buffer or ray marching.
 - Build new materials/effects with TSL/node materials. `npm run check` enforces the runtime rendering policy. Revalidate the pinned three.js native-only initialization and temporal adapters on dependency upgrades; never weaken the guard to accommodate a second backend.
 
 ## Topic invariants and visual work

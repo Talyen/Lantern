@@ -53,6 +53,8 @@ export class Graphics {
     this.areaLighting = new AreaLightingResources(ctx.renderer);
     this.apply(settings);
   }
+  async comparisonInputs() { if (!this.gpuPipeline) throw new Error('Graphics is not ready.'); return this.gpuPipeline.comparisonInputs(); }
+  async ready() { await this.gpuPipeline?.ready(); }
   pipelineDiagnostics() { return this.gpuPipeline?.diagnostics(); }
   get preparingSettings(): boolean { return this.gpuPipeline?.preparing ?? false; }
   resetMeasurements(): void { this.intervals = []; this.lastFrame = 0; }

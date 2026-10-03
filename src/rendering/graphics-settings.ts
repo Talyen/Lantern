@@ -24,7 +24,7 @@ export type GraphicsSettings = {
   atmosphericParticles: boolean; outlines: boolean; textureDepth: boolean;
 };
 export const settingsKey = 'lantern.options.v1';
-export const defaults = (query = new URLSearchParams(typeof location === 'undefined' ? '' : location.search)): GraphicsSettings => ({ cameraDistance: 'default', upscaleQuality: 'balanced', sharpness: 0.50, shadowQuality: 'high', particleQuality: 'high',
+export const defaults = (query = new URLSearchParams(typeof location === 'undefined' ? '' : location.search)): GraphicsSettings => ({ cameraDistance: 'default', upscaleQuality: 'quality', sharpness: 0.50, shadowQuality: 'high', particleQuality: 'high',
   fpsLimit: defaultFrameRate(Number(query.get('displayHz'))),
   exposure: 1.25, warmth: 0.85, fog: 0.7, bloom: 0.4, ao: 0.65, dof: 'cinematic', cameraShake: true, resourceNumbers: true, weatherEffects: true, atmosphericParticles: true, outlines: true, textureDepth: true });
 export const ranges = {

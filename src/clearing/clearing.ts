@@ -74,6 +74,7 @@ window.addEventListener('error', (event) => {
 });
 let graphics: Graphics | undefined;
 let options: Options | undefined;
+let comparisonMovement: { x: number; z: number } | null = null;
 // Explicit hidden rendering checks opt in; ordinary hidden gameplay never advances.
 const renderingInspection = renderQuery.get('inspection') === 'render';
 const frameLoop = new FrameLoop({
@@ -386,7 +387,7 @@ function updateGame(dt: number): void {
     const command=pendingUtility; pendingUtility=null;
     if(command==='potion')usePotion();else castReturn();
   }
-  let movement = input.movement();
+  let movement = comparisonMovement ?? input.movement();
   const block=combat.holdingShield();
   if(encounter.pending?.kind==='ability' && encounter.pending.ability==='shield-basic' && !block)encounter.pending=null;
   gathering.cancelIfInterrupted(movement, block);
@@ -540,7 +541,7 @@ try {
   if (!await changeArea({ kind: 'travel', area: currentArea.id })) throw new Error('Initial area could not be prepared.');
   if (import.meta.env.DEV && renderQuery.get('author') === 'levels') {
     const { attachAuthoring } = await import('../levels/authoring');
-    attachAuthoring({ invalidate: invalidateFrame, scene, camera, renderer, definitions: () => definitions, area: () => currentArea, encounter,
+    const authoring = attachAuthoring({ invalidate: invalidateFrame, scene, camera, renderer, definitions: () => definitions, area: () => currentArea, encounter,
       resetMaterials: () => graphics.resetHistory(),
       exportLighting: () => graphics.exportLighting(), lighting: () => graphics.lightingDiagnostics(),
       changeArea: id => changeArea({ kind: 'travel', area: id }), restart: reset, inspect: () => { inspect(); return inspecting; }, waitFrames, setFrozen: freezePreview, setView: previewView,
@@ -548,6 +549,22 @@ try {
       setAppearance: changeAppearance,
       diagnostics,
     });
+    const { fsrComparison } = await import('../labs/fsr/settings');
+    if (fsrComparison) {
+      const { attachFsrComparison } = await import('../labs/fsr/comparison');
+      attachFsrComparison({ graphics, frameLoop, camera, controls, canvas: renderer.domElement, encounter, diagnostics,
+        freeze: freezePreview,
+        clean: () => { authoring.clean(true); authoring.overlays(false); },
+        foliageFixture: () => {
+          active?.root.traverse(object => { if (object.userData.harvestTree) graphics.effects.addFoliage(object); });
+        },
+        step: (dt, movement, attack) => {
+          comparisonMovement = movement; frozen = false; fixedCamera = true;
+          try { if (attack) combat.startAbility('axe-basic'); return renderFrame(dt); }
+          finally { frozen = true; comparisonMovement = null; }
+        },
+      });
+    }
   }
 
 }

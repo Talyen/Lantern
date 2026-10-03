@@ -1,9 +1,10 @@
-import { ACESFilmicToneMapping, RedFormat, RenderPipeline, BlendMode, NormalBlending, Color, Vector2, Vector3, type Node, type OrthographicCamera, type PerspectiveCamera, type Scene, type WebGPURenderer, type TextureNode, type QuadMesh, type Texture } from 'three/webgpu';
+import { ACESFilmicToneMapping, RedFormat, CustomBlending, OneFactor, OneMinusSrcAlphaFactor, DataUtils, RenderPipeline, BlendMode, NormalBlending, Color, Vector2, Vector3, type Node, type OrthographicCamera, type PerspectiveCamera, type Scene, type WebGPURenderer, type TextureNode, type QuadMesh, type Texture } from 'three/webgpu';
 import { Fn, context, dot, float, mix, mrt, normalView, orthographicDepthToViewZ, perspectiveDepthToViewZ, output, pass, rtt, screenUV, smoothstep, toneMapping, uniform, uv, vec2, vec3, vec4, velocity } from 'three/tsl';
 import { ao } from 'three/addons/tsl/display/GTAONode.js';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { dof } from 'three/addons/tsl/display/DepthOfFieldNode.js';
 import type { AreaLighting } from '../levels/types';
+import { fsrComparison, comparisonPreset } from '../labs/fsr/settings';
 import { fsrTemporal } from './fsr-temporal';
 import { upscaleRatio, type GraphicsSettings } from './graphics-settings';
 import { SettingsPreparation } from './settings-preparation';
@@ -37,6 +38,7 @@ class PipelineGraph {
   private focusRange = uniform(16);
   private bloomStrength = uniform(0.8);
   private fsr: FSRNode | null = null;
+  private reactiveTexture: ReturnType<typeof rtt> | null = null;
   private scenePass: ReturnType<typeof pass> | null = null;
   private settings!: GraphicsSettings;
   private scale = 1;
@@ -69,6 +71,15 @@ class PipelineGraph {
       sceneMRT.setClearColor('outline', 0, 0);
       // Transparent effects soften the mask by their actual opacity instead of erasing whole quads.
       sceneMRT.setBlendMode('outline', new BlendMode(NormalBlending));
+    }
+    if (fsrComparison?.reactiveCoverage) {
+      // Premultiplied source-over alpha coverage; opaque surfaces write zero.
+      // Per-fragment output alpha retains maps, cutouts and point-sprite falloff.
+      const coverage = Fn(builder => builder.material.transparent ? vec4(output.a, 0, 0, output.a) : vec4(0))();
+      sceneMRT.outputNodes.coverage = coverage;
+      sceneMRT.setClearColor('coverage', 0, 0);
+      const blend = new BlendMode(CustomBlending); blend.blendSrc = OneFactor; blend.blendDst = OneMinusSrcAlphaFactor;
+      sceneMRT.setBlendMode('coverage', blend);
     }
     scenePass.setMRT(sceneMRT);
     this.scenePass = scenePass;
@@ -107,7 +118,9 @@ class PipelineGraph {
     this.resources.push(opaque); this.sceneResources.push(opaque);
     // Compare raw, matched-domain colors, not AO/DOF-treated final color.
     const difference = color.rgb.sub(opaque.getTextureNode('output').rgb).abs();
-    const reactive = sceneTexture(vec4(dot(difference, vec3(1 / 3)).mul(2).clamp(0, 1)), true);
+    const rawReactive = dot(difference, vec3(1 / 3)).mul(2).clamp(0, 1);
+    const reactive = sceneTexture(vec4(fsrComparison?.reactiveCoverage ? rawReactive.max(scenePass.getTextureNode('coverage').r).clamp(0, .9) : rawReactive), true);
+    this.reactiveTexture = reactive as ReturnType<typeof rtt>;
     const temporal = fsrTemporal(sceneTexture(beauty), depth, scenePass.getTextureNode('velocity'), this.camera, reactive, 1 / this.scale, (x, y, width, height) => {
       this.depthJitter.value.set(x, y); this.depthTexel.value.set(1 / width, 1 / height);
     });
@@ -191,7 +204,7 @@ class PipelineGraph {
     }
     this.look = look; this.settings = { ...settings };
     this.outlineScale.value = this.scale;
-    this.materialMipBias.value = Math.max(-1, Math.min(0, Math.log2(this.scale)));
+    this.materialMipBias.value = Math.max(-1, Math.min(0, Math.log2(this.scale))) + (fsrComparison?.mipOffset ?? 0);
     if (this.fsr?.upscaler) this.fsr.upscaler.settings.sharpness = settings.sharpness;
     this.exposure.value = settings.exposure; this.saturation.value = saturation;
     this.aoStrength.value = settings.ao;
@@ -220,7 +233,7 @@ class PipelineGraph {
 
   diagnostics() {
     const rt = this.scenePass?.renderTarget;
-    return { textureDepth: this.settings.textureDepth, materialMipBias: this.materialMipBias.value, materialAnisotropy: 16, ready: this.prepared, method: 'fsr-temporal', outlines: this.settings.outlines, outlineStage: this.settings.outlines ? 'pre-fsr' : 'off', sceneAttachments: rt?.textures.length ?? 0, dof: this.settings.dof, dofStage: 'resolved-output',
+    return { comparisonPreset, textureDepth: this.settings.textureDepth, materialMipBias: this.materialMipBias.value, materialAnisotropy: 16, ready: this.prepared, method: 'fsr-temporal', outlines: this.settings.outlines, outlineStage: this.settings.outlines ? 'pre-fsr' : 'off', sceneAttachments: rt?.textures.length ?? 0, dof: this.settings.dof, dofStage: 'resolved-output',
       sceneWidth: rt?.width ?? 0, sceneHeight: rt?.height ?? 0,
       outputWidth: this.renderer.domElement.width, outputHeight: this.renderer.domElement.height,
       reconstructionScale: this.scale, renderedFrames: this.successfulFrames,
@@ -228,6 +241,30 @@ class PipelineGraph {
       unjitteredMotionProjection: !!this.fsr?.upscaler && velocity.projectionMatrix === this.fsr.upscaler.unjitteredProjectionMatrix,
       gpuTimings: this.fsr?.upscaler ? Object.fromEntries(this.fsr.upscaler.gpuTimings) : null,
       gpuTimingScope: this.fsr ? 'FSR compute only; excludes scene, opaque pass and post effects' : null };
+  }
+
+  async comparisonInputs() {
+    if (!fsrComparison || !this.scenePass || !this.reactiveTexture) throw new Error('FSR inputs require an authoring comparison.');
+    const targets = [this.scenePass.renderTarget, this.reactiveTexture.renderTarget];
+    const images: Record<string, { png: string; maximum: number; mean: number }> = {};
+    for (let i = 0; i < targets.length; i++) {
+      const target = targets[i]; if (!target) throw new Error('Comparison target is unavailable.');
+      const attachment = i === 0 ? target.textures.findIndex(texture => texture.name === 'velocity') : 0;
+      if (attachment < 0) throw new Error('Velocity attachment is unavailable.');
+      const bytes = await this.renderer.readRenderTargetPixelsAsync(target, 0, 0, target.width, target.height, attachment);
+      const channels = bytes.length / (target.width * target.height);
+      const canvas = document.createElement('canvas'); canvas.width = target.width; canvas.height = target.height;
+      const ctx = canvas.getContext('2d')!, pixels = ctx.createImageData(canvas.width, canvas.height);
+      let maximum = 0, sum = 0;
+      for (let p = 0; p < target.width * target.height; p++) {
+        const read = (channel: number) => bytes instanceof Uint16Array ? DataUtils.fromHalfFloat(bytes[p * channels + channel]) : Number(bytes[p * channels + channel]);
+        const x = read(0), y = i === 0 ? read(1) : 0, magnitude = Math.hypot(x, y);
+        maximum = Math.max(maximum, magnitude); sum += magnitude;
+        pixels.data.set(i === 0 ? [128 + x * 10000, 128 + y * 10000, 128, 255] : [x * 255, x * 255, x * 255, 255], p * 4);
+      }
+      ctx.putImageData(pixels, 0, 0); images[i === 0 ? 'velocity' : 'reactive'] = { png: canvas.toDataURL(), maximum, mean: sum / (target.width * target.height) };
+    }
+    return images;
   }
 
   render(): void {
@@ -267,14 +304,14 @@ class PipelineGraph {
       if (object.context.textures?.some(texture => attachments.has(texture))) object.dispose();
     }
     this.resources.forEach((node) => node.dispose()); this.resources = []; this.sceneResources = [];
-    this.fsr = null; this.scenePass = null; this.successfulFrames = 0;
+    this.fsr = null; this.reactiveTexture = null; this.scenePass = null; this.successfulFrames = 0;
     this.post.dispose(); this.post = new RenderPipeline(this.renderer);
   }
   dispose(): void { this.release(); this.post.dispose(); }
 }
 
 function graphSignature(settings: GraphicsSettings): string {
-  return JSON.stringify([settings.dof !== 'off', settings.ao > 0, settings.bloom > 0, settings.outlines, settings.textureDepth]);
+  return JSON.stringify([settings.dof !== 'off', settings.ao > 0, settings.bloom > 0, settings.outlines, settings.textureDepth, fsrComparison?.reactiveCoverage ?? false]);
 }
 type PipelineRequest = { settings: GraphicsSettings; saturation: number; look?: AreaLighting };
 /** One shared graph owner. Keep the committed graph until its replacement is ready. */
@@ -332,6 +369,7 @@ export class WebGPUPipeline {
   resetHistory(): void { this.active?.resetHistory(); }
   resize(): void { this.active?.resize(); }
   diagnostics() { return { ...(this.active?.diagnostics() ?? { ready: false, method: 'fsr-temporal', renderedFrames: 0 }), preparing: this.queue.busy, retainedGraphs: this.cache.size }; }
+  async comparisonInputs() { if (!this.active) throw new Error('Pipeline is not ready.'); return this.active.comparisonInputs(); }
   render(): void { if (!this.queue.busy) this.active?.render(); }
   dispose(): void { this.disposed = true; this.queue.dispose(); this.cache.forEach(graph => graph.dispose()); this.cache.clear(); this.active = null; }
 }

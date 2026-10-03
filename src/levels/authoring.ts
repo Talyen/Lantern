@@ -10,7 +10,7 @@ import { calibrationStrengths, type CalibrationFamily } from '../rendering/mater
 type Diagnostics = Pick<ClearingSnapshot, 'area' | 'revision' | 'renderedRevision' | 'ready' | 'errors' | 'missing' | 'contentHash' | 'camera' | 'renderedFrames' | 'phase' | 'updateMs' | 'objects' | 'resources' | 'graphics'>;
 type Appearance = { lantern: boolean; surfaces: SurfaceMode };
 type Context = { invalidate(): void; resetMaterials(): void; exportLighting(this: void): Promise<PreparedProbeBake>; lighting(this: void): unknown; appearance(this: void): Appearance; setAppearance(appearance: { surfaces?: SurfaceMode; lantern?: boolean }): Promise<boolean>; scene: THREE.Scene; camera: THREE.OrthographicCamera; renderer: { domElement: HTMLCanvasElement }; definitions(): Record<string, AreaDefinition>; area(): AreaDefinition; encounter: Encounter; changeArea(id: string): Promise<boolean>; restart(this: void): void; inspect(): boolean; waitFrames(count?: number): Promise<void>; setFrozen(value: boolean): void; setView(id: string): void; diagnostics(): Diagnostics };
-export function attachAuthoring(ctx: Context): void {
+export function attachAuthoring(ctx: Context) {
   const runtimeId = crypto.randomUUID();
   const diagnostics = () => ({ ...ctx.diagnostics(), runtimeId });
   const panel = document.createElement('aside'); panel.dataset.authoring = 'levels'; panel.style.cssText = 'position:fixed;left:12px;top:12px;z-index:100;background:#172326ee;color:#eee;padding:8px;border-radius:6px;font:12px system-ui;max-width:360px';
@@ -85,4 +85,5 @@ export function attachAuthoring(ctx: Context): void {
   };
   Object.assign(window,{lanternAuthoring:bridge}); refresh(); setView(ctx.appearance().surfaces === 'showcase' && ctx.area().id === 'clearing' ? 'entrance' : 'center');
   const timer=setInterval(refresh,100);window.addEventListener('pagehide',()=>{resetMaterialCalibration();clearInterval(timer);clearOverlay();overlay.removeFromParent();panel.remove();},{once:true});
+  return bridge;
 }

@@ -15,7 +15,7 @@ This single before/after sanity measurement includes Python startup and excludes
 
 ## Current rendering policy
 
-Lantern requires native WebGPU across gameplay, authoring and labs through the shared graph. FSR Temporal is the sole reconstruction method (Balanced, sharpening 0.50 by default), with output pixel ratio fixed at 1. There is no reconstruction fallback; WebGPU/FSR startup failure produces an actionable error. Independent Shadow Quality and Particle Effects presets replace the overloaded quality setting. Atmosphere is simple profile distance fog; volumetric rendering is retired.
+Lantern requires native WebGPU across gameplay, authoring and labs through the shared graph. FSR Temporal is the sole reconstruction method (Quality, sharpening 0.50 by default), with output pixel ratio fixed at 1. There is no reconstruction fallback; WebGPU/FSR startup failure produces an actionable error. Independent Shadow Quality and Particle Effects presets replace the overloaded quality setting. Atmosphere is simple profile distance fog; volumetric rendering is retired.
 
 Archived studies and initial authoring measurements include evidence from before the native WebGPU-only migration. WebGL comparisons, retired lab controls and former TAA defaults are historical evidence. When measurements are requested or an evidenced performance defect warrants them, re-measure current authored areas and comparison labs on target hardware before drawing performance conclusions.
 

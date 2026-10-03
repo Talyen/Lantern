@@ -4,6 +4,11 @@ initializeDiagnostics();
 const lab = import.meta.env.DEV && ['characters', 'weapons', 'animations', 'assets'].includes(new URLSearchParams(location.search).get('lab') ?? '');
 if (lab) loadingScreen.dismiss();
 try {
+  // Only the opt-in authoring comparison page uses a seeded world/effects stream.
+  if (import.meta.env.DEV) {
+    const { fsrComparison, comparisonRandom } = await import('./labs/fsr/settings');
+    if (fsrComparison) Math.random = comparisonRandom;
+  }
   if (import.meta.env.DEV && new URLSearchParams(location.search).get('lab') === 'assets') {
     await import('./labs/assets/asset-review-lab');
   } else if (import.meta.env.DEV && new URLSearchParams(location.search).get('lab') === 'characters') {

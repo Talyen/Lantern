@@ -18,6 +18,7 @@ export class FrameLoop {
   private readonly waiters = new Set<FrameWaiter>();
   private request = 0;
   private started = false;
+  private manual = false;
   private closed = false;
   private settle = settlingFrames;
   private lastTick: number | undefined;
@@ -31,6 +32,13 @@ export class FrameLoop {
     if (this.closed) return;
     this.started = true;
     this.requestFrame();
+  }
+
+  /** Development replay owns explicit frames; resume resets wall-clock pacing. */
+  setManual(value: boolean): void {
+    this.manual = value; this.lastTick = undefined;
+    if (value) { cancelAnimationFrame(this.request); this.request = 0; }
+    else this.requestFrame();
   }
 
   invalidate(): void {
@@ -64,7 +72,7 @@ export class FrameLoop {
   }
 
   private requestFrame(): void {
-    if (this.started && !this.request && !this.context.hidden()) {
+    if (this.started && !this.manual && !this.request && !this.context.hidden()) {
       this.request = requestAnimationFrame(this.tick);
     }
   }
