@@ -143,7 +143,7 @@ Prepare the private art as described in [asset preparation](ASSET_PREPARATION.md
 
 ### Sword/Bow action preparation
 
-The manifest now prepares Thrust, Executioner's Strike and Onslaught for both Sword loadouts; Riposte uses the compatible Sword attack for its triggered counter and a held blade-preparation pose for its stance. The first Executioner Power Slash candidate lifted the feet and was rejected. The adopted Overhead Bashing Swing source retains planted feet, with the contact reviewed at 0.74 seconds in its 1.05-second cooked action. Bow reuses its Basic shot for Poison/Multishot, shares the authored skyward Rain clip with the lab and extends the joined draw for Deadeye. Every prepared role supplies explicit contact markers; pose playback follows the snapshotted attack rate.
+The manifest now prepares Thrust, Executioner's Strike and Onslaught for both Sword loadouts; Riposte uses the compatible Sword attack for its triggered counter and a held blade-preparation pose for its stance. The first Executioner Power Slash candidate lifted the feet and was rejected. The adopted Overhead Bashing Swing source retains planted feet, with the contact reviewed at 0.74 seconds in its 1.05-second cooked action. Bow reuses its Basic shot for Poison/Multishot, shares the authored skyward Rain clip with the lab and extends the joined draw for Deadeye. Onslaught contacts were refined to 0.31/0.69/1.11 seconds after the actual-rig review, retaining its 1.25-second action. Every prepared role supplies explicit contact markers; pose playback follows the snapshotted attack rate.
 
 ## Axe Skill and Berserking motions
 
