@@ -4,8 +4,9 @@ import { cli,parseArgs } from '../lib/cli.mjs';
 import { reserveGpuMeasurement } from '../agents/resources.mjs';
 import { readAreas,readState,evaluate,ready,outputDir,command } from './common.mjs';
 await cli(async()=>{
-  const args=parseArgs(process.argv.slice(2),{'--area':'value','--reason':'value'});if(args['--help']){console.log('Usage: npm run levels:measure -- --reason "request or defect evidence" [--area ID]');return;}
+  const args=parseArgs(process.argv.slice(2),{'--area':'value','--reason':'value','--lab':'value'});if(args['--help']){console.log('Usage: npm run levels:measure -- --reason "request or defect evidence" [--area ID | --lab assets]');return;}
   const reason=args['--reason']?.trim();if(!reason)throw new Error('Performance measurement requires --reason with a specific user request or evidenced performance defect.');
+  if(args['--lab']){if(args['--lab']!=='assets'||args['--area'])throw new Error('Use --lab assets without --area.');const {measureReview}=await import('../assets/review/measure.mjs');await measureReview(reason);return;}
   const area=args['--area']??'clearing';if(!(await readAreas())[area])throw new Error(`Unknown area: ${area}`);
   const reservation=await reserveGpuMeasurement();
   try{

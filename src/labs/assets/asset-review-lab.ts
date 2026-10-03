@@ -20,8 +20,8 @@ app.innerHTML = `<main class="asset-review">
   <section class="review-preview" aria-label="Asset preview">
     <div class="review-identity"><p id="asset-pack" class="review-eyebrow"></p><h2 id="asset-name">Loading assets…</h2><p id="asset-appearance"></p></div>
     <div id="review-stage" class="review-stage"><p id="stage-status" role="status">Preparing native WebGPU…</p></div>
-    <div class="review-preview-controls"><label>View<select id="asset-view"><option value="gameplay">Gameplay angle</option><option value="front">Front</option><option value="side">Side</option><option value="back">Back</option></select></label><button id="asset-fit">Fit</button><label class="review-checkbox"><input id="asset-scale" type="checkbox">1.8 m reference</label><label id="motion-controls" hidden>Motion<select id="asset-motion"><option value="static">Static</option></select></label><button id="asset-pause" hidden>Pause</button></div>
-    <p class="review-stage-caption"><span id="asset-dimensions"></span><span>Drag to orbit · scroll to zoom</span></p>
+    <div class="review-preview-controls"><label>View<select id="asset-view"><option value="game">Game View</option><option value="orbit">Orbit inspection</option><option value="front">Front</option><option value="side">Side</option><option value="back">Back</option></select></label><button id="asset-fit">Fit</button><label class="review-checkbox"><input id="asset-scale" type="checkbox">1.8 m reference</label><label id="motion-controls" hidden>Motion<select id="asset-motion"><option value="static">Static</option></select></label><button id="asset-pause" hidden>Pause</button></div>
+    <p class="review-stage-caption"><span id="asset-dimensions"></span><span id="review-view-caption">Game camera · saved graphics</span></p>
   </section>
   <aside class="review-details"><div class="review-decision"><div class="review-decision-header"><h2>Decision</h2><span id="asset-state" class="review-badge"></span></div><p id="decision-detail"></p>
     <div class="review-actions"><button id="approve-asset" class="approve-action">Approve</button><button id="deny-asset">Deny</button><button id="delete-asset" class="delete-action">Mark for deletion</button><button id="skip-asset">Skip</button></div>
@@ -40,6 +40,7 @@ const feedback = el('review-feedback'), stageStatus = el('stage-status');
 let snapshot: ReviewSnapshot, selected: ReviewAsset | undefined, mode: 'queue' | 'browse' = 'queue';
 let stage: ReviewStage | undefined, generation = 0, busy = true, previewReady = false, paused = false, limit = 100, stopped = false;
 const skipped = new Set<string>();
+let lastSelection: { id: string; detailMs: number; renderMs: number; totalMs: number } | undefined;
 // Compact panes retain decisions beside the preview; secondary detail opens on demand.
 const compactPane = matchMedia('(max-width: 1100px)'), drawerPane = matchMedia('(max-width: 640px)');
 const infoPanel = el<HTMLDetailsElement>('review-info'), assetPanel = el('review-browser-panel');
@@ -134,19 +135,34 @@ function drawDetails(): void {
 }
 async function choose(asset: ReviewAsset): Promise<void> {
   if (busy || stopped) return;
+  const began = performance.now();
   const current = ++generation; selected = asset; previewReady = false; paused = false;
   notes.value = snapshot.reviews.decisions[asset.id]?.notes ?? ''; el('asset-dimensions').textContent = ''; stageStatus.hidden = false; stageStatus.textContent = stage ? 'Loading prepared asset…' : stageStatus.textContent;
-  el<HTMLSelectElement>('asset-view').value = 'gameplay'; el('asset-pause').textContent = 'Pause';
+  el('asset-pause').textContent = 'Pause';
   drawDetails(); drawList();
   const detail = await request(`/asset?id=${encodeURIComponent(asset.id)}`);
   if (current !== generation || stopped) return;
+  const detailEnded = performance.now();
   const parsed = parseReviewSnapshot({ ...snapshot, assets: [detail] }).assets[0]; Object.assign(asset, parsed); selected = asset; drawDetails();
   try {
     if (!stage) throw new Error('Native WebGPU preview unavailable. Reload after resolving the startup error.');
     const dimensions = await stage.show(asset);
     if (current !== generation || stopped || !dimensions) return;
-    el('asset-dimensions').textContent = dimensions; stageStatus.hidden = true; previewReady = true; updateControls();
+    el('asset-dimensions').textContent = dimensions; stageStatus.hidden = true; previewReady = true; preloadNext(); lastSelection = { id: asset.id, detailMs: detailEnded - began, renderMs: performance.now() - detailEnded, totalMs: performance.now() - began }; updateControls();
   } catch (error) { if (current === generation) { stageStatus.hidden = false; stageStatus.textContent = String(error); previewReady = false; updateControls(); } }
+}
+let preloadEpoch = 0;
+function preloadNext(): void {
+  const epoch = ++preloadEpoch;
+  if (mode !== 'queue' || !selected || !stage || stopped) return;
+  const list = filtered(), position = list.findIndex(asset => asset.id === selected?.id);
+  const successors = list.slice(position + 1, position + 3);
+  // Only two successors; checks stay live when a prefetched asset becomes selected.
+  for (const asset of successors) request(`/asset?id=${encodeURIComponent(asset.id)}`).then(async detail => {
+    if (epoch !== preloadEpoch || stopped) return;
+    const parsed = parseReviewSnapshot({ ...snapshot, assets: [detail] }).assets[0];
+    if (parsed.available && parsed.fingerprint) await stage?.preload(parsed);
+  }).catch(() => { /* A failed speculative load is retried visibly on selection. */ });
 }
 async function decide(state: ReviewState): Promise<void> {
   if (!selected || busy || !snapshot.writable) return;
@@ -179,13 +195,13 @@ async function reload(): Promise<void> {
   const next = filtered().find(row => row.id === id) ?? filtered()[0]; if (next) { await choose(next); if (id === next.id && draft) notes.value = draft; } else { clearSelection('No matching assets. Adjust the filters.'); drawList(); }
 }
 function clearSelection(text: string): void {
-  generation++; selected = undefined; previewReady = false; stage?.empty(); notes.value = '';
+  generation++; preloadEpoch++; selected = undefined; previewReady = false; stage?.empty(); notes.value = '';
   for (const id of ['asset-pack','asset-appearance','asset-dimensions','asset-id','asset-build','asset-dependencies','asset-warnings','asset-uses','decision-detail']) el(id).textContent = '';
   el('asset-name').textContent = 'No asset selected'; el('asset-state').textContent = '—';
   stageStatus.hidden = false; stageStatus.textContent = text; el('motion-controls').hidden = true; el('asset-pause').hidden = true; updateControls();
 }
 function filterChanged(): void {
-  if (busy) return; limit = 100; drawList(); const assets = filtered();
+  if (busy) return; preloadEpoch++; limit = 100; drawList(); const assets = filtered();
   if (!assets.length) clearSelection(mode === 'queue' ? 'Review queue complete for this selection.' : 'No matching assets. Adjust the filters.');
   else if (!assets.some(row => row.id === selected?.id)) choose(assets[0]).catch((error: unknown) => message(String(error), true));
 }
@@ -197,8 +213,8 @@ el('review-reload').addEventListener('click', () => { reload().catch((error: unk
 for (const [id, state] of [['approve-asset','approved'],['deny-asset','denied'],['delete-asset','delete-requested'],['reset-asset','unreviewed']] as const) el(id).addEventListener('click', () => { decide(state).catch((error: unknown) => message(String(error), true)); });
 el('skip-asset').addEventListener('click', () => { if (!selected || busy) return; skipped.add(selected.id); const next = filtered()[0]; if (next) choose(next).catch((error: unknown) => message(String(error), true)); else { clearSelection('Review queue complete for this selection.'); drawList(); message('Queue complete for this selection.'); } });
 el('deny-family').addEventListener('click', () => { if (selected) save({ type: snapshot.reviews.familyDenials[selected.familyId] ? 'family-clear' : 'family-deny', id: selected.id, notes: notes.value }).then(filterChanged).catch((error: unknown) => message(String(error), true)); });
-el<HTMLSelectElement>('asset-view').addEventListener('change', () => stage?.view(el<HTMLSelectElement>('asset-view').value));
-el('asset-fit').addEventListener('click', () => stage?.fit()); el<HTMLInputElement>('asset-scale').addEventListener('change', () => stage?.scaleReference(el<HTMLInputElement>('asset-scale').checked));
+el<HTMLSelectElement>('asset-view').addEventListener('change', () => { stage?.view(el<HTMLSelectElement>('asset-view').value).then(() => { el('review-view-caption').textContent = el<HTMLSelectElement>('asset-view').value === 'game' ? 'Game camera · saved graphics' : 'Drag to orbit · scroll to zoom'; preloadNext(); }).catch((error: unknown) => message(String(error), true)); });
+el('asset-fit').addEventListener('click', () => { stage?.fit().then(() => { el<HTMLSelectElement>('asset-view').value = 'orbit'; el('review-view-caption').textContent = 'Drag to orbit · scroll to zoom'; preloadNext(); }).catch((error: unknown) => message(String(error), true)); }); el<HTMLInputElement>('asset-scale').addEventListener('change', () => stage?.scaleReference(el<HTMLInputElement>('asset-scale').checked));
 el<HTMLSelectElement>('asset-motion').addEventListener('change', () => { if (selected) stage?.motion(selected, el<HTMLSelectElement>('asset-motion').value).catch((error: unknown) => message(String(error), true)); });
 el('asset-pause').addEventListener('click', () => { paused = !paused; stage?.pause(paused); el('asset-pause').textContent = paused ? 'Play' : 'Pause'; });
 el('review-finish').addEventListener('click', () => {
@@ -215,3 +231,5 @@ try {
   if (stopped) stage.dispose();
 } catch (error) { stageStatus.textContent = `Native WebGPU startup failed: ${String(error)}`; }
 if (!stopped) await reload();
+
+Object.assign(window, { lanternAssetReview: { diagnostics: () => ({ ready: previewReady, selected: selected?.id, lastSelection, rendering: stage?.diagnostics() }), view: async (value: string) => { await stage?.view(value); el<HTMLSelectElement>('asset-view').value = value; el('review-view-caption').textContent = value === 'game' ? 'Game camera · saved graphics' : 'Drag to orbit · scroll to zoom'; preloadNext(); }, next: async () => { if (!selected || busy || mode !== 'queue') throw new Error('Queue is not ready.'); skipped.add(selected.id); const next = filtered()[0]; if (!next) throw new Error('No next asset.'); await choose(next); return lastSelection; } } });

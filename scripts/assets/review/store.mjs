@@ -15,7 +15,7 @@ export async function reviewOwner(cwd) {
   return { ctx, task, writable: !!task && ['working', 'needs-check-repair'].includes(task.status), canFinish: !!task?.reviewSession };
 }
 /** CAS and serialization prevent a stale tab overwriting another reviewer's saved decisions. */
-export async function saveReview(cwd, revision, action) {
+export async function saveReview(cwd, revision, action, cache) {
   const owner = await reviewOwner(cwd);
   if (!owner.writable) throw new Error('Read-only checkout. Start npm run assets:review for a writable session.');
   return withResource(`review-${owner.task.id}`, async () => {
@@ -23,13 +23,14 @@ export async function saveReview(cwd, revision, action) {
     const reviews = await readReviews(cwd);
     if (reviewRevision(reviews) !== revision) throw Object.assign(new Error('Review records changed in another tab. Reload records before saving; your notes are still here.'), { status: 409 });
     if (!action || typeof action.id !== 'string' || typeof action.notes !== 'string' || action.notes.length > 4000) throw new Error('Invalid review action.');
-    const index = await reviewIndex(cwd, { reviewed: false }), asset = index.assets.find(row => row.id === action.id);
+    const index = cache ? await cache.get() : await reviewIndex(cwd, { reviewed: false }), asset = index.assets.find(row => row.id === action.id);
     if (!asset) throw new Error('Asset is no longer in the active catalog. Reload the review session.');
     const updatedAt = new Date().toISOString();
     if (action.type === 'decision') {
       if (!reviewStates.includes(action.state)) throw new Error('Invalid review decision.');
-      const current = await fingerprint(index, asset);
-      if (action.state === 'approved' && (!asset.available || !current || current !== action.fingerprint)) throw Object.assign(new Error('Prepared art changed or is unavailable. Reload this asset before approving.'), { status: 409 });
+      const inspected = cache ? await cache.inspect(index, asset) : asset;
+      const current = cache ? inspected.fingerprint : await fingerprint(index, inspected);
+      if (action.state === 'approved' && (!inspected.available || !current || current !== action.fingerprint)) throw Object.assign(new Error('Prepared art changed or is unavailable. Reload this asset before approving.'), { status: 409 });
       if (action.state === 'approved' && reviews.familyDenials[asset.familyId]) throw new Error('Clear the family denial before approving this appearance.');
       reviews.decisions[asset.id] = { familyId: asset.familyId, url: asset.url, name: asset.name, state: action.state, fingerprint: current, notes: action.notes, updatedAt };
     } else if (action.type === 'family-deny') reviews.familyDenials[asset.familyId] = { notes: action.notes, updatedAt };

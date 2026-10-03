@@ -138,14 +138,14 @@ export async function reviewIndex(cwd = root, { revision, reviewed = true } = {}
   return index;
 }
 /** Hash the actual bytes and transitive appearance inputs only on inspection or eligibility checks. */
-export async function fingerprint(index, row) {
+export async function fingerprint(index, row, inputs = { readGlb, hashFile, readFile }) {
   const paths = new Set(), visited = new Set();
   const includeUrl = async url => {
     const path = assetPath(resolve(index.cwd, 'public'), url, '/');
     if (paths.has(path)) return;
     paths.add(path);
     if (path.endsWith('.glb')) {
-      const data = await readGlb(path, resolve(index.cwd, 'public'));
+      const data = await inputs.readGlb(path, resolve(index.cwd, 'public'));
       for (const input of [...(data.images ?? []), ...(data.buffers ?? [])]) if (input.uri && !input.uri.startsWith('data:')) await includeUrl('/' + resolve(dirname(path), decodeURIComponent(input.uri)).slice(resolve(index.cwd, 'public').length + 1));
       for (const material of data.materials ?? []) if (material.extras?.lanternSurface?.url) await includeUrl(material.extras.lanternSurface.url);
     }
@@ -162,8 +162,8 @@ export async function fingerprint(index, row) {
     await includeUrl(row.url);
     for (const dep of row.dependencies) await visit(dep);
     const hash = createHash('sha256').update(row.id).update(String(row.height ?? 'authored'));
-    for (const path of [...paths].sort()) hash.update(path.slice(index.cwd.length)).update(await hashFile(path));
-    if (row.url.startsWith('/vendor/synty/environment/')) hash.update(await readFile(resolve(index.cwd, 'assets/material-recipes.json')));
+    for (const path of [...paths].sort()) hash.update(path.slice(index.cwd.length)).update(await inputs.hashFile(path));
+    if (row.url.startsWith('/vendor/synty/environment/')) hash.update(await inputs.readFile(resolve(index.cwd, 'assets/material-recipes.json')));
     return hash.digest('hex');
   } catch (error) {
     row.available = false; row.warnings.push(`Cannot inspect prepared inputs: ${error.message}`); return null;

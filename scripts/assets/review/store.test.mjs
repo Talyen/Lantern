@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { context, git, writeJSON, saveTask } from '../../agents/state.mjs';
 import { startTask } from '../../agents/workflow.mjs';
 import { reviewRevision, saveReview, finishReview } from './store.mjs';
+import { createReviewCache } from './cache.mjs';
 import { readReviews, reviewIndex, fingerprint } from './index.mjs';
 import { emptyReviews, effectiveReview } from '../../../src/assets/asset-review.ts';
 
@@ -65,5 +66,23 @@ test('changed appearances need fresh approval while family denial and deletion r
     assert.equal(effectiveReview(changed, denied.reviews).state, 'denied');
     const marked = await saveReview(f.task.path, denied.revision, { type: 'decision', id: asset.id, state: 'delete-requested', notes: '', fingerprint: null });
     delete marked.reviews.familyDenials[asset.familyId]; assert.equal(effectiveReview(changed, marked.reviews).state, 'delete-requested');
+  } finally { await f.dispose(); }
+});
+
+test('cached previews reject stale approval after a reexport with the same ID and URL', async () => {
+  const f = await fixture();
+  try {
+    const cache = createReviewCache(f.task.path), index = await cache.get(), id = index.assets[0].id;
+    const first = await cache.asset(id), repeated = await cache.asset(id);
+    assert.equal(repeated.fingerprint, first.fingerprint);
+    const initial = await readReviews(f.task.path);
+    const approved = await saveReview(f.task.path, reviewRevision(initial), { type: 'decision', id, state: 'approved', notes: '', fingerprint: first.fingerprint }, cache);
+    await writeFile(join(f.task.path, 'public', first.url.slice(1)), '{"nodes":[{"name":"changed cached asset"}]}');
+    const changed = await cache.asset(id); assert.notEqual(changed.fingerprint, first.fingerprint);
+    await assert.rejects(saveReview(f.task.path, approved.revision, { type: 'decision', id, state: 'approved', notes: '', fingerprint: first.fingerprint }, cache), /changed or is unavailable/);
+    assert.equal(effectiveReview(changed, (await cache.get()).reviews).changed, true);
+    const current = await readReviews(f.task.path); current.familyDenials[first.familyId] = { notes: 'Retired family', updatedAt: new Date().toISOString() };
+    await writeJSON(join(f.task.path, 'assets/asset-reviews.json'), current);
+    assert.equal(effectiveReview(changed, (await cache.get()).reviews).state, 'denied');
   } finally { await f.dispose(); }
 });
