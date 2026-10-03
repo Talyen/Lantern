@@ -30,6 +30,7 @@ import { createRenderer } from '../rendering/renderer';
 import { PlayerLantern } from '../rendering/player-lantern';
 import { Graphics } from '../rendering/graphics';
 import { CoreEffects } from '../rendering/effects';
+import type { VegetationActor } from '../rendering/vegetation';
 import { Options } from '../ui/options';
 import { buildArea, createWorld, disposeAreaCache, type AreaInstance } from '../levels/builder';
 import { areas } from '../levels/registry';
@@ -239,6 +240,8 @@ function resetPresentation(): void {
   gameplayAudio.reset();
   clearInput();
   graphics?.effects.clear();
+  graphics?.effects.resetVegetation();
+  vegetationActorRecords.clear();
   encounter.projectiles=[]; encounter.rains=[]; abilityEffects?.clear(); projectileVisuals.clear(); enemyActors.clear();
   inventory.syncLoadout();
   movementWorld?.reset();
@@ -447,6 +450,7 @@ function renderFrame(dt: number): boolean {
   lootLabels.sync(adventure.session(currentArea.id).drops, camera, [encounter.player.x, encounter.player.z], paused() || encounter.player.hp <= 0);
   hud.positionEnemy(encounter, camera, mount, paused() ? 0 : gameDt, inspecting || transitioning);
   active?.update(camera, paused() ? 0 : gameDt);
+  stageVegetationActors();
   graphics?.effects.setGameplayDelta(gameDt);
   graphics?.effects.weatherView(camera,player.root.position);
   renderer.info.reset();
@@ -454,6 +458,27 @@ function renderFrame(dt: number): boolean {
   if (rendered) renderedFrames++;
   if (rendered && active && !transitioning) renderedRevision = revision;
   return rendered;
+}
+const vegetationActors: VegetationActor[] = [];
+const vegetationActorRecords = new Map<string, VegetationActor>();
+const vegetationEnemies: string[] = [];
+function stageVegetationActors(): void {
+  vegetationActors.length = 0; vegetationEnemies.length = 0;
+  const record = (id: string): VegetationActor => {
+    const state = id === 'player' ? encounter.player : encounter.enemies[id];
+    let value = vegetationActorRecords.get(id);
+    if (!value) { value = { id, x: 0, y: 0, z: 0, yaw: 0 }; vegetationActorRecords.set(id, value); }
+    value.x = state.x; value.y = state.y; value.z = state.z; value.yaw = state.yaw; return value;
+  };
+  if (encounter.player.hp > 0 && player.root.visible) vegetationActors.push(record('player'));
+  if (currentArea.kind !== 'safe') for (const id of encounter.enemyIds) {
+    if (encounter.enemies[id].hp <= 0 || !actors[id]?.root.visible || !encounter.enemies[id].home) continue;
+    vegetationEnemies.push(id);
+  }
+  const distance = (id: string): number => (encounter.enemies[id].x - encounter.player.x) ** 2 + (encounter.enemies[id].z - encounter.player.z) ** 2;
+  vegetationEnemies.sort((a, b) => distance(a) - distance(b) || a.localeCompare(b));
+  for (let i = 0; i < Math.min(3, vegetationEnemies.length); i++) vegetationActors.push(record(vegetationEnemies[i]));
+  graphics?.effects.setVegetationActors(vegetationActors);
 }
 const runtimeDiagnostics = new ClearingDiagnostics({
   audio, adventure, encounter, preferences, harvesting, gathering, approach,

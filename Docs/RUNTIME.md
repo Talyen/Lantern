@@ -51,6 +51,14 @@ Camera follow owns a ground-plane anchor with a 0.15 m radial dead zone and a se
 
 `src/gameplay/movement.ts` owns navcat generation/path queries and Rapier grounded collision/line-of-sight behind a numeric simulation interface. Area data supplies explicit proxies and optional slope triangles plus stable harvestable trunk proxies, independent of asset availability. Tree-state changes commit collision immediately; one microtask builds and submits their final navigation geometry to the worker, coalescing session depletion applied during arrival. Stale worker revisions remain ineligible. The coordinator replaces/disposes this adapter with the area and passes desired movement through it before presenting transforms.
 
+## Vegetation and tree presentation
+
+`src/rendering/vegetation.ts` owns area-local grass/low-plant interaction uniforms and material variants. The clearing coordinator stages numeric foot positions after movement resolves; the effects owner consumes them only when rendering advances. Four stable slots cover the living player and three nearest living, visible enemies. Current/previous influence data, a 0.12-second trailing position and a 0.5 m trail cap support bounded node deformation without a persistent field or per-blade simulation. Pause/hit-stop freezes interaction recovery, and presentation reset/area replacement clears both histories.
+
+The area builder resolves canonical bush/fern or explicit placement vegetation profiles, adds static root/height/footprint attributes, and preserves compatible instancing. Source library geometry/materials are borrowed; area-owned attribute copies and material variants are restored and released before borrowed instances. Existing `foliage` wind remains separate from proximity eligibility. Vegetation does not affect gameplay queries or persistence.
+
+`src/rendering/tree-felling.ts` owns active cosmetic falls, prepared per-tree fade variants and their cleanup. Harvesting commits rewards/depletion and navigation removes the trunk immediately; `fellTree` supplies only the new visual reaction. Snapshot restoration bypasses animation, while renewal resets the original pose and coverage. Native node alpha hashing handles disappearance without an additional pass, and standing geometry remains eligible for lighting preparation. Falls run on gameplay time and never enter saved state or request lighting/navigation work.
+
 ## Portal presentation
 
 `src/rendering/portal.ts` owns the generic gold/amber portal and bounded decal; the retained analytic swirl uses TSL through the existing graph. Portal effects pause with gameplay; portal destinations and lifetime belong to Adventure. See [library trials](LIBRARY_TRIALS.md).

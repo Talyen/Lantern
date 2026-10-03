@@ -43,6 +43,14 @@ Prepared variants cover the three selected pines, rock, log, bush, fern, crate, 
 
 Run `node scripts/assets/surfaces/environment.mjs --help` for the local exporter. Supporting bakes are 1024 pixels; pines, rocks, logs, tents and the chest use 2048 pixels with larger atlas margins. Runtime prefers available variants and falls back to original optional scenery. An authored-surface comparison is available only in development authoring.
 
+### Reactive vegetation and tree felling
+
+Grass parts around the player and nearby living enemies, with fixed roots and a short recovering trail. Low plants retain their authored silhouettes: ferns and explicitly opted-in flowers use a soft response, while bushes use a stiffer response. Canonical bush/fern assets are classified before prepared-surface substitution; placement `vegetation: "soft"`, `"shrub"` or `false` overrides that classification. No new flower placements are implied. Existing `foliage` wind authoring remains independent.
+
+The shared [vegetation owner](../src/rendering/vegetation.ts) uses four bounded actor influences and static geometry/instance metadata, retaining current grass density and scenery batching. Node deformation includes matching normals, previous-frame positions and padded bounds through the shared native pipeline. Judge parting and recovery at the ordinary gameplay camera: no rubbery silhouettes, sliding roots or temporal trails. Proximity reactions do not alter collision or navigation.
+
+The final chop triggers a brief cosmetic tree topple and opaque alpha-hashed disappearance, leaving the existing stump. Fall directions prefer open ground away from the player; conservative canopy support limits the tilt. Existing models, debris and audio provide the complete reaction. No falling-tree damage, physical logs, new art or persistent fall poses are added. See [Gathering](GATHERING.md#contextual-gathering) for the authoritative depletion and restoration behavior.
+
 ### Weathered woodland showcase
 
 The development-only **Woodland showcase** surface selection studies one section of Forest Clearing around `entrance`. Worn earth stays quiet along the approach; copper leaf litter gathers around woodland edges and rocky soil settles around three selected rocks. The selected broad pine uses cylindrical bark grain, broad shaded canopy interiors and restrained needle tips. Controlled canopy shaping breaks uniform tiers while preserving the trunk, original bounds, hierarchy and harvest/collision identity. Rocks keep their shape and use quieter mineral bands with sparse olive weathering. Golden lighting stays fixed for the comparison.

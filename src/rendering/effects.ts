@@ -1,6 +1,7 @@
 import { isMesh } from '../assets/resource-ownership';
 import * as THREE from 'three';
 import type { GrassCarpets } from './grass';
+import type { Vegetation, VegetationActor } from './vegetation';
 import { MeshStandardNodeMaterial } from 'three/webgpu';
 import { positionLocal, uniform, vec3, sin, float, max, pow } from 'three/tsl';
 import { copyStandardNodeMaterial } from '../assets/environment-surfaces';
@@ -58,6 +59,7 @@ export class CoreEffects {
   // placements borrow one node graph; the area owns and retires it once.
   private readonly foliageMaterials = new Map<THREE.BufferGeometry, Map<THREE.Material, MeshStandardNodeMaterial>>();
   private grass: GrassCarpets[] = [];
+  private vegetation?: Vegetation;
   private texture: THREE.CanvasTexture;
   private weather: ParticleKind | null = null;
   private weatherEffects = true;
@@ -161,9 +163,12 @@ export class CoreEffects {
     this.waters.push({ mesh, waves, options, normal, shoreline: shoreTexture }); return mesh;
   }
   addGrass(carpet: GrassCarpets): void { this.grass.push(carpet); carpet.update(this.time, this.wind.value); }
+  addVegetation(vegetation: Vegetation): void { this.vegetation = vegetation; }
+  setVegetationActors(actors: readonly VegetationActor[]): void { this.vegetation?.stage(actors); }
+  resetVegetation(): void { this.vegetation?.reset(); }
   addFoliage(root: THREE.Object3D): void {
     root.traverse((o) => {
-      if (!isMesh(o) || o instanceof THREE.SkinnedMesh || this.foliageMeshes.has(o)) return;
+      if (!isMesh(o) || o instanceof THREE.SkinnedMesh || this.foliageMeshes.has(o) || o.userData.reactiveVegetation) return;
       o.geometry.computeBoundingBox(); const box = o.geometry.boundingBox!; const height = Math.max(0.01, box.max.y - box.min.y);
       const original = o.material; const sources = Array.isArray(original) ? original : [original];
       let shared = this.foliageMaterials.get(o.geometry);
@@ -189,9 +194,11 @@ export class CoreEffects {
   update(dt: number): void {
     if (this.disposed) return;
     this.root.visible = this.enabled;
-    if (this.paused || !this.enabled) { for (const carpet of this.grass) carpet.update(this.time, this.wind.value); return; }
+    const actionDt = this.gameplayDelta ?? dt; this.gameplayDelta = undefined;
+    if (this.paused || !this.enabled) { this.vegetation?.advance(0, this.time, this.wind.value); for (const carpet of this.grass) carpet.update(this.time, this.wind.value); return; }
     dt = Math.min(dt, 0.05);
-    const actionDt = this.gameplayDelta ?? dt; this.gameplayDelta = undefined; this.time += dt; this.clock.value = this.time;
+    this.time += dt; this.clock.value = this.time;
+    this.vegetation?.advance(actionDt, this.time, this.wind.value);
     for (const carpet of this.grass) carpet.update(this.time, this.wind.value);
     for (const emitter of this.emitters) {
       if (!this.atmosphericParticles && atmosphericKinds.has(emitter.kind)) continue;
@@ -236,6 +243,7 @@ export class CoreEffects {
   }
   clear(): void { for (const p of this.pools.values()) { p.active = 0; p.object.visible = false; p.life.fill(0); p.positions.fill(1e6); uploadRange(p.object.geometry.getAttribute('position') as THREE.BufferAttribute, p.positionRange, 0, p.capacity - 1); } }
   clearArea(): void {
+    this.vegetation?.reset(); this.vegetation = undefined;
     this.rain.configure(undefined); this.weather=null;
     for (const f of this.foliage) { f.mesh.material = f.original; f.mesh.customDepthMaterial = f.depth; f.mesh.customDistanceMaterial = f.distance; }
     for (const materials of this.foliageMaterials.values()) for (const material of materials.values()) material.dispose();

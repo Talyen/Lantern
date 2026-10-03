@@ -72,6 +72,7 @@ export function validateAreas(input: Record<string, AreaDefinition>): string[] {
         if (!finite(prop.position, 3) || !finite(prop.scale, 3) || prop.scale.some(s => s <= 0) || !Number.isFinite(prop.yaw) || prop.height !== undefined && (!Number.isFinite(prop.height) || prop.height <= 0)) fail('invalid transform');
         if (typeof prop.castShadow !== 'boolean' || typeof prop.receiveShadow !== 'boolean') fail('shadow flags must be explicit booleans');
         if (!!prop.asset === !!prop.primitive) fail('choose exactly one asset or primitive');
+        if (prop.vegetation !== undefined && prop.vegetation !== false && !['soft', 'shrub'].includes(prop.vegetation)) fail('invalid vegetation response');
         if (prop.primitive?.surface !== undefined && !['woodland','stone'].includes(prop.primitive.surface)) fail('unknown ground surface');
         if (prop.harvest && (!['tree','stone','iron'].includes(prop.harvest.kind) || prop.harvest.radius !== undefined && (!Number.isFinite(prop.harvest.radius) || prop.harvest.radius <= 0))) fail('invalid tree harvest metadata');
         if (prop.harvest && [prop.harvest.level,prop.harvest.baseYield,prop.harvest.contacts].some(n => n !== undefined && (!Number.isSafeInteger(n) || n < 1))) fail('invalid resource progression metadata');

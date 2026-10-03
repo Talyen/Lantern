@@ -12,6 +12,10 @@ Three valid contacts deplete initial level-1 nodes. Each contact drops Wood, Sto
 
 Tree collision is removed on felling; mineral outcrops retain a low depleted core. Session depletion survives travel and death. Both renew after 120 active gameplay seconds, deferring occupied locations. Restart refreshes resources; time-away renewal remains future work. Depletion and renewal do not prepare lighting.
 
+A newly completed tree harvest starts a cosmetic fall: the stump appears and the tree becomes unavailable immediately, while its existing model topples and fades away over roughly 1.1 gameplay seconds. The existing crack/fall cues play once, with a small debris burst at visual ground contact. Motion pauses with gameplay and hit-stop; cancelling gathering after the final contact does not undo depletion or the fall. Falling trees cannot damage actors, block movement or relocate rewards.
+
+[`TreeFelling`](../src/rendering/tree-felling.ts) owns transient motion and tree-only fade materials. `AreaInstance.fellTree(id, from)` starts a new fall; `setResourceState(id, depleted)` applies retained state without replaying it. Travel/disposal cancels pending visual effects, revisiting depleted trees shows stumps directly, and renewal restores the complete standing transform and material coverage. Missing optional models never block the harvesting or collision commit.
+
 ## Progression
 
 [`skills.ts`](../src/gameplay/skills.ts) owns shared formulas and named tuning values. Levels derive from saved XP rather than separate saved counters.

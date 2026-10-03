@@ -14,6 +14,9 @@ import { assetLibrary, type AssetInstance } from '../assets/asset-library';
 import { updateAssetLods } from '../rendering/asset-lods';
 import { stoneSurface, stoneSurfaceRecipe } from '../rendering/stone-surface';
 import { createGrass } from '../rendering/grass';
+import { Vegetation } from '../rendering/vegetation';
+import { TreeFelling } from '../rendering/tree-felling';
+import { vegetationProfile } from './vegetation';
 import { woodlandGroundRecipeFor, woodlandMaterial } from '../rendering/woodland-ground';
 import { Portal } from '../rendering/portal';
 import { resolveLocalLight } from './local-lighting';
@@ -43,6 +46,7 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
   const sceneLeases: (() => void)[] = [];
   let disposed = false;
   let grass: ReturnType<typeof createGrass> | undefined;
+  const vegetation = new Vegetation();
   const animated = new Set<THREE.Object3D>();
   const interactables = new Map<string,THREE.Object3D>();
   const chests = new Map<string, { hinge: THREE.Group; opened: boolean }>();
@@ -50,12 +54,13 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
   let shelter: ReturnType<typeof createShelter> | undefined;
   const resources = resourceDefinitions(area), mineralModels = new Map<string, THREE.Object3D>();
   const trees = treeDefinitions(area), treeIds = new Map(trees.map(t => [t.id, t]));
+  const treeFelling = new TreeFelling(area, new Set(treeIds.keys()));
   const treeModels = new Map<string, { object: THREE.Object3D; stump: THREE.Mesh; rotation: [number, number]; hitAge: number; felled: boolean }>();
   const shakingTrees = new Set<string>();
   const portals: Portal[] = [];
   const missing: string[] = [], foliage: THREE.Object3D[] = [], fires: THREE.PointLight[] = []; let shadow: THREE.PointLight | null = null;
   try {
-    grass = createGrass(area, area.grass ?? []); root.add(grass.root);
+    grass = createGrass(area, area.grass ?? [], vegetation); root.add(grass.root);
     for (const definition of area.effects.portals ?? []) {
       const portal = new Portal(definition, root); portals.push(portal); portal.root.userData.transient = true;
     }
@@ -185,6 +190,9 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
       model.traverse(o => { if (isMesh(o)) { o.castShadow = p.castShadow; o.receiveShadow = p.receiveShadow; if (p.foliage) { animated.add(o); o.geometry = o.geometry.clone(); ownedGeometry.add(o.geometry); } } });
       if (outlined(p)) markOutline(model, 'prop');
       root.add(model); if (p.foliage) foliage.push(model);
+      if (tree) treeFelling.register(tree.id, model, treeModels.get(tree.id)!.stump, tree.radius);
+      const profile = tree ? undefined : vegetationProfile(p);
+      if (profile) vegetation.describe(model, profile, !!p.foliage);
     }
     for (const surface of area.traversal?.surfaces ?? []) {
       const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(surface.positions, 3)); g.setIndex(surface.indices); g.computeVertexNormals(); ownedGeometry.add(g);
@@ -194,7 +202,7 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
     const batches = new Map<string, Placement[]>();
     for (const p of props.filter(p => p.primitive)) {
       if (resources.some(n=>n.id===p.id)) { transform(new THREE.Mesh(geometry(p.primitive!), material(p.primitive!)), p); continue; }
-      const key = JSON.stringify([p.primitive, p.castShadow, p.receiveShadow, !!p.foliage, outlined(p), p.visibility]); const batch = batches.get(key) ?? []; batch.push(p); batches.set(key, batch);
+      const key = JSON.stringify([p.primitive, p.castShadow, p.receiveShadow, !!p.foliage, vegetationProfile(p), outlined(p), p.visibility]); const batch = batches.get(key) ?? []; batch.push(p); batches.set(key, batch);
     }
     for (const batch of batches.values()) {
       const p = batch[0], mesh = new THREE.InstancedMesh(geometry(p.primitive!), material(p.primitive!), batch.length), matrix = new THREE.Object3D();
@@ -202,6 +210,7 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
       if (p.visibility === 'lighting-only') lightingOnly(mesh);
       if (outlined(p)) markOutline(mesh, 'prop');
       batch.forEach((p, i) => { matrix.position.fromArray(p.position); matrix.rotation.set(0, p.yaw, 0); matrix.scale.fromArray(p.scale); matrix.updateMatrix(); mesh.setMatrixAt(i, matrix.matrix); }); mesh.computeBoundingSphere(); root.add(mesh); if (p.foliage) foliage.push(mesh);
+      const profile = vegetationProfile(p); if (profile) vegetation.describeInstances(mesh, profile, !!p.foliage);
     }
       const results = await Promise.allSettled(props.filter(p => p.asset).map(async p => {
         let model: THREE.Group;
@@ -266,7 +275,7 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
       for (let parent: THREE.Object3D | null = o; parent; parent = parent.parent) if (lodRoots.has(parent as THREE.Group) || !parent.visible) return;
       const materials = Array.isArray(o.material) ? o.material : [o.material];
       if (materials.some(m => m.transparent) || !o.visible || o.matrixWorld.determinant() <= 0) return;
-      const key = JSON.stringify([o.geometry.uuid, materials.map(m => m.uuid), o.castShadow, o.receiveShadow, o.userData.outlineStrength ?? 0, o.layers.mask]);
+      const key = JSON.stringify([o.geometry.uuid, materials.map(m => m.uuid), o.castShadow, o.receiveShadow, o.userData.outlineStrength ?? 0, o.layers.mask, vegetation.batchKey(o)]);
       const batch = staticBatches.get(key) ?? []; batch.push(o); staticBatches.set(key, batch);
     });
     for (const meshes of staticBatches.values()) if (meshes.length > 1) {
@@ -275,8 +284,11 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
       batch.name = `instances:${first.name}`; batch.castShadow = first.castShadow; batch.receiveShadow = first.receiveShadow;
       batch.userData.outlineStrength = (first.userData.outlineStrength as number | undefined) ?? 0;
       meshes.forEach((mesh, i) => { batch.setMatrixAt(i, mesh.matrixWorld); mesh.removeFromParent(); }); batch.computeBoundingSphere(); root.add(batch);
+      vegetation.batch(batch, meshes);
     }
+    vegetation.prepare(root);
     function update(camera: THREE.Camera, dt = 0): void {
+      treeFelling.update(dt);
       merchant?.update(dt);
       // Area instances keep their authored LOD membership for their lifetime.
       for (const lodRoot of lodRoots) updateAssetLods(lodRoot, camera);
@@ -304,11 +316,19 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
     function setTreeState(id: string, felled: boolean): void {
       const tree = treeModels.get(id); if (!tree) return;
       shakingTrees.delete(id);
+      treeFelling.restore(id, felled);
       tree.felled = felled; tree.object.visible = !felled; tree.stump.visible = felled; tree.hitAge = Infinity;
       [tree.object.rotation.x, tree.object.rotation.z] = tree.rotation;
     }
     function treeHit(id: string): void { const tree = treeModels.get(id); if (tree && !tree.felled) { tree.hitAge = 0; shakingTrees.add(id); } }
+    function fellTree(id: string, from: [number, number]): void {
+      const tree = treeModels.get(id); if (!tree || tree.felled) return;
+      shakingTrees.delete(id); tree.felled = true; tree.hitAge = Infinity;
+      treeFelling.fell(id, from);
+    }
     function activate(effects: CoreEffects): void {
+      effects.addVegetation(vegetation);
+      treeFelling.activate(effects);
       effects.configureWeather(area);
       effects.addGrass(grass!);
       for (const model of foliage) effects.addFoliage(model);
@@ -320,7 +340,7 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
         effects.addEmitter('sparks', new THREE.Vector3(fire.position[0], (recipe.emitterHeight) + .15, fire.position[1]), root, 4);
       }
     }
-    return { root, area, missing, fires, portals, trees, interactables, resources, pickResource, setResourceState, get shadow() { return shadow; }, update, setChestOpened, setTreeState, treeHit, activate, dispose };
+    return { root, area, missing, fires, portals, trees, interactables, resources, pickResource, setResourceState, vegetation, treeFelling, fellTree, get shadow() { return shadow; }, update, setChestOpened, setTreeState, treeHit, activate, dispose };
   } catch (error) {
     // Texture callbacks can still be pending when another construction stage fails.
     await Promise.allSettled(textureReady);
@@ -329,7 +349,7 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
   function dispose(): void {
     if (disposed) return;
     disposed = true;
-    merchant?.dispose(); shelter?.dispose(); portals.forEach(p => p.dispose()); grass?.dispose();
+    merchant?.dispose(); shelter?.dispose(); portals.forEach(p => p.dispose()); grass?.dispose(); vegetation.dispose(); treeFelling.dispose();
     root.removeFromParent();
     instances.forEach(i => i.release());
     disposeSceneInstances(root);

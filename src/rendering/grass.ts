@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 import { MeshStandardNodeMaterial } from 'three/webgpu';
-import { attribute, cos, cross, Fn, mix, normalLocal, positionLocal, positionPrevious, sin, uniform, vec3 } from 'three/tsl';
+import { attribute, cos, cross, float, Fn, mix, modelWorldMatrix, modelWorldMatrixInverse, normalLocal, positionLocal, positionPrevious, sin, uniform, vec3, vec4 } from 'three/tsl';
 import { generateGrass, grassMask, grassCellSize, type GrassBlade, type GrassPatch } from '../levels/grass';
 import type { AreaDefinition } from '../levels/types';
+import type { Vegetation } from './vegetation';
 
 /** Shared across carpet cells; advanced by the area's existing paused effects clock. */
-export function createGrass(area: AreaDefinition, patches: GrassPatch[]) {
+export function createGrass(area: AreaDefinition, patches: GrassPatch[], vegetation: Vegetation) {
   const root = new THREE.Group(); root.name = 'grass-carpets'; root.userData.transient = true;
   const mask = patches.length ? grassMask(area, patches) : null;
   const coverageTexture = mask ? new THREE.DataTexture(mask.data, mask.resolution, mask.resolution, THREE.RedFormat) : null;
@@ -30,14 +31,17 @@ export function createGrass(area: AreaDefinition, patches: GrassPatch[]) {
     const rotate = (v: typeof scaled) => vec3(v.x.mul(c).add(v.z.mul(s)), v.y, v.z.mul(c).sub(v.x.mul(s)));
     const point = rotate(scaled).add(origin).toVar();
     const sway = wind.mul(shape.x).mul(wave(clock)).mul(1.5);
+    const root = modelWorldMatrix.mul(vec4(origin, 1)).xyz;
+    const push = modelWorldMatrixInverse.mul(vec4(vegetation.influence(root, float(0)).mul(shape.x).mul(.45), 0)).xyz;
+    const oldPush = modelWorldMatrixInverse.mul(vec4(vegetation.influence(root, float(0), true).mul(shape.x).mul(.45), 0)).xyz;
     // Tangents follow taper, authored bend and current sway; folds stay lit as
     // narrow ribbons rather than broad flat triangles, even while moving.
     const across = vec3(1, 0, positionLocal.x.sign().mul(-.07));
     const along = vec3(positionLocal.x.mul(blade.x).mul(taperSlope).add(bladeT.mul(2).mul(bend.x).mul(shape.x)),
       shape.x, positionLocal.z.mul(blade.x).mul(taperSlope).add(bladeT.mul(2).mul(bend.y).mul(shape.x)));
-    normalLocal.assign(cross(rotate(across), rotate(along).add(sway.mul(bladeT).mul(2))).normalize());
-    positionPrevious.assign(point.add(previousWind.mul(shape.x).mul(anchor).mul(wave(previousClock)).mul(1.5)));
-    return point.add(sway.mul(anchor));
+    normalLocal.assign(cross(rotate(across), rotate(along).add(sway.add(push).mul(bladeT).mul(2))).normalize());
+    positionPrevious.assign(point.add(previousWind.mul(shape.x).mul(anchor).mul(wave(previousClock)).mul(1.5)).add(oldPush.mul(anchor)));
+    return point.add(sway.add(push).mul(anchor));
   })();
   const rootColor = vec3(...new THREE.Color('#303624').toArray());
   const green = vec3(...new THREE.Color('#576044').toArray()), straw = vec3(...new THREE.Color('#827653').toArray());
@@ -98,7 +102,8 @@ export function createGrass(area: AreaDefinition, patches: GrassPatch[]) {
     g.setAttribute('grassWorld', new THREE.InstancedBufferAttribute(worlds, 2));
     g.setAttribute('grassBlade', new THREE.InstancedBufferAttribute(blades, 2));
     g.setAttribute('grassBend', new THREE.InstancedBufferAttribute(bends, 3));
-    g.boundingBox = box.expandByScalar(.32); g.boundingSphere = box.getBoundingSphere(new THREE.Sphere());
+    const maxHeight = Math.max(...cell.map(blade => blade.height));
+    g.boundingBox = box.expandByScalar(.32 + maxHeight * .45); g.boundingSphere = box.getBoundingSphere(new THREE.Sphere());
     geometry.push(g); meshes.push(mesh); root.add(mesh);
   }
   root.userData.grass = { blades: blades.length, cells: cells.size };

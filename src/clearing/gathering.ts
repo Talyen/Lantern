@@ -152,7 +152,8 @@ export class GatheringController {
         [position.x, position.z]);
       this.context.instance()?.treeHit(resource.id);
       if (reward.felled) {
-        this.context.instance()?.setResourceState(resource.id, true);
+        if (resource.kind === 'tree') this.context.instance()?.fellTree(resource.id, [player.x, player.z]);
+        else this.context.instance()?.setResourceState(resource.id, true);
         this.context.navigation()?.setTreeFelled(resource.id, true);
         if (resource.kind === 'tree') {
           this.audio.play('woodCrack', position);
