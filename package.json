@@ -52,7 +52,8 @@
     "desktop:publish": "node scripts/desktop/candidate.mjs publish",
     "desktop:dispatch": "node scripts/desktop/candidate.mjs dispatch",
     "desktop:package": "node scripts/desktop/package.mjs",
-    "assets:export-merchant": "node scripts/agents/run.mjs --resource heavy -- node scripts/assets/characters/merchant.mjs"
+    "assets:export-merchant": "node scripts/agents/run.mjs --resource heavy -- node scripts/assets/characters/merchant.mjs",
+    "assets:prepare-particle-study": "node scripts/agents/run.mjs --resource heavy -- python3 scripts/assets/synty/prepare-particle-study.py"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "0.21.0",

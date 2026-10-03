@@ -431,6 +431,36 @@
         1.815
       ],
       "contact": 0.8
+    },
+    "study-power-slash": {
+      "sourceId": "c9452c86935f",
+      "name": "Power Slash \u2014 source timing",
+      "category": "study"
+    },
+    "study-cross-slash": {
+      "sourceId": "8ed6a1767231",
+      "name": "Cross Slash \u2014 source timing",
+      "category": "study"
+    },
+    "study-sword-combo": {
+      "sourceId": "88912c8dc02a",
+      "name": "One Hand Sword Combo \u2014 source timing",
+      "category": "study"
+    },
+    "study-bow-shot": {
+      "sourceId": "010bad084e89",
+      "name": "Shooting Arrow \u2014 source timing",
+      "category": "study"
+    },
+    "study-bow-draw": {
+      "sourceId": "0e01e003edfb",
+      "name": "Bow Overdraw \u2014 source timing",
+      "category": "study"
+    },
+    "study-bow-release": {
+      "sourceId": "57f928ff818a",
+      "name": "Bow Release \u2014 source timing",
+      "category": "study"
     }
   },
   "player": {
@@ -595,6 +625,14 @@
       "previous-player-cdf93ebcc39b",
       "previous-player-d3c5763d6df8",
       "previous-player-105760b50203"
+    ],
+    "comparison": [
+      "study-power-slash",
+      "study-cross-slash",
+      "study-sword-combo",
+      "study-bow-shot",
+      "study-bow-draw",
+      "study-bow-release"
     ]
   },
   "enemy": {

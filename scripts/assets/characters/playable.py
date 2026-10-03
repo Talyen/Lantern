@@ -54,7 +54,7 @@ def export(name, identity, config, motions_only=False):
         gallery.write_json(source_index, {'version': 1, 'packs': [{'id': 'mixamo', 'label': 'Mixamo', 'license': 'Mixamo terms', 'url': 'https://www.mixamo.com/', 'clips': clips}]})
     source_catalog = json.loads(source_index.read_text())
     source_pack = next(p for p in source_catalog['packs'] if p['id'] == 'mixamo')
-    wanted = list(dict.fromkeys(role for profile in config['profiles'].values() for role in profile.values())) + config.get('audit', [])
+    wanted = list(dict.fromkeys(role for profile in config['profiles'].values() for role in profile.values())) + config.get('audit', []) + config.get('comparison', [])
     results = []
     by_id = {clip['id']: clip for clip in source_pack['clips']}
     for index, key in enumerate(wanted):
@@ -95,6 +95,8 @@ def export(name, identity, config, motions_only=False):
     for cached in (output / 'motions').iterdir():
         if cached.suffix in ['.glb', '.json'] and cached.stem not in expected:
             cached.unlink()
+    gallery.write_json(output / 'study.json', {'version': 1, 'clips': [clip for clip in results if clip['category'] == 'study']})
+    results = [clip for clip in results if clip['category'] != 'study']
     gallery.write_json(output / 'catalog.json', {'version': 1, 'character': f'/vendor/characters/{name}/authored.glb', 'characterLabel': row['name'], 'motion': 'In place · Mixamo motions baked to this character', 'defaults': defaults, 'profiles': config['profiles'], 'packs': [{**source_pack, 'label': 'Mixamo', 'clips': results}]})
 
 

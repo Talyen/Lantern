@@ -101,7 +101,7 @@ export function holdStaffArm(clip: THREE.AnimationClip, carrying: THREE.Animatio
 }
 
 /** Join two independently retargeted Mixamo actions, easing only their short pose transition. */
-function joinShot(draw: THREE.AnimationClip, release: THREE.AnimationClip): THREE.AnimationClip {
+export function joinShot(draw: THREE.AnimationClip, release: THREE.AnimationClip): THREE.AnimationClip {
   const duration=draw.duration+release.duration, tracks: THREE.KeyframeTrack[]=[];
   for (const start of draw.tracks) {
     const end=release.tracks.find(track=>track.name===start.name);
