@@ -369,9 +369,11 @@ test('failed process queries preserve browser history and active groups', { time
   const exit = once(browser, 'exit');
   try {
     await writeJSON(browserHistoryPath(directory), [{ pid: process.pid, started: await processIdentity(process.pid), browserProcesses: [{ pid: browser.pid, started: await processIdentity(browser.pid) }] }]);
-    await writeFile(join(directory, 'ps'), '#!/bin/sh\nexit 2\n', { mode: 0o755 });
     const code = `import assert from 'node:assert/strict'; import {recoverBrowsers} from ${JSON.stringify(new URL('./preview.mjs', import.meta.url).href)}; await assert.rejects(recoverBrowsers(${JSON.stringify(directory)}));`;
-    await promisify(execFile)(process.execPath, ['--input-type=module', '-e', code], { env: { ...process.env, PATH: `${directory}:${process.env.PATH}` } });
+    for (const failure of ['exit 2', 'echo inspection-failed >&2\nexit 1', 'echo incomplete\nexit 1']) {
+      await writeFile(join(directory, 'ps'), `#!/bin/sh\n${failure}\n`, { mode: 0o755 });
+      await promisify(execFile)(process.execPath, ['--input-type=module', '-e', code], { env: { ...process.env, PATH: `${directory}:${process.env.PATH}` } });
+    }
     assert.ok(await processIdentity(browser.pid));
     assert.equal((await readJSON(browserHistoryPath(directory)))[0].closed, undefined);
   } finally {
