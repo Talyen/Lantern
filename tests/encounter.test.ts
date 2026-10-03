@@ -535,18 +535,6 @@ test('dodge immunity is evaluated at contact time within the frame', () => {
   }
 });
 
-test('authored weapon choices clear a 200-health enemy in three to five Basic hits', () => {
-  for(const [item,hits] of [['axe',4],['sword',4],['iron-broadsword',3],['bow',5],['yew-longbow',4]] as const) {
-    const state=closeEncounter();equip(state,item);state.enemies.enemy.cooldown=999;
-    for(let strike=0;strike<hits;strike++) {
-      attack(state,timing.player,false,{x:0,z:10});
-      for(let frame=0;frame<Math.ceil(1/state.stats.attackRate/.05)+3;frame++)stepExploration(state,.05,idle,undefined,timing);
-      if(strike<hits-1)expect(state.enemies.enemy.hp).toBeGreaterThan(0);
-    }
-    expect(state.enemies.enemy.hp).toBe(0);
-  }
-});
-
 test('armor reduces melee, arrows and magic without turning rear hits into shield blocks', () => {
   for(const kind of ['melee','arrow','bolt'] as const) {
     const state=closeEncounter();

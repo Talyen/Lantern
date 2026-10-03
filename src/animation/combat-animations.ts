@@ -61,11 +61,17 @@ export async function loadEquipmentMotions(loader: GLTFLoader, who: RigId, loado
   const clips = Object.fromEntries(await Promise.all(Object.entries(all).map(async ([role, source]) => {
     const clip = await loadClip(loader, source); clip.name = role; return [role, clip];
   }))) as CombatMotions['clips'];
-  if (who === 'player') for (const role of ['chop','mine'] as const) {
-    const marker=all[role]?.contact, clip=clips[role];
-    if (!clip || marker === undefined || !Number.isFinite(marker) || marker <= 0 || marker >= clip.duration) throw new Error('Gathering motions need reviewed contact markers. Prepare the curated motion profiles with npm run assets:export-character.');
-  }
-  for(const role of ['sweep','pierceRelease'] as const)if(clips[role] && (typeof all[role]?.contact!=='number' || all[role].contact<=0 || all[role].contact>=clips[role].duration))throw new Error('Skill has no reviewed contact marker. Prepare compatible Mixamo motions.');
+  // Every contact owner uses the same numeric/clip-boundary check before gameplay can consume it.
+  const contactsFor = (role: AnimationRole, multiple = false): number[] => {
+    const source = all[role], clip = clips[role];
+    const contacts = multiple && source?.contacts ? source.contacts : source?.contact === undefined ? [] : [source.contact];
+    if (!clip || !Number.isFinite(clip.duration) || !contacts.length || contacts.some(time => !Number.isFinite(time) || time <= 0 || time >= clip.duration))
+      throw new Error(`Unavailable reviewed contacts for ${role}. Prepare compatible Mixamo motions with npm run assets:export-character.`);
+    return contacts;
+  };
+  const contacts = contactsFor('attack');
+  if (who === 'player') for (const role of ['chop', 'mine'] as const) contactsFor(role);
+  for (const role of ['sweep', 'pierceRelease'] as const) if (clips[role]) contactsFor(role);
   if (clips.pierceDraw && clips.pierceRelease) {
     // Joining is deterministic for the cached source pair. Retain its keyframes
     // once, with a separate wrapper/action for each prepared equipment profile.
@@ -74,18 +80,13 @@ export async function loadEquipmentMotions(loader: GLTFLoader, who: RigId, loado
     if (!joined) { joined = joinShot(clips.pierceDraw, clips.pierceRelease); joinedShots.set(key, joined); }
     clips.pierce = independentClip(joined);
   }
-  const contact = base.attack.contact;
-  if (contact === undefined || contact <= 0 || contact >= clips.attack.duration) throw new Error('Attack has no reviewed contact marker. Prepare the curated motion profiles.');
-  const motions: CombatMotions = { clips, contacts: [contact], commitLead: (motionProfiles.clips as Record<string,{commitLead?:number}>)[base.attack.id]?.commitLead ?? 0, runSpeed: base.run.speed ?? 4,
+  const motions: CombatMotions = { clips, contacts, commitLead: (motionProfiles.clips as Record<string,{commitLead?:number}>)[base.attack.id]?.commitLead ?? 0, runSpeed: base.run.speed ?? 4,
     speeds: Object.fromEntries(Object.entries(all).map(([role, source]) => [role, source.speed ?? 4])),
     chopContact: all.chop?.contact ?? 0, mineContact: all.mine?.contact ?? 0,
     skillContacts:{sweep:all.sweep?.contact !== undefined ? [all.sweep.contact] : undefined,pierce:clips.pierceDraw && all.pierceRelease?.contact !== undefined ? [clips.pierceDraw.duration+all.pierceRelease.contact] : undefined},
     phases: Object.fromEntries(Object.entries(all).map(([role, source]) => [role, source.phaseOffset ?? 0])) };
-  for (const role of ['crush','thrust','executioner','onslaught','riposte'] as const) if (clips[role]) {
-    const contacts=all[role]?.contacts ?? (all[role]?.contact === undefined ? [] : [all[role].contact]);
-    if (!contacts.length || contacts.some(t=>!Number.isFinite(t) || t<=0 || t>=clips[role]!.duration)) throw new Error('Ability has no reviewed contact markers: '+role);
-    motions.skillContacts[role]=contacts;
-  }
+  for (const role of ['crush', 'thrust', 'executioner', 'onslaught', 'riposte'] as const)
+    if (clips[role]) motions.skillContacts[role] = contactsFor(role, true);
   if (clips.riposte) clips['riposte-stance']=riposteStance(clips.riposte,motions.skillContacts.riposte![0]);
   if (who==='player' && clips.pierce && clips.pierceDraw) {
     const source=sourceRig ?? (await loader.loadAsync(characters.player.model)).scene;

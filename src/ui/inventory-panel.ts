@@ -1,6 +1,6 @@
 import type { CharacterSave } from '../gameplay/character';
 import type { WeaponSet } from '../gameplay/abilities';
-import { equipmentCatalog, isEquipmentSlot, isItemId, supportsShield, type EquipmentSlot } from '../gameplay/equipment';
+import { preferredEquipmentSlot, isEquipmentSlot, isItemId, supportsShield, type EquipmentSlot } from '../gameplay/equipment';
 import { bagWidth, bagHeight, emptyPosition, equipInstance, lootDefinitions, moveItem, sortedItems, transferItem, itemLoadout, stackLimit, type InventoryItem } from '../gameplay/inventory';
 import { renderItemProperties } from './equipment-details';
 import { itemIcon } from './item-icons';
@@ -218,8 +218,7 @@ export class InventoryPanel {
   }
   private destinationSlot(entry: InventoryItem): EquipmentSlot {
     if (!isItemId(entry.item)) throw new Error('That item cannot be equipped.');
-    const slot = equipmentCatalog[entry.item].slot;
-    return slot === 'ring' ? this.character!.items.some(item => item.slot === 'ring-left') && !this.character!.items.some(item => item.slot === 'ring-right') ? 'ring-right' : 'ring-left' : slot;
+    return preferredEquipmentSlot(entry.item, this.character!.items.map(item => item.slot).filter(isEquipmentSlot));
   }
   private async primary(entry: InventoryItem): Promise<void> {
     if (!this.stashMode && entry.slot === 'bag' && !isItemId(entry.item) && !['potion', 'scroll'].includes(entry.item)) return;

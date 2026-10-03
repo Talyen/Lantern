@@ -9,11 +9,7 @@ type ShopState = Pick<CharacterSave, 'items' | 'gold' | 'buyback'>;
 export function purchase(state: ShopState, item: LootItem, newId: () => string): ShopState {
   const offer = shopStock.find(offer => offer.item === item);
   if (!offer) throw new Error('Item is not for sale.');
-  if (state.gold < offer.price) throw new Error('Not enough gold.');
-
-  const items = structuredClone(state.items);
-  if (receive(items, item, 1, newId) !== 1) throw new Error('Inventory full.');
-  return { items, gold: state.gold - offer.price, buyback: state.buyback };
+  return { ...paidItems(state, item, offer.price, newId), buyback: state.buyback };
 }
 
 export function sale(state: ShopState, id: string): ShopState {
@@ -34,13 +30,17 @@ export function sale(state: ShopState, id: string): ShopState {
 export function repurchase(state: ShopState, id: string, newId: () => string): ShopState {
   const entry = state.buyback.find(entry => entry.id === id);
   if (!entry) throw new Error('Item is no longer available.');
-  if (state.gold < entry.price) throw new Error('Not enough gold.');
-
-  const items = structuredClone(state.items);
-  if (receive(items, entry.item, 1, newId, entry.id) !== 1) throw new Error('Inventory full.');
+  const paid = paidItems(state, entry.item, entry.price, newId, entry.id);
   return {
-    items,
-    gold: state.gold - entry.price,
+    ...paid,
     buyback: state.buyback.filter(other => other.id !== id),
   };
+}
+
+/** Payment and placement succeed together on an unpublished inventory. */
+function paidItems(state: ShopState, item: LootItem, price: number, newId: () => string, instanceId?: string) {
+  if (state.gold < price) throw new Error('Not enough gold.');
+  const items = structuredClone(state.items);
+  if (receive(items, item, 1, newId, instanceId) !== 1) throw new Error('Inventory full.');
+  return { items, gold: state.gold - price };
 }

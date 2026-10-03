@@ -4,14 +4,33 @@ import { skillLevel, type SkillXP } from './skills';
 export type WeaponSkill = 'sword' | 'bow';
 export type MasteryBonus = 'damage' | 'rate' | 'reach' | 'economy' | 'firstUltimate' | 'secondUltimate';
 export type Passive = { name: string; level: number; bonus: MasteryBonus; amount: number; description: string };
-const levels = [2,4,7,10,20,25,30,35,40,50];
-const bonus: MasteryBonus[] = ['damage','rate','reach','economy','firstUltimate','damage','rate','reach','economy','secondUltimate'];
-export const passives: Record<WeaponSkill, Passive[]> = Object.fromEntries((['sword','bow'] as const).map(family => {
-  const names = family === 'sword' ? ['Honed Edge I','Measured Cuts I','Long Reach I','Economy I','Heavy Hand','Honed Edge II','Measured Cuts II','Long Reach II','Economy II','Relentless'] : ['Steady Aim I','Smooth Draw I','Long Shot I','Economy I','Arrowstorm','Steady Aim II','Smooth Draw II','Long Shot II','Economy II','Deadeye Mastery'];
-  const amounts = [.03,.02,family === 'sword' ? .1 : 1,.05,.05,.03,.02,family === 'sword' ? .1 : 1,.05,.05];
-  const descriptions = ['+3% weapon damage','+2% attack rate',family === 'sword' ? '+0.10 m melee reach' : '+1 m Bow range','−5% Skill mana cost',family === 'sword' ? "+5% Executioner's Strike damage" : '+5% Rain of Arrows damage','+3% weapon damage','+2% attack rate',family === 'sword' ? '+0.10 m melee reach' : '+1 m Bow range','−5% Skill mana cost',family === 'sword' ? '+5% Onslaught damage' : '+5% Deadeye Shot damage'];
-  return [family,names.map((name,i)=>({name,level:levels[i],bonus:bonus[i],amount:amounts[i],description:descriptions[i]}))];
-})) as Record<WeaponSkill,Passive[]>;
+// Each row keeps its unlock, effect and display text together; array indexes carry no gameplay meaning.
+export const passives: Record<WeaponSkill, Passive[]> = {
+  sword: [
+    { level: 2, bonus: 'damage', amount: .03, name: 'Honed Edge I', description: '+3% weapon damage' },
+    { level: 4, bonus: 'rate', amount: .02, name: 'Measured Cuts I', description: '+2% attack rate' },
+    { level: 7, bonus: 'reach', amount: .1, name: 'Long Reach I', description: '+0.10 m melee reach' },
+    { level: 10, bonus: 'economy', amount: .05, name: 'Economy I', description: '−5% Skill mana cost' },
+    { level: 20, bonus: 'firstUltimate', amount: .05, name: 'Heavy Hand', description: "+5% Executioner's Strike damage" },
+    { level: 25, bonus: 'damage', amount: .03, name: 'Honed Edge II', description: '+3% weapon damage' },
+    { level: 30, bonus: 'rate', amount: .02, name: 'Measured Cuts II', description: '+2% attack rate' },
+    { level: 35, bonus: 'reach', amount: .1, name: 'Long Reach II', description: '+0.10 m melee reach' },
+    { level: 40, bonus: 'economy', amount: .05, name: 'Economy II', description: '−5% Skill mana cost' },
+    { level: 50, bonus: 'secondUltimate', amount: .05, name: 'Relentless', description: '+5% Onslaught damage' },
+  ],
+  bow: [
+    { level: 2, bonus: 'damage', amount: .03, name: 'Steady Aim I', description: '+3% weapon damage' },
+    { level: 4, bonus: 'rate', amount: .02, name: 'Smooth Draw I', description: '+2% attack rate' },
+    { level: 7, bonus: 'reach', amount: 1, name: 'Long Shot I', description: '+1 m Bow range' },
+    { level: 10, bonus: 'economy', amount: .05, name: 'Economy I', description: '−5% Skill mana cost' },
+    { level: 20, bonus: 'firstUltimate', amount: .05, name: 'Arrowstorm', description: '+5% Rain of Arrows damage' },
+    { level: 25, bonus: 'damage', amount: .03, name: 'Steady Aim II', description: '+3% weapon damage' },
+    { level: 30, bonus: 'rate', amount: .02, name: 'Smooth Draw II', description: '+2% attack rate' },
+    { level: 35, bonus: 'reach', amount: 1, name: 'Long Shot II', description: '+1 m Bow range' },
+    { level: 40, bonus: 'economy', amount: .05, name: 'Economy II', description: '−5% Skill mana cost' },
+    { level: 50, bonus: 'secondUltimate', amount: .05, name: 'Deadeye Mastery', description: '+5% Deadeye Shot damage' },
+  ],
+};
 export function masteryBonuses(family: WeaponSkill, xp: Partial<SkillXP>): Record<MasteryBonus,number> {
   const result = {damage:0,rate:0,reach:0,economy:0,firstUltimate:0,secondUltimate:0};
   const level = skillLevel(xp[family] ?? 0,family);

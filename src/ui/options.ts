@@ -1,6 +1,6 @@
 import { diagnosticExportButton } from '../diagnostics/report';
 import { qualityLevels } from '../rendering/quality-presets';
-import { cameraDistances, defaults, depthOfFieldModes, frameRateLimits, ranges, readSettings, saveSettings, upscaleQualities, type GraphicsSettings, type NumericSetting, type FrameRateLimit } from '../rendering/graphics-settings';
+import { cameraDistances, defaults, depthOfFieldModes, frameRateLimits, ranges, parseSettings, readSettings, saveSettings, upscaleQualities, type GraphicsSettings, type NumericSetting } from '../rendering/graphics-settings';
 import './options.css';
 import { combatTextDefaults, readCombatTextSettings, saveCombatTextSettings, type CombatTextSettings } from './combat-text-settings';
 import { audioDefaults, readAudioSettings, saveAudioSettings, type AudioSettings } from '../audio/settings';
@@ -20,7 +20,7 @@ type OptionsContext = {
 };
 
 export class Options {
-  paused = false;
+  get paused(): boolean { return this.dialog.open; }
   settings = readSettings();
   audioSettings = readAudioSettings();
   private combatTextSettings = readCombatTextSettings();
@@ -58,20 +58,13 @@ export class Options {
       ${Object.keys(ranges).map((key) => `<label class="slider-label">${labels[key as NumericSetting]}<output id="value-${key}"></output><input id="option-${key}" type="range" min="${ranges[key as NumericSetting][0]}" max="${ranges[key as NumericSetting][1]}" step="${ranges[key as NumericSetting][2]}" aria-label="${labels[key as NumericSetting]}" /></label>`).join('')}`;
     document.getElementById('options-close')!.addEventListener('click', () => this.close());
     bindMenuDismissal(this.dialog, () => this.close());
-    this.input<HTMLSelectElement>('cameraDistance').addEventListener('change', () => { this.settings.cameraDistance = this.input<HTMLSelectElement>('cameraDistance').value as GraphicsSettings['cameraDistance']; this.apply(); this.save('cameraDistance'); });
-    this.input<HTMLSelectElement>('upscaleQuality').addEventListener('change', () => { this.settings.upscaleQuality = this.input<HTMLSelectElement>('upscaleQuality').value as GraphicsSettings['upscaleQuality']; this.apply(); this.save('upscaleQuality'); });
-    for (const key of ['shadowQuality', 'particleQuality'] as const) this.input<HTMLSelectElement>(key).addEventListener('change', () => { this.settings[key] = this.input<HTMLSelectElement>(key).value as GraphicsSettings[typeof key]; this.apply(); this.save(key); });
-    this.input<HTMLSelectElement>('dof').addEventListener('change', () => {
-      const value = this.input<HTMLSelectElement>('dof').value as GraphicsSettings['dof'];
-      this.settings.dof = value; this.apply(); this.save('dof');
-    });
-    this.input<HTMLSelectElement>('fpsLimit').addEventListener('change', () => {
-      this.settings.fpsLimit = Number(this.input<HTMLSelectElement>('fpsLimit').value) as FrameRateLimit;
-      this.apply(); this.ctx.resetMeasurements(); this.save('fpsLimit');
-    });
-    for (const key of ['atmosphericParticles', 'outlines', 'textureDepth', 'cameraShake', 'resourceNumbers', 'weatherEffects'] as const) this.input<HTMLSelectElement>(key).addEventListener('change', () => {
-      this.settings[key] = this.input<HTMLSelectElement>(key).value === 'true';
-      this.apply(); this.save(key);
+    // The preference schema owns conversion and validation for every select.
+    for (const select of mount.querySelectorAll<HTMLSelectElement>('select')) select.addEventListener('change', () => {
+      const key = select.id.slice('option-'.length) as keyof GraphicsSettings;
+      this.settings = parseSettings(this.settings, new URLSearchParams([[key, select.value]]));
+      this.apply();
+      if (key === 'fpsLimit') this.ctx.resetMeasurements();
+      this.save(key);
     });
     for (const key of Object.keys(ranges) as NumericSetting[]) this.input<HTMLInputElement>(key).addEventListener('input', () => {
       const value = Number(this.input<HTMLInputElement>(key).value);
@@ -125,22 +118,14 @@ export class Options {
   }
   private input<T extends HTMLElement>(name: string): T { return document.getElementById(`option-${name}`) as T; }
   private save(changedKey?: keyof GraphicsSettings): void { saveSettings(this.settings, changedKey); }
-  open(): void { if (document.querySelector('dialog[open]')) return; this.ctx.clearInput(); this.paused = true; this.dialog.showModal(); this.ctx.audio.play('menuOpen'); }
-  close(): void { if (!this.dialog.open) return; this.ctx.audio.play('menuClose'); this.dialog.close(); this.ctx.flushSettings(); this.paused = false; this.ctx.clearInput(); this.ctx.focus(); }
+  open(): void { if (document.querySelector('dialog[open]')) return; this.ctx.clearInput(); this.dialog.showModal(); this.ctx.audio.play('menuOpen'); }
+  close(): void { if (!this.dialog.open) return; this.ctx.audio.play('menuClose'); this.dialog.close(); this.ctx.flushSettings(); this.ctx.clearInput(); this.ctx.focus(); }
 
   private apply(): void {
     const s = this.settings;
-    this.input<HTMLSelectElement>('cameraDistance').value = s.cameraDistance;
-    for (const key of ['shadowQuality', 'particleQuality'] as const) this.input<HTMLSelectElement>(key).value = s[key];
-    this.input<HTMLSelectElement>('fpsLimit').value = String(s.fpsLimit);
-    this.input<HTMLSelectElement>('upscaleQuality').value = s.upscaleQuality;
-    this.input<HTMLSelectElement>('dof').value = s.dof;
-    this.input<HTMLSelectElement>('atmosphericParticles').value = String(s.atmosphericParticles);
-    this.input<HTMLSelectElement>('outlines').value = String(s.outlines);
-    this.input<HTMLSelectElement>('textureDepth').value = String(s.textureDepth);
-    for (const key of ['cameraShake', 'resourceNumbers', 'weatherEffects'] as const) this.input<HTMLSelectElement>(key).value = String(s[key]);
+    for (const key of Object.keys(s) as (keyof GraphicsSettings)[])
+      this.input<HTMLInputElement | HTMLSelectElement>(key).value = String(s[key]);
     for (const key of Object.keys(ranges) as NumericSetting[]) {
-      this.input<HTMLInputElement>(key).value = String(s[key]);
       document.getElementById(`value-${key}`)!.textContent = s[key].toFixed(2);
     }
     this.ctx.apply(Object.freeze({ ...s }));

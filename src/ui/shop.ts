@@ -5,7 +5,7 @@ import { hudIcon } from './hud-art';
 import { inventoryItemButton, placeInventoryItem } from './inventory-item';
 import { renderEquipmentDetails } from './equipment-details';
 import { shopStock, sellPrices } from '../gameplay/economy';
-import { equipmentCatalog, isItemId } from '../gameplay/equipment';
+import { preferredEquipmentSlot, isEquipmentSlot, isItemId } from '../gameplay/equipment';
 import { lootDefinitions, type InventoryItem, type LootItem } from '../gameplay/inventory';
 import type { CharacterSave } from '../gameplay/character';
 
@@ -102,9 +102,8 @@ export class ShopMenu {
     }
     this.dialog.querySelector('h3')!.textContent = entry ? lootDefinitions[entry.item].name : '';
     if (entry && isItemId(entry.item)) {
-      const slot = equipmentCatalog[entry.item].slot;
       renderEquipmentDetails(this.details, this.comparison, entry, character, character.activeSet,
-        slot === 'ring' ? character.items.some(item => item.slot === 'ring-left') && !character.items.some(item => item.slot === 'ring-right') ? 'ring-right' : 'ring-left' : slot);
+        preferredEquipmentSlot(entry.item, character.items.map(item => item.slot).filter(isEquipmentSlot)));
     } else if (entry?.item === 'potion') this.details.textContent = 'Restore 40 Health';
     this.action.textContent = selection.kind === 'bag' ? 'Sell' : selection.kind === 'buyback' ? 'Buy Back' : 'Buy';
     this.action.hidden = price === undefined;

@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 import { CombatImpact } from '../src/clearing/combat-impact';
-import { attack, createEncounter, stepEncounter, type EncounterEvent, type Timings } from '../src/gameplay/encounter';
+import { attack, createEncounter, stepEncounter, stepExploration, type EncounterEvent, type Timings } from '../src/gameplay/encounter';
 import { advanceProjectile } from '../src/gameplay/encounter-projectiles';
 
 const timing:Timings={player:{attack:1,hit:.3,contacts:[.25]},enemy:{attack:1,hit:.3,contacts:[.5]},caster:{attack:1,hit:.3,contacts:[.5]}};
@@ -11,7 +11,7 @@ test('a confirmed contact holds gameplay clocks and a buffered command without c
   const impact=new CombatImpact();attack(state,timing.player,false);
   impact.present(stepEncounter(state,.25,idle,timing));expect(impact.holding).toBe(true);
   state.pending={kind:'attack',remaining:.15};const mana=state.playerMana,lock=state.player.lock,health=state.enemies.enemy.hp;
-  const held=impact.advance(.02);expect(held).toBe(0);
+  const held=impact.advance(.02);expect(held).toBe(0);stepExploration(state,held,idle,undefined,timing);
   expect([state.playerMana,state.player.lock,state.enemies.enemy.hp,state.pending.remaining]).toEqual([mana,lock,health,.15]);
   const elapsed=impact.advance(.05);expect(elapsed).toBeLessThan(.05);stepEncounter(state,elapsed,idle,timing);
   expect(state.player.lock).toBeCloseTo(lock-elapsed);expect(state.pending?.remaining).toBeCloseTo(.15-elapsed);

@@ -4,9 +4,6 @@ import type { Point } from './area';
 import { type Encounter } from './encounter';
 import type { AreaDefinition } from '../levels/types';
 import { gathering, harvestQuantity, progression, skillLevel, type GatheringSkill } from './skills';
-export const chopReach = gathering.reach;
-export const treeChops = gathering.contacts;
-export const treeRegrowthSeconds = gathering.renewalSeconds;
 export type TreeState = { hits: number; felled: boolean };
 export type TreeChange = { areaId: string; id: string; felled: boolean };
 export type HarvestReward = { item: 'wood' | 'stone' | 'iron'; quantity: number; skill: GatheringSkill; xpPerUnit: number; felled: boolean };
@@ -26,6 +23,7 @@ export class Harvesting {
   private readonly areas = new Map<string, Map<string, SessionResource>>();
   reset(): void {
     this.elapsed = 0;
+    this.nextRegrowthAt = Infinity;
     for (const nodes of this.areas.values()) for (const node of nodes.values()) {
       node.hits = 0; node.regrowAt = undefined;
     }
@@ -49,16 +47,26 @@ export class Harvesting {
   }
   isDepleted(areaId: string, id: string): boolean { return this.areas.get(areaId)?.get(id)?.regrowAt !== undefined; }
   available(areaId: string): ResourceDefinition[] { return [...(this.areas.get(areaId)?.values() ?? [])].filter(n => n.regrowAt === undefined).map(n => n.definition); }
-  nearest(areaId: string, point: Point, reach = chopReach): ResourceDefinition | undefined {
-    return this.available(areaId).filter(n => this.distance(n, point) <= reach).sort((a,b) => this.distance(a,point) - this.distance(b,point))[0];
+  nearest(areaId: string, point: Point, reach = gathering.reach): ResourceDefinition | undefined {
+    return this.closest(areaId, point, reach);
   }
   facing(areaId: string, point: Point, yaw: number): ResourceDefinition | undefined {
-    return this.available(areaId).filter(n => this.distance(n,point) <= gathering.reach && Math.cos(Math.atan2(n.position[0]-point[0],n.position[2]-point[1])-yaw) >= Math.cos(gathering.facingCone))
-      .sort((a,b) => this.distance(a,point)-this.distance(b,point))[0];
+    return this.closest(areaId, point, gathering.reach, yaw);
+  }
+  private closest(areaId: string, point: Point, reach: number, yaw?: number): ResourceDefinition | undefined {
+    let closest: ResourceDefinition | undefined, distance = reach;
+    for (const node of this.areas.get(areaId)?.values() ?? []) {
+      if (node.regrowAt !== undefined) continue;
+      const candidate = node.definition, next = this.distance(candidate, point);
+      if (!(next <= distance) || closest && next === distance) continue;
+      if (yaw !== undefined && !(Math.cos(Math.atan2(candidate.position[0] - point[0], candidate.position[2] - point[1]) - yaw) >= Math.cos(gathering.facingCone))) continue;
+      closest = candidate; distance = next;
+    }
+    return closest;
   }
   contact(areaId: string, id: string, point: Point, xp = 0): HarvestReward | undefined {
     const node = this.areas.get(areaId)?.get(id);
-    if (!node || node.regrowAt !== undefined || this.distance(node.definition, point) > chopReach) return;
+    if (!node || node.regrowAt !== undefined || this.distance(node.definition, point) > gathering.reach) return;
     if (++node.hits >= node.definition.contacts) {
       node.regrowAt = this.elapsed + gathering.renewalSeconds;
       this.nextRegrowthAt = Math.min(this.nextRegrowthAt, node.regrowAt);

@@ -1,14 +1,5 @@
 import {expect,test,vi} from 'vitest';
-import {keyboardInput,InputPreferences,bindingConflict,bindingLabel,bindingKey,defaultBindings,inputActions,inputFor,validBindings} from '../src/input/bindings';
-
-test('a saved mouse movement binding and secondary keyboard binding both resolve to the same action',()=>{
-  const data=new Map<string,string>(),storage={getItem:(key:string)=>data.get(key) ?? null,setItem:(key:string,value:string)=>{data.set(key,value);}};
-  const preferences=new InputPreferences(storage),draft=defaultBindings();draft.moveUp=['mouse:3','key:KeyI'];draft.slot3=['key:KeyW',null];
-  expect(preferences.save(draft)).toBe(true);const restored=new InputPreferences(storage);
-  expect(inputFor(restored.value,'mouse:3')).toBe('moveUp');expect(inputFor(restored.value,'key:KeyI')).toBe('moveUp');
-  expect([inputFor(restored.value,'key:KeyF'),inputFor(restored.value,'key:KeyT'),bindingLabel(restored.value.slot3[0])]).toEqual(['potion','portal','W']);
-  expect(['Up', 'Down', 'Left', 'Right'].map(direction => bindingLabel(`key:Arrow${direction}`))).toEqual(['↑', '↓', '←', '→']);
-});
+import {keyboardInput,InputPreferences,bindingConflict,bindingKey,defaultBindings,inputActions,inputFor,validBindings} from '../src/input/bindings';
 
 test('conflicting inputs and missing movement directions cannot replace usable preferences',()=>{
   const preferences=new InputPreferences(),draft=defaultBindings();
@@ -47,7 +38,9 @@ test('keybinding changes apply immediately and retry storage silently without ke
     const preferences=new InputPreferences({getItem:()=>null,setItem:(_key,value)=>{if(failing)throw Error('full');saved=value;}});
     const draft=defaultBindings();draft.moveUp=['mouse:3','key:KeyI'];draft.slot3=['key:KeyW',null];
     expect(preferences.save(draft)).toBe(true);expect(preferences.value).toEqual(draft);expect(preferences.diagnostics().pending).toBe(true);
-    failing=false;await vi.advanceTimersByTimeAsync(1000);expect(JSON.parse(saved)).toEqual(draft);expect(preferences.diagnostics().pending).toBe(false);
+    const latest=structuredClone(draft);latest.slot0=['key:KeyU',null];preferences.save(latest);
+    failing=false;await vi.advanceTimersByTimeAsync(1000);expect(JSON.parse(saved)).toEqual(latest);expect(inputFor(new InputPreferences({getItem:()=>saved,setItem:()=>{}}).value,'key:KeyU')).toBe('slot0');
+    expect(inputFor(preferences.value,'mouse:3')).toBe('moveUp');expect(inputFor(preferences.value,'key:KeyI')).toBe('moveUp');expect(preferences.diagnostics().pending).toBe(false);
     preferences.close();expect(vi.getTimerCount()).toBe(0);
   } finally {vi.useRealTimers();}
 });

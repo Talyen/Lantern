@@ -1,5 +1,5 @@
 import type { WeaponSet } from './abilities';
-import { itemDefinitions, isItemId, isWeaponItem, slotAccepts, supportsShield, type EquipmentSlot } from './equipment';
+import { isItemId, isWeaponItem, slotAccepts, supportsShield, type EquipmentSlot } from './equipment';
 import { lootDefinitions, lootIds, stackLimit, type InventoryItem, type LootItem } from './inventory-catalog';
 import { itemLoadout } from './inventory-equipment';
 import { fits, emptyPosition } from './inventory-placement';
@@ -82,11 +82,10 @@ export function moveItem(
     // The source rectangle remains occupied when splitting.
     if (!fits(next, entry.item, x, y)) throw new Error('Item does not fit.');
     entry.quantity -= quantity;
-    next.push({ ...entry, id: makeId(), quantity, slot: 'bag', x, y });
-  } else {
-    Object.assign(entry, { slot: 'bag', x, y });
-    delete entry.weaponSet;
-  }
+    const split = { ...entry, id: makeId(), quantity };
+    returnToBag(next, split, { x, y });
+    next.push(split);
+  } else returnToBag(next, entry, { x, y });
   if (entry.slot === 'bag' && !itemLoadout(next, set).main)
     returnShieldToBag(next, set);
   return next;
@@ -108,7 +107,7 @@ export function equipInstance(
   const vacated = entry.slot === 'bag' ? { x: entry.x, y: entry.y } : undefined;
   const movingMainBetweenSets = entry.slot === 'main' && sourceSet !== set;
   const handSlot = slot === 'main' || slot === 'off';
-  const needsBothHands = slot === 'main' && isWeaponItem(entry.item) && itemDefinitions[entry.item].hands === 2;
+  const needsBothHands = slot === 'main' && isWeaponItem(entry.item) && !supportsShield(entry.item);
   const displace = next.filter(other => {
     if (other.id === id) return false;
     const destinationSet = (other.weaponSet ?? 0) === set;

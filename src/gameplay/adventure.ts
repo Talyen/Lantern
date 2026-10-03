@@ -15,11 +15,10 @@ import { character, type CharacterSave } from './character';
 import { CharacterPersistence, type StorageSource } from './character-persistence';
 export { characterSaveKey } from './character-save';
 export type { CharacterSave } from './character';
-import { lootDefinitions, receive, transferItem, stackLimit, type InventoryItem, type LootItem } from './inventory';
+import { lootDefinitions, receive, transferItem, type InventoryItem, type LootItem } from './inventory';
 
 import { progression, progressMultiplier, type Skill, type GatheringSkill } from './skills';
 
-export const scrollLimit = stackLimit;
 export const homeArea = 'homestead';
 export { dropLandingSeconds, pickupRadius, type GroundDrop, type GroundItem } from './ground-loot';
 export { near } from './area';

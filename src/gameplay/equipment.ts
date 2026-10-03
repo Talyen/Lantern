@@ -66,10 +66,18 @@ export const weaponFamily = (item: WeaponItem | null): Weapon | null => item ? e
 export const isEquipmentSlot = (slot: unknown): slot is EquipmentSlot => slot === 'main' || slot === 'off' || sharedSlots.some(value => value === slot);
 export const slotAccepts = (item: ItemId, slot: EquipmentSlot): boolean => equipmentCatalog[item].slot === slot || equipmentCatalog[item].slot === 'ring' && (slot === 'ring-left' || slot === 'ring-right');
 export const arrowAsset = 'viking-realm:model:sm-wep-arrow-01';
-export const supportsShield = (weapon: WeaponItem | null) => weaponFamily(weapon) === 'axe' || weaponFamily(weapon) === 'sword';
+export function supportsShield(weapon: WeaponItem | null): boolean {
+  const family = weaponFamily(weapon);
+  return family === 'axe' || family === 'sword';
+}
 export function normalizeLoadout(loadout: Loadout): Loadout {
   return { main: loadout.main, off: supportsShield(loadout.main) ? loadout.off : null };
 }
-export function equipItem(loadout: Loadout, item: HandItem): Loadout {
-  return normalizeLoadout(item === 'shield' ? { main: loadout.main, off: 'shield' } : { main: item, off: loadout.off });
+
+/** Fill the free ring slot first; otherwise replace the left ring. Explicit drags choose their own slot. */
+export function preferredEquipmentSlot(item: ItemId, occupied: readonly EquipmentSlot[]): EquipmentSlot {
+  const slot = equipmentCatalog[item].slot;
+  return slot === 'ring'
+    ? occupied.includes('ring-left') && !occupied.includes('ring-right') ? 'ring-right' : 'ring-left'
+    : slot;
 }

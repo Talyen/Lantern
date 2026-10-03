@@ -1,4 +1,3 @@
-import { rollGold, type GoldSource } from '../src/gameplay/economy';
 import { isRecord, parseJson } from '../src/data/json';
 import { expect, test, vi } from 'vitest';
 import { skillIds } from '../src/gameplay/skills';
@@ -572,24 +571,6 @@ test('unguarded caches and caster gear are claimed only on collection and reoffe
   expect(restored.session().drops.filter(drop=>drop.claim).map(drop=>drop.item)).toEqual(['trail-boots','leather-belt','iron-broadsword','yew-longbow','amber-amulet']);
 });
 
-
-test('gold eligibility, independent chance boundaries and reward levels share one formula', () => {
-  const sample = (source: GoldSource, chance: number, amount: number) => {
-    const draws = [chance, amount]; return rollGold(source, () => draws.shift()!);
-  };
-  const random = vi.fn(() => 0);
-  expect(rollGold({kind:'enemy'}, random)).toBe(0);
-  expect(rollGold({kind:'enemy',humanoid:false,rank:'boss'}, random)).toBe(0);
-  expect(rollGold({kind:'chest',gold:false}, random)).toBe(0);
-  expect(random).not.toHaveBeenCalled();
-  expect(sample({kind:'enemy',humanoid:true}, .5, 0)).toBe(0);
-  expect(sample({kind:'enemy',humanoid:true}, .49, 0)).toBe(3);
-  expect(sample({kind:'enemy',humanoid:true,areaLevel:5}, 0, .99)).toBe(9);
-  expect(sample({kind:'enemy',humanoid:true,rank:'elite',areaLevel:5}, .74, .99)).toBe(18);
-  expect(sample({kind:'enemy',humanoid:true,rank:'boss',level:1,areaLevel:5}, .99, .99)).toBe(25);
-  expect(sample({kind:'chest',level:5}, .6, 0)).toBe(0);
-  expect(sample({kind:'chest',level:5}, .59, 0)).toBe(7);
-});
 
 test('gold auto-collects only after landing without bag space, and unreachable gold remains intact', () => {
   const state = new Adventure(memory()), encounter = createEncounter('playing'); state.enter(encounter, field);

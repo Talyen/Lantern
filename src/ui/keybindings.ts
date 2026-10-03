@@ -13,13 +13,10 @@ type Cell = {
 export class KeybindingsMenu {
   private dialog = document.createElement('dialog');
   private draft: Bindings = defaultBindings();
-  private capture: Cell | null = null;
+  private editing: { kind: 'capture'; cell: Cell } | { kind: 'conflict'; cell: Cell; other: Cell; binding: string } | null = null;
   private capturedClick: AbortController | null = null;
-  private conflict: {
-    cell: Cell;
-    other: Cell;
-    binding: string;
-  } | null = null;
+  private get capture(): Cell | null { return this.editing?.kind === 'capture' ? this.editing.cell : null; }
+  private get conflict() { return this.editing?.kind === 'conflict' ? this.editing : null; }
   private content = document.createElement('div');
   private status = document.createElement('div');
   private apply = document.createElement('button');
@@ -37,8 +34,7 @@ export class KeybindingsMenu {
     this.dialog.querySelector<HTMLButtonElement>('[data-close]')!.dataset.captureControl = 'true';
     reset.textContent = 'Restore defaults';
     reset.onclick = () => {
-      this.capture = null;
-      this.conflict = null;
+      this.editing = null;
       this.draft = defaultBindings();
       this.render();
     };
@@ -58,7 +54,7 @@ export class KeybindingsMenu {
       event.preventDefault();
       event.stopImmediatePropagation();
       if (event.key === 'Escape') {
-        this.capture = null;
+        this.editing = null;
         this.render();
         return;
       }
@@ -84,7 +80,7 @@ export class KeybindingsMenu {
     window.addEventListener('blur', () => {
       this.capturedClick?.abort();
       if (this.capture) {
-        this.capture = null;
+        this.editing = null;
         this.render();
       }
     });
@@ -94,16 +90,14 @@ export class KeybindingsMenu {
   open(): void {
     this.clear();
     this.draft = structuredClone(this.preferences.value);
-    this.capture = null;
-    this.conflict = null;
+    this.editing = null;
     this.render();
     this.dialog.showModal();
   }
 
   close(): void {
     this.capturedClick?.abort();
-    this.capture = null;
-    this.conflict = null;
+    this.editing = null;
     this.dialog.close();
     this.clear();
     this.focus();
@@ -117,9 +111,9 @@ export class KeybindingsMenu {
       return;
     }
     const other = bindingConflict(this.draft, binding, cell.action, cell.index);
-    this.capture = null;
+    this.editing = null;
     if (other)
-      this.conflict = { cell, other, binding };
+      this.editing = { kind: 'conflict', cell, other, binding };
     else
       this.draft[cell.action][cell.index] = binding;
     this.render();
@@ -130,7 +124,7 @@ export class KeybindingsMenu {
     if (!conflict) return;
     this.draft[conflict.other.action][conflict.other.index] = swap ? this.draft[conflict.cell.action][conflict.cell.index] : null;
     this.draft[conflict.cell.action][conflict.cell.index] = conflict.binding;
-    this.conflict = null;
+    this.editing = null;
     this.render();
     this.content.querySelector<HTMLButtonElement>(`[data-binding-focus="${conflict.cell.action}/${conflict.cell.index}"]`)?.focus();
   }
@@ -175,7 +169,7 @@ export class KeybindingsMenu {
           button.textContent = this.capture?.action === action && this.capture.index === index ? 'Press an input…' : bindingLabel(binding);
           button.setAttribute('aria-label', `${actionNames[action]}, ${index === 0 ? 'Primary' : 'Secondary'}: ${bindingLabel(binding)}`);
           button.classList.toggle('capturing', this.capture?.action === action && this.capture.index === index);
-          button.onclick = () => { this.capture = { action, index }; this.conflict = null; this.render(); };
+          button.onclick = () => { this.editing = { kind: 'capture', cell: { action, index } }; this.render(); };
           const clear = document.createElement('button');
           clear.type = 'button';
           clear.dataset.bindingFocus = `${action}/${index}/clear`;
@@ -184,7 +178,7 @@ export class KeybindingsMenu {
           clear.className = 'clear-binding';
           clear.setAttribute('aria-label', `Clear ${actionNames[action]} ${index === 0 ? 'Primary' : 'Secondary'}`);
           clear.disabled = !binding;
-          clear.onclick = () => { this.draft[action][index] = null; this.capture = null; this.conflict = null; this.render(); this.content.querySelector<HTMLButtonElement>(`[data-binding-focus="${action}/${index}"]`)?.focus(); };
+          clear.onclick = () => { this.draft[action][index] = null; this.editing = null; this.render(); this.content.querySelector<HTMLButtonElement>(`[data-binding-focus="${action}/${index}"]`)?.focus(); };
           cell.append(button, clear);
           row.append(cell);
         }
@@ -196,27 +190,25 @@ export class KeybindingsMenu {
     this.apply.disabled = !validBindings(this.draft) || !!this.capture || !!this.conflict;
     if (this.capture) {
       this.status.textContent = 'Press a key or mouse button. Escape cancels.';
-      for (const [name, callback] of [['Use Escape', () => this.choose('key:Escape')], ['Cancel', () => { this.capture = null; this.render(); }]] as const) {
-        const button = document.createElement('button');
-        button.textContent = name;
-        button.dataset.captureControl = 'true';
-        button.onclick = callback;
-        this.status.append(button);
-      }
+      this.statusAction('Use Escape', () => this.choose('key:Escape'));
+      this.statusAction('Cancel', () => { this.editing = null; this.render(); });
     } else if (this.conflict) {
       this.status.textContent = `${bindingLabel(this.conflict.binding)} is assigned to ${actionNames[this.conflict.other.action]}.`;
-      for (const [name, callback] of [['Swap', () => this.resolveConflict(true)], ['Replace', () => this.resolveConflict(false)], ['Cancel', () => { const cell = this.conflict!.cell; this.conflict = null; this.render(); this.content.querySelector<HTMLButtonElement>(`[data-binding-focus="${cell.action}/${cell.index}"]`)?.focus(); }]] as const) {
-        const button = document.createElement('button');
-        button.textContent = name;
-        button.onclick = callback;
-        this.status.append(button);
-      }
+      this.statusAction('Swap', () => this.resolveConflict(true));
+      this.statusAction('Replace', () => this.resolveConflict(false));
+      this.statusAction('Cancel', () => { const cell = this.conflict!.cell; this.editing = null; this.render(); this.content.querySelector<HTMLButtonElement>(`[data-binding-focus="${cell.action}/${cell.index}"]`)?.focus(); });
     } else if (missing.length)
       this.status.textContent = `Bind ${missing.map(action => actionNames[action].toLowerCase()).join(', ')} before applying.`;
     else
       this.status.textContent = '';
     if (this.conflict) this.status.querySelector<HTMLButtonElement>('button')?.focus();
     else if (focused) this.dialog.querySelector<HTMLButtonElement>(`[data-binding-focus="${CSS.escape(focused)}"]`)?.focus();
+  }
+
+  private statusAction(name: string, callback: () => void): void {
+    const button = document.createElement('button');
+    button.textContent = name; button.dataset.captureControl = 'true'; button.onclick = callback;
+    this.status.append(button);
   }
 
   private save(): void {
