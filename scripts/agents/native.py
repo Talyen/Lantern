@@ -4,6 +4,7 @@ import ctypes
 import fcntl
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import signal
@@ -21,9 +22,14 @@ if sys.platform == 'darwin':
 
 def identity(pid):
     try:
-        return subprocess.check_output(['ps', '-p', str(pid), '-o', 'lstart='], text=True).strip()
-    except subprocess.CalledProcessError:
-        return ''
+        started = subprocess.check_output(['ps', '-p', str(pid), '-o', 'lstart='], text=True).strip()
+        if not re.fullmatch(r'\w{3}\s+\w{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\s+\d{4}', started):
+            raise RuntimeError('Process identity could not be parsed')
+        return started
+    except subprocess.CalledProcessError as error:
+        if error.returncode == 1:
+            return ''
+        raise
 
 
 def stop_owned_groups(groups):

@@ -73,8 +73,12 @@ export async function reserveSpace(path) {
   return available;
 }
 export async function processIdentity(pid) {
-  try { return (await execute('ps', ['-p', String(pid), '-o', 'lstart='])).stdout.trim(); }
-  catch { return ''; }
+  if (!Number.isSafeInteger(pid) || pid < 1) throw new Error('Invalid process identity PID');
+  try {
+    const started = (await execute('ps', ['-p', String(pid), '-o', 'lstart='])).stdout.trim();
+    if (!/^\w{3}\s+\w{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\s+\d{4}$/.test(started)) throw new Error('Process identity could not be parsed');
+    return started;
+  } catch (error) { if (error.code === 1) return ''; throw error; }
 }
 export async function liveLeases(ctx) {
   const directory = join(ctx.store, 'leases');

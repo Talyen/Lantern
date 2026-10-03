@@ -363,6 +363,22 @@ test('durable browser history recovers earlier launches while preserving live ow
   }
 });
 
+test('failed process queries preserve browser history and active groups', { timeout: 15000 }, async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'lantern-browser-query-'));
+  const browser = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { detached: true, stdio: 'ignore' });
+  const exit = once(browser, 'exit');
+  try {
+    await writeJSON(browserHistoryPath(directory), [{ pid: process.pid, started: await processIdentity(process.pid), browserProcesses: [{ pid: browser.pid, started: await processIdentity(browser.pid) }] }]);
+    await writeFile(join(directory, 'ps'), '#!/bin/sh\nexit 2\n', { mode: 0o755 });
+    const code = `import assert from 'node:assert/strict'; import {recoverBrowsers} from ${JSON.stringify(new URL('./preview.mjs', import.meta.url).href)}; await assert.rejects(recoverBrowsers(${JSON.stringify(directory)}));`;
+    await promisify(execFile)(process.execPath, ['--input-type=module', '-e', code], { env: { ...process.env, PATH: `${directory}:${process.env.PATH}` } });
+    assert.ok(await processIdentity(browser.pid));
+    assert.equal((await readJSON(browserHistoryPath(directory)))[0].closed, undefined);
+  } finally {
+    browser.kill('SIGKILL'); await exit; await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test('browser cleanup survives an abruptly exited preview owner', { timeout: 15000 }, async () => {
   const directory = await mkdtemp(join(tmpdir(), 'lantern-browser-owner-'));
   const ctx = { store: directory, main: directory };
