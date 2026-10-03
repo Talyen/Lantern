@@ -70,7 +70,7 @@ export async function importEnvironment(archive) {
   const read = async name => (await exec('unzip', ['-p', archive, prefix + name], { encoding: 'buffer', maxBuffer: 32 * 1024 * 1024 })).stdout;
   const sums = await read('SHA256SUMS.txt'), files = new Map();
   for (const line of sums.toString().trim().split('\n')) {
-    const match = /^([a-f0-9]{64})  (.+)$/.exec(line);
+    const match = /^([a-f0-9]{64}) {2}(.+)$/.exec(line);
     if (!match) throw new Error('Invalid SHA256SUMS entry');
     const [, expected, name] = match;
     if (name.startsWith('/') || name.includes('\\') || name.split('/').some(part => !part || part === '..' || part === '.')) throw new Error(`Unsafe archive entry: ${name}`);
