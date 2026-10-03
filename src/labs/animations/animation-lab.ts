@@ -14,6 +14,8 @@ import { markOutline } from '../../rendering/outlines';
 import { Equipment } from '../../rendering/equipment';
 import { PlayerLantern } from '../../rendering/player-lantern';
 import { GatheringTools } from '../../rendering/gathering-tools';
+import { asterfallLibrary, armoryDefinitions } from '../weapons/armory';
+import { itemDefinitions } from '../../gameplay/equipment';
 import { assetLibrary } from '../../assets/asset-library';
 import { getMotionCatalog, loadEquipmentMotions, holdStaffArm, type MotionCatalog, type MotionClip, type MotionPack } from '../../animation/combat-animations';
 import type { RigId } from '../../animation/combat-animations';
@@ -25,14 +27,14 @@ type Clip = MotionClip & { mappedBones?: number; auditRole?: string };
 type Pack = Omit<MotionPack, 'clips'> & { license?: string; url?: string; clips: Clip[] };
 type Catalog = Omit<MotionCatalog, 'packs'> & { character: string; characterLabel: string; motion: string; packs: Pack[] };
 type Favorite = { pack: string; clip: string };
-type Lane = { group: THREE.Group; rig: RigId; rigLoading: boolean; catalog?: Catalog; source?: THREE.Group; equipment?: Equipment; lantern?: PlayerLantern; tools?: GatheringTools; loadout: Loadout; model?: THREE.Group; mixer?: THREE.AnimationMixer; action?: THREE.AnimationAction; clip?: Clip; pack?: Pack; generation: number; rigSelect: HTMLSelectElement; loadoutSelect: HTMLSelectElement; packSelect: HTMLSelectElement; clipSelect: HTMLSelectElement; search: HTMLInputElement; info: HTMLElement; favorite: HTMLButtonElement; timing: HTMLElement };
+type Lane = { group: THREE.Group; rig: RigId; rigLoading: boolean; weaponSource: HTMLSelectElement; weaponScale: HTMLSelectElement; catalog?: Catalog; source?: THREE.Group; equipment?: Equipment; lantern?: PlayerLantern; tools?: GatheringTools; loadout: Loadout; model?: THREE.Group; mixer?: THREE.AnimationMixer; action?: THREE.AnimationAction; clip?: Clip; pack?: Pack; generation: number; rigSelect: HTMLSelectElement; loadoutSelect: HTMLSelectElement; packSelect: HTMLSelectElement; clipSelect: HTMLSelectElement; search: HTMLInputElement; info: HTMLElement; favorite: HTMLButtonElement; timing: HTMLElement };
 const loadouts: Record<string, Loadout> = { axe: { main: 'axe', off: null }, 'axe-shield': { main: 'axe', off: 'shield' }, sword: { main: 'sword', off: null }, 'sword-shield': { main: 'sword', off: 'shield' }, bow: { main: 'bow', off: null }, staff: { main: 'staff', off: null } };
 const loadoutNames: Record<string, string> = { axe: 'Axe', 'axe-shield': 'Axe + Shield', sword: 'Sword', 'sword-shield': 'Sword + Shield', bow: 'Bow', staff: 'Staff' };
 document.title = 'Lantern — Animations';
 const app = document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML = `
   <main class="animation-lab" data-display="a">
-    <header class="lab-header"><a href="/">← Clearing</a><h1>Animations</h1><p id="lab-status" role="status">Loading…</p><div class="lab-header-tools"><label>Preview<select id="lab-display"><option value="a">A</option><option value="b">B</option><option value="compare">Compare A / B</option></select></label><button id="lab-fit">Fit character</button><button id="lab-controls" aria-expanded="true" aria-controls="lab-inspector">Controls</button><button id="lab-fullscreen">Fullscreen</button></div></header>
+    <header class="lab-header"><a href="/">← Clearing</a><h1>Animations</h1><p id="lab-status" role="status">Loading…</p><div class="lab-header-tools"><label>Preview<select id="lab-display"><option value="a">A</option><option value="b">B</option><option value="compare">Compare A / B</option></select></label><a href="/?lab=weapons">Weapon gallery</a><button id="lab-armory">Compare weapons</button><button id="lab-fit">Fit character</button><button id="lab-controls" aria-expanded="true" aria-controls="lab-inspector">Controls</button><button id="lab-fullscreen">Fullscreen</button></div></header>
     <section class="lab-stage" aria-label="Animation preview"><div id="lab-canvas"></div><div class="stage-label stage-label-a">A</div><div class="stage-label stage-label-b">B</div><div class="stage-tip">Drag to orbit · right-drag to pan · scroll to zoom</div></section>
     <section class="lab-toolbar" aria-label="Playback controls">
       <label>Show <select id="lab-category"><option value="all">All motions</option><option value="attack" selected>Attacks</option><option value="skill">Skills</option><option value="idle">Idles</option><option value="run">Running</option><option value="directional">Backward & strafe</option><option value="walk">Walking</option><option value="hit">Hit reactions</option><option value="death">Deaths</option><option value="block">Blocking</option><option value="chop">Chopping</option><option value="mine">Mining</option><option value="dodge">Dodges & rolls</option><option value="movement">Other movement</option><option value="other">Interactions & emotes</option><option value="favorites">Favorites</option></select></label>
@@ -44,7 +46,7 @@ app.innerHTML = `
       <label class="lab-timeline">Scrub <input id="lab-scrub" type="range" min="0" max="1" step="0.001" value="0" disabled><output id="lab-time">0.00 s</output></label>
     </section>
     <section class="lab-lanes" aria-label="Animation selections">
-      ${['a', 'b'].map((id) => `<article class="lane-card" id="${id}-settings" ${id === 'b' ? 'hidden' : ''}><div class="lane-heading"><span>${id.toUpperCase()}</span><button id="${id}-favorite" disabled>☆ Save favorite</button></div><div class="lane-loadout"><label>Character<select id="${id}-rig"><option value="player">Player</option><option value="enemy">Goblin</option></select></label><label>Equipment<select id="${id}-loadout">${Object.keys(loadouts).map(key => `<option value="${key}">${loadoutNames[key]}</option>`).join('')}</select></label></div><label>Animation library<select id="${id}-pack" disabled></select></label><label>Find a motion<input id="${id}-search" type="search" placeholder="Sword, bow, magic, chop…" autocomplete="off"></label><label>Motion<select id="${id}-clip" disabled></select></label><div id="${id}-timing" class="lane-timing"></div><p id="${id}-info">Waiting for assets…</p></article>`).join('')}
+      ${['a', 'b'].map((id) => `<article class="lane-card" id="${id}-settings" ${id === 'b' ? 'hidden' : ''}><div class="lane-heading"><span>${id.toUpperCase()}</span><button id="${id}-favorite" disabled>☆ Save favorite</button></div><div class="lane-loadout"><label>Character<select id="${id}-rig"><option value="player">Player</option><option value="enemy">Goblin</option></select></label><label>Equipment<select id="${id}-loadout">${Object.keys(loadouts).map(key => `<option value="${key}">${loadoutNames[key]}</option>`).join('')}</select></label><label>Weapon art<select id="${id}-weapon-source"><option value="current">Current</option><option value="asterfall">Asterfall</option></select></label><label>Weapon size<select id="${id}-weapon-scale" disabled><option value="matched">Gameplay size</option><option value="authored">Authored size</option></select></label></div><label>Animation library<select id="${id}-pack" disabled></select></label><label>Find a motion<input id="${id}-search" type="search" placeholder="Sword, bow, magic, chop…" autocomplete="off"></label><label>Motion<select id="${id}-clip" disabled></select></label><div id="${id}-timing" class="lane-timing"></div><p id="${id}-info">Waiting for assets…</p></article>`).join('')}
     </section>
     <details class="lab-notes"><summary>How to compare</summary><p>Normal speed shows the prepared gameplay timing. Match cycle lengths aligns poses by progress. Pause, scrub, or jump to the amber contact/release marker to inspect feet, grip and recovery. Equipment previews do not change the character save. Each lane only plays motions prepared for its selected rig; equipment selections leave all compatible clips available.</p></details>
   </main>`;
@@ -122,7 +124,7 @@ const lanes: Lane[] = ['a', 'b'].map((id) => {
   const group = new THREE.Group();
   const platform = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.18, 0.08, 64), new THREE.MeshStandardMaterial({ color: '#45605b', roughness: 1 }));
   platform.position.y = -0.025; platform.receiveShadow = true; group.add(platform);
-  return { group, rig: 'player', rigLoading: false, loadout: { main: 'axe', off: null }, generation: 0, rigSelect: el<HTMLSelectElement>(`${id}-rig`), loadoutSelect: el<HTMLSelectElement>(`${id}-loadout`), packSelect: el<HTMLSelectElement>(`${id}-pack`), clipSelect: el<HTMLSelectElement>(`${id}-clip`), search: el<HTMLInputElement>(`${id}-search`), info: el<HTMLElement>(`${id}-info`), favorite: el<HTMLButtonElement>(`${id}-favorite`), timing: el<HTMLElement>(`${id}-timing`) };
+  return { group, weaponSource: el<HTMLSelectElement>(`${id}-weapon-source`), weaponScale: el<HTMLSelectElement>(`${id}-weapon-scale`), rig: 'player', rigLoading: false, loadout: { main: 'axe', off: null }, generation: 0, rigSelect: el<HTMLSelectElement>(`${id}-rig`), loadoutSelect: el<HTMLSelectElement>(`${id}-loadout`), packSelect: el<HTMLSelectElement>(`${id}-pack`), clipSelect: el<HTMLSelectElement>(`${id}-clip`), search: el<HTMLInputElement>(`${id}-search`), info: el<HTMLElement>(`${id}-info`), favorite: el<HTMLButtonElement>(`${id}-favorite`), timing: el<HTMLElement>(`${id}-timing`) };
 });
 const previews = lanes.map((lane, i) => {
   const laneScene = scene.clone(true); laneScene.add(lane.group);
@@ -140,7 +142,7 @@ const previews = lanes.map((lane, i) => {
 });
 await Promise.all(previews.map((preview) => preview.pipeline.ready()));
 const resetHistories = () => previews.forEach((preview) => preview.pipeline.resetHistory());
-window.addEventListener('pagehide', () => { disposed = true; controls.dispose(); lanes.forEach(clearLane); void Promise.allSettled(characterCache.values()).then(results => results.forEach(result => { if (result.status === 'fulfilled') disposeSceneResources(result.value); })).catch((error: unknown) => console.error('Unable to release character models.', error)); void assetLibrary.dispose().catch((error: unknown) => console.error('Unable to release lab assets.', error)); previews.forEach(({ pipeline, renderer, lighting }) => { pipeline.dispose(); lighting.dispose(); void renderer.dispose().catch((error: unknown) => console.error('Unable to release graphics.', error)); }); }, { once: true });
+window.addEventListener('pagehide', () => { disposed = true; controls.dispose(); lanes.forEach(clearLane); void Promise.allSettled(characterCache.values()).then(results => results.forEach(result => { if (result.status === 'fulfilled') disposeSceneResources(result.value); })).catch((error: unknown) => console.error('Unable to release character models.', error)); void asterfallLibrary.dispose().catch((error: unknown) => console.error('Unable to release Asterfall assets.', error)); void assetLibrary.dispose().catch((error: unknown) => console.error('Unable to release lab assets.', error)); previews.forEach(({ pipeline, renderer, lighting }) => { pipeline.dispose(); lighting.dispose(); void renderer.dispose().catch((error: unknown) => console.error('Unable to release graphics.', error)); }); }, { once: true });
 const loader = new GLTFLoader();
 const cache = new Map<string, Promise<THREE.AnimationClip>>();
 const characterCache = new Map<string, Promise<THREE.Group>>();
@@ -232,7 +234,10 @@ async function selectClip(lane: Lane): Promise<void> {
       if (lane.rig==='player') holdStaffArm(motion,preparedMotions.clips.idle);
     }
     if (generation !== lane.generation || disposed) return;
-    model = fitModel(lane); equipment = new Equipment(model, lane.rig);
+    const asterfall = lane.weaponSource.value === 'asterfall';
+    const definitions = asterfall ? await armoryDefinitions(lane.weaponScale.value === 'authored') : itemDefinitions;
+    if (generation !== lane.generation || disposed) return;
+    model = fitModel(lane); equipment = new Equipment(model, lane.rig, asterfall ? asterfallLibrary : assetLibrary, definitions);
     const prepared = await equipment.stage(lane.loadout);
     if (generation !== lane.generation || disposed) { equipment.dispose(); model.traverse(object => { if (object instanceof THREE.SkinnedMesh) object.skeleton.dispose(); }); return; }
     equipment.commit(prepared);
@@ -248,6 +253,7 @@ async function selectClip(lane: Lane): Promise<void> {
     }
     clearLane(lane);
     lantern?.setEnabled(el<HTMLInputElement>('lab-lantern').checked);
+    main.querySelector<HTMLElement>(`.stage-label-${lanes.indexOf(lane) ? 'b' : 'a'}`)!.textContent = `${lanes.indexOf(lane) ? 'B' : 'A'} · ${asterfall ? 'Asterfall' : 'Current'}`;
     lane.model = model; lane.equipment = equipment; lane.lantern = lantern; lane.tools = tools; lane.group.add(lane.model);
     lane.mixer = new THREE.AnimationMixer(lane.model);
     lane.action = lane.mixer.clipAction(motion); lane.action.setLoop(THREE.LoopOnce, 1); lane.action.clampWhenFinished = true; lane.action.play(); lane.action.paused = true;
@@ -306,6 +312,11 @@ async function selectLoadout(lane: Lane, key: string): Promise<void> {
   await fillClips(lane, preferred);
 }
 for (const lane of lanes) {
+  for (const selector of [lane.weaponSource, lane.weaponScale]) selector.addEventListener('change', () => {
+    lane.weaponScale.disabled = lane.weaponSource.value === 'current';
+    if (lane.weaponScale.disabled) lane.weaponScale.value = 'matched';
+    void selectClip(lane).catch(previewFailed);
+  });
   lane.rigSelect.addEventListener('change', () => { void selectRig(lane, lane.rigSelect.value as RigId).catch(previewFailed); });
   lane.loadoutSelect.addEventListener('change', () => { void selectLoadout(lane, lane.loadoutSelect.value).catch(previewFailed); });
   lane.packSelect.addEventListener('change', () => { void fillClips(lane).catch(previewFailed); });
@@ -368,6 +379,15 @@ function setDisplay(value: 'a' | 'b' | 'compare'): void {
   progress = seconds / referenceDuration(); resize(); applyPose(); updateStatus(); fitPreview();
 }
 el<HTMLSelectElement>('lab-display').addEventListener('change', event => setDisplay((event.target as HTMLSelectElement).value as typeof display));
+async function compareWeapons(): Promise<void> {
+  const key = lanes[0].loadoutSelect.value, clip = lanes[0].clipSelect.value;
+  lanes[0].weaponSource.value = 'current'; lanes[1].weaponSource.value = 'asterfall';
+  lanes.forEach(lane => { lane.weaponScale.disabled = lane.weaponSource.value === 'current'; lane.weaponScale.value = 'matched'; lane.search.value = ''; lane.loadout = { ...loadouts[key] }; lane.loadoutSelect.value = key; });
+  await Promise.all(lanes.map(lane => selectRig(lane, 'player')));
+  await Promise.all(lanes.map(lane => fillClips(lane, clip)));
+  sync.checked = true; resetPlayback(); setDisplay('compare');
+}
+el('lab-armory').addEventListener('click', () => { void compareWeapons().catch(previewFailed); });
 el('lab-fit').addEventListener('click', fitPreview);
 el<HTMLInputElement>('lab-lantern').addEventListener('change', event => {
   const enabled = (event.target as HTMLInputElement).checked;
@@ -410,12 +430,14 @@ function tick(): void {
 setDisplay('a');
 tick();
 await Promise.all(lanes.map(lane => selectRig(lane, 'player')));
+if (new URLSearchParams(location.search).get('study') === 'weapons') await compareWeapons();
 const laneAt = (index: number | 'a' | 'b') => {
   const lane = lanes[typeof index === 'number' ? index : index === 'a' ? 0 : 1];
   if (!lane) throw new Error('Unknown comparison lane'); return lane;
 };
 const diagnostics = {
   setDisplay,
+  compareWeapons,
   fit: fitPreview,
   frame(view: 'front' | 'side' | 'back', target: [number, number, number] = [0, 0.9, 0], distance = 3.5) {
     controls.target.fromArray(target);
@@ -432,6 +454,6 @@ const diagnostics = {
     await Promise.all(lanes.map(current => fillClips(current, current === lane ? clip : current.clip?.id)));
   },
   setTime(value: number) { playing = false; pause.textContent = 'Play'; seconds = Math.max(0, value); progress = seconds / referenceDuration(); applyPose(); resetHistories(); },
-  snapshot: () => ({ display, playing, seconds, progress, lanes: lanes.map(lane => ({ rig: lane.rig, loadout: lane.loadout, clip: lane.clip?.id, duration: lane.action?.getClip().duration, time: lane.action?.time, marker: lane.clip?.contact, clips: lane.catalog?.packs.flatMap(pack => pack.clips.map(clip => ({ id: clip.id, category: clip.category, contact: clip.contact, auditRole: clip.auditRole }))), equipment: lane.equipment?.diagnostics(), lantern: lane.lantern?.diagnostics(), error: lane.info.textContent })) }),
+  snapshot: () => ({ display, playing, seconds, progress, lanes: lanes.map(lane => ({ rig: lane.rig, weaponSource: lane.weaponSource.value, weaponScale: lane.weaponScale.value, loadout: lane.loadout, clip: lane.clip?.id, duration: lane.action?.getClip().duration, time: lane.action?.time, marker: lane.clip?.contact, clips: lane.catalog?.packs.flatMap(pack => pack.clips.map(clip => ({ id: clip.id, category: clip.category, contact: clip.contact, auditRole: clip.auditRole }))), equipment: lane.equipment?.diagnostics(), lantern: lane.lantern?.diagnostics(), error: lane.info.textContent })) }),
 };
 (window as Window & { lanternAnimations?: typeof diagnostics }).lanternAnimations = diagnostics;

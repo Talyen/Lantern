@@ -1,0 +1,17 @@
+body { margin: 0; background: #132120; overflow: hidden; }
+.weapon-gallery { height: 100dvh; display: flex; flex-direction: column; padding: 16px 24px; gap: 12px; box-sizing: border-box; color: #e9e4d6; background: #132120; font-family: system-ui, sans-serif; }
+.weapon-gallery header, .weapon-gallery nav { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+.weapon-gallery h1 { margin: 0; font-size: 24px; }
+.weapon-gallery a { color: #ebce8f; }
+.weapon-gallery label { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.weapon-gallery select, .weapon-gallery button { padding: 8px; max-width: 340px; color: #e9e4d6; background: #253632; border: 1px solid #69766b; border-radius: 4px; }
+.weapon-gallery button { cursor: pointer; }
+.weapon-gallery :focus-visible { outline: 2px solid #ebce8f; outline-offset: 3px; }
+.weapon-gallery p { margin: 0; font-size: 13px; }
+.weapon-stages { display: grid; grid-template-columns: 1fr 1fr; min-height: 0; flex: 1; gap: 16px; }
+.weapon-stages article { display: flex; flex-direction: column; min-width: 0; min-height: 0; gap: 8px; }
+.weapon-stages h2 { font-size: 17px; margin: 0; }
+.weapon-mount { flex: 1; min-height: 0; overflow: hidden; border-radius: 6px; }
+.weapon-mount canvas { display: block; }
+.weapon-gallery footer { font-size: 12px; color: #bdc3b7; }
+@media (width <= 700px) { .weapon-gallery { padding: 12px; } .weapon-gallery select { max-width: 180px; } .weapon-gallery header, .weapon-gallery nav { gap: 10px; } }
