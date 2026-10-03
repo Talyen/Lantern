@@ -1,6 +1,6 @@
 # Animation review and authoring
 
-Lantern uses Mixamo motions baked independently to Paladin J Nordstrom and Goblin D Shareyko. Weapon models come from the converted Synty library. The aim is readable preparation, decisive contact, short recovery, and footwork that agrees with movement while the player faces the cursor.
+Lantern uses Mixamo motions baked independently to Erika Archer, Goblin D Shareyko and the graveyard Skeleton rig. The original Paladin audit below remains historical source-selection evidence. Weapon models come from the converted Synty library. The aim is readable preparation, decisive contact, short recovery, and footwork that agrees with movement while the player faces the cursor.
 
 This review records the original 17 prepared clips, the source-selection correction, and the new equipment profiles. Source inspection, actual-rig comparisons and native WebGPU gameplay checks establish the changes below. A compatible rig and a passing build do not establish good hand placement, convincing foot contact, or smooth transitions.
 
@@ -72,7 +72,7 @@ Attack abilities commit aim when accepted. The default **left click** slot start
 
 **Hold the assigned Shield Basic input** with a Shield to block toward the cursor. Blocking halves movement speed and incoming damage in the frontal 120-degree arc, prevents attacks, and ends on release or dodge. Rear hits retain the normal reaction. **Shift** dodges in held movement direction or, while stationary, the latest aim direction.
 
-Contextual left-click gathering repeats Axe Chop or Pickaxe Mine with temporary tool attachments, regardless of combat equipment. Pickaxe Mine uses the retained downward Axe strike source baked to Paladin with its own cooked duration and contact marker. Gathering profiles bypass the Staff carrying-arm modification. Each valid contact drops a resource; collected quantities award XP once. Three starting contacts deplete a node. See [gathering and shelter](GATHERING.md) for selection, cancellation, renewal and progression.
+Contextual left-click gathering repeats Axe Chop or Pickaxe Mine with temporary tool attachments, regardless of combat equipment. Pickaxe Mine uses the retained downward Axe strike source baked to Erika with its own cooked duration and contact marker. Gathering profiles bypass the Staff carrying-arm modification. Each valid contact drops a resource; collected quantities award XP once. Three starting contacts deplete a node. See [gathering and shelter](GATHERING.md) for selection, cancellation, renewal and progression.
 
 A damaging Axe combat contact grants 10 base Axe Combat XP independently of Woodcutting, with the shared Rested multiplier. Gathering levels, Rested, shared regenerating mana and the starter Sword/Bow Skills are implemented; weapon levels, combos, stamina, ammunition consumption and earned Ultimates remain deferred. Basics deal 50 damage and starter Skills deal 60; player projectiles retain a 12 m range. Ability costs and cooldowns belong to [`abilities.ts`](../src/gameplay/abilities.ts); see [starter Skills](#starter-skills-and-gathering-presentation) for their motions.
 
@@ -81,6 +81,16 @@ A damaging Axe combat contact grants 10 base Axe Combat XP independently of Wood
 The caster in Forest Clearing’s separate woodland glade uses its own instance of the Goblin rig with a Staff. Its free-arm Mixamo cast is independently baked from the verified casting source, with a 1.6-second action and 0.8-second release marker. The staff arm retains the compatible carrying pose and a grip clip baked to Goblin, rather than borrowing Paladin tracks. The camp raider remains present with its existing Axe profile. Gameplay loads each enemy’s compatible equipment profile directly.
 
 The native WebGPU placement review on macOS used normal graphics settings in one managed session. Neither enemy engaged at the player start. Walking off the approach into the caster glade activated only the caster; a forward dodge and two aimed attacks defeated it with full player health while the camp guard stayed idle at 100 health. The caster's own health bar followed its body, and a fern was moved off the approach after visual inspection. Focused simulation checks cover independent aggro, per-frame player clocks, damage targeting, guard-specific chest access, per-enemy rewards and both enemy snapshots through travel. This is targeted acceptance, not cross-platform validation.
+
+## Animation viewer
+
+The development route `/?lab=animations` defaults to one nearly full-window character. **Preview A/B** switches the active character; **Compare A / B** restores side-by-side inspection. The right inspector contains rig, equipment, search, clip and contact/release controls; **Controls** collapses it. Playback, speed, frame step, view and scrubbing remain at the bottom. **Fullscreen** expands the viewer and **Fit character** frames the current character and equipment.
+
+Drag to orbit, right-drag to pan and scroll for close inspection. Space toggles playback when focus is outside form controls. Single-view scrubbing uses the active clip's duration. Matched cycle lengths apply only in comparison mode; A and B retain their prepared clips and independent temporal histories when switching views.
+
+The viewer uses the same native WebGPU/FSR pipeline and shared Golden lighting. Inspection disables lens blur and bloom, without changing saved gameplay graphics preferences. The optional **Player lantern** uses the gameplay belt attachment and owner-bounce recipe, follows the selected rig and changes no save data. Gathering previews use the gameplay temporary Axe/Pickaxe attachments and do not overwrite the Staff arm pose during chopping/mining. Hidden lanes retain their comparison state and are resized before rendering again.
+
+Erika is the sole player appearance, with authored geometry/UVs/textures and all compatible player profiles. Her original quiver/arrows appear only with committed Bow-family equipment. See [protagonist preparation and acceptance](PROTAGONISTS.md).
 
 ## Comparison and acceptance evidence
 

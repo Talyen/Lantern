@@ -12,6 +12,8 @@ import { AreaLightingResources } from '../../rendering/area-lighting';
 import { readSettings } from '../../rendering/graphics-settings';
 import { markOutline } from '../../rendering/outlines';
 import { Equipment } from '../../rendering/equipment';
+import { PlayerLantern } from '../../rendering/player-lantern';
+import { GatheringTools } from '../../rendering/gathering-tools';
 import { assetLibrary } from '../../assets/asset-library';
 import { getMotionCatalog, loadEquipmentMotions, holdStaffArm, type MotionCatalog, type MotionClip, type MotionPack } from '../../animation/combat-animations';
 import type { RigId } from '../../animation/combat-animations';
@@ -23,29 +25,41 @@ type Clip = MotionClip & { mappedBones?: number; auditRole?: string };
 type Pack = Omit<MotionPack, 'clips'> & { license?: string; url?: string; clips: Clip[] };
 type Catalog = Omit<MotionCatalog, 'packs'> & { character: string; characterLabel: string; motion: string; packs: Pack[] };
 type Favorite = { pack: string; clip: string };
-type Lane = { group: THREE.Group; rig: RigId; rigLoading: boolean; catalog?: Catalog; source?: THREE.Group; equipment?: Equipment; loadout: Loadout; model?: THREE.Group; mixer?: THREE.AnimationMixer; action?: THREE.AnimationAction; clip?: Clip; pack?: Pack; generation: number; rigSelect: HTMLSelectElement; loadoutSelect: HTMLSelectElement; packSelect: HTMLSelectElement; clipSelect: HTMLSelectElement; search: HTMLInputElement; info: HTMLElement; favorite: HTMLButtonElement; timing: HTMLElement };
+type Lane = { group: THREE.Group; rig: RigId; rigLoading: boolean; catalog?: Catalog; source?: THREE.Group; equipment?: Equipment; lantern?: PlayerLantern; tools?: GatheringTools; loadout: Loadout; model?: THREE.Group; mixer?: THREE.AnimationMixer; action?: THREE.AnimationAction; clip?: Clip; pack?: Pack; generation: number; rigSelect: HTMLSelectElement; loadoutSelect: HTMLSelectElement; packSelect: HTMLSelectElement; clipSelect: HTMLSelectElement; search: HTMLInputElement; info: HTMLElement; favorite: HTMLButtonElement; timing: HTMLElement };
 const loadouts: Record<string, Loadout> = { axe: { main: 'axe', off: null }, 'axe-shield': { main: 'axe', off: 'shield' }, sword: { main: 'sword', off: null }, 'sword-shield': { main: 'sword', off: 'shield' }, bow: { main: 'bow', off: null }, staff: { main: 'staff', off: null } };
 const loadoutNames: Record<string, string> = { axe: 'Axe', 'axe-shield': 'Axe + Shield', sword: 'Sword', 'sword-shield': 'Sword + Shield', bow: 'Bow', staff: 'Staff' };
-document.title = 'Lantern — Animation Comparison';
+document.title = 'Lantern — Animations';
 const app = document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML = `
-  <main class="animation-lab">
-    <header class="lab-header"><div><a href="/">← Return to clearing</a><h1>Animations</h1><p id="lab-status" role="status">Loading local animation library…</p></div></header>
-    <section class="lab-stage" aria-label="Side by side animation preview"><div id="lab-canvas"></div><div class="stage-label stage-label-a">A</div><div class="stage-label stage-label-b">B</div><div class="stage-tip">Drag to orbit · scroll to zoom</div></section>
+  <main class="animation-lab" data-display="a">
+    <header class="lab-header"><a href="/">← Clearing</a><h1>Animations</h1><p id="lab-status" role="status">Loading…</p><div class="lab-header-tools"><label>Preview<select id="lab-display"><option value="a">A</option><option value="b">B</option><option value="compare">Compare A / B</option></select></label><button id="lab-fit">Fit character</button><button id="lab-controls" aria-expanded="true" aria-controls="lab-inspector">Controls</button><button id="lab-fullscreen">Fullscreen</button></div></header>
+    <section class="lab-stage" aria-label="Animation preview"><div id="lab-canvas"></div><div class="stage-label stage-label-a">A</div><div class="stage-label stage-label-b">B</div><div class="stage-tip">Drag to orbit · right-drag to pan · scroll to zoom</div></section>
     <section class="lab-toolbar" aria-label="Playback controls">
-      <label>Show <select id="lab-category"><option value="all">All motions</option><option value="attack" selected>Attacks</option><option value="skill">Skills</option><option value="idle">Idles</option><option value="run">Running</option><option value="directional">Backward & strafe</option><option value="walk">Walking</option><option value="hit">Hit reactions</option><option value="death">Deaths</option><option value="block">Blocking</option><option value="chop">Chopping</option><option value="dodge">Dodges & rolls</option><option value="movement">Other movement</option><option value="other">Interactions & emotes</option><option value="favorites">Favorites</option></select></label>
-      <button id="lab-pause" disabled>Pause</button><button id="lab-restart" disabled>Restart both</button><button id="lab-step" disabled>Step 1 frame</button>
+      <label>Show <select id="lab-category"><option value="all">All motions</option><option value="attack" selected>Attacks</option><option value="skill">Skills</option><option value="idle">Idles</option><option value="run">Running</option><option value="directional">Backward & strafe</option><option value="walk">Walking</option><option value="hit">Hit reactions</option><option value="death">Deaths</option><option value="block">Blocking</option><option value="chop">Chopping</option><option value="mine">Mining</option><option value="dodge">Dodges & rolls</option><option value="movement">Other movement</option><option value="other">Interactions & emotes</option><option value="favorites">Favorites</option></select></label>
+      <button id="lab-pause" disabled>Pause</button><button id="lab-restart" disabled>Restart</button><button id="lab-step" disabled>Step 1 frame</button>
       <label>Speed <select id="lab-speed"><option value="0.25">¼ speed</option><option value="0.5">½ speed</option><option value="1" selected>Normal</option><option value="1.5">1½ speed</option></select></label>
       <label class="lab-check"><input id="lab-loop" type="checkbox" checked> Loop</label>
-      <label class="lab-check"><input id="lab-sync" type="checkbox"> Match cycle lengths</label>
+      <label class="lab-check" hidden><input id="lab-sync" type="checkbox"> Match cycle lengths</label>
       <label>View <select id="lab-view"><option value="iso">Isometric</option><option value="front">Front</option><option value="side">Side</option><option value="back">Back</option></select></label>
       <label class="lab-timeline">Scrub <input id="lab-scrub" type="range" min="0" max="1" step="0.001" value="0" disabled><output id="lab-time">0.00 s</output></label>
     </section>
     <section class="lab-lanes" aria-label="Animation selections">
-      ${['a', 'b'].map((id) => `<article class="lane-card"><div class="lane-heading"><span>${id.toUpperCase()}</span><button id="${id}-favorite" disabled>☆ Save favorite</button></div><div class="lane-loadout"><label>Character<select id="${id}-rig"><option value="player">Player</option><option value="enemy">Goblin</option></select></label><label>Equipment<select id="${id}-loadout">${Object.keys(loadouts).map(key => `<option value="${key}">${loadoutNames[key]}</option>`).join('')}</select></label></div><label>Animation library<select id="${id}-pack" disabled></select></label><label>Find a motion<input id="${id}-search" type="search" placeholder="Sword, bow, magic, chop…" autocomplete="off"></label><label>Motion<select id="${id}-clip" disabled></select></label><div id="${id}-timing" class="lane-timing"></div><p id="${id}-info">Waiting for assets…</p></article>`).join('')}
+      ${['a', 'b'].map((id) => `<article class="lane-card" id="${id}-settings" ${id === 'b' ? 'hidden' : ''}><div class="lane-heading"><span>${id.toUpperCase()}</span><button id="${id}-favorite" disabled>☆ Save favorite</button></div><div class="lane-loadout"><label>Character<select id="${id}-rig"><option value="player">Player</option><option value="enemy">Goblin</option></select></label><label>Equipment<select id="${id}-loadout">${Object.keys(loadouts).map(key => `<option value="${key}">${loadoutNames[key]}</option>`).join('')}</select></label></div><label>Animation library<select id="${id}-pack" disabled></select></label><label>Find a motion<input id="${id}-search" type="search" placeholder="Sword, bow, magic, chop…" autocomplete="off"></label><label>Motion<select id="${id}-clip" disabled></select></label><div id="${id}-timing" class="lane-timing"></div><p id="${id}-info">Waiting for assets…</p></article>`).join('')}
     </section>
     <details class="lab-notes"><summary>How to compare</summary><p>Normal speed shows the prepared gameplay timing. Match cycle lengths aligns poses by progress. Pause, scrub, or jump to the amber contact/release marker to inspect feet, grip and recovery. Equipment previews do not change the character save. Each lane only plays motions prepared for its selected rig; equipment selections leave all compatible clips available.</p></details>
   </main>`;
+const main = app.querySelector<HTMLElement>('.animation-lab')!;
+const stage = main.querySelector<HTMLElement>('.lab-stage')!;
+const toolbar = main.querySelector<HTMLElement>('.lab-toolbar')!;
+const laneCards = main.querySelector<HTMLElement>('.lab-lanes')!;
+const notes = main.querySelector<HTMLDetailsElement>('.lab-notes')!;
+const workspace = document.createElement('div'); workspace.className = 'lab-workspace';
+const inspector = document.createElement('aside'); inspector.id = 'lab-inspector'; inspector.className = 'lab-inspector'; inspector.setAttribute('aria-label', 'Motion selection');
+const filter = document.getElementById('lab-category')!.closest('label')!;
+const lanternLabel = document.createElement('label'); lanternLabel.className = 'lab-check';
+lanternLabel.innerHTML = '<input id="lab-lantern" type="checkbox" checked> Player lantern';
+inspector.append(filter, lanternLabel, laneCards, notes); workspace.append(stage, inspector);
+main.querySelector('.lab-header')!.after(workspace); main.append(toolbar);
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const status = el<HTMLElement>('lab-status');
 const canvas = el<HTMLDivElement>('lab-canvas');
@@ -58,6 +72,9 @@ const loop = el<HTMLInputElement>('lab-loop');
 const sync = el<HTMLInputElement>('lab-sync');
 const scrub = el<HTMLInputElement>('lab-scrub');
 const time = el<HTMLOutputElement>('lab-time');
+let display: 'a' | 'b' | 'compare' = 'a';
+const visibleLane = (index: number) => display === 'compare' || index === (display === 'b' ? 1 : 0);
+const linkedCycles = () => display === 'compare' && sync.checked;
 let disposed = false;
 let playing = true;
 let seconds = 0;
@@ -74,14 +91,16 @@ const camera = new THREE.PerspectiveCamera(33, 1, 0.1, 50);
 camera.position.set(2.8, 2.6, 5.2);
 // Each comparison lane uses the shared graph, with independent render state/history.
 const settings = readSettings();
+// Inspection retains the shared Golden graph while removing lens blur/glare.
+settings.dof = 'off'; settings.bloom = 0;
 const mounts = ['a', 'b'].map((id) => { const mount = document.createElement('div'); mount.dataset.lane = id; canvas.append(mount); return mount; });
 const renderers: Awaited<ReturnType<typeof createRenderer>>[] = [];
 for (const mount of mounts) renderers.push(await createRenderer(mount));
 const controls = new OrbitControls(camera, canvas);
 controls.target.set(0, 0.9, 0);
 controls.enableDamping = true;
-controls.enablePan = false;
-controls.minDistance = 3.5;
+controls.enablePan = true;
+controls.minDistance = 0.35;
 controls.maxDistance = 14;
 controls.maxPolarAngle = Math.PI * 0.49;
 controls.update();
@@ -125,7 +144,7 @@ window.addEventListener('pagehide', () => { disposed = true; controls.dispose();
 const loader = new GLTFLoader();
 const cache = new Map<string, Promise<THREE.AnimationClip>>();
 const characterCache = new Map<string, Promise<THREE.Group>>();
-function updatePlaybackControls(): void { const disabled = !lanes.some((lane) => lane.action); pause.disabled = restart.disabled = step.disabled = scrub.disabled = disabled; }
+function updatePlaybackControls(): void { updateStatus(); const disabled = !lanes.some((lane) => lane.action); pause.disabled = restart.disabled = step.disabled = scrub.disabled = disabled; }
 function saved(lane: Lane): boolean { return favorites.some((f) => f.pack === lane.pack?.id && f.clip === lane.clip?.id); }
 function updateFavorite(lane: Lane): void { lane.favorite.textContent = saved(lane) ? '★ Saved favorite' : '☆ Save favorite'; lane.favorite.setAttribute('aria-pressed', String(saved(lane))); }
 function fitModel(lane: Lane): THREE.Group {
@@ -140,6 +159,8 @@ function fitModel(lane: Lane): THREE.Group {
   return wrapper;
 }
 function clearLane(lane: Lane): void {
+  lane.tools?.dispose(); lane.tools = undefined;
+  lane.lantern?.dispose(); lane.lantern = undefined;
   lane.equipment?.dispose(); lane.equipment = undefined;
   lane.mixer?.stopAllAction();
   if (lane.model) {
@@ -162,7 +183,7 @@ function updateTiming(lane: Lane): void {
     button.onclick = () => {
       playing = false; pause.textContent = 'Play';
       progress = marker / lane.action!.getClip().duration;
-      seconds = sync.checked ? progress * referenceDuration() : marker;
+      seconds = linkedCycles() ? progress * referenceDuration() : marker;
       applyPose(); resetHistories();
     };
     track.append(button);
@@ -170,14 +191,14 @@ function updateTiming(lane: Lane): void {
   const readout = document.createElement('output'); readout.className = 'lane-time';
   lane.timing.append(track, readout);
 }
-const referenceDuration = () => lanes[0].action?.getClip().duration ?? lanes[1].action?.getClip().duration ?? 1;
+const referenceDuration = () => lanes[display === 'b' ? 1 : 0].action?.getClip().duration ?? lanes[display === 'b' ? 0 : 1].action?.getClip().duration ?? 1;
 function applyPose(): void {
   const reference = referenceDuration();
-  progress = sync.checked ? progress : Math.min(1, seconds / reference);
+  progress = linkedCycles() ? progress : Math.min(1, seconds / reference);
   for (const lane of lanes) {
     if (!lane.mixer || !lane.action || !lane.clip) continue;
     const duration = lane.action.getClip().duration;
-    const t = sync.checked ? progress * duration : seconds;
+    const t = linkedCycles() ? progress * duration : seconds;
     lane.action.time = loop.checked && t < duration ? t : loop.checked ? t % duration : Math.min(t, duration);
     lane.mixer.update(0);
     const playhead = lane.timing.querySelector<HTMLElement>('.lane-playhead');
@@ -185,7 +206,7 @@ function applyPose(): void {
     const readout = lane.timing.querySelector<HTMLOutputElement>('.lane-time');
     if (readout) readout.textContent = `${lane.action.time.toFixed(2)} / ${duration.toFixed(2)} s`;
   }
-  scrub.value = String(loop.checked && !sync.checked ? (seconds % reference) / reference : progress);
+  scrub.value = String(loop.checked && !linkedCycles() ? (seconds % reference) / reference : progress);
   time.textContent = `${seconds.toFixed(2)} s`;
 }
 function resetPlayback(): void { resetHistories(); seconds = 0; progress = 0; applyPose(); }
@@ -197,6 +218,8 @@ async function selectClip(lane: Lane): Promise<void> {
   if (!clip || !lane.source) { clearLane(lane); updateTiming(lane); lane.info.textContent = 'No compatible motions in this category.'; resetPlayback(); updatePlaybackControls(); return; }
   lane.info.textContent = 'Loading motion…';
   let equipment: Equipment | undefined;
+  let lantern: PlayerLantern | undefined;
+  let tools: GatheringTools | undefined;
   let model: THREE.Group | undefined;
   try {
     if (!cache.has(clip.url)) cache.set(clip.url, loader.loadAsync(clip.url).then((gltf) => {
@@ -204,7 +227,7 @@ async function selectClip(lane: Lane): Promise<void> {
       return gltf.animations[0];
     }).catch((error: unknown) => { cache.delete(clip.url); throw error; }));
     const motion=(await cache.get(clip.url)!).clone();
-    if (lane.loadout.main==='staff' && !clip.audit && !['hit','death','dodge'].includes(clip.category)) {
+    if (lane.loadout.main==='staff' && !clip.audit && !['hit','death','dodge','chop','mine'].includes(clip.category)) {
       const preparedMotions=await loadEquipmentMotions(loader,lane.rig,lane.rig==='player' ? lane.loadout : {main:'axe',off:null});
       if (lane.rig==='player') holdStaffArm(motion,preparedMotions.clips.idle);
     }
@@ -213,15 +236,29 @@ async function selectClip(lane: Lane): Promise<void> {
     const prepared = await equipment.stage(lane.loadout);
     if (generation !== lane.generation || disposed) { equipment.dispose(); model.traverse(object => { if (object instanceof THREE.SkinnedMesh) object.skeleton.dispose(); }); return; }
     equipment.commit(prepared);
+    if (lane.rig === 'player') {
+      lantern = new PlayerLantern(model, el<HTMLInputElement>('lab-lantern').checked);
+      await lantern.initialize();
+      if (generation !== lane.generation || disposed) { lantern.dispose(); equipment.dispose(); model.traverse(object => { if (object instanceof THREE.SkinnedMesh) object.skeleton.dispose(); }); return; }
+    }
+    if (lane.rig === 'player' && ['chop', 'mine'].includes(clip.category)) {
+      tools = new GatheringTools(model, equipment); await tools.prepare();
+      if (generation !== lane.generation || disposed) { tools.dispose(); lantern?.dispose(); equipment.dispose(); model.traverse(object => { if (object instanceof THREE.SkinnedMesh) object.skeleton.dispose(); }); return; }
+      tools.show(clip.category === 'chop' ? 'tree' : 'mineral');
+    }
     clearLane(lane);
-    lane.model = model; lane.equipment = equipment; lane.group.add(lane.model);
+    lantern?.setEnabled(el<HTMLInputElement>('lab-lantern').checked);
+    lane.model = model; lane.equipment = equipment; lane.lantern = lantern; lane.tools = tools; lane.group.add(lane.model);
     lane.mixer = new THREE.AnimationMixer(lane.model);
     lane.action = lane.mixer.clipAction(motion); lane.action.setLoop(THREE.LoopOnce, 1); lane.action.clampWhenFinished = true; lane.action.play(); lane.action.paused = true;
     lane.clip = clip;
     lane.info.textContent = `${motion.duration.toFixed(2)} s${clip.auditRole ? ' · Previous ' + clip.auditRole : ''}${clip.description ? ' · ' + clip.description : ''}`;
     lane.favorite.disabled = false; updateFavorite(lane); updateTiming(lane); resetPlayback();
     updatePlaybackControls();
+    if (visibleLane(lanes.indexOf(lane))) fitPreview();
   } catch (error) {
+    tools?.dispose();
+    lantern?.dispose();
     equipment?.dispose();
     if (model && model !== lane.model) model.traverse(object => { if (object instanceof THREE.SkinnedMesh) object.skeleton.dispose(); });
     if (generation === lane.generation) lane.info.textContent = `Preview unavailable: ${String(error)}`;
@@ -257,7 +294,7 @@ async function selectRig(lane: Lane, rig: RigId): Promise<void> {
     lane.packSelect.replaceChildren(...catalog.packs.filter(pack => pack.id === 'mixamo').map(pack => new Option(`${pack.label} (${pack.clips.length})`, pack.id)));
     lane.packSelect.value = 'mixamo'; lane.packSelect.disabled = false;
     await fillClips(lane, catalog.defaults.attack);
-    status.textContent = lanes.map((current, index) => `${index === 0 ? 'A' : 'B'}: ${current.catalog?.characterLabel ?? 'Loading'} · ${current.catalog?.packs.reduce((count, pack) => count + pack.clips.length, 0) ?? 0} motions`).join(' / ');
+    updateStatus();
   } catch (error) { if (generation === lane.generation) { lane.rigSelect.value = lane.rig; lane.info.textContent = String(error); } }
   finally { lane.rigLoading = false; lane.rigSelect.disabled = lane.loadoutSelect.disabled = lane.search.disabled = false; }
 }
@@ -296,12 +333,60 @@ el<HTMLSelectElement>('lab-view').addEventListener('change', (e) => {
   controls.target.set(0, 0.9, 0); controls.update(); resetHistories();
 });
 function resize(): void {
-  const w = canvas.clientWidth / 2, h = canvas.clientHeight;
-  camera.aspect = w / h; camera.updateProjectionMatrix();
-  for (const preview of previews) {
-    preview.camera.copy(camera); preview.renderer.setSize(w, h); preview.pipeline.resize();
-  }
+  const h = Math.max(1, canvas.clientHeight), width = canvas.clientWidth / (display === 'compare' ? 2 : 1);
+  camera.aspect = Math.max(1, width) / h; camera.updateProjectionMatrix();
+  previews.forEach((preview, index) => {
+    if (!visibleLane(index)) return;
+    preview.camera.copy(camera); preview.renderer.setSize(Math.max(1, mounts[index].clientWidth), h); preview.pipeline.resize();
+  });
 }
+function updateStatus(): void {
+  const shown = lanes.filter((_, index) => visibleLane(index));
+  status.textContent = shown.map(lane => `${lane.catalog?.characterLabel ?? 'Loading'} · ${loadoutNames[lane.loadoutSelect.value]} · ${lane.clip?.name ?? 'Loading motion'}`).join(' / ');
+  status.title = status.textContent;
+}
+function fitPreview(): void {
+  const bounds = new THREE.Box3();
+  lanes.forEach((lane, index) => {
+    if (!visibleLane(index) || !lane.model) return;
+    lane.model.updateMatrixWorld(true);
+    lane.model.traverse(object => { if (object instanceof THREE.SkinnedMesh) object.computeBoundingBox(); });
+    bounds.union(new THREE.Box3().setFromObject(lane.model));
+  });
+  if (bounds.isEmpty()) return;
+  const direction = camera.position.clone().sub(controls.target).normalize();
+  const size = bounds.getSize(new THREE.Vector3()), tangent = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  const distance = Math.max(size.y / (2 * tangent), size.x / (2 * tangent * camera.aspect)) * 1.12 + size.z * .35;
+  controls.target.copy(bounds.getCenter(new THREE.Vector3()));
+  camera.position.copy(controls.target).addScaledVector(direction, distance); controls.update(); resetHistories();
+}
+function setDisplay(value: 'a' | 'b' | 'compare'): void {
+  display = value; main.dataset.display = value; el<HTMLSelectElement>('lab-display').value = value;
+  lanes.forEach((_, index) => { el(`${index ? 'b' : 'a'}-settings`).hidden = !visibleLane(index); });
+  sync.closest('label')!.hidden = value !== 'compare';
+  seconds = lanes[display === 'b' ? 1 : 0].action?.time ?? seconds;
+  progress = seconds / referenceDuration(); resize(); applyPose(); updateStatus(); fitPreview();
+}
+el<HTMLSelectElement>('lab-display').addEventListener('change', event => setDisplay((event.target as HTMLSelectElement).value as typeof display));
+el('lab-fit').addEventListener('click', fitPreview);
+el<HTMLInputElement>('lab-lantern').addEventListener('change', event => {
+  const enabled = (event.target as HTMLInputElement).checked;
+  lanes.forEach(lane => lane.lantern?.setEnabled(enabled)); resetHistories();
+});
+el('lab-controls').addEventListener('click', () => {
+  const hidden = main.classList.toggle('controls-hidden'); el('lab-controls').setAttribute('aria-expanded', String(!hidden));
+  resize(); resetHistories();
+});
+const fullscreen = el<HTMLButtonElement>('lab-fullscreen'); fullscreen.disabled = !document.fullscreenEnabled;
+fullscreen.addEventListener('click', () => {
+  const request = document.fullscreenElement ? document.exitFullscreen() : main.requestFullscreen();
+  request.catch((error: unknown) => { status.textContent = `Fullscreen unavailable: ${String(error)}`; });
+});
+document.addEventListener('fullscreenchange', () => { fullscreen.textContent = document.fullscreenElement ? 'Exit fullscreen' : 'Fullscreen'; resize(); resetHistories(); });
+window.addEventListener('keydown', event => {
+  if (event.code !== 'Space' || event.repeat || event.target instanceof HTMLElement && event.target.closest('input,select,button,textarea')) return;
+  event.preventDefault(); pause.click();
+});
 new ResizeObserver(resize).observe(canvas); resize();
 const clock = new THREE.Timer();
 function tick(): void {
@@ -310,17 +395,19 @@ function tick(): void {
   const dt = Math.min(clock.getDelta(), 0.1) * Number(speed.value);
   if (playing && lanes.some((l) => l.action)) {
     seconds += dt;
-    if (sync.checked) { progress += dt / referenceDuration(); progress = loop.checked ? progress % 1 : Math.min(1, progress); }
+    if (linkedCycles()) { progress += dt / referenceDuration(); progress = loop.checked ? progress % 1 : Math.min(1, progress); }
     applyPose();
   }
   controls.update();
-  for (const preview of previews) {
+  for (const [index, preview] of previews.entries()) {
+    if (!visibleLane(index)) continue;
     preview.camera.copy(camera);
     preview.pipeline.render();
     preview.renderer.domElement.dataset.graphics = JSON.stringify({ renderer: 'webgpu', settings, pipeline: preview.pipeline.diagnostics() });
   }
   requestAnimationFrame(tick);
 }
+setDisplay('a');
 tick();
 await Promise.all(lanes.map(lane => selectRig(lane, 'player')));
 const laneAt = (index: number | 'a' | 'b') => {
@@ -328,6 +415,14 @@ const laneAt = (index: number | 'a' | 'b') => {
   if (!lane) throw new Error('Unknown comparison lane'); return lane;
 };
 const diagnostics = {
+  setDisplay,
+  fit: fitPreview,
+  frame(view: 'front' | 'side' | 'back', target: [number, number, number] = [0, 0.9, 0], distance = 3.5) {
+    controls.target.fromArray(target);
+    const direction = view === 'side' ? new THREE.Vector3(1, .08, 0) : new THREE.Vector3(0, .08, view === 'back' ? -1 : 1);
+    camera.position.copy(controls.target).addScaledVector(direction.normalize(), distance);
+    controls.update(); resetHistories();
+  },
   setRig: (index: number | 'a' | 'b', rig: RigId) => selectRig(laneAt(index), rig),
   setLoadout: (index: number | 'a' | 'b', loadout: string) => selectLoadout(laneAt(index), loadout),
   async setClip(index: number | 'a' | 'b', clip: string) {
@@ -337,6 +432,6 @@ const diagnostics = {
     await Promise.all(lanes.map(current => fillClips(current, current === lane ? clip : current.clip?.id)));
   },
   setTime(value: number) { playing = false; pause.textContent = 'Play'; seconds = Math.max(0, value); progress = seconds / referenceDuration(); applyPose(); resetHistories(); },
-  snapshot: () => ({ playing, seconds, progress, lanes: lanes.map(lane => ({ rig: lane.rig, loadout: lane.loadout, clip: lane.clip?.id, duration: lane.action?.getClip().duration, time: lane.action?.time, marker: lane.clip?.contact, clips: lane.catalog?.packs.flatMap(pack => pack.clips.map(clip => ({ id: clip.id, category: clip.category, contact: clip.contact, auditRole: clip.auditRole }))), equipment: lane.equipment?.diagnostics(), error: lane.info.textContent })) }),
+  snapshot: () => ({ display, playing, seconds, progress, lanes: lanes.map(lane => ({ rig: lane.rig, loadout: lane.loadout, clip: lane.clip?.id, duration: lane.action?.getClip().duration, time: lane.action?.time, marker: lane.clip?.contact, clips: lane.catalog?.packs.flatMap(pack => pack.clips.map(clip => ({ id: clip.id, category: clip.category, contact: clip.contact, auditRole: clip.auditRole }))), equipment: lane.equipment?.diagnostics(), lantern: lane.lantern?.diagnostics(), error: lane.info.textContent })) }),
 };
 (window as Window & { lanternAnimations?: typeof diagnostics }).lanternAnimations = diagnostics;

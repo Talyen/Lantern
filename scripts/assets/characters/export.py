@@ -13,7 +13,7 @@ spec = importlib.util.spec_from_file_location('motion_baker', ROOT / 'scripts/as
 baker = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(baker)
 OUTPUT = ROOT / 'public/vendor/character-gallery'
-VERSION = 2
+VERSION = 3
 BAKER_SIGNATURE = hashlib.sha256((ROOT / 'scripts/assets/mixamo/baker.py').read_bytes()).hexdigest()
 BUNDLES = {
     ('generic', 'Generic_Characters'): 'Synty Generic',
@@ -79,7 +79,7 @@ def reset_rig(rig):
     bpy.context.view_layer.update()
 
 
-def prepare(row):
+def prepare(row, max_texture_size=1024):
     clear()
     source = Path(row['source'])
     if source.suffix == '.glb':
@@ -100,6 +100,7 @@ def prepare(row):
         for material in bpy.data.materials if row['id'] in {
             'mixamo-eface83a-acc0-4036-a15e-3c650df1510d',
             'mixamo-130a335c-bbdb-492f-971f-8faab0616b6e',
+            'mixamo-d0496a75-08b9-4f4e-9f1d-f65820323cc2',
         } else []:
             if material.node_tree:
                 shader = material.node_tree.nodes.get('Principled BSDF')
@@ -133,8 +134,8 @@ def prepare(row):
     reset_rig(rig)
     # Keep embedded texture colors/UVs, but bound gallery texture memory.
     for image in bpy.data.images:
-        if image.size[0] > 1024 or image.size[1] > 1024:
-            factor = 1024 / max(image.size)
+        if max_texture_size and (image.size[0] > max_texture_size or image.size[1] > max_texture_size):
+            factor = max_texture_size / max(image.size)
             image.scale(max(1, round(image.size[0] * factor)), max(1, round(image.size[1] * factor)))
         if image.source == 'FILE' and image.has_data:
             image.pack()

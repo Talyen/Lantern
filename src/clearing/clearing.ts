@@ -437,9 +437,9 @@ const runtimeDiagnostics = new ClearingDiagnostics({
 const diagnostics = () => runtimeDiagnostics.snapshot();
 
 try {
-  const paladin = await loader.loadAsync(characters.player.model);
-  sceneTextures(paladin.scene);
-  attachCharacter(player, paladin.scene, paladin.animations, characters.player.height);
+  const character = await loader.loadAsync(characters.player.model);
+  sceneTextures(character.scene);
+  attachCharacter(player, character.scene, character.animations, characters.player.height);
   await inventory.initialize();
   await gatheringTools.prepare();
   reset();

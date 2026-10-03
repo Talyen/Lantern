@@ -2,7 +2,7 @@
 
 Lantern is a weathered, dangerous fantasy world with welcoming pools of amber light. Diablo II informs the atmosphere and sense of refuge, rather than a literal reproduction of its assets. Painterly material detail adds age and character to low-poly shapes. Warm earth, copper and ochre midtones remain readable; the scene is neither vividly saturated nor uniformly black, icy, bleak or harsh.
 
-The selected male and female player appearances, original concept and production acceptance belong to [protagonist design](PROTAGONISTS.md). These designs are not yet replacements for the playable Paladin.
+The player uses the finished Erika Archer appearance; selected art, bow-only quiver behavior and preparation acceptance belong to [protagonist appearance](PROTAGONISTS.md). Preserve authored character features before exploring color changes.
 
 ## Palette and visual hierarchy
 

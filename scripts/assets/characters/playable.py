@@ -12,7 +12,7 @@ spec = importlib.util.spec_from_file_location('gallery', Path(__file__).with_nam
 gallery = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(gallery)
 MANIFEST = json.loads((ROOT / 'assets/motion-profiles.json').read_text())
-CHARACTERS = {'paladin': ('mixamo-eface83a-acc0-4036-a15e-3c650df1510d', MANIFEST['player']), 'goblin': ('mixamo-130a335c-bbdb-492f-971f-8faab0616b6e', MANIFEST['enemy']), 'skeleton': ('synty-generic-sm_gen_chr_skeleton_01', MANIFEST['skeleton'])}
+CHARACTERS = json.loads((ROOT / 'assets/playable-characters.json').read_text())
 
 
 def export(name, identity, config, motions_only=False):
@@ -25,9 +25,14 @@ def export(name, identity, config, motions_only=False):
         metadata = ROOT / '.local/animation-packs/mixamo/Library/Characters' / identity.removeprefix('mixamo-') / 'asset.json'
         source = json.loads(metadata.read_text())
         row = {'id': identity, 'name': source['name'], 'family': 'Mixamo', 'source': str(ROOT / source['file']), 'sourceHash': source['sha256']}
-    rig, error = gallery.prepare(row)
+    rig, error = gallery.prepare(row, max_texture_size=None)
     if error:
         raise RuntimeError(error)
+    if identity == 'mixamo-d0496a75-08b9-4f4e-9f1d-f65820323cc2':
+        quiver_spec = importlib.util.spec_from_file_location('erika', Path(__file__).with_name('erika.py'))
+        erika = importlib.util.module_from_spec(quiver_spec)
+        quiver_spec.loader.exec_module(erika)
+        erika.separate_quiver(rig)
     model = output / 'authored.glb'
     if not motions_only:
         bpy.ops.export_scene.gltf(filepath=str(model), export_format='GLB', export_animations=False)
@@ -61,7 +66,7 @@ def export(name, identity, config, motions_only=False):
         destination = output / 'motions' / f"{key}.glb"
         record = destination.with_suffix('.json')
         trim = recipe.get('trim')
-        signature = hashlib.sha256(json.dumps([row['sourceHash'], clip['sourceHash'], 5, recipe], sort_keys=True).encode()).hexdigest()
+        signature = hashlib.sha256(json.dumps([row['sourceHash'], clip['sourceHash'], hashlib.sha256((ROOT / 'scripts/assets/mixamo/baker.py').read_bytes()).hexdigest(), recipe], sort_keys=True).encode()).hexdigest()
         cached = json.loads(record.read_text()) if record.exists() else {}
         if not destination.exists() or cached.get('signature') != signature:
             destination.parent.mkdir(exist_ok=True)
@@ -100,10 +105,10 @@ def main():
     selection.add_argument('--player-only', action='store_true')
     parser.add_argument('--motions-only', action='store_true')
     args = parser.parse_args(sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else [])
-    for name, (identity, config) in CHARACTERS.items():
-        if args.player_only and name != 'paladin': continue
-        if args.skeleton_only and name != 'skeleton': continue
-        export(name, identity, config, args.motions_only)
+    for role, character in CHARACTERS.items():
+        if args.player_only and role != 'player': continue
+        if args.skeleton_only and role != 'skeleton': continue
+        export(Path(character['model']).parent.name, character['sourceId'], MANIFEST[role], args.motions_only)
 
 
 if __name__ == '__main__':

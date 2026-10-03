@@ -1,9 +1,15 @@
 import * as THREE from 'three';
 import { assetLibrary, type AssetInstance, type AssetLibrary } from '../assets/asset-library';
-import { itemDefinitions, normalizeLoadout, type HandItem, type Loadout } from '../gameplay/equipment';
+import { itemDefinitions, normalizeLoadout, weaponFamily, type HandItem, type Loadout } from '../gameplay/equipment';
 import { markOutline } from './outlines';
 
 export type PreparedEquipment = { loadout: Loadout; attachments: { item: HandItem; socket: THREE.Object3D; instance: AssetInstance; grip: THREE.Group }[] };
+
+/** Erika's authored bag/arrows are a back accessory, independent of gathering tools. */
+export function setCharacterQuiver(actor: THREE.Object3D, visible: boolean): void {
+  const quiver = actor.getObjectByName('character-quiver');
+  if (quiver) quiver.visible = visible;
+}
 
 /** Models prepare off-scene; a failed or superseded load cannot replace a working loadout. */
 export class Equipment {
@@ -53,6 +59,7 @@ export class Equipment {
     previous?.attachments.forEach(({ instance, grip }) => { grip.removeFromParent(); if(!this.candidates.has(previous)) instance.release(); });
     for (const { socket, grip } of candidate.attachments) socket.add(grip);
     this.current = candidate;
+    setCharacterQuiver(this.actor, weaponFamily(candidate.loadout.main) === 'bow');
   }
   discard(candidate: PreparedEquipment): void {
     if (!this.candidates.delete(candidate)) return;
@@ -61,11 +68,12 @@ export class Equipment {
   }
   setVisible(visible: boolean): void { this.current?.attachments.forEach(({grip}) => { grip.visible = visible; }); }
   diagnostics() {
-    return { loadout: this.current?.loadout ?? null, attachments: this.current?.attachments.map(({ item, socket, grip }) => ({ item, hand: socket.name, position: grip.getWorldPosition(new THREE.Vector3()).toArray() })) ?? [] };
+    return { loadout: this.current?.loadout ?? null, quiverVisible: this.actor.getObjectByName('character-quiver')?.visible ?? false, attachments: this.current?.attachments.map(({ item, socket, grip }) => ({ item, hand: socket.name, position: grip.getWorldPosition(new THREE.Vector3()).toArray() })) ?? [] };
   }
   dispose(): void {
     this.disposed = true;
     for (const candidate of this.candidates) this.discard(candidate);
     this.current?.attachments.forEach(({ instance, grip }) => { grip.removeFromParent(); instance.release(); }); this.current = null;
+    setCharacterQuiver(this.actor, false);
   }
 }

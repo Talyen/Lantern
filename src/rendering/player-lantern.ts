@@ -2,6 +2,7 @@ import { disposeSceneResources, sceneTextures, isMesh } from '../assets/resource
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { resolveLocalLight } from '../levels/local-lighting';
+import { MeshStandardNodeMaterial } from 'three/webgpu';
 
 /** Personal light follows the verified player rig; it never contributes to static bakes. */
 export class PlayerLantern {
@@ -9,6 +10,7 @@ export class PlayerLantern {
   readonly light: THREE.PointLight;
   private readonly ownerBounce: THREE.PointLight;
   private model: THREE.Group | null = null;
+  private hook: THREE.Mesh | null = null;
   private disposed = false;
   constructor(private actor: THREE.Group, enabled: boolean) {
     const recipe = resolveLocalLight({ role: 'lantern' });
@@ -25,6 +27,9 @@ export class PlayerLantern {
     this.root.position.set(.45, .95, .12); this.root.add(this.light); this.root.visible = enabled; actor.add(this.root);
   }
   async initialize(): Promise<void> {
+    this.actor.updateMatrixWorld(true);
+    const emitterPosition = this.light.getWorldPosition(new THREE.Vector3());
+    const bouncePosition = this.ownerBounce.getWorldPosition(new THREE.Vector3());
     const url = '/vendor/synty/environment/sm-prop-lantern-01.glb';
     try {
       const { scene } = await new GLTFLoader().loadAsync(url); sceneTextures(scene);
@@ -37,24 +42,37 @@ export class PlayerLantern {
       if (this.disposed) { this.disposeModel(); return; }
       this.root.add(scene);
     } catch { /* Optional cage art: the personal light remains available. */ }
-    const hips = this.actor.getObjectByName('Hips');
-    if (hips) {
+    const socket = this.actor.getObjectByName('lantern-socket');
+    const parent = socket ?? this.actor.getObjectByName('Hips');
+    if (parent) {
       this.actor.updateMatrixWorld(true);
-      const position = this.root.getWorldPosition(new THREE.Vector3());
+      const position = socket ? socket.getWorldPosition(new THREE.Vector3()) : this.root.getWorldPosition(new THREE.Vector3());
       const rotation = this.root.getWorldQuaternion(new THREE.Quaternion());
       const scale = this.root.getWorldScale(new THREE.Vector3());
-      hips.add(this.root); this.root.position.copy(hips.worldToLocal(position));
-      this.root.quaternion.copy(hips.getWorldQuaternion(new THREE.Quaternion()).invert().multiply(rotation));
-      this.root.scale.copy(scale.divide(hips.getWorldScale(new THREE.Vector3())));
+      parent.add(this.root); this.root.position.copy(parent.worldToLocal(position));
+      this.root.quaternion.copy(parent.getWorldQuaternion(new THREE.Quaternion()).invert().multiply(rotation));
+      this.root.scale.copy(scale.divide(parent.getWorldScale(new THREE.Vector3())));
+      if (socket) {
+        // Put the top of the authored handle against the belt socket.
+        if (this.model) {
+          this.model.position.y -= .22;
+          this.hook = new THREE.Mesh(new THREE.TorusGeometry(.014, .003, 6, 16), new MeshStandardNodeMaterial({ color: '#8d7147', metalness: .55, roughness: .7 }));
+          this.hook.position.y = .01; this.root.add(this.hook);
+        }
+        this.root.updateMatrixWorld(true);
+        // Keep the proven chest emitter/bounce placement while moving cage art.
+        this.light.position.copy(this.root.worldToLocal(emitterPosition));
+        this.ownerBounce.position.copy(this.root.worldToLocal(bouncePosition));
+      }
     }
   }
   setEnabled(value: boolean): void { this.root.visible = value; }
-  diagnostics() { return { enabled: this.root.visible, model: !!this.model, position: this.light.getWorldPosition(new THREE.Vector3()).toArray(), intensity: this.light.intensity, distance: this.light.distance, ownerBounce: { intensity: this.ownerBounce.intensity, distance: this.ownerBounce.distance }, attachedToRig: this.root.parent?.name === 'Hips' }; }
+  diagnostics() { return { enabled: this.root.visible, model: !!this.model, attachment: this.root.parent?.name, handlePosition: this.root.getWorldPosition(new THREE.Vector3()).toArray(), position: this.light.getWorldPosition(new THREE.Vector3()).toArray(), intensity: this.light.intensity, distance: this.light.distance, ownerBounce: { intensity: this.ownerBounce.intensity, distance: this.ownerBounce.distance }, attachedToRig: !!this.root.parent && ['Hips', 'lantern-socket'].includes(this.root.parent.name) }; }
   private disposeModel(): void {
     if (!this.model) return;
     this.model.removeFromParent();
     disposeSceneResources(this.model);
     this.model = null;
   }
-  dispose(): void { this.disposed = true; this.root.removeFromParent(); this.light.dispose(); this.ownerBounce.dispose(); this.disposeModel(); }
+  dispose(): void { this.disposed = true; this.root.removeFromParent(); this.light.dispose(); this.ownerBounce.dispose(); this.disposeModel(); if (this.hook) { disposeSceneResources(this.hook); this.hook = null; } }
 }

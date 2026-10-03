@@ -4,6 +4,7 @@ import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
 import { motionStates, type CombatMotions, type AnimationRole } from '../animation/combat-animations';
 import { dodgeDuration, type ActorState, type Motion } from '../gameplay/encounter';
 import { markOutline } from '../rendering/outlines';
+import { setCharacterQuiver } from '../rendering/equipment';
 
 type PlaybackRole = AnimationRole | 'blockUpper' | 'lower_run' | 'lower_left' | 'lower_right' | 'lower_backward';
 export type Actor = { root: THREE.Group; mixer: THREE.AnimationMixer | null; actions: Partial<Record<PlaybackRole, THREE.AnimationAction>>; current: Motion | null; moveSpeed: number; rigScale: number; blockBlend: number; runSpeed: number; speeds: Partial<Record<AnimationRole, number>>; contacts: number[]; commitLead: number; chopContact: number; mineContact: number; skillContacts: CombatMotions['skillContacts']; phases: Partial<Record<AnimationRole, number>>; gait: number; velocity: THREE.Vector2; previous: THREE.Vector2 | null; displacement: THREE.Vector2; weights: number[] };
@@ -36,6 +37,7 @@ export function play(actor: Actor, name: Motion, rate = 1): void {
 }
 export function attachCharacter(actor: Actor, source: THREE.Group, clips: THREE.AnimationClip[], height = 1.8): void {
   const model = cloneSkeleton(source); prepareStandardMaterials(model); markOutline(model, 'actor');
+  setCharacterQuiver(model, false);
   model.traverse(object => { if (object instanceof THREE.Mesh) object.castShadow = object.receiveShadow = true; });
   const wrapper = new THREE.Group(); wrapper.add(model); wrapper.updateMatrixWorld(true);
   const sourceHeight = new THREE.Box3().setFromObject(wrapper).getSize(new THREE.Vector3()).y;
