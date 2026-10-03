@@ -2,6 +2,8 @@
 
 Lantern uses fixed authored equipment. [The catalog](../src/gameplay/equipment.ts) owns item identities, slots, bag footprints and bonuses; [combat stats](../src/gameplay/combat-stats.ts) derives effective properties from equipped items. Inventory and stash copies have persistent instance IDs. There are no generated properties, rarity tiers, equipment proficiency gates, critical hits or elemental resistances.
 
+Bow and Yew Longbow share the calibrated left-hand grip. Their authored YZ plane contains the shooting direction, with the curve ahead of the string; the generic one-handed grip previously turned the bows sideways. The correction applies to gameplay and both animation labs, without changing model pivots or motion keyframes.
+
 ## Shared slots and weapon sets
 
 Helmet, Body, Gloves, Boots, left Ring, right Ring, Amulet and Belt are shared across both sets. Main hand and Off hand belong to set I or II; only the active set contributes. Swords and Axes support a Shield; Bows and Staffs use both hands. Items in the bag, stash and recovery overflow provide no bonuses.

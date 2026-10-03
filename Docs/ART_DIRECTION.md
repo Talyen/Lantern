@@ -29,6 +29,8 @@ The woodland uses weathered autumn colors. Existing pine silhouettes are deliber
 
 These swatches establish relationships, not universal material tints. Preserve authored color differences between material regions and facets. Characters and nearby ground contacts must remain legible within warm light pools; distant woodland detail can recede into darkness. Keep combat ground quieter than surrounding scenery. Rare magic belongs to existing portals, loot and a few future landmarks; avoid ambient runes and pervasive glowing vegetation.
 
+Ability target footprints should be subtle and thematic, with subdued surface colours, soft edges and irregular marks. Avoid bright glowing targeting shapes and prominent filled areas. Arrow Rain's footprint uses a faint broken earthen perimeter; the arrows and their impacts carry the emphasis.
+
 ## Materials and projection
 
 Use broad material shapes visible from the normal isometric camera: mineral strata, bark flakes, wood grain, foliage clusters, worn canvas and leather scuffs. Detail should enrich inspection views without creating shimmer or camouflage during combat. Preserve faceted normals and silhouettes. Broad normal-map relief and restrained cavity/roughness variation reinforce these forms. POM adds shallow apparent relief to suitable earth, litter, rock and bark regions; avoid photographic micro-noise or uniformly embossed surfaces. Prepared rock bevels and irregular pine tiers add purposeful geometry without a terrain rebuild.

@@ -133,11 +133,11 @@ export class UltimateEffects {
     material.opacityNode = cone.mul(reached.mul(scuffs.pow(2)).mul(.5).add(band.mul(.55))).mul(grain).mul(this.footprintOpacity).add(outline.mul(this.anticipationOpacity));
     this.swordFootprint = this.project(material, new THREE.Vector3(0, 0, 3), new THREE.Vector3(7, 7, 1));
     const r = uv().sub(.5).mul(5.3).length();
-    const worn = mx_noise_float(uv().mul(6)).mul(.025);
-    const ring = smoothstep(.015, .065, r.sub(2.2).add(worn).abs()).oneMinus();
-    const inner = smoothstep(1.6, 2.2, r).oneMinus().mul(.06);
+    const worn = mx_noise_float(uv().mul(9)).mul(.07);
+    const ring = smoothstep(.025, .13, r.sub(2.2).add(worn).abs()).oneMinus();
+    const weathering = smoothstep(-.25, .55, mx_noise_float(uv().mul(18)));
     const rain = new MeshBasicNodeMaterial({ transparent: true, depthWrite: false });
-    rain.colorNode = color('#d8b77e'); rain.opacityNode = ring.mul(.23).add(inner).mul(this.rainOpacity);
+    rain.colorNode = color('#463323'); rain.opacityNode = ring.mul(weathering).mul(.28).mul(this.rainOpacity);
     this.rainFootprint = this.project(rain, new THREE.Vector3(0, 0, 4.25), new THREE.Vector3(5.3, 5.3, 1));
   }
   private buildRibbon(): void {
