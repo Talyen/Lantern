@@ -1,3 +1,4 @@
+import { deletionExclusions } from '../review/exclusions.mjs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createHash } from 'node:crypto';
@@ -101,7 +102,7 @@ export async function importPacks(ids, downloads, verify = false) {
   const currentCatalog = () => readJSON(catalogPath, { version: 1, complete: true, assets: {} });
   const catalog = await currentCatalog();
   if (catalog.version !== 1 || !catalog.assets) throw new Error('Unsupported existing catalog');
-  const staged = [];
+  const staged = [], excluded = deletionExclusions();
   for (const id of ids) {
     const pack = packs[id], archive = verify ? await preservedArchive(id) : resolve(downloads, pack.archive);
     const { files, supplied } = await readPack(archive, pack), entries = entriesFor(id, files), prepared = [], supportingModels = [], assets = {};
@@ -129,16 +130,16 @@ export async function importPacks(ids, downloads, verify = false) {
       const entry = entries.find(entry => entry.file === file);
       const url = entry ? `/vendor/synty/library/models/${id}/${basename(file)}` : `/vendor/${id}/reference-scenes/${basename(file)}`;
       const path = resolve(root, 'public', url.slice(1));
-      const bytes = verify ? await readFile(path) : output.bytes;
+      const bytes = verify && !excluded(entry ? `${id}:model:${entry.slug}` : '', url) ? await readFile(path) : output.bytes;
       if (hash(bytes) !== hash(output.bytes)) throw new Error(`Prepared art differs from preserved source: ${url}`);
       const checked = await inspectModel(bytes, file, entry?.expected ?? demoExpected(id, file, files));
       const assetId = entry ? `${id}:model:${entry.slug}` : undefined;
-      const report = { file, url, sourceHash: hash(source), preparedHash: hash(bytes), renamedPivotDescriptions: output.renamed, ...checked };
+      const report = { file, url, assetId, sourceHash: hash(source), preparedHash: hash(bytes), renamedPivotDescriptions: output.renamed, ...checked };
       prepared.push({ path, bytes, report });
       if (entry) {
         assets[assetId] = JSON.parse(JSON.stringify({ id: assetId, pack: id, name: entry.name, kind: 'model', url, sourceHash: hash(source), preparedHash: hash(bytes),
           dependencies: [], status: 'converted', bounds: checked.bounds, category: entry.category, description: entry.description, ...entry.metadata, warnings: packWarnings(id) }));
-        if (verify && Object.entries(assets[assetId]).some(([key, value]) => JSON.stringify(catalog.assets[assetId]?.[key]) !== JSON.stringify(value))) throw new Error(`Missing or stale library registration: ${assetId}`);
+        if (verify && !excluded(assetId, url) && Object.entries(assets[assetId]).some(([key, value]) => JSON.stringify(catalog.assets[assetId]?.[key]) !== JSON.stringify(value))) throw new Error(`Missing or stale library registration: ${assetId}`);
       }
     }
     const triangleTotal = prepared.reduce((sum, item) => sum + (entries.some(entry => entry.file === item.report.file) ? item.report.triangles : 0), 0);
@@ -154,7 +155,8 @@ export async function importPacks(ids, downloads, verify = false) {
       await preserveSources(resolve(sourceRoot, pack.id), pack.files, pack.archive, packs[pack.id].archive);
     }
     for (const pack of staged) {
-      for (const item of pack.prepared) await write(item.path, item.bytes);
+      for (const item of pack.prepared) if (!excluded(item.report.assetId ?? '', item.report.url)) await write(item.path, item.bytes);
+      for (const [id, asset] of Object.entries(pack.assets)) if (excluded(id, asset.url)) delete pack.assets[id];
       await write(resolve(sourceRoot, pack.id, 'lantern-import.json'), jsonBytes({ pack: pack.id, archiveHash: pack.archiveHash, verifiedSourceFiles: pack.files.size,
         suppliedChecksumFiles: pack.supplied.size, sources: pack.sources,
         scope: 'Owner-supplied generated art. Bundled scripts retained without execution. No gameplay selection or placements. Unsupplied checksums are import-time fingerprints, not independent delivery verification.',
@@ -163,6 +165,7 @@ export async function importPacks(ids, downloads, verify = false) {
     // Re-read before publication so unrelated additions in this checkout survive.
     const latest = await currentCatalog();
     if (latest.version !== 1 || !latest.assets) throw new Error('Unsupported existing catalog');
+    for (const [id, asset] of Object.entries(latest.assets)) if (excluded(id, asset.url)) delete latest.assets[id];
     for (const pack of staged) Object.assign(latest.assets, pack.assets);
     await write(catalogPath, jsonBytes(latest));
   }

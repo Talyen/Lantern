@@ -1,3 +1,4 @@
+import { requireShippingApprovals } from './review/index.mjs';
 import { mkdir, rm, writeFile, stat } from 'node:fs/promises';
 import { resolve, relative } from 'node:path';
 import { cli, parseArgs, root } from '../lib/cli.mjs';
@@ -6,6 +7,7 @@ import { gameplayAssets, inventory, rejectArchives } from '../lib/assets.mjs';
 await cli(async () => {
   const args = parseArgs(process.argv.slice(2));
   if (args['--help']) { console.log('Usage: node scripts/assets/stage-library-build.mjs'); return; }
+  await requireShippingApprovals(root);
   const stage = resolve(root, '.local/build-public'), source = resolve(root, 'public');
   const { selection, selected, paths } = await gameplayAssets(source);
   const files = await inventory(source, ['vendor']);

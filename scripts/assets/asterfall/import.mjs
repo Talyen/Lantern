@@ -1,3 +1,4 @@
+import { deletionExclusions } from '../review/exclusions.mjs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createHash } from 'node:crypto';
@@ -20,7 +21,7 @@ export async function importArmory(archive) {
     if (bytes.length !== expected.bytes || createHash('sha256').update(bytes).digest('hex') !== expected.sha256) throw new Error(`Archive hash mismatch: ${name}`);
     files.set(name, bytes);
   }
-  const assets = {};
+  const assets = {}, excluded = deletionExclusions();
   for (const weapon of weapons) {
     const bytes = files.get(`glb/${weapon}.glb`);
     if (!bytes) throw new Error(`Missing GLB: ${weapon}`);
@@ -30,13 +31,14 @@ export async function importArmory(archive) {
     const bounds = [0, 1].map(side => [0, 1, 2].map(axis => (side ? Math.max : Math.min)(...positions.map(accessor => accessor[side ? 'max' : 'min'][axis]))));
     if (!bounds.flat().every(Number.isFinite) || bounds[1].every((value, axis) => value <= bounds[0][axis])) throw new Error(`Invalid bounds: ${weapon}`);
     const id = `asterfall:${weapon}`;
+    if (excluded(id, `/vendor/asterfall/glb/${weapon}.glb`)) continue;
     assets[id] = { id, pack: 'asterfall', name: weapon, kind: 'model', url: `/vendor/asterfall/glb/${weapon}.glb`, sourceHash: manifest[`glb/${weapon}.glb`].sha256, dependencies: [], status: 'converted', warnings: [], bounds };
   }
   const source = resolve(root, '.local/animation-packs/asterfall-armory'), output = resolve(root, 'public/vendor/asterfall');
   files.set('manifest.json', await read('manifest.json'));
   await preserveSources(source, files, archive, 'Asterfall_Armory_11_Weapons.zip');
   await mkdir(resolve(output, 'glb'), { recursive: true });
-  for (const weapon of weapons) await writeFile(resolve(output, `glb/${weapon}.glb`), files.get(`glb/${weapon}.glb`));
+  for (const weapon of weapons.filter(weapon => assets[`asterfall:${weapon}`])) await writeFile(resolve(output, `glb/${weapon}.glb`), files.get(`glb/${weapon}.glb`));
   await writeFile(resolve(output, 'catalog.json'), JSON.stringify({ version: 1, complete: true, assets }, null, 2) + '\n');
   console.log(`Imported ${weapons.length} validated weapons; private source: ${source}; preview catalog: ${output}/catalog.json`);
 }

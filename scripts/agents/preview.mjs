@@ -59,10 +59,10 @@ export async function stopPreview(cwd) {
   }
   throw new Error('Owned preview did not stop; inspect its log.');
 }
-export async function startPreview(cwd, { main = false, browser = false, author = false, area = 'clearing' } = {}) {
+export async function startPreview(cwd, { main = false, browser = false, author = false, area = 'clearing', lab = null } = {}) {
   const existing = await livePreview(cwd);
   if (existing) {
-    if (browser !== existing.browser || author !== existing.author) throw new Error('Preview mode differs; run agent:dev --stop before changing it.');
+    if (browser !== existing.browser || author !== existing.author || lab !== (existing.lab ?? null)) throw new Error('Preview mode differs; run agent:dev --stop before changing it.');
     return existing;
   }
   const previous = await readJSON(sessionPath(cwd), null);
@@ -70,7 +70,7 @@ export async function startPreview(cwd, { main = false, browser = false, author 
   const token = randomUUID(), directory = join(cwd, '.local/agents');
   await mkdir(directory, { recursive: true });
   const log = await open(join(directory, 'preview.log'), 'w');
-  const child = spawn(process.execPath, [resolve(root, 'scripts/agents/preview.mjs'), '--serve'], { cwd, env: { ...process.env, LANTERN_PREVIEW: JSON.stringify({ main, browser, author, area, token }), LANTERN_LEASES: '{}', LANTERN_LEVEL_SESSION: token }, detached: true, stdio: ['ignore', log.fd, log.fd] });
+  const child = spawn(process.execPath, [resolve(root, 'scripts/agents/preview.mjs'), '--serve'], { cwd, env: { ...process.env, LANTERN_PREVIEW: JSON.stringify({ main, browser, author, area, lab, token }), LANTERN_LEASES: '{}', LANTERN_LEVEL_SESSION: token }, detached: true, stdio: ['ignore', log.fd, log.fd] });
   child.unref(); await log.close();
   const identity = await processIdentity(child.pid);
   let interrupted = false, reportedWaiting = false;
@@ -98,7 +98,7 @@ async function serve() {
   const trackedGroups = new Map();
   let browserScan = Promise.resolve();
   const record = { pid: process.pid, started: await processIdentity(process.pid), token: options.token,
-    session, renderer: 'webgpu', browser: options.browser, author: options.author, status: 'starting', ready: false };
+    session, renderer: 'webgpu', browser: options.browser, author: options.author, lab: options.lab ?? null, status: 'starting', ready: false };
   const trackBrowser = () => {
     browserScan = browserScan.catch(() => {}).then(async () => {
       for (const group of await browserProcessGroups(session)) if (trackedGroups.get(group.pid) !== group.started) {
@@ -157,7 +157,7 @@ async function serve() {
     if (options.author) await writeJSON(join(cwd, '.local/level-design/session.json'), record);
     if (options.browser) {
       browserTimer = setInterval(() => { trackBrowser().catch(error => console.error(error)); }, 1000);
-      try { await run('agent-browser', ['--session', session, '--headed', 'false', '--webgpu', 'open', `${url}/?area=${encodeURIComponent(options.area)}${options.author ? '&author=levels' : ''}`]); }
+      try { await run('agent-browser', ['--session', session, '--headed', 'false', '--webgpu', 'open', options.lab ? `${url}/?lab=${encodeURIComponent(options.lab)}` : `${url}/?area=${encodeURIComponent(options.area)}${options.author ? '&author=levels' : ''}`]); }
       finally { await trackBrowser(); }
       if (!trackedGroups.size) throw new Error('Browser opened without a verifiable owned process group; inspect preview.log.');
     }

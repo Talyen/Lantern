@@ -6,6 +6,9 @@ import json
 import re
 import shutil
 import struct
+from importlib.machinery import SourceFileLoader
+
+exclusions = SourceFileLoader('asset_exclusions', str(Path(__file__).resolve().parents[2] / 'review/exclusions.py')).load_module()
 
 
 def key(text): return re.sub(r'[^a-z0-9]+','-',text.lower()).strip('-')
@@ -67,7 +70,7 @@ def prepare(entries, metadata, output, private, version):
     output.mkdir(parents=True,exist_ok=True)
     previous=json.loads((output/'catalog.json').read_text()) if (output/'catalog.json').exists() else {'assets':{}}
     selected_packs={e['pack'] for e in entries}
-    retained={ident:asset for ident,asset in previous['assets'].items() if asset['pack'] not in selected_packs}
+    retained={ident:asset for ident,asset in previous['assets'].items() if asset['pack'] not in selected_packs and not exclusions.excluded(ident, asset['url'])}
     catalog={'version':version,'assets':retained,'complete':False}
     assets=catalog['assets']; jobs=[]; textures={}; hash_ids={}; file_ids={}; by_source={}; unity_models={}; materials_by_bundle={}
     entries_by_source={e['source']:e for e in entries}
@@ -88,6 +91,8 @@ def prepare(entries, metadata, output, private, version):
         else:
             ident=e['pack']+':texture:'+key(str(Path(e['relativePath']).with_suffix('')))
             a,target=add(e,'texture',ident,'.png' if e['extension']=='.tga' else e['extension']);ident=a['id'];hash_ids[h]=ident
+            if exclusions.excluded(ident, a['url']):
+                e.update(status='excluded', reason='Completed asset deletion');continue
             if e['extension']!='.tga':
                 if not target.exists() or hashlib.sha256(target.read_bytes()).hexdigest()!=h:target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(e['localPath'],target)
                 a.update(status='converted',bytes=target.stat().st_size)
@@ -109,7 +114,8 @@ def prepare(entries, metadata, output, private, version):
         pack=next(e['pack'] for e in entries if e['source'].startswith(bundle+'/'))
         default_id=pack+':material:unity-default'
         default={'name':'Unity default material','color':[0.5,0.5,0.5,1],'roughness':0.5,'metalness':0,'textures':{},'alphaMode':'OPAQUE','warnings':['Unity built-in default material translated to neutral PBR'],'id':default_id}
-        default_target=output/'materials'/pack/'unity-default.json';write(default_target,default)
+        default_target=output/'materials'/pack/'unity-default.json'
+        if not exclusions.excluded(default_id, '/vendor/synty/library/' + str(default_target.relative_to(output))):write(default_target,default)
         assets[default_id]={'id':default_id,'kind':'material','pack':pack,'name':default['name'],'status':'converted','url':'/vendor/synty/library/'+str(default_target.relative_to(output)),'sourceHash':hash_value(default),'dependencies':[],'warnings':default['warnings']}
         mapped['0000000000000000f000000000000000']=default
 
@@ -123,6 +129,8 @@ def prepare(entries, metadata, output, private, version):
             a.update(status='converted',dependencies=list({t['id'] for t in material['textures'].values()}),warnings=material['warnings'])
             target=target.with_name(hash_value([a['id'],material])+'.json')
             a['url']='/vendor/synty/library/'+str(target.relative_to(output))
+            if exclusions.excluded(a['id'], a['url']):
+                e.update(status='excluded', reason='Completed asset deletion');continue
             write(target,material);mapped[m['guid']]['id']=a['id']
     material_lookup={}; native_bindings={}; model_mesh_names={}
     for bundle,mapped in materials_by_bundle.items():
@@ -152,6 +160,8 @@ def prepare(entries, metadata, output, private, version):
         if h in hash_ids:
             ident=hash_ids[h];e.update(assetId=ident,status='duplicate');assets[ident].setdefault('aliases',[]).append(e['source']);continue
         a,target=add(e,'model',model_id(e),'.glb');ident=a['id'];hash_ids[h]=ident
+        if exclusions.excluded(ident, a['url']):
+            e.update(status='excluded', reason='Completed asset deletion');continue
         # Preserve distinct geometry versions, even when names coincide.
         mats={name:mat for (pack,name),mat in merged_materials.items() if pack in {e['pack'],'generic'}}
         basename=Path(e['relativePath']).stem
@@ -184,6 +194,7 @@ def prepare(entries, metadata, output, private, version):
             native_hash=hashlib.sha256(Path(mesh['geometry']).read_bytes()+Path(__file__).with_name('native_mesh.py').read_bytes()).hexdigest()
             ident=original['pack']+':mesh:'+mesh['guid']+'-'+str(mesh['fileId'])+'-'+native_hash[:10]
             target=output/'meshes'/(native_hash+'.glb')
+            if exclusions.excluded(ident, '/vendor/synty/library/meshes/' + target.name):continue
             if not target.exists():bounds=native_export(mesh['geometry'],target)
             else:
                 with target.open('rb') as stream:
@@ -226,10 +237,14 @@ def prepare(entries, metadata, output, private, version):
                 if node['unsupported']:warnings.append(node['name']+': omitted '+', '.join(node['unsupported']))
             target=target.with_name(hash_value([a['id'],assembly])+'.json')
             a['url']='/vendor/synty/library/'+str(target.relative_to(output))
+            if exclusions.excluded(a['id'], a['url']):
+                e.update(status='excluded', reason='Completed asset deletion');continue
             write(target,assembly)
             renderable=any(n.get('mesh') for n in assembly['nodes'])
             a.update(status='failed' if failed else 'converted' if renderable else 'unsupported',dependencies=sorted(deps),warnings=warnings,reason=None if renderable else 'Engine-only prefab; no reusable static or skinned geometry')
     # Completed conversions are reusable only when their complete dependency fingerprint matches.
+    assets_to_remove=[ident for ident, asset in assets.items() if exclusions.excluded(ident, asset['url'])]
+    for ident in assets_to_remove:del assets[ident]
     queued=[]
     for job in jobs:
         result=Path(job['result']);target=Path(job['target'])
@@ -240,7 +255,7 @@ def prepare(entries, metadata, output, private, version):
 
 def finish(entries,catalog,output,private):
     for e in entries:
-        if e.get('assetId') and e['status']!='duplicate':
+        if e.get('assetId') and e['status'] not in {'duplicate', 'excluded'}:
             a=catalog['assets'][e['assetId']];e['status']=a['status'];e['reason']=a.get('reason')
     catalog['complete']=not any(a['status'] in {'failed','pending'} for a in catalog['assets'].values())
     write(output/'catalog.json',catalog)

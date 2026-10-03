@@ -14,6 +14,7 @@ IDLE = '2b810890b52a'
 
 
 def main():
+    if gallery.exclusions.excluded('', '/vendor/characters/merchant/model.glb'):return
     metadata = ROOT / '.local/animation-packs/mixamo/Library/Characters' / IDENTITY / 'asset.json'
     source = json.loads(metadata.read_text())
     row = {'id': 'mixamo-' + IDENTITY, 'name': source['name'], 'family': 'Mixamo',

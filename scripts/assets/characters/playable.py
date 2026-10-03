@@ -110,6 +110,7 @@ def main():
     for role, character in CHARACTERS.items():
         if args.player_only and role != 'player': continue
         if args.skeleton_only and role != 'skeleton': continue
+        if gallery.exclusions.excluded('character:' + character['sourceId'], character['model'], 'gameplay'):continue
         export(Path(character['model']).parent.name, character['sourceId'], MANIFEST[role], args.motions_only)
 
 

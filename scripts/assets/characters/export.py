@@ -12,6 +12,9 @@ ROOT = Path(__file__).resolve().parents[3]
 spec = importlib.util.spec_from_file_location('motion_baker', ROOT / 'scripts/assets/mixamo/baker.py')
 baker = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(baker)
+exclusions_spec = importlib.util.spec_from_file_location('asset_exclusions', ROOT / 'scripts/assets/review/exclusions.py')
+exclusions = importlib.util.module_from_spec(exclusions_spec)
+exclusions_spec.loader.exec_module(exclusions)
 OUTPUT = ROOT / 'public/vendor/character-gallery'
 VERSION = 3
 BAKER_SIGNATURE = hashlib.sha256((ROOT / 'scripts/assets/mixamo/baker.py').read_bytes()).hexdigest()
@@ -198,12 +201,12 @@ def main():
     clips = next(pack['clips'] for pack in catalog['packs'] if pack['id'] == 'mixamo')
     choices = {'idle': 'sword and shield idle', 'run': 'sword and shield run', 'attack': 'sword and shield slash'}
     motions = {role: next(clip for clip in clips if clip['name'] == name) for role, name in choices.items()}
-    rows = roster()
+    rows = [row for row in roster() if not exclusions.excluded('character:' + row['id'], f"/vendor/character-gallery/{row['id']}/model.glb", 'gallery')]
     selected = set(args.character.split(',')) if args.character else None
     if selected and selected - {row['id'] for row in rows}:
         parser.error(f'Unknown character IDs: {sorted(selected - {row["id"] for row in rows})}')
     previous = json.loads((OUTPUT / 'catalog.json').read_text()) if selected and (OUTPUT / 'catalog.json').exists() else {}
-    retained = {row['id']: row for row in previous.get('characters', [])}
+    retained = {row['id']: row for row in previous.get('characters', []) if not exclusions.excluded('character:' + row['id'], row['url'], 'gallery')}
     records = []
     for index, row in enumerate(rows):
         if selected and row['id'] not in selected:
@@ -219,11 +222,11 @@ def main():
         # Interrupted exports preserve the last complete entries and can resume.
         retained[row['id']] = record
         if selected:
-            order = list(dict.fromkeys([item['id'] for item in previous.get('characters', [])] + [item['id'] for item in records]))
+            order = list(dict.fromkeys([item['id'] for item in previous.get('characters', []) if item['id'] in retained] + [item['id'] for item in records]))
             published = [retained[identity] for identity in order]
         else:
             published = records
-        expected = max(len(rows), previous.get('expectedCount', 0))
+        expected = len(rows)
         write_json(OUTPUT / 'catalog.json', {'version': 1, 'expectedCount': expected, 'complete': len(published) == expected, 'characters': published})
     failed = [r for r in records if r['status'] != 'ready']
     print(f'Prepared {len(records)}/{len(rows)} characters; {len(failed)} unavailable.', flush=True)

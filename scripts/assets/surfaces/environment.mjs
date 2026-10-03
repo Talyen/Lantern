@@ -1,3 +1,4 @@
+import { deletionExclusions } from '../review/exclusions.mjs';
 import { surfaceAssets } from './jobs.mjs';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -12,7 +13,8 @@ await cli(async () => {
   if (args['--ground-fields']) { await blender('assets/surfaces/ground_fields.py', [root], args['--blender']); return; }
   const manifest = JSON.parse(await readFile(resolve(root, 'assets/textures/environment/manifest.json'), 'utf8'));
   const catalog = JSON.parse(await readFile(resolve(root, 'public/vendor/synty/library/catalog.json'), 'utf8'));
-  const jobs = surfaceAssets(manifest, args).map(asset => {
+  const excluded = deletionExclusions();
+  const jobs = surfaceAssets(manifest, args).filter(asset => !excluded(asset.id, asset.url, args['--area'] ? `area:${args['--area']}` : args['--showcase'] ? 'showcase' : 'gameplay')).map(asset => {
     const url = asset.sourceUrl ?? (asset.id.startsWith('/') ? asset.id : catalog.assets[asset.id]?.url);
     const source = assetPath(resolve(root, 'public/vendor/synty'), url, '/vendor/synty/');
     if (!existsSync(source)) throw new Error(`Missing local model: ${asset.id}`);

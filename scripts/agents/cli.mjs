@@ -8,13 +8,13 @@ import { statusReport, formatStatus } from './status.mjs';
 await cli(async () => {
   const options = {
     start: { '--task': 'value', '--no-wait': 'boolean' },
-    dev: { '--task': 'value', '--browser': 'boolean', '--author': 'boolean', '--area': 'value', '--stop': 'boolean' },
+    dev: { '--task': 'value', '--browser': 'boolean', '--author': 'boolean', '--area': 'value', '--stop': 'boolean', '--lab': 'value' },
     finish: { '--task': 'value', '--paths': 'value', '--message': 'value', '--resolved-assets': 'value' },
     sources: { '--task': 'value', '--sources': 'value' },
     status: { '--all': 'boolean', '--task': 'value', '--json': 'boolean' }, cleanup: { '--task': 'value' }, main: { '--stop': 'boolean', '--browser': 'boolean' },
   };
   const { command: operation, args } = parseCommand(process.argv.slice(2), options);
-  if (args['--help']) { console.log('Agent workflow: start --task SLUG [--no-wait]; dev [--browser] [--author] [--area ID] [--stop]; finish [--paths JSON_FILE] [--message TEXT] [--resolved-assets JSON_FILE]; sources --sources animation-packs,synty-library; status [--all | --task SLUG] [--json]; cleanup [--task SLUG]; main [--stop].'); return; }
+  if (args['--help']) { console.log('Agent workflow: start --task SLUG [--no-wait]; dev [--browser] [--author] [--area ID] [--lab assets] [--stop]; finish [--paths JSON_FILE] [--message TEXT] [--resolved-assets JSON_FILE]; sources --sources animation-packs,synty-library; status [--all | --task SLUG] [--json]; cleanup [--task SLUG]; main [--stop].'); return; }
   if (operation === 'start' && !args['--task']) throw new UsageError('agent:start requires --task SLUG.');
   const ctx = await context();
   if (operation === 'start') {
@@ -36,7 +36,7 @@ await cli(async () => {
     if (!task) throw new Error('Unknown task');
     if (operation === 'dev') {
       if (args['--stop']) await stopPreview(task.path);
-      else { await ensureDependencies(task); const record = await startPreview(task.path, { browser: !!args['--browser'], author: !!args['--author'], area: args['--area'] ?? 'clearing' }); console.log(`${record.url}\nBrowser session: ${record.session}`); }
+      else { await ensureDependencies(task); const record = await startPreview(task.path, { browser: !!args['--browser'], author: !!args['--author'], area: args['--area'] ?? 'clearing', lab: args['--lab'] ?? null }); console.log(`${record.url}\nBrowser session: ${record.session}`); }
     } else if (operation === 'finish') {
       await stopPreview(task.path);
       await finishTask(ctx, task, { paths: args['--paths'] ? await readJSON(resolve(process.cwd(), args['--paths'])) : [], message: args['--message'], resolvedAssets: args['--resolved-assets'] ? await readJSON(resolve(process.cwd(), args['--resolved-assets'])) : [] });

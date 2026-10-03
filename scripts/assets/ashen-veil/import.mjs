@@ -1,3 +1,4 @@
+import { deletionExclusions } from '../review/exclusions.mjs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createHash } from 'node:crypto';
@@ -75,6 +76,7 @@ export async function importEnvironment(archive) {
   const manifest = JSON.parse(files.get('manifest.json'));
   if (manifest.units !== 'metres' || manifest.assets?.length !== 37) throw new Error('Unexpected Ashen Veil manifest');
   const entries = new Map(manifest.assets.map(entry => [entry.file, entry]));
+  const excluded = deletionExclusions();
   const prepared = new Map(), assets = {}, report = [];
   for (const [name, source] of files) {
     if (!name.endsWith('.glb')) continue;
@@ -92,12 +94,14 @@ export async function importEnvironment(archive) {
   const library = resolve(root, 'public/vendor/synty/library'), catalogPath = resolve(library, 'catalog.json');
   const catalog = existsSync(catalogPath) ? JSON.parse(await readFile(catalogPath, 'utf8')) : { version: 1, complete: true, assets: {} };
   if (catalog.version !== 1 || !catalog.assets) throw new Error('Unsupported shared library catalog');
+  for (const [id, asset] of Object.entries(assets)) if (excluded(id, asset.url)) { delete assets[id]; delete catalog.assets[id]; }
   Object.assign(catalog.assets, assets);
   const source = resolve(root, '.local/synty-library/ashen-veil-environment');
   files.set('SHA256SUMS.txt', sums);
   await preserveSources(source, files, archive, 'Ashen_Veil_Environment_Essentials.zip');
   for (const [name, bytes] of prepared) {
     const path = entries.has(name) ? resolve(library, 'models/ashen-veil', name.slice(4)) : resolve(root, 'public/vendor/ashen-veil/reference-scenes', name.slice(4));
+    if (excluded(entries.has(name) ? `ashen-veil:model:${entries.get(name).id.replaceAll('_', '-')}` : '', '/' + path.slice(resolve(root, 'public').length + 1))) continue;
     await mkdir(resolve(path, '..'), { recursive: true }); await writeFile(path, bytes);
   }
   await writeFile(resolve(source, 'lantern-import.json'), JSON.stringify({ pack: manifest.pack, files: report }, null, 2) + '\n');

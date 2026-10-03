@@ -2,6 +2,10 @@
 
 Use an [owned task worktree](DEVELOPMENT.md#working-alongside-other-agents) and read [private resource rules](DEVELOPMENT_REFERENCE.md#private-assets-and-resource-use) before preparing assets. Preparation is explicit and never part of routine checks.
 
+## Visual asset review
+
+Use the [Asset Review Lab](ASSET_REVIEW.md) to approve individual prepared appearances, deny asset families, or request separate deletion cleanup. Existing assets start unreviewed; shipping requires approval of used appearances and selected visual roots. Completed deletion exclusions prevent import/export resurrection while preserving private sources.
+
 ## Private asset workflow
 
 Gameplay audio preparation, private source provenance, optimized output and event coverage are owned by [gameplay sound](AUDIO.md). `npm run audio:prepare` is explicit; routine checks and builds only validate/stage selected prepared files.

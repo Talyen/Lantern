@@ -3,6 +3,9 @@ import argparse
 import sys
 from pathlib import Path
 import bpy
+from importlib.machinery import SourceFileLoader
+
+exclusions = SourceFileLoader('asset_exclusions', str(Path(__file__).resolve().parents[1] / 'review/exclusions.py')).load_module()
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--source-root', type=Path, required=True)
@@ -34,7 +37,8 @@ for name, (filename, surface) in models.items():
     for mesh in meshes:
         mesh.data.materials.clear()
         mesh.data.materials.append(mat)
-    bpy.ops.export_scene.gltf(filepath=str(destination / f'{name}.glb'), export_format='GLB', export_apply=True)
+    if not exclusions.excluded_path(destination / f'{name}.glb'):
+        bpy.ops.export_scene.gltf(filepath=str(destination / f'{name}.glb'), export_format='GLB', export_apply=True)
     if not surface:
         continue
     albedo = args.textures / f'{surface}-painterly.png'
@@ -90,5 +94,6 @@ for name, (filename, surface) in models.items():
         mesh.data.materials.clear()
         mesh.data.materials.append(final)
     bpy.ops.object.select_all(action='SELECT')
-    bpy.ops.export_scene.gltf(filepath=str(destination / f'{name}-painterly.glb'), export_format='GLB', export_apply=True)
+    if not exclusions.excluded_path(destination / f'{name}-painterly.glb'):
+        bpy.ops.export_scene.gltf(filepath=str(destination / f'{name}-painterly.glb'), export_format='GLB', export_apply=True)
     print(f'Exported original and painterly {name}')

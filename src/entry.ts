@@ -1,10 +1,12 @@
 import { loadingScreen } from './ui/loading';
 import { initializeDiagnostics, recordFailure } from './diagnostics/report';
 initializeDiagnostics();
-const lab = import.meta.env.DEV && ['characters', 'weapons', 'animations'].includes(new URLSearchParams(location.search).get('lab') ?? '');
+const lab = import.meta.env.DEV && ['characters', 'weapons', 'animations', 'assets'].includes(new URLSearchParams(location.search).get('lab') ?? '');
 if (lab) loadingScreen.dismiss();
 try {
-  if (import.meta.env.DEV && new URLSearchParams(location.search).get('lab') === 'characters') {
+  if (import.meta.env.DEV && new URLSearchParams(location.search).get('lab') === 'assets') {
+    await import('./labs/assets/asset-review-lab');
+  } else if (import.meta.env.DEV && new URLSearchParams(location.search).get('lab') === 'characters') {
     await import('./labs/characters/character-gallery');
   } else if (import.meta.env.DEV && new URLSearchParams(location.search).get('lab') === 'weapons') {
     await import('./labs/weapons/weapon-gallery');

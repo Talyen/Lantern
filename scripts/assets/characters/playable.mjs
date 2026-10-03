@@ -1,3 +1,4 @@
+import { deletionExclusions } from '../review/exclusions.mjs';
 import { cli, parseArgs, blender, root, UsageError } from '../../lib/cli.mjs';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
@@ -7,11 +8,14 @@ await cli(async () => {
   if (args['--player-only'] && args['--skeleton-only']) throw new UsageError('Choose only one character filter.');
   if (args['--help']) { console.log('Usage: npm run assets:export-character -- [--blender PATH] [--player-only] [--skeleton-only] [--motions-only]\nPrepares the selected authored player, Goblin and Skeleton models with compatible Mixamo weapon motions.'); return; }
   await blender('assets/characters/playable.py', ['--player-only', '--skeleton-only', '--motions-only'].filter(flag => args[flag]), args['--blender']);
+  const excluded = deletionExclusions();
   const config = JSON.parse(readFileSync(resolve(root, 'assets/playable-characters.json'), 'utf8'));
   const galleryPath = resolve(root, 'public/vendor/character-gallery/catalog.json');
   const gallery = existsSync(galleryPath) ? JSON.parse(readFileSync(galleryPath, 'utf8')) : { version: 1, complete: true, expectedCount: 0, characters: [] };
+  gallery.characters = gallery.characters.filter(row => !excluded(`character:${row.id}`, row.url));
   for (const role of args['--player-only'] ? ['player'] : args['--skeleton-only'] ? ['skeleton'] : ['player', 'enemy', 'skeleton']) {
     const actor = config[role];
+    if (excluded(`character:${actor.sourceId}`, actor.model, 'gameplay')) continue;
     const name = actor.model.split('/').at(-2);
     const catalogPath = resolve(root, 'public', actor.catalog.slice(1));
     const catalog = JSON.parse(readFileSync(catalogPath, 'utf8'));

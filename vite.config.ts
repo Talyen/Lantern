@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { defineConfig, type Plugin } from 'vite';
+import { assetReviewPlugin } from './scripts/assets/review/server.mjs';
 import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { resolve, sep, extname } from 'node:path';
@@ -31,7 +32,7 @@ const buildIdentity = { version: (JSON.parse(readFileSync(resolve('package.json'
 export default defineConfig(({ command }) => ({
   define: { __LANTERN_BUILD__: JSON.stringify(buildIdentity) },
   publicDir: command === 'build' ? '.local/build-public' : 'public',
-  plugins: [privateLibrary()],
+  plugins: [privateLibrary(), assetReviewPlugin()],
   build: { copyPublicDir: false }, // The build wrapper privately clones the staged public files once.
   // Scope exclusions to this checkout: task source lives beneath main's .local/worktrees.
   server: { watch: { ignored: [resolve('.local') + '/**', resolve('public/vendor') + '/**'] } },

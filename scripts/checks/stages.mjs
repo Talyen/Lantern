@@ -6,7 +6,7 @@ export function checkStages(files, args = {}) {
   const docsOnly = files.length > 0 && files.every(name => name.endsWith('.md'));
   const code = !docsOnly && (files.length === 0 || files.some(name => /\.(?:[cm]?js|ts|py|json)$/.test(name)));
   const docs = full || files.some(name => name.endsWith('.md') || name === 'package.json');
-  const levels = full || files.some(name => /^src\/levels\/|^assets\/(?:library-selection|lighting-bakes|environment-surfaces)/.test(name));
+  const levels = full || files.some(name => /^src\/levels\/|^assets\/(?:library-selection|lighting-bakes|environment-surfaces|asset-reviews|playable-characters|textures\/environment\/manifest)|^src\/gameplay\/equipment\.ts|^scripts\/assets\/review\//.test(name));
   const lintSetup = files.some(name => ['package.json', 'package-lock.json', 'scripts/lint.mjs'].includes(name));
   const python = full || !files.length || lintSetup || files.some(name => name.endsWith('.py') || name === 'ruff.config.json');
   const css = full || !files.length || lintSetup || files.some(name => name.endsWith('.css') || name === 'stylelint.config.js');
@@ -21,9 +21,10 @@ export function checkStages(files, args = {}) {
     ...(python ? [['lint-python', node, ['scripts/lint.mjs', '--python']]] : []),
     ...(css ? [['lint-css', node, ['scripts/lint.mjs', '--css']]] : []),
     ...(lintPolicy ? [['lint-policy', node, ['--test', 'eslint/rules.test.mjs']]] : []),
+    ...(full ? [['asset-review-store', node, ['--test', 'scripts/assets/review/store.test.mjs']]] : []),
     ...(full ? [['workflow', node, ['--test', 'scripts/agents/workflow.test.mjs']]] : []),
     ...(full ? [['tests', node, ['node_modules/vitest/vitest.mjs', 'run']]] : []),
-    ...(levels ? [['levels', node, ['scripts/levels/check.mjs']]] : []),
+    ...(levels ? [['levels', node, ['scripts/levels/check.mjs', ...(args['--base'] ? ['--base', args['--base']] : [])]]] : []),
     ...(materials ? [['materials', node, ['scripts/assets/surfaces/validate.mjs']]] : []),
     ...(materials ? [['material-contract', node, ['--test', 'scripts/assets/surfaces/validate.test.mjs']]] : []),
     ...(nativeMaterials ? [['material-native-proof', node, ['scripts/materials/proof.mjs']]] : []),

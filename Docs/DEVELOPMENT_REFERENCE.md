@@ -128,6 +128,7 @@ Choose one single-view command for ordinary review. Only `--all` creates a conta
 | `npm run build` | Explicit asset/packaging validation or requested build readiness; typecheck, stage private runtime art, and build |
 | `npm run preview` | Serve the built renderer locally |
 | `npm run smoke:preview` | CI HTTP resource smoke; does not execute gameplay or WebGPU |
+| `npm run assets:review` / `assets:review:report` / `assets:review:check` | Managed visual review, cleanup report and approval eligibility; [workflow](ASSET_REVIEW.md) |
 | `npm run assets:check` | Available local runtime assets and selected-library closure |
 | `npm run assets:check -- --playable` | Require character and compatible default Mixamo motions |
 | `npm run check` | Change-aware sanity checks; no ordinary production build |
