@@ -7,8 +7,8 @@ import './asset-review-lab.css';
 document.title = 'Lantern — Asset Review';
 const app = document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML = `<main class="asset-review">
-  <header class="review-header"><a href="/" aria-label="Return to game">← Lantern</a><h1>Asset Review</h1><span id="review-session"></span><button id="review-finish">Finish Review</button></header>
-  <div class="review-layout"><aside class="review-browser">
+  <header class="review-header"><a href="/" aria-label="Return to game">← Lantern</a><button id="asset-browser-toggle" aria-controls="review-browser-panel" aria-expanded="false" hidden>Assets</button><h1>Asset Review</h1><span id="review-session"></span><button id="review-finish">Finish Review</button></header>
+  <div class="review-layout"><aside class="review-browser" id="review-browser-panel"><button id="asset-browser-close" class="review-browser-dismiss">Close assets</button>
     <nav class="review-tabs" aria-label="Review mode"><button id="mode-queue" aria-pressed="true">Review Queue</button><button id="mode-browse" aria-pressed="false">Browse</button></nav>
     <label>Search<input id="review-search" type="search" placeholder="Name or asset ID"></label>
     <div class="review-filter-pair"><label>Category<select id="review-category"><option value="all">All categories</option></select></label><label>Pack<select id="review-pack"><option value="all">All packs</option></select></label></div>
@@ -23,15 +23,16 @@ app.innerHTML = `<main class="asset-review">
     <div class="review-preview-controls"><label>View<select id="asset-view"><option value="gameplay">Gameplay angle</option><option value="front">Front</option><option value="side">Side</option><option value="back">Back</option></select></label><button id="asset-fit">Fit</button><label class="review-checkbox"><input id="asset-scale" type="checkbox">1.8 m reference</label><label id="motion-controls" hidden>Motion<select id="asset-motion"><option value="static">Static</option></select></label><button id="asset-pause" hidden>Pause</button></div>
     <p class="review-stage-caption"><span id="asset-dimensions"></span><span>Drag to orbit · scroll to zoom</span></p>
   </section>
-  <aside class="review-details"><div class="review-decision-header"><h2>Decision</h2><span id="asset-state" class="review-badge"></span></div><p id="decision-detail"></p>
-    <label>Notes<textarea id="asset-notes" rows="3" maxlength="4000" placeholder="Optional review notes"></textarea></label>
+  <aside class="review-details"><div class="review-decision"><div class="review-decision-header"><h2>Decision</h2><span id="asset-state" class="review-badge"></span></div><p id="decision-detail"></p>
     <div class="review-actions"><button id="approve-asset" class="approve-action">Approve</button><button id="deny-asset">Deny</button><button id="delete-asset" class="delete-action">Mark for deletion</button><button id="skip-asset">Skip</button></div>
     <div class="review-secondary-actions"><button id="reset-asset">Set unreviewed</button><button id="deny-family">Deny family</button></div>
     <p id="review-feedback" class="review-feedback" role="status" aria-live="polite"></p>
+    </div><details class="review-info" id="review-info" open><summary>Notes & usage</summary><div class="review-info-content">
+    <label>Notes<textarea id="asset-notes" rows="3" maxlength="4000" placeholder="Optional review notes"></textarea></label>
     <section><h3>Scene & gameplay usage</h3><div id="asset-uses"></div></section>
     <details id="asset-technical"><summary>Identity & dependencies</summary><code id="asset-id"></code><p id="asset-build"></p><div id="asset-dependencies"></div></details>
     <div id="asset-warnings"></div>
-  </aside></div></main>`;
+  </div></details></aside></div></main>`;
 const el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 const search = el<HTMLInputElement>('review-search'), category = el<HTMLSelectElement>('review-category'), pack = el<HTMLSelectElement>('review-pack');
 const usage = el<HTMLSelectElement>('review-usage'), status = el<HTMLSelectElement>('review-state'), meshes = el<HTMLInputElement>('review-meshes'), notes = el<HTMLTextAreaElement>('asset-notes');
@@ -39,6 +40,31 @@ const feedback = el('review-feedback'), stageStatus = el('stage-status');
 let snapshot: ReviewSnapshot, selected: ReviewAsset | undefined, mode: 'queue' | 'browse' = 'queue';
 let stage: ReviewStage | undefined, generation = 0, busy = true, previewReady = false, paused = false, limit = 100, stopped = false;
 const skipped = new Set<string>();
+// Compact panes retain decisions beside the preview; secondary detail opens on demand.
+const compactPane = matchMedia('(max-width: 1100px)'), drawerPane = matchMedia('(max-width: 640px)');
+const infoPanel = el<HTMLDetailsElement>('review-info'), assetPanel = el('review-browser-panel');
+const assetToggle = el<HTMLButtonElement>('asset-browser-toggle');
+function setAssetDrawer(open: boolean): void {
+  if (!open && assetPanel.contains(document.activeElement)) assetToggle.focus();
+  app.classList.toggle('asset-browser-open', drawerPane.matches && open);
+  assetToggle.setAttribute('aria-expanded', String(drawerPane.matches && open));
+  assetPanel.inert = drawerPane.matches && !open;
+}
+function syncReviewLayout(): void {
+  if (compactPane.matches && infoPanel.contains(document.activeElement)) infoPanel.querySelector('summary')?.focus();
+  infoPanel.open = !compactPane.matches;
+  assetToggle.hidden = !drawerPane.matches;
+  setAssetDrawer(false);
+}
+compactPane.addEventListener('change', syncReviewLayout); drawerPane.addEventListener('change', syncReviewLayout); syncReviewLayout();
+assetToggle.addEventListener('click', () => setAssetDrawer(!app.classList.contains('asset-browser-open')));
+el('asset-browser-close').addEventListener('click', () => setAssetDrawer(false));
+app.addEventListener('keydown', event => {
+  if (event.key !== 'Escape') return;
+  if (drawerPane.matches && app.classList.contains('asset-browser-open')) setAssetDrawer(false);
+  else if (compactPane.matches && infoPanel.open) { infoPanel.open = false; infoPanel.querySelector('summary')?.focus(); }
+});
+
 const message = (text: string, error = false): void => { feedback.textContent = text; feedback.dataset.error = String(error); };
 async function request(path: string, action?: ReviewAction): Promise<unknown> {
   const response = await fetch(`/__asset-review${path}`, action ? { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-lantern-review-token': snapshot.token }, body: JSON.stringify({ revision: snapshot.revision, action }) } : undefined);
@@ -76,7 +102,7 @@ function drawList(): void {
     const name = document.createElement('strong'); name.textContent = asset.name;
     const caption = document.createElement('span'); caption.textContent = `${asset.appearance} · ${asset.pack.replaceAll('-', ' ')} · ${asset.kind} · ${asset.uses.length ? 'In use' : 'Unused'}`;
     const badge = document.createElement('small'); badge.textContent = stateLabel(effectiveReview(asset, snapshot.reviews).state);
-    button.append(name, caption, badge); button.addEventListener('click', () => { choose(asset).catch((error: unknown) => message(String(error), true)); }); list.append(button);
+    button.append(name, caption, badge); button.addEventListener('click', () => { choose(asset).catch((error: unknown) => message(String(error), true)); if (drawerPane.matches) setAssetDrawer(false); }); list.append(button);
   }
   el('review-more').hidden = assets.length <= limit;
   if (!assets.length) { const empty = document.createElement('p'); empty.className = 'review-empty'; empty.textContent = mode === 'queue' ? 'No assets need review in this selection. Browse to revisit decisions.' : 'No matching assets.'; list.append(empty); }
@@ -142,6 +168,7 @@ async function save(action: ReviewAction): Promise<void> {
 async function reload(): Promise<void> {
   const id = selected?.id, draft = notes.value; snapshot = parseReviewSnapshot(await request('/'));
   el('review-session').textContent = snapshot.writable ? 'Review session' : 'Read-only · start npm run assets:review to save';
+  el('review-session').title = el('review-session').textContent ?? '';
   el('review-finish').hidden = !snapshot.canFinish;
   const packs = [...new Set(snapshot.assets.map(row => row.pack))].sort(), oldPack = pack.value, oldUsage = usage.value;
   pack.replaceChildren(new Option('All packs', 'all')); packs.forEach(name => pack.add(new Option(name, name))); if (packs.includes(oldPack)) pack.value = oldPack;

@@ -14,6 +14,8 @@ Each decision saves durably in that workspace's [review records](../assets/asset
 
 Review Queue prioritizes used unreviewed appearances before unused candidates. Approve, Deny and Mark for deletion save before advancing; Skip changes no decision and excludes the item only for the current session. Browse revisits any decision, with name/ID search and category, pack, status, usage and scene filters. Component meshes are hidden until explicitly enabled. Decisions are one asset at a time; Deny family is the deliberate exception.
 
+Compact browser panes keep the decision buttons in a fixed bar below the preview. Notes and usage expand above that bar; Escape closes them. Below 640 px, Assets opens the filter/list drawer without shrinking the preview. Wide panes retain three columns, with decisions above independently scrolling notes and usage.
+
 The isolated preview supports orbit, fit, gameplay/front/side/back views and a 1.8 m reference. Character motion samples are available when prepared and compatible; static viewing remains available if a sample fails. Approval requires a prepared, successfully displayed appearance. This is visual selection, not certification of collision, rig integration or gameplay animation.
 
 Usage is static ownership, not the current save or visible frame. It includes scenery placements, source/prepared fallbacks, fires, merchants, shelter stash, player/enemy models, potential player loadouts, enemy equipment, arrows and gathering tools. Expand each scene for placement IDs and roles. Build selection and dependency use are shown separately. Shared file aliases appear as dependents; cleanup must preserve those owners.
