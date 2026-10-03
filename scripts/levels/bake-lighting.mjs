@@ -9,6 +9,7 @@ await cli(async()=>{
  if(area!=='all'&&!areas[area])throw Error('Unknown area: '+area);
  if(!['projected','authored'].includes(surfaces))throw Error('Unsupported surfaces selection');
  const state=await readState(),indexPath=resolve(root,'assets/lighting-bakes.json');
+ await ready(state); // The preceding index write may have reloaded the owned authoring page.
  const index=JSON.parse(await readFile(indexPath,'utf8'));
  const output=resolve(root,'public/vendor/lighting');await mkdir(output,{recursive:true});
  const saved=await evaluate(state,'({area:window.lanternAuthoring.area().id,appearance:window.lanternAuthoring.appearance()})');
