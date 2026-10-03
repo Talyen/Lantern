@@ -33,9 +33,11 @@ export function woodlandPatchWeight(patch: Pick<GroundPatch, 'center' | 'radius'
 }
 /** One coherent projection per layer preserves individual painted features instead of double-image crossfades. */
 export function woodlandMaterial(load: (url: string, data: boolean) => THREE.Texture, patches: GroundPatch[], recipe: WoodlandGroundRecipe = woodlandGroundRecipe, paths: GroundPath[] = []) {
+  let wet: Node<'float'> = float(0);
   let litter: Node<'float'> = float(0), rocky: Node<'float'> = float(0), worn: Node<'float'> = float(0);
   for (const patch of patches) {
     const weight = woodlandPatchWeight(patch);
+    if (patch.wetness) wet = wet.max(weight.mul(patch.wetness));
     if (patch.layer === 'litter') litter = litter.max(weight);
     else if (patch.layer === 'rocky-soil') rocky = rocky.max(weight);
     else worn = worn.max(weight);
@@ -74,9 +76,9 @@ export function woodlandMaterial(load: (url: string, data: boolean) => THREE.Tex
   };
   const lw = weight(litter, leaves.field), rw = weight(rocky, stone.field).mul(lw.oneMinus());
   return {
-    color: mix(mix(earth.color, leaves.color, lw), stone.color, rw),
+    color: mix(mix(earth.color, leaves.color, lw), stone.color, rw).mul(float(1).sub(wet.mul(.13))),
     normal: mix(mix(earth.normal, leaves.normal, lw), stone.normal, rw).normalize(),
-    roughness: mix(mix(earth.field.g, leaves.field.g, lw), stone.field.g, rw),
+    roughness: mix(mix(earth.field.g, leaves.field.g, lw), stone.field.g, rw).mul(float(1).sub(wet.mul(.48))),
     cavity: mix(mix(earth.field.b, leaves.field.b, lw), stone.field.b, rw),
   };
 }

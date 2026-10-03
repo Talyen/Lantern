@@ -4,10 +4,12 @@ import type { GrassCarpets } from './grass';
 import { MeshStandardNodeMaterial } from 'three/webgpu';
 import { positionLocal, uniform, vec3, sin, float, max, pow } from 'three/tsl';
 import { copyStandardNodeMaterial } from '../assets/environment-surfaces';
+import { RainField } from './rain';
+import type { AreaDefinition } from '../levels/types';
 import { createWaterWaves } from './water-waves';
 
 import { particlePresets, type QualityLevel } from './quality-presets';
-export type ParticleKind = 'fire' | 'smoke' | 'sparks' | 'hit' | 'rain' | 'snow' | 'dust';
+export type ParticleKind = 'fire' | 'smoke' | 'sparks' | 'hit' | 'rain' | 'snow' | 'dust' | 'debris' | 'chips';
 interface Emitter { position: THREE.Vector3; kind: ParticleKind; rate: number; carry: number; space: THREE.Object3D; }
 type UploadRange = { start: number; count: number };
 interface Pool {
@@ -15,12 +17,12 @@ interface Pool {
   positionRange: UploadRange; colorRange: UploadRange;
   life: Float32Array; live: Uint16Array; colors: Float32Array; cursor: number; capacity: number; active: number; limit: number;
 }
-interface WaterOptions { width?: number; length?: number; flow?: number; shorelineMask?: THREE.Texture; }
+interface WaterOptions { width?: number; length?: number; flow?: number; shorelineMask?: THREE.Texture; yaw?: number; shallow?: boolean; }
 interface Water { mesh: THREE.Mesh<THREE.PlaneGeometry>; waves: ReturnType<typeof createWaterWaves>; options: WaterOptions; normal: THREE.Texture; shoreline: THREE.Texture; }
 interface Foliage { mesh: THREE.Mesh; original: THREE.Material | THREE.Material[]; depth?: THREE.Material; distance?: THREE.Material; }
-const colors: Record<ParticleKind, THREE.Color> = { fire: new THREE.Color(2.8, 0.65, 0.08), smoke: new THREE.Color('#626d75'), sparks: new THREE.Color(3, 1.1, 0.2), hit: new THREE.Color(2.3, 1.2, 0.3), rain: new THREE.Color('#aec5d4'), snow: new THREE.Color('#dbe6ee'), dust: new THREE.Color('#a79879') };
-const sizes: Record<ParticleKind, number> = { fire: 0.22, smoke: 0.45, sparks: 0.035, hit: 0.075, rain: 0.04, snow: 0.065, dust: 0.025 };
-const atmosphericKinds = new Set<ParticleKind>(['dust', 'smoke', 'sparks', 'rain', 'snow']);
+const colors: Record<ParticleKind, THREE.Color> = { fire: new THREE.Color(2.8, 0.65, 0.08), smoke: new THREE.Color('#626d75'), sparks: new THREE.Color(3, 1.1, 0.2), hit: new THREE.Color(2.3, 1.2, 0.3), rain: new THREE.Color('#aec5d4'), snow: new THREE.Color('#dbe6ee'), dust: new THREE.Color('#a79879'), debris: new THREE.Color('#846342'), chips: new THREE.Color('#aaa08a') };
+const sizes: Record<ParticleKind, number> = { fire: 0.22, smoke: 0.45, sparks: 0.035, hit: 0.075, rain: 0.04, snow: 0.065, dust: 0.025, debris: .065, chips: .045 };
+const atmosphericKinds = new Set<ParticleKind>(['dust', 'smoke', 'sparks']);
 
 /** Merge pending writes until the renderer consumes them, including hidden pools.
  * One retained range per attribute avoids per-frame range records/queue writes. */
@@ -58,11 +60,18 @@ export class CoreEffects {
   private grass: GrassCarpets[] = [];
   private texture: THREE.CanvasTexture;
   private weather: ParticleKind | null = null;
+  private weatherEffects = true;
+  private readonly rain = new RainField();
+  setWeatherEffects(enabled: boolean): void { this.weatherEffects=enabled; if(!enabled)this.rain.clear(); }
+  configureWeather(area: AreaDefinition): void { this.weather=area.effects.weather?.kind ?? null; this.rain.configure(area); }
+  weatherView(camera: THREE.Camera, position: THREE.Vector3): void { this.rain.view(camera,position); }
   private weatherCarry = 0;
   private scratch = new THREE.Vector3();
   private disposed = false;
+  private gameplayDelta: number | undefined;
+  setGameplayDelta(dt: number): void { this.gameplayDelta = dt; }
   constructor(particleTextures: Partial<Record<ParticleKind, THREE.Texture>> = {}) {
-    this.root.name = 'Lantern core effects';
+    this.root.name = 'Lantern core effects'; this.root.add(this.rain.root);
     const canvas = document.createElement('canvas'); canvas.width = canvas.height = 32;
     const ctx = canvas.getContext('2d')!; const gradient = ctx.createRadialGradient(16, 16, 1, 16, 16, 16);
     gradient.addColorStop(0, '#ffffff'); gradient.addColorStop(0.45, '#ffffffb0'); gradient.addColorStop(1, '#ffffff00');
@@ -112,7 +121,7 @@ export class CoreEffects {
     return () => { const index = this.emitters.indexOf(emitter); if (index >= 0) this.emitters.splice(index, 1); };
   }
   private visible(object: THREE.Object3D): boolean { for (let o: THREE.Object3D | null = object; o; o = o.parent) if (!o.visible) return false; return true; }
-  burst(kind: 'hit' | 'sparks', position: THREE.Vector3, count = 14): void {
+  burst(kind: 'hit' | 'sparks' | 'debris' | 'chips', position: THREE.Vector3, count = 14): void {
     if (!this.enabled || this.paused || this.disposed || (!this.atmosphericParticles && atmosphericKinds.has(kind))) return;
     for (let i = 0; i < count; i++) this.spawn(kind, position.x, position.y + 0.9, position.z);
   }
@@ -141,27 +150,14 @@ export class CoreEffects {
     const shore = shoreline.getContext('2d')!; const pixels = shore.createImageData(256, 256);
     for (let y = 0; y < 256; y++) for (let x = 0; x < 256; x++) {
       const u = x / 255 * 2 - 1, v = y / 255 * 2 - 1;
-      const radius = options.flow && options.flow > 0.05 ? Math.max(Math.abs(u + Math.sin(v * 3) * 0.12), Math.abs(v) * 0.96) : Math.hypot(u, v);
+      const radius = options.flow && options.flow > 0.05 ? Math.max(Math.abs(v + Math.sin(u * 4) * .16)/(1+.10*Math.sin(u*9)), Math.abs(u)*.96) : Math.hypot(u,v);
       const rim = Math.max(0, 1 - Math.abs(radius - 0.94) * 22); const i = (y * 256 + x) * 4;
-      pixels.data[i] = 160 + rim * 65; pixels.data[i + 1] = 185 + rim * 55; pixels.data[i + 2] = 190 + rim * 50;
+      pixels.data[i] = 112 + rim * 24; pixels.data[i + 1] = 125 + rim * 22; pixels.data[i + 2] = 105 + rim * 16;
       pixels.data[i + 3] = Math.round(Math.max(0, Math.min(1, (1 - radius) * 35)) * 255);
     }
     shore.putImageData(pixels, 0, 0); const shoreTexture = new THREE.CanvasTexture(shoreline); shoreTexture.colorSpace = THREE.SRGBColorSpace;
-    const material = new THREE.MeshStandardMaterial({ map: options.shorelineMask ?? shoreTexture, alphaTest: 0.1, color: '#335b65', roughness: 0.32, metalness: 0, normalMap: normal, normalScale: new THREE.Vector2(0.3, 0.3), side: THREE.DoubleSide });
-    const mesh = new THREE.Mesh(geometry, material); mesh.position.set(x, 0.04, z); mesh.receiveShadow = true; mesh.name = 'water'; parent.add(mesh);
-    // A separate shallow foam rim avoids scene-depth/refraction passes; callers can supply an authored shoreline mask.
-    // Both layers have exactly the same wave vertices and immutable topology/UVs.
-    // Retain the foam's original static normals, colors and local height offset.
-    const foamGeometry = new THREE.BufferGeometry();
-    foamGeometry.setIndex(geometry.index);
-    for (const name of ['position', 'uv']) foamGeometry.setAttribute(name, geometry.getAttribute(name));
-    foamGeometry.setAttribute('normal', geometry.getAttribute('normal').clone());
-    const uv = foamGeometry.getAttribute('uv'); const foamColors = new Float32Array(uv.count * 3);
-    for (let i = 0; i < uv.count; i++) { const edge = Math.min(uv.getX(i), 1 - uv.getX(i), uv.getY(i), 1 - uv.getY(i)); const foam = Math.max(0, 1 - edge * 28) * 0.55;
-      foamColors[i * 3] = foam; foamColors[i * 3 + 1] = foam * 1.1; foamColors[i * 3 + 2] = foam * 1.15; }
-    foamGeometry.setAttribute('color', new THREE.BufferAttribute(foamColors, 3));
-    const foam = new THREE.Mesh(foamGeometry, new THREE.MeshBasicMaterial({ vertexColors: true, alphaTest: 0.1, map: options.shorelineMask ?? shoreTexture, transparent: true, opacity: 0.28, blending: THREE.AdditiveBlending, depthWrite: false }));
-    foam.position.y = 0.015; mesh.add(foam);
+    const material = new MeshStandardNodeMaterial({ map: options.shorelineMask ?? shoreTexture, alphaTest: 0.1, color: options.shallow ? '#77765a' : '#435b52', transparent: true, opacity: options.shallow ? .75 : .9, roughness: 0.4, metalness: 0, normalMap: normal, normalScale: new THREE.Vector2(0.3, 0.3), side: THREE.DoubleSide });
+    const mesh = new THREE.Mesh(geometry, material); mesh.position.set(x, 0.04, z); mesh.rotation.y=options.yaw ?? 0; mesh.receiveShadow = true; mesh.name = 'water'; parent.add(mesh);
     this.waters.push({ mesh, waves, options, normal, shoreline: shoreTexture }); return mesh;
   }
   addGrass(carpet: GrassCarpets): void { this.grass.push(carpet); carpet.update(this.time, this.wind.value); }
@@ -194,7 +190,8 @@ export class CoreEffects {
     if (this.disposed) return;
     this.root.visible = this.enabled;
     if (this.paused || !this.enabled) { for (const carpet of this.grass) carpet.update(this.time, this.wind.value); return; }
-    dt = Math.min(dt, 0.05); this.time += dt; this.clock.value = this.time;
+    dt = Math.min(dt, 0.05);
+    const actionDt = this.gameplayDelta ?? dt; this.gameplayDelta = undefined; this.time += dt; this.clock.value = this.time;
     for (const carpet of this.grass) carpet.update(this.time, this.wind.value);
     for (const emitter of this.emitters) {
       if (!this.atmosphericParticles && atmosphericKinds.has(emitter.kind)) continue;
@@ -204,7 +201,8 @@ export class CoreEffects {
       this.scratch.copy(emitter.position); emitter.space.localToWorld(this.scratch);
       while (emitter.carry >= 1) { emitter.carry--; this.spawn(emitter.kind, this.scratch.x, this.scratch.y, this.scratch.z); }
     }
-    if (this.weather && this.atmosphericParticles) {
+    this.rain.update(dt,this.weatherEffects && this.weather==='rain',particlePresets[this.quality].weather,this.wind.value);
+    if (this.weather === 'snow' && this.weatherEffects) {
       this.weatherCarry += dt * particlePresets[this.quality].weather;
       while (this.weatherCarry >= 1) { this.weatherCarry--; this.spawn(this.weather, (Math.random() - 0.5) * 16, 6, (Math.random() - 0.5) * 16); }
     }
@@ -217,11 +215,11 @@ export class CoreEffects {
       // changing GPU slot order or visiting the unused portion of the pool.
       let first = p.capacity, last = -1;
       for (let live = 0; live < p.active;) {
-        const i = p.live[live], k = i * 3; p.age[i] += dt;
+        const i = p.live[live], k = i * 3; const elapsed = kind === 'hit' || kind==='debris' || kind==='chips' ? actionDt : dt; p.age[i] += elapsed;
         first = Math.min(first, i); last = Math.max(last, i);
         if (p.age[i] >= p.life[i]) { p.positions[k + 1] = 1e6; p.life[i] = 0; p.live[live] = p.live[--p.active]; continue; }
-        p.positions[k] += (p.velocities[k] + this.wind.value.x) * dt; p.positions[k + 1] += p.velocities[k + 1] * dt; p.positions[k + 2] += (p.velocities[k + 2] + this.wind.value.z) * dt;
-        if (kind === 'hit' || kind === 'sparks') p.velocities[k + 1] -= dt * 4;
+        p.positions[k] += (p.velocities[k] + this.wind.value.x) * elapsed; p.positions[k + 1] += p.velocities[k + 1] * elapsed; p.positions[k + 2] += (p.velocities[k + 2] + this.wind.value.z) * elapsed;
+        if (kind === 'hit' || kind === 'sparks' || kind === 'debris' || kind === 'chips') p.velocities[k + 1] -= elapsed * 4;
         const fade = kind === 'dust' ? Math.sin(Math.PI * p.age[i] / p.life[i]) : 1 - p.age[i] / p.life[i]; const color = colors[kind];
         p.colors[k] = color.r * fade; p.colors[k + 1] = color.g * fade; p.colors[k + 2] = color.b * fade;
         live++;
@@ -238,6 +236,7 @@ export class CoreEffects {
   }
   clear(): void { for (const p of this.pools.values()) { p.active = 0; p.object.visible = false; p.life.fill(0); p.positions.fill(1e6); uploadRange(p.object.geometry.getAttribute('position') as THREE.BufferAttribute, p.positionRange, 0, p.capacity - 1); } }
   clearArea(): void {
+    this.rain.configure(undefined); this.weather=null;
     for (const f of this.foliage) { f.mesh.material = f.original; f.mesh.customDepthMaterial = f.depth; f.mesh.customDistanceMaterial = f.distance; }
     for (const materials of this.foliageMaterials.values()) for (const material of materials.values()) material.dispose();
     this.foliageMaterials.clear();
@@ -245,7 +244,7 @@ export class CoreEffects {
     this.emitters.length = 0; this.foliage.length = 0; this.foliageMeshes.clear(); this.grass.length = 0; this.waters.length = 0; this.time = 0; this.clock.value = 0; this.clear();
   }
   dispose(): void {
-    if (this.disposed) return; this.disposed = true; this.root.removeFromParent();
+    if (this.disposed) return; this.disposed = true; this.rain.dispose(); this.root.removeFromParent();
     this.clearArea();
     for (const p of this.pools.values()) { p.object.geometry.dispose(); (p.object.material as THREE.Material).dispose(); }
     this.texture.dispose(); this.emitters.length = 0; this.foliage.length = 0;

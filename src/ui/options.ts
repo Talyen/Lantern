@@ -49,6 +49,9 @@ export class Options {
       <label>Frame rate limit<select id="option-fpsLimit">${frameRateLimits.map((limit) => `<option value="${limit}">${limit || 'Unlimited'}</option>`).join('')}</select></label>
       ${(['shadowQuality', 'particleQuality'] as const).map(key => `<label>${key === 'shadowQuality' ? 'Shadow Quality' : 'Particle Effects'}<select id="option-${key}">${[...qualityLevels].reverse().map(value => `<option value="${value}">${value[0].toUpperCase() + value.slice(1)}</option>`).join('')}</select></label>`).join('')}
       <label>Depth of field<select id="option-dof">${depthOfFieldModes.map((mode) => `<option value="${mode}">${mode[0].toUpperCase() + mode.slice(1)}</option>`).join('')}</select></label>
+      <label>Camera Shake<select id="option-cameraShake"><option value="true">On</option><option value="false">Off</option></select></label>
+      <label>Resource Numbers<select id="option-resourceNumbers"><option value="true">On</option><option value="false">Off</option></select></label>
+      <label>Weather Effects<select id="option-weatherEffects"><option value="true">On</option><option value="false">Off</option></select></label>
       <label>Atmospheric particles<select id="option-atmosphericParticles"><option value="true">On</option><option value="false">Off</option></select></label>
       <label title="Adds raised and recessed texture detail">Texture Depth<select id="option-textureDepth"><option value="true">On</option><option value="false">Off</option></select></label>
       <label>Outlines<select id="option-outlines"><option value="true">On</option><option value="false">Off</option></select></label>
@@ -66,7 +69,7 @@ export class Options {
       this.settings.fpsLimit = Number(this.input<HTMLSelectElement>('fpsLimit').value) as FrameRateLimit;
       this.apply(); this.ctx.resetMeasurements(); this.save('fpsLimit');
     });
-    for (const key of ['atmosphericParticles', 'outlines', 'textureDepth'] as const) this.input<HTMLSelectElement>(key).addEventListener('change', () => {
+    for (const key of ['atmosphericParticles', 'outlines', 'textureDepth', 'cameraShake', 'resourceNumbers', 'weatherEffects'] as const) this.input<HTMLSelectElement>(key).addEventListener('change', () => {
       this.settings[key] = this.input<HTMLSelectElement>(key).value === 'true';
       this.apply(); this.save(key);
     });
@@ -135,6 +138,7 @@ export class Options {
     this.input<HTMLSelectElement>('atmosphericParticles').value = String(s.atmosphericParticles);
     this.input<HTMLSelectElement>('outlines').value = String(s.outlines);
     this.input<HTMLSelectElement>('textureDepth').value = String(s.textureDepth);
+    for (const key of ['cameraShake', 'resourceNumbers', 'weatherEffects'] as const) this.input<HTMLSelectElement>(key).value = String(s[key]);
     for (const key of Object.keys(ranges) as NumericSetting[]) {
       this.input<HTMLInputElement>(key).value = String(s[key]);
       document.getElementById(`value-${key}`)!.textContent = s[key].toFixed(2);

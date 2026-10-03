@@ -50,7 +50,7 @@ export function attack(state: Encounter, timing: ActorTiming, paused: boolean, a
   state.attackCooldown = duration;
   state.player.attackTime = 0;
   state.player.contactIndex = 0;
-  state.playerAction = { duration, contacts: timing.contacts.map(contact => contact / rate), damage: state.stats.damage, rate, reach: state.stats.reach, arc: state.weapon === 'sword' ? Math.PI / 4 : Math.acos(.1), weapon: state.weapon, ability: basicAbility(state.weapon) };
+  state.playerAction = { impactId: state.nextImpact = (state.nextImpact ?? 0) + 1, duration, contacts: timing.contacts.map(contact => contact / rate), damage: state.stats.damage, rate, reach: state.stats.reach, arc: state.weapon === 'sword' ? Math.PI / 4 : Math.acos(.1), weapon: state.weapon, ability: basicAbility(state.weapon) };
   return [{ type: 'label', value: 'DEFEAT THE RAIDER' }, { type: 'animation', actor: 'player', motion: 'attack' }, { type: 'action', actor: 'player', action: 'attack', weapon: state.weapon }];
 }
 
@@ -261,7 +261,7 @@ export function stepPlayerAttack(state: Encounter, dt: number, timing: Timings, 
   const { player } = state;
   if (player.attackTime < 0)
     return;
-  const action = state.playerAction ?? { duration: timing.player.attack / state.stats.attackRate, contacts: timing.player.contacts.map(contact => contact / state.stats.attackRate), damage: state.stats.damage, rate: state.stats.attackRate, reach: state.stats.reach, arc: Math.acos(.1), weapon: state.weapon, ability: null };
+  const action = state.playerAction ?? { impactId: undefined, duration: timing.player.attack / state.stats.attackRate, contacts: timing.player.contacts.map(contact => contact / state.stats.attackRate), damage: state.stats.damage, rate: state.stats.attackRate, reach: state.stats.reach, arc: Math.acos(.1), weapon: state.weapon, ability: null };
   const contacts = action.contacts;
   player.attackTime += dt;
   while (player.contactIndex < contacts.length && player.attackTime >= contacts[player.contactIndex]) {
@@ -269,7 +269,7 @@ export function stepPlayerAttack(state: Encounter, dt: number, timing: Timings, 
     events.push({ type: 'action', actor: 'player', action: 'contact', weapon: action.weapon });
     if (action.weapon === 'bow' || action.weapon === 'staff') {
       const dx = Math.sin(player.yaw), dz = Math.cos(player.yaw);
-      const projectile = { id: ++state.nextProjectile, owner: 'player', kind: action.weapon === 'bow' ? 'arrow' as const : 'bolt' as const, x: player.x + dx * .35, y: player.y + 1.22, z: player.z + dz * .35, dx, dz, remaining: action.reach, damage: action.damage, pierced: action.ability === 'piercing-shot' ? [] : undefined, firstStep: Math.min(dt, player.attackTime - contacts[player.contactIndex - 1]) };
+      const projectile = { id: ++state.nextProjectile, owner: 'player', kind: action.weapon === 'bow' ? 'arrow' as const : 'bolt' as const, x: player.x + dx * .35, y: player.y + 1.22, z: player.z + dz * .35, dx, dz, remaining: action.reach, damage: action.damage, impactId: action.impactId, ability: action.ability, pierced: action.ability === 'piercing-shot' ? [] : undefined, firstStep: Math.min(dt, player.attackTime - contacts[player.contactIndex - 1]) };
       if (projectileLaunchClear(projectile, player, events, movementWorld)) state.projectiles.push(projectile);
     }
     else
@@ -280,7 +280,7 @@ export function stepPlayerAttack(state: Encounter, dt: number, timing: Timings, 
         const dx = enemy.x - player.x, dz = enemy.z - player.z, distance = Math.hypot(dx, dz);
         const facing = distance > 0 ? (Math.sin(player.yaw) * dx + Math.cos(player.yaw) * dz) / distance : 1;
         if (distance < action.reach && facing >= Math.cos(action.arc) - 1e-6 && (!movementWorld || movementWorld.lineOfSight(player, enemy)) && Math.abs(player.y - enemy.y) < .8)
-          hit(state, id, timing, events, action.weapon ?? undefined, undefined, frameOffset + Math.max(0, contacts[player.contactIndex - 1] - (player.attackTime - dt)), action.damage);
+          hit(state, id, timing, events, action.weapon ?? undefined, undefined, frameOffset + Math.max(0, contacts[player.contactIndex - 1] - (player.attackTime - dt)), action.damage, action.impactId === undefined ? undefined : { actor: 'player', ability: action.ability, id: action.impactId });
       }
   }
   if (player.attackTime >= action.duration)

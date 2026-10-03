@@ -68,3 +68,9 @@ test('graphics modes preserve defaults, saved choices and temporary comparison U
     expect((parseJson(storage.get(settingsKey)!) as Record<string, unknown>).atmosphericParticles).toBe(false);
   } finally { vi.unstubAllGlobals(); }
 });
+
+// Admission: introducing weather must not silently re-enable previously disabled precipitation or overwrite unrelated settings.
+test('new presentation preferences preserve old precipitation choices and independent saved switches',()=>{
+  expect(migrateSettings({atmosphericParticles:false,dof:'off',exposure:.8})).toMatchObject({weatherEffects:false,cameraShake:true,resourceNumbers:true,dof:'off',exposure:.8});
+  expect(migrateSettings({atmosphericParticles:false,weatherEffects:true,cameraShake:false,resourceNumbers:false})).toMatchObject({atmosphericParticles:false,weatherEffects:true,cameraShake:false,resourceNumbers:false});
+});

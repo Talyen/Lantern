@@ -79,6 +79,7 @@ export function validateAreas(input: Record<string, AreaDefinition>): string[] {
           if (prop.primitive.surface !== 'woodland' || !Array.isArray(prop.primitive.patches)) fail('patches require a woodland surface and a list');
           else for (const patch of prop.primitive.patches) {
             if (!patch || !finite(patch.center, 2) || !Number.isFinite(patch.radius) || patch.radius <= 0 || !Number.isFinite(patch.strength) || patch.strength < 0 || patch.strength > 1 || typeof patch.color !== 'string' || !/^#[0-9a-f]{6}$/i.test(patch.color)) fail('invalid woodland patch');
+            if (patch?.wetness !== undefined && (!Number.isFinite(patch.wetness) || patch.wetness < 0 || patch.wetness > 1)) fail('invalid patch wetness');
             if (patch?.layer !== undefined && !['earth', 'litter', 'rocky-soil'].includes(patch.layer)) fail('unknown woodland material layer');
           }
         }
@@ -105,6 +106,14 @@ export function validateAreas(input: Record<string, AreaDefinition>): string[] {
       for (const surface of area.traversal?.surfaces ?? []) {
         owner = `${key}/walkable-surface`;
         if (!finite(surface.positions) || surface.positions.length % 3 || !Array.isArray(surface.indices) || surface.indices.length % 3 || surface.indices.some(i => !Number.isInteger(i) || i < 0 || i >= surface.positions.length / 3)) fail('invalid surface triangles');
+      }
+      for (const water of area.effects.water) {
+        id(water.id);
+        if (!finite(water.position,2) || !finite([water.width,water.length,water.flow,water.yaw ?? 0]) || water.width<=0 || water.length<=0 || water.flow<0 || water.shallow !== undefined && typeof water.shallow !== 'boolean') fail('invalid water surface');
+      }
+      if (area.effects.weather) {
+        if (area.effects.weather.kind !== 'rain') fail('unknown area weather');
+        for (const shelter of area.effects.weather.shelters ?? []) if (!finite(shelter.center,2) || !Number.isFinite(shelter.radius) || shelter.radius<=0) fail('invalid weather shelter');
       }
       for (const portal of area.effects.portals ?? []) {
         id(portal.id);

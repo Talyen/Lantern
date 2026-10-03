@@ -12,6 +12,7 @@ import type { PointerAim } from './pointer-aim';
 
 type CombatContext = {
   paused(): boolean;
+  impactHolding(): boolean;
   safeArea(): boolean;
   interruptApproach(): void;
   clearHold(): void;
@@ -68,6 +69,10 @@ export class CombatController {
     const aim = pointer
       ? this.pointerAim.attack(pointer, this.encounter, this.context.safeArea(), this.actors)
       : undefined;
+    if (this.context.impactHolding()) {
+      if (abilitySet(this.encounter.weaponSets,this.encounter.activeSet,id)!==undefined && this.encounter.playerMana>=abilities[id].mana && (!this.encounter.blocking || abilities[id].activation==='hold')) this.encounter.pending = { kind:'ability', ability:id, remaining:.15, aim };
+      return;
+    }
     const events = useAbility(this.encounter, id, this.timings().player, false, aim);
     this.context.present(events);
     if (events.length || this.encounter.pending) return;
@@ -87,6 +92,10 @@ export class CombatController {
     if (this.context.paused()) return;
     this.context.interruptApproach();
     this.releaseShield();
+    if (this.context.impactHolding()) {
+      if(this.encounter.weaponSets[(1-this.encounter.activeSet) as 0|1].main) this.encounter.pending = { kind:'swap', remaining:.15 };
+      return;
+    }
     this.context.present(swapWeaponSet(this.encounter, false));
   }
 
@@ -95,6 +104,7 @@ export class CombatController {
     this.context.interruptApproach();
     this.releaseShield();
     const aim = this.pointerAim.resolve(this.input.pointer(), this.encounter.player.y);
+    if (this.context.impactHolding()) { this.encounter.pending = { kind:'dodge', remaining:.15, direction:this.input.movement(), aim }; return; }
     this.context.present(dodge(this.encounter, this.input.movement(), false, aim));
   }
 }

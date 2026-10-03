@@ -37,15 +37,19 @@ export class EncounterPresentation {
           if (event.actor === 'player') {
             this.context.playerHit(events.some(impact => impact.type === 'impact' && impact.actor === 'player' && !impact.blocked));
           }
-          const impact = events.find(impact => impact.type === 'impact' && impact.actor === event.actor);
-          this.context.effects()?.burst('hit', this.actors[event.actor].root.position, impact?.type === 'impact' && impact.blocked ? 5 : 8);
           break;
         }
         case 'animation':
           play(this.actors[event.actor], event.motion, event.actor === 'player' ? this.encounter.playerAction?.rate ?? 1 : 1);
           break;
+        case 'impact': {
+          const effects = this.context.effects(), position = this.actors[event.actor].root.position;
+          const skill = event.origin?.ability === 'sweep' || event.origin?.ability === 'piercing-shot';
+          effects?.burst(event.blocked ? 'sparks' : 'hit', position, event.blocked ? 7 : skill ? 16 : event.weapon === 'axe' ? 11 : 8);
+          break;
+        }
         // These events are presented by GameplayAudio and the HUD below.
-        case 'action': case 'impact': case 'projectileImpact': case 'label': case 'outcome': break;
+        case 'action': case 'projectileImpact': case 'label': case 'outcome': break;
       }
     }
     this.audio.encounter(events, this.encounter);

@@ -108,6 +108,7 @@ export class Graphics {
     }
     if (lightingChanged || previous?.shadowQuality !== s.shadowQuality) applyShadowQuality(scene, s.shadowQuality);
     if (previous?.particleQuality !== s.particleQuality) this.effects.setQuality(s.particleQuality);
+    if (previous?.weatherEffects !== s.weatherEffects) this.effects.setWeatherEffects(s.weatherEffects);
     if (previous?.atmosphericParticles !== s.atmosphericParticles) this.effects.setAtmosphericParticles(s.atmosphericParticles);
     if (!previous) {
       renderer.setPixelRatio(1); renderer.toneMapping = THREE.NoToneMapping; renderer.toneMappingExposure = 1;

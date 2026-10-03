@@ -11,7 +11,7 @@ export type EnvironmentLighting = { sky: string; horizon: string; ground: string
 export type ProbeLighting = { position: [number, number, number]; size: [number, number, number]; resolution: [number, number, number]; intensity: number; bounces: number };
 export type AssetRef = { url: string } | { libraryId: string };
 export type GroundLayer = 'earth' | 'litter' | 'rocky-soil';
-export type GroundPatch = { center: Point; radius: number; color: string; strength: number; layer?: GroundLayer };
+export type GroundPatch = { center: Point; radius: number; color: string; strength: number; wetness?: number; layer?: GroundLayer };
 export type GroundPath = { points: Point[]; width: number; strength: number };
 export type Primitive = { kind: 'box' | 'cylinder' | 'pebble' | 'tent' | 'headstone'; size: number[]; color: string; doubleSided?: boolean; surface?: 'woodland' | 'stone'; patches?: GroundPatch[]; paths?: GroundPath[] };
 export type Placement = {
@@ -34,7 +34,7 @@ export type AreaDefinition = {
   scatter: { id: string; count: number; radius: [number, number]; primitive: Primitive; harvest?: Placement['harvest']; excludedIds: string[] }[];
   grass?: GrassPatch[];
   reserved: Region[]; gates: Gate[]; lighting: LightingRecipe;
-  effects: { portals?: PortalDefinition[]; water: { id: string; position: Point; width: number; length: number; flow: number }[]; fires: { id: string; position: Point; asset: AssetRef; height: number; emitterHeight?: number; intensity?: number; role?: LocalLightRole; color?: string; distance?: number; shadow?: boolean }[] };
+  effects: { weather?: { kind: 'rain'; shelters?: {center: Point; radius: number}[] }; portals?: PortalDefinition[]; water: { id: string; position: Point; width: number; length: number; flow: number; yaw?: number; shallow?: boolean }[]; fires: { id: string; position: Point; asset: AssetRef; height: number; emitterHeight?: number; intensity?: number; role?: LocalLightRole; color?: string; distance?: number; shadow?: boolean }[] };
   views: { id: string; target: [number, number, number] }[];
   inspection?: { position: Point };
 };

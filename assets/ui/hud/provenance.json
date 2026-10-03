@@ -1,0 +1,24 @@
+[
+  {
+    "name": "chrome",
+    "prompt": "Edit the referenced original UI concept into a PRODUCTION UI CHROME ATLAS. Transparent background, square canvas, exact 2 by 2 equal grid cells with no visible grid. Each asset centered inside its quadrant with a 5 percent cell margin. Top-left cell: the concept's round smoky glass orb frame with pointed brass finials at cardinal points and angular iron cradle underneath, a transparent hollow circular interior with only subtle translucent glass reflection and edge shadow, NO LIQUID. Top-right cell: the concept's square ability receptacle, beveled layered forged dark iron, worn brass corner joins, thin warm rim, deep quiet charcoal inset, clipped small corners. Bottom-left cell: a small wide blank binding plaque like the number badges in the concept, centered with aspect ratio 1.8:1, brass-edged dark iron, no letters or numbers. Bottom-right cell: the concept's taller potion/scroll receptacle, same iron and brass treatment, aspect ratio .8:1, empty charcoal interior. Match the reference's small details and craftsmanship exactly: sharp bevel highlights, worn corners, layered metal lips, dark recesses, tiny restrained brass joints. No text, no numbers, no symbols, no icons, no resource liquid, no Set I element, no shared connecting rail, no background, no world imagery, no drop shadows outside the per-cell bounds. Every quadrant is an independently usable original game UI sprite. Crisp at small sizes.",
+    "filename": "chrome-atlas.png",
+    "sha256": "36d5944e237924338070af4ffc8c100c5c0969c597aabca4acc000cfcd1396f3",
+    "date": "2026-10-02",
+    "tool": "built-in ImageGen",
+    "inputs": "Original orb-led HUD concept",
+    "reference": "../../../Docs/ui/concepts/hud-polish/orbs.png",
+    "status": "Production; live text and states authored in DOM"
+  },
+  {
+    "name": "icons",
+    "prompt": "Edit the referenced original concept into a PRODUCTION painted HUD ICON ATLAS on transparent background. Square canvas, exact 3 by 3 equal cells, each icon centered inside its cell with 12 percent margin. NO frames, NO text, NO numbers, NO grid lines, NO background. Match the concept's dimensional painterly icon style, highlights, wear, readability, subtle dark silhouette shadows and warm materials exactly. Row one left to right: diagonal forged steel sword with worn brass crossguard; sturdy iron axe with dark wood handle; curved dark wooden longbow and taut string. Row two: weathered wood staff with small amber stone head; iron-bound wooden round shield; expressive curved amber sweep arc with a silver sword. Row three: three diagonal piercing arrows with bright steel tips; glass bottle of deep red potion with cork and subtle highlights; rolled parchment scroll with tarnished brass/red seal. Large broad readable forms, not thin line drawings, no bright cartoon outlines or excessive glow. All nine original isolated items fill similar optical area while retaining their true shapes. These will replace rough SVG HUD icons only; inventory art stays separate.",
+    "filename": "icons-atlas.png",
+    "sha256": "1076555ef994188c1af3bddea5dca325cfb1ef20934c2b5a14a18716793c6e50",
+    "date": "2026-10-02",
+    "tool": "built-in ImageGen",
+    "inputs": "Original orb-led HUD concept",
+    "reference": "../../../Docs/ui/concepts/hud-polish/orbs.png",
+    "status": "Production; live text and states authored in DOM"
+  }
+]

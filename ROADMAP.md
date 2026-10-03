@@ -251,3 +251,7 @@ These are milestone commitments, not final balance values. Damage and armor form
 - [ ] Validate supported Windows hardware and packaged release behavior before claiming Windows/macOS release readiness.
 
 See [library decisions](Docs/LIBRARY_TRIALS.md) and [performance evidence](Docs/PERFORMANCE.md). Synty vegetation, authored enemy roles and compact linked areas remain the selected direction.
+
+## October 2 look-and-feel pass
+
+The owner selected expressive combat with selective hit pause and powerful-Skill shake, the detailed orb-led HUD without a Set I control, saved Resource Numbers, earned-refuge Homestead, scenery-only recomposition and a shallow stream/fixed rain in Clearing. Current area composition, shelter finish, contact effects and crafted current-menu treatment follow this direction. This pass does not implement future title/slot screens, new areas, Ultimate abilities or detailed reflections. Its final observed interaction/visual evidence belongs in the [HUD review record](Docs/ui/concepts/hud-polish/README.md); full platform/performance acceptance remains separate.

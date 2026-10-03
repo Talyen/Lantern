@@ -21,7 +21,7 @@ export function play(actor: Actor, name: Motion, rate = 1): void {
   if (actor.current === name && ['idle', 'run', 'block', 'chop', 'mine'].includes(name)) return;
   const next = actor.actions[name]; if (!next) return;
   const starting = actor.current===null;
-  const blend = name === 'dodge' ? .035 : name === 'hit' ? .045 : ['attack','chop','mine','sweep','pierce'].includes(name) ? .055 : .10;
+  const blend = name === 'dodge' ? .035 : name === 'hit' ? .035 : ['attack','chop','mine','sweep','pierce'].includes(name) ? .055 : .12;
   for (const role in actor.actions) {
     const action = actor.actions[role as PlaybackRole];
     if (action && action !== next && action.isScheduled()) action.fadeOut(blend);

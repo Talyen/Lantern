@@ -1,6 +1,7 @@
 import './shop.css';
 import { bindMenuDismissal } from './menu';
 import { itemIcon } from './item-icons';
+import { hudIcon } from './hud-art';
 import { inventoryItemButton, placeInventoryItem } from './inventory-item';
 import { renderEquipmentDetails } from './equipment-details';
 import { shopStock, sellPrices } from '../gameplay/economy';
@@ -61,7 +62,7 @@ export class ShopMenu {
   private select(selection: Selection): void { this.selection = selection; this.refreshSelection(); }
   private offer(item: LootItem, price: number, selection: Selection): HTMLButtonElement {
     const button = document.createElement('button'); button.type = 'button'; button.className = 'shop-offer';
-    const icon = document.createElement('span'); icon.innerHTML = itemIcon(item);
+    const icon = document.createElement('span'); icon.innerHTML = item==='potion' || item==='scroll' ? hudIcon(item) : itemIcon(item);
     const name = document.createElement('span'); name.textContent = lootDefinitions[item].name;
     const amount = document.createElement('strong'); amount.textContent = `${price} Gold`;
     button.append(icon, name, amount); button.onclick = () => this.select(selection);

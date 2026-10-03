@@ -689,6 +689,25 @@
       "loop": true,
       "loopStart": 0,
       "loopEnd": 5.5
+    },
+    "rain-leaves": {
+      "url": "/vendor/audio/rain-leaves.ogg",
+      "sourceId": "3e56fdf6938b1db8",
+      "sourcePath": "world/rain_shower_of_rain_steady_rain_forest_leaves__invisible_storm_gale_and_thunderstorm__3e56fdf6938b1db8.flac",
+      "sourceSha256": "8d536484508f1be8b791e35c004830aec578d46f3ff6d91bb8f0026e97d026e3",
+      "sourceLibrary": "Invisible - Storm, gale and thunderstorm",
+      "edit": {
+        "start": 2,
+        "duration": 12,
+        "trimSilence": false,
+        "channels": 2,
+        "peakDb": -12,
+        "fadeOut": 0,
+        "loopCrossfade": 0.5
+      },
+      "loop": true,
+      "loopStart": 0,
+      "loopEnd": 11.5
     }
   },
   "cues": {
@@ -1127,6 +1146,14 @@
       ],
       "gain": 0.22,
       "bus": "effects",
+      "rate": 1
+    },
+    "rain": {
+      "clips": [
+        "rain-leaves"
+      ],
+      "gain": 0.22,
+      "bus": "ambience",
       "rate": 1
     }
   }

@@ -25,21 +25,32 @@ export function createCamera(canvas: HTMLCanvasElement) {
   const anchor = controls.target.clone(), lead = new THREE.Vector3();
   const previous = new THREE.Vector3(), desiredLead = new THREE.Vector3();
   let sampled = false;
+  const shakeOffset = new THREE.Vector3(), shakeRight = new THREE.Vector3(), shakeUp = new THREE.Vector3();
+  function clearShake(): void { camera.position.sub(shakeOffset); shakeOffset.set(0,0,0); camera.updateMatrixWorld(); }
+  function applyShake(x: number, y: number, outputHeight: number): void {
+    clearShake();
+    const units = (camera.top-camera.bottom) / camera.zoom / Math.max(1,outputHeight);
+    shakeRight.setFromMatrixColumn(camera.matrixWorld,0).multiplyScalar(x*units);
+    shakeUp.setFromMatrixColumn(camera.matrixWorld,1).multiplyScalar(y*units);
+    shakeOffset.copy(shakeRight).add(shakeUp); camera.position.add(shakeOffset); camera.updateMatrixWorld();
+  }
   let inspectionZoom: number | undefined;
   function resetFollow(position: THREE.Vector3): void {
+    clearShake();
     anchor.copy(position); anchor.y += .9; lead.set(0, 0, 0);
     previous.copy(position); sampled = false;
     controls.target.copy(anchor); camera.position.copy(anchor).add(cameraOffset);
     controls.update(); camera.updateMatrixWorld();
   }
   function setView(target: THREE.Vector3Tuple, zoom: number): void {
+    clearShake();
     controls.target.fromArray(target);
     camera.position.copy(controls.target).add(cameraOffset);
     camera.zoom = zoom;
     camera.updateProjectionMatrix();
     controls.update();
   }
-  return { camera, controls, resetFollow,
+  return { camera, controls, resetFollow, clearShake, applyShake,
     captureView() { return { target: controls.target.toArray(), zoom: camera.zoom }; },
     restoreView(view: { target: THREE.Vector3Tuple; zoom: number }) { preview = true; setView(view.target, view.zoom); },
     previewView(area: Pick<AreaDefinition, 'views' | 'envelope'>, id: string) {
@@ -88,6 +99,7 @@ export function createCamera(canvas: HTMLCanvasElement) {
       camera.position.copy(controls.target).add(cameraOffset);
     },
     inspect(active: boolean, rock: { x: number; z: number }) {
+      clearShake();
       if (active) { inspectionZoom ??= camera.zoom; controls.target.set(rock.x, 0.7, rock.z); camera.position.copy(controls.target).add(cameraOffset); camera.zoom = 2; }
       else if (inspectionZoom !== undefined) { camera.zoom = inspectionZoom; inspectionZoom = undefined; }
       camera.updateProjectionMatrix(); controls.update();

@@ -7,6 +7,8 @@ import { gathering } from '../gameplay/skills';
 import type { AreaInstance } from '../levels/builder';
 import { resourceSkill, type ResourceDefinition } from '../levels/resources';
 import type { AreaDefinition } from '../levels/types';
+import type { CoreEffects } from '../rendering/effects';
+import { Vector3 } from 'three';
 import type { GameAudio } from '../audio/audio';
 import type { GatheringTools } from '../rendering/gathering-tools';
 import { duration, play, type Actor } from './actors';
@@ -16,6 +18,7 @@ type GatheringContext = {
   instance(): AreaInstance | undefined;
   navigation(): MovementWorld | undefined;
   paused(): boolean;
+  effects?(): CoreEffects | undefined;
 };
 type Swing = { resource: ResourceDefinition; time: number; contacted: boolean };
 type Occupant = { areaId: string; position: Point };
@@ -29,6 +32,7 @@ export class GatheringController {
     enemy: { areaId: '', position: [0, 0] },
     caster: { areaId: '', position: [0, 0] },
   };
+  private readonly contactPosition = new Vector3();
   private readonly occupants: Occupant[] = [];
 
   constructor(
@@ -142,6 +146,8 @@ export class GatheringController {
 
       const position = { x: resource.position[0], z: resource.position[2] };
       this.audio.play(resource.kind === 'tree' ? 'chopHit' : 'equipmentLand', position);
+      this.contactPosition.set(position.x,resource.position[1]-.5,position.z);
+      this.context.effects?.()?.burst(resource.kind === 'tree' ? 'debris' : 'chips',this.contactPosition,resource.kind==='tree' ? 7 : 5);
       this.adventure.grantHarvest(reward.item, reward.quantity, reward.skill, reward.xpPerUnit,
         [position.x, position.z]);
       this.context.instance()?.treeHit(resource.id);

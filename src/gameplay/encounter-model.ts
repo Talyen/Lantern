@@ -46,6 +46,8 @@ export type Projectile = {
   firstStep?: number;
   damage?: number;
   pierced?: ActorId[];
+  impactId?: number;
+  ability?: AbilityId | null;
 };
 export const casterAttackRange = 6, casterBoltSpeed = 8;
 export type PendingInput = {
@@ -65,6 +67,7 @@ export type PendingInput = {
   kind: 'swap';
 });
 export type PlayerAction = {
+  impactId?: number;
   duration: number;
   contacts: readonly number[];
   damage: number;
@@ -87,6 +90,7 @@ export type Encounter = {
   pending: PendingInput | null;
   projectiles: Projectile[];
   nextProjectile: number;
+  nextImpact?: number;
   stats: CombatStats;
   setStats: [CombatStats, CombatStats];
   attackCooldown: number;
@@ -163,6 +167,7 @@ export type EncounterEvent = {
   weapon: Weapon | null;
 } | {
   type: 'impact';
+  origin?: { actor: ActorId; ability: AbilityId | null; id: number };
   actor: ActorId;
   damage: number;
   position: { x: number; y: number; z: number };

@@ -376,6 +376,58 @@
             "color": "#806b50",
             "strength": 1,
             "layer": "earth"
+          },
+          {
+            "center": [
+              -12,
+              4.5
+            ],
+            "radius": 3.2,
+            "color": "#71533c",
+            "strength": 0.65,
+            "layer": "litter"
+          },
+          {
+            "center": [
+              -3,
+              11.9
+            ],
+            "radius": 3.1,
+            "color": "#71533c",
+            "strength": 0.65,
+            "layer": "litter"
+          },
+          {
+            "center": [
+              7.5,
+              -12
+            ],
+            "radius": 2.2,
+            "color": "#71533c",
+            "strength": 0.65,
+            "layer": "litter"
+          },
+          {
+            "center": [
+              -7.0,
+              6.1
+            ],
+            "radius": 3,
+            "color": "#777568",
+            "strength": 0.65,
+            "layer": "rocky-soil",
+            "wetness": 0.8
+          },
+          {
+            "center": [
+              -3,
+              5.8
+            ],
+            "radius": 1.7,
+            "color": "#777568",
+            "strength": 0.7,
+            "layer": "earth",
+            "wetness": 0.6
           }
         ],
         "paths": [
@@ -458,6 +510,28 @@
             ],
             "width": 2,
             "strength": 1
+          },
+          {
+            "points": [
+              [
+                -4,
+                2
+              ],
+              [
+                -6.8,
+                0.5
+              ],
+              [
+                -8,
+                -1.5
+              ],
+              [
+                -10,
+                -5
+              ]
+            ],
+            "width": 1.6,
+            "strength": 0.85
           }
         ]
       }
@@ -524,11 +598,11 @@
     {
       "id": "supplies",
       "position": [
-        7.2,
+        6.9,
         0,
-        -12.4
+        -12.1
       ],
-      "yaw": 0.5,
+      "yaw": -0.22,
       "scale": [
         1,
         1,
@@ -543,11 +617,11 @@
     {
       "id": "barrel",
       "position": [
-        7.9,
+        7.75,
         0,
-        -11.4
+        -11.85
       ],
-      "yaw": 0,
+      "yaw": 0.08,
       "scale": [
         1,
         1,
@@ -564,9 +638,9 @@
       "position": [
         -0.7,
         0,
-        -10.2
+        -10.7
       ],
-      "yaw": 0.7853981633974483,
+      "yaw": 0.35,
       "scale": [
         1,
         1,
@@ -2392,7 +2466,31 @@
     }
   },
   "effects": {
-    "water": [],
+    "water": [
+      {
+        "id": "approach-stream",
+        "position": [
+          -7.2,
+          6
+        ],
+        "width": 9,
+        "length": 1.6,
+        "flow": 0.09,
+        "yaw": -0.7853981633974483,
+        "shallow": true
+      },
+      {
+        "id": "bank-puddle",
+        "position": [
+          -3.9,
+          6.3
+        ],
+        "width": 1.5,
+        "length": 0.8,
+        "flow": 0,
+        "shallow": true
+      }
+    ],
     "fires": [
       {
         "id": "entrance-fire",
@@ -2408,7 +2506,19 @@
         "shadow": true,
         "role": "campfire"
       }
-    ]
+    ],
+    "weather": {
+      "kind": "rain",
+      "shelters": [
+        {
+          "center": [
+            2.8284,
+            -12.7279
+          ],
+          "radius": 1.8
+        }
+      ]
+    }
   },
   "campfires": [
     {
@@ -2560,44 +2670,44 @@
       {
         "id": "supplies",
         "position": [
-          7.2,
+          6.9,
           0.4,
-          -12.4
+          -12.1
         ],
         "size": [
           0.8,
           0.8,
           0.8
         ],
-        "yaw": 0.5
+        "yaw": -0.22
       },
       {
         "id": "barrel",
         "position": [
-          7.9,
+          7.75,
           0.55,
-          -11.4
+          -11.85
         ],
         "size": [
           1,
           1.1,
           1
         ],
-        "yaw": 0
+        "yaw": 0.08
       },
       {
         "id": "sitting-log",
         "position": [
           -0.7,
           0.3,
-          -10.2
+          -10.7
         ],
         "size": [
           0.657,
           0.6,
           3.44
         ],
-        "yaw": 0.7853981633974483
+        "yaw": 0.35
       },
       {
         "id": "pine-2",

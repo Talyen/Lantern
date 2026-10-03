@@ -309,6 +309,7 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
     }
     function treeHit(id: string): void { const tree = treeModels.get(id); if (tree && !tree.felled) { tree.hitAge = 0; shakingTrees.add(id); } }
     function activate(effects: CoreEffects): void {
+      effects.configureWeather(area);
       effects.addGrass(grass!);
       for (const model of foliage) effects.addFoliage(model);
       for (const water of area.effects.water) effects.addWater(root, ...water.position, water);

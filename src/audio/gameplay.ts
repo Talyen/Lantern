@@ -32,7 +32,8 @@ export class GameplayAudio {
         }
       } else if (event.type === 'impact') {
         const actor = event.actor === 'player' ? state.player : state.enemies[event.actor];
-        this.audio.play(event.blocked ? 'block' : event.weapon === 'staff' ? 'magicImpact' : event.weapon === 'bow' ? 'arrowImpact' : 'bodyImpact', actor);
+        const skill=event.origin?.ability==='sweep' || event.origin?.ability==='piercing-shot';
+        this.audio.play(event.blocked ? 'block' : event.weapon === 'staff' ? 'magicImpact' : event.weapon === 'bow' ? 'arrowImpact' : 'bodyImpact', actor, {gain:skill ? 1.12 : 1,rate:event.blocked ? 1 : event.weapon==='axe' ? .92 : event.weapon==='sword' ? 1.05 : 1});
         if (!event.blocked) this.audio.play(event.actor === 'player' ? event.lethal ? 'playerDeath' : 'playerHurt' : state.enemies[event.actor].rig === 'skeleton' ? event.lethal ? 'skeletonDeath' : 'skeletonHurt' : event.lethal ? 'enemyDeath' : 'enemyHurt', actor);
       } else if (event.type === 'projectileImpact') this.audio.play(event.kind === 'arrow' ? 'arrowImpact' : 'magicImpact', event.position);
       else if (event.type === 'outcome') this.audio.play(event.won ? 'victory' : 'defeat');
@@ -70,7 +71,7 @@ export class GameplayAudio {
     if (id === 'player' && count % 2 === 0) this.audio.play('gear', actor);
     previous.count++;
   }
-  ambience(fires: readonly AuthoredFire[], listener: SoundPosition, portal: SoundPosition | null, lantern: SoundPosition | null, ambience: 'woodland' | 'quiet' = 'woodland'): void {
+  ambience(fires: readonly AuthoredFire[], listener: SoundPosition, portal: SoundPosition | null, lantern: SoundPosition | null, ambience: 'woodland' | 'quiet' = 'woodland', rain = false): void {
     if (this.fireDefinitions !== fires) {
       this.fireDefinitions = fires;
       this.authoredFlames = fires.map(fire => ({key:`fire-${fire.id}`,position:{x:fire.position[0],z:fire.position[1]},camp:fire.role==='campfire',distance:0}));
@@ -89,12 +90,13 @@ export class GameplayAudio {
       for (let i = length - 1; i > index; i--) this.nearestFlames[i] = this.nearestFlames[i - 1];
       this.nearestFlames[index] = flame;
     }
-    this.loopKeys.clear(); if (ambience === 'woodland') this.loopKeys.add('woodland');
+    this.loopKeys.clear(); if(rain)this.loopKeys.add('rain'); if (ambience === 'woodland') this.loopKeys.add('woodland');
     for (const fire of this.nearestFlames) this.loopKeys.add(fire.key);
     if (portal) this.loopKeys.add('portal-hum');
     if (lantern) this.loopKeys.add('personal-lantern');
     this.audio.keepLoops(this.loopKeys);
     if (ambience === 'woodland') this.audio.loop('woodland', 'woodland');
+    if(rain)this.audio.loop('rain','rain');
     // Keep at most the six nearest authored flames, including optional scenery.
     for (const fire of this.nearestFlames) this.audio.loop(fire.key, fire.camp ? 'fire' : 'flame', fire.position);
     if (portal) this.audio.loop('portal-hum', 'portalHum', portal);

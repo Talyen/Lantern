@@ -47,13 +47,13 @@ export function advanceProjectile(state: Encounter, projectile: Projectile, dt: 
     }
   }
   if (nearestId !== undefined) {
-    hit(state, nearestId, timing, events, projectile.kind === 'arrow' ? 'bow' : 'staff', { x: -projectile.dx, z: -projectile.dz }, dt - elapsed + nearestFraction * distance / speed, projectile.damage ?? (projectile.owner === 'player' ? state.stats.damage : enemyAttackDamage));
+    hit(state, nearestId, timing, events, projectile.kind === 'arrow' ? 'bow' : 'staff', { x: -projectile.dx, z: -projectile.dz }, dt - elapsed + nearestFraction * distance / speed, projectile.damage ?? (projectile.owner === 'player' ? state.stats.damage : enemyAttackDamage), projectile.impactId === undefined ? undefined : { actor: projectile.owner, ability: projectile.ability ?? null, id: projectile.impactId });
     return false;
   }
   if (hits) {
     hits.sort((a, b) => a.fraction - b.fraction);
     for (const contact of hits) {
-      hit(state, contact.id, timing, events, projectile.kind === 'arrow' ? 'bow' : 'staff', { x: -projectile.dx, z: -projectile.dz }, dt - elapsed + contact.fraction * distance / speed, projectile.damage ?? (projectile.owner === 'player' ? state.stats.damage : enemyAttackDamage));
+      hit(state, contact.id, timing, events, projectile.kind === 'arrow' ? 'bow' : 'staff', { x: -projectile.dx, z: -projectile.dz }, dt - elapsed + contact.fraction * distance / speed, projectile.damage ?? (projectile.owner === 'player' ? state.stats.damage : enemyAttackDamage), projectile.impactId === undefined ? undefined : { actor: projectile.owner, ability: projectile.ability ?? null, id: projectile.impactId });
       projectile.pierced!.push(contact.id);
     }
   }

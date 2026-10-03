@@ -1,3 +1,4 @@
+@import "./ui-tokens.css";
 #shop-dialog{width:min(1100px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow:auto;padding:24px;color:#e1d8c6;border:1px solid #8f7955;border-radius:3px;background:linear-gradient(125deg,#35332cf5,#1d1e1dfc 45%,#141717fc);box-shadow:inset 0 0 0 3px #101313,inset 0 0 0 4px #64584055,0 20px 70px #0009}
 #shop-dialog header{border-bottom:1px solid #8c755642;padding-bottom:14px;margin-bottom:18px}
 #shop-dialog h2{font-family:"Pirata One",Georgia,serif;font-weight:400;font-size:32px}
@@ -33,3 +34,7 @@
 .loot-label.gold{color:#d8b46a}
 @media(max-width:850px){.shop-layout{grid-template-columns:210px minmax(260px,1fr)}.shop-details{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:8px 20px;padding:16px 0 0;border-left:0;border-top:1px solid #8c755642}.shop-details h3{grid-column:1/-1}.shop-price,.shop-action,.shop-comparison{margin-top:0}}
 @media(max-width:560px){.shop-layout{grid-template-columns:1fr}.shop-details{grid-column:auto}.shop-offers{grid-template-columns:1fr 1fr}#shop-dialog{padding:18px}}
+
+#shop-dialog{color:var(--ui-ivory);background:linear-gradient(125deg,#302820f7,#171411fc 60%);border-color:var(--ui-border)}
+.shop-offer>span:first-child{position:relative;width:32px;height:36px}
+.shop-offer .hud-icon{inset:0}

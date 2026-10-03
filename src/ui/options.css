@@ -5,3 +5,9 @@
 .options-footer{flex-wrap:wrap}.options-footer button:first-child{margin-right:auto}
 
 .graphics-resolution{display:block;margin-top:6px;color:#d6b781;font-size:12px;font-variant-numeric:tabular-nums}
+#options-dialog{color:#f0e6d2;background:linear-gradient(125deg,#302820f7,#171411fc 60%);border-color:#806640;border-radius:3px;box-shadow:inset 0 0 0 3px #100e0c,0 18px 60px #0008}
+#options-dialog h1{font:32px 'Pirata One',Georgia,serif;color:#ead5ae}
+#options-dialog h2{color:#c7a36a}
+#options-dialog select,#options-dialog button{background:#29231d;border-color:#806640;border-radius:2px;color:#f0e6d2;min-height:36px}
+#options-dialog button:hover:enabled{background:#3b3024;border-color:#c7a36a}
+#options-dialog input[type=range]{accent-color:#c7a36a}

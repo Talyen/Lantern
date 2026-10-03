@@ -50,7 +50,7 @@ Comparison URLs override settings for the current load without saving them throu
 - `?outlines=off`
 - `?textureDepth=off`
 
-Explicitly editing a control saves that choice. Reset defaults restores graphics and sound defaults. Graphics uses `lantern.options.v1`, revision 7, preserving applicable existing preferences, including sharpening and the old quality-to-shadow/particle migration, while stripping retired fields. Rendering-method, render-scale and volumetric preferences/URLs are ignored.
+Explicitly editing a control saves that choice. Reset defaults restores graphics and sound defaults. Graphics uses `lantern.options.v1`, revision 8, preserving applicable existing preferences, including sharpening and the old quality-to-shadow/particle migration, while stripping retired fields. Rendering-method, render-scale and volumetric preferences/URLs are ignored.
 
 Controls update immediately and submit immutable snapshots once per presentation frame. Structural graph changes settle for 150 ms, flushing the latest choice on close. Preparation is serialized; gameplay pauses and the last image remains visible during compilation. Failed replacements retain the working graph with an actionable menu error. Resolution Quality resizes existing buffers; two recently used effect graphs are retained at most. HTML UI remains on the main thread, so cold preparation can still stall it.
 
@@ -59,3 +59,7 @@ The renderer canvas's `data-graphics` JSON exposes recent frame intervals, scene
 ## Runtime requirements
 
 All routes require supported native WebGPU and hardware acceleration. Browser deployments require HTTPS; loopback development is supported. Electron uses a stable secure local origin for persistence, and hidden checks use a separate ignored profile and remain non-focusable. `--renderer=webgpu` is accepted only for compatibility; other backend values are rejected. Current launch commands are in [Development](DEVELOPMENT.md#commands-and-handoff).
+
+## Presentation preferences
+
+Camera Shake, Resource Numbers and Weather Effects are saved On/Off controls, On for fresh/reset settings. Resource Numbers hides visible HP/MP text only. Camera Shake Off removes an active offset immediately; hit pause has no option. Existing-player Weather Effects is seeded from the old Atmospheric particles preference once, then persists independently. Weather Off removes precipitation/contact effects and rain ambience while retaining authored wet ground, water, wind and fog. Preserve all other preferences when migrating.

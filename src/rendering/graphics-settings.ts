@@ -20,25 +20,26 @@ export type GraphicsSettings = {
   cameraDistance: CameraDistance;
   upscaleQuality: UpscaleQuality; sharpness: number; shadowQuality: QualityLevel; particleQuality: QualityLevel; fpsLimit: FrameRateLimit;
   exposure: number; warmth: number; fog: number; bloom: number; ao: number; dof: DepthOfFieldMode;
+  cameraShake: boolean; resourceNumbers: boolean; weatherEffects: boolean;
   atmosphericParticles: boolean; outlines: boolean; textureDepth: boolean;
 };
 export const settingsKey = 'lantern.options.v1';
 export const defaults = (query = new URLSearchParams(typeof location === 'undefined' ? '' : location.search)): GraphicsSettings => ({ cameraDistance: 'default', upscaleQuality: 'balanced', sharpness: 0.50, shadowQuality: 'high', particleQuality: 'high',
   fpsLimit: defaultFrameRate(Number(query.get('displayHz'))),
-  exposure: 1.25, warmth: 0.85, fog: 0.7, bloom: 0.4, ao: 0.65, dof: 'cinematic', atmosphericParticles: true, outlines: true, textureDepth: true });
+  exposure: 1.25, warmth: 0.85, fog: 0.7, bloom: 0.4, ao: 0.65, dof: 'cinematic', cameraShake: true, resourceNumbers: true, weatherEffects: true, atmosphericParticles: true, outlines: true, textureDepth: true });
 export const ranges = {
   sharpness: [0, 1, 0.01],
   exposure: [0.5, 2, 0.01], warmth: [0, 1, 0.01], fog: [0, 1, 0.01], bloom: [0, 1, 0.01], ao: [0, 1, 0.01],
 } as const;
 export type NumericSetting = keyof typeof ranges;
-export const defaultsVersion = 7;
+export const defaultsVersion = 8;
 export type SavedSettings = Partial<GraphicsSettings> & { defaultsVersion?: number; quality?: 'laptop' | 'enhanced' };
 /** Apply this visual-default revision once; later player choices remain authoritative. */
 export function migrateSettings(value: unknown): GraphicsSettings {
   // Preserve applicable preferences; retiring rendering methods changes no other choices.
   const saved = isRecord(value) ? value : {};
   const level = saved.quality === 'laptop' ? 'low' : 'high';
-  const migrated = { ...saved, shadowQuality: saved.shadowQuality ?? level, particleQuality: saved.particleQuality ?? level };
+  const migrated = { ...saved, weatherEffects: saved.weatherEffects ?? (typeof saved.atmosphericParticles === 'boolean' ? saved.atmosphericParticles : true), shadowQuality: saved.shadowQuality ?? level, particleQuality: saved.particleQuality ?? level };
   return parseSettings(migrated);
 }
 export function saveSettings(settings: GraphicsSettings, changedKey?: keyof GraphicsSettings): void {
@@ -60,7 +61,7 @@ export function readSettings(): GraphicsSettings {
 export function parseSettings(value: unknown = {}, query = new URLSearchParams()): GraphicsSettings {
   const saved = isRecord(value) ? value : {};
   const result = defaults(query);
-  for (const key of ['atmosphericParticles', 'outlines', 'textureDepth'] as const) {
+  for (const key of ['atmosphericParticles', 'outlines', 'textureDepth', 'cameraShake', 'resourceNumbers', 'weatherEffects'] as const) {
     if (typeof saved[key] === 'boolean') result[key] = saved[key];
     const override = query.get(key);
     if (override === 'on' || override === 'true') result[key] = true;

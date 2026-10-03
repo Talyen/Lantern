@@ -48,6 +48,7 @@ import { GatheringController } from './gathering';
 import { FrameLoop } from './frame-loop';
 import { EquipmentSets } from './equipment-sets';
 import { InventoryController } from './inventory';
+import { CombatImpact } from './combat-impact';
 import { CombatController } from './combat';
 import { EncounterPresentation } from './encounter-presentation';
 import { ClickApproach } from './click-approach';
@@ -121,6 +122,7 @@ const { camera, controls } = cameraOwner;
 const pointerAim = new PointerAim(renderer.domElement, camera);
 controls.addEventListener('change', invalidateFrame);
 const encounter = createEncounter('loading', currentArea.layout);
+const impact = new CombatImpact();
 const player = makeActor(scene, encounter.player);
 const actors: Record<ActorId, Actor> = { player };
 const loader = new GLTFLoader();
@@ -136,14 +138,16 @@ const preferences=new InputPreferences(() => localStorage);
 let hoveredInteraction: WorldInteraction | null=null;
 const audio = new GameAudio();
 const gameplayAudio = new GameplayAudio(audio);
+let pendingUtility: 'potion'|'portal'|null=null;
 document.addEventListener('click', event => {
   const button = event.target instanceof Element ? event.target.closest<HTMLButtonElement>('button') : null;
   if (button && !button.disabled && button.closest('dialog, #result-panel')) audio.play('uiClick');
 });
 const gathering = new GatheringController(encounter, adventure, harvesting, player, gatheringTools, audio, {
-  area: () => currentArea, instance: () => active, navigation: () => movementWorld, paused,
+  area: () => currentArea, instance: () => active, navigation: () => movementWorld, paused, effects: () => graphics?.effects,
 });
 function clearInput(): void {
+  impact.clear(); cameraOwner.clearShake(); pendingUtility=null;
   input.clear();
   combatUI?.clearHold();
   hoveredInteraction = null;
@@ -156,7 +160,7 @@ const input = createInput(renderer.domElement, preferences, dispatchInput, world
   interruptApproach();
 });
 const combat = new CombatController(encounter, adventure, actors, input, pointerAim, equipmentSets, {
-  paused, safeArea: () => currentArea.kind === 'safe',
+  paused, impactHolding: () => impact.holding, safeArea: () => currentArea.kind === 'safe',
   interruptApproach, clearHold: () => combatUI?.clearHold(),
   blocking: () => !!combatUI?.blocking, present,
 });
@@ -225,7 +229,11 @@ const presentation = new EncounterPresentation(encounter, actors, gameplayAudio,
     if (unblocked) combat.releaseShield();
   },
 });
-function present(events: EncounterEvent[]): void { presentation.present(events); }
+function present(events: EncounterEvent[]): void {
+  presentation.present(events);
+  if (!frozen && !inspecting && !transitioning) impact.present(events);
+  if (events.some(event => event.type === 'outcome' && !event.won)) { impact.clear(); pendingUtility=null; }
+}
 function resetPresentation(): void {
   gameplayAudio.reset();
   clearInput();
@@ -283,14 +291,15 @@ function dispatchInput(action: InputAction): void {
 }
 function usePotion(): void {
   if (paused()) return;
+  if(impact.holding){pendingUtility='potion';return;}
   if (adventure.usePotion(encounter)) interruptApproach();
   syncAdventure();
 }
-function castReturn():void {if(!paused()){interruptApproach();adventure.beginCast(encounter.player.hp>0);syncAdventure();}}
+function castReturn():void {if(impact.holding && !paused()){pendingUtility='portal';return;}if(!paused()){interruptApproach();adventure.beginCast(encounter.player.hp>0);syncAdventure();}}
 const combatUI = new CombatUI({
   character: () => adventure.character, encounter: () => encounter, preferences,
   activate: id => combat.startAbility(id), potion: usePotion, portal: castReturn,
-  swap: () => combat.swap(), canEdit: () => inventory.canEditEquipment(),
+  canEdit: () => inventory.canEditEquipment(),
   portalReady: () => currentArea.id !== homeArea && encounter.player.hp > 0 &&
     adventure.character.scrolls > 0 && adventure.castRemaining === 0,
   assign: bar => { if (inventory.canEditEquipment()) adventure.setActionBar(bar); },
@@ -315,6 +324,7 @@ function pickInteraction(): WorldInteraction | null {
 function worldClick(clientX: number, clientY: number): boolean {
   if (paused() || encounter.player.hp <= 0) return false;
   resolveAim({ x: clientX, y: clientY });
+  if (impact.holding) return !!adventureVisuals?.pick(pointerAim.ray) || !!pickInteraction();
   const loot = adventureVisuals?.pick(pointerAim.ray);
   if (loot) { selectLoot(loot); return true; }
   const target = pickInteraction();
@@ -351,7 +361,12 @@ function interruptApproach(releaseLock = true): void {
   gathering.cancel(releaseLock);
 }
 function updateGame(dt: number): void {
+  if (dt <= 0 && impact.holding && !paused()) { hud.update(encounter, []); return; }
   const isPaused = paused();
+  if (pendingUtility && !isPaused && !impact.holding) {
+    const command=pendingUtility; pendingUtility=null;
+    if(command==='potion')usePotion();else castReturn();
+  }
   let movement = input.movement();
   const block=combat.holdingShield();
   if(encounter.pending?.kind==='ability' && encounter.pending.ability==='shield-basic' && !block)encounter.pending=null;
@@ -388,28 +403,35 @@ window.addEventListener('resize', resize);
 resize();
 const initialFpsLimit = readSettings().fpsLimit;
 function renderFrame(dt: number): boolean {
+  cameraOwner.clearShake();
+  if (paused() || inspecting || fixedCamera || transitioning) impact.clear();
+  const gameDt = impact.advance(dt);
   audio.update(encounter.player,paused() || encounter.phase==='loading');
-  updateGame(dt);
+  updateGame(gameDt);
   if (!inspecting && !paused() && !fixedCamera && encounter.player.hp > 0) {
-    cameraOwner.follow(player.root.position, dt);
+    cameraOwner.follow(player.root.position, gameDt);
   } else cameraOwner.suspendFollow();
   for (const id in actors) {
     const actor = actors[id];
     const state = id === 'player' ? encounter.player : encounter.enemies[id];
-    updateActor(actor, state, dt, paused(), id==='player' && encounter.blocking);
+    updateActor(actor, state, gameDt, paused(), id==='player' && encounter.blocking);
     gameplayAudio.locomotion(id,state,actor.gait,actor.current,paused());
   }
-  if (!paused()) { active?.portals.forEach(p => p.update(dt)); adventureVisuals?.update(dt); }
+  if (!paused()) { active?.portals.forEach(p => p.update(gameDt)); adventureVisuals?.update(gameDt); }
   const portalPoint = adventure.portalPosition(currentArea);
-  gameplayAudio.ambience(currentArea.effects.fires,encounter.player,portalPoint ? {x:portalPoint[0],z:portalPoint[1]} : null,lanternEnabled && encounter.player.hp>0 ? encounter.player : null, currentArea.ambience ?? 'woodland');
+  gameplayAudio.ambience(currentArea.effects.fires,encounter.player,portalPoint ? {x:portalPoint[0],z:portalPoint[1]} : null,lanternEnabled && encounter.player.hp>0 ? encounter.player : null, currentArea.ambience ?? 'woodland', !!currentArea.effects.weather && (options?.settings.weatherEffects ?? true));
   controls.update();
   camera.updateMatrixWorld();
   pointerAim.capture(camera);
   const pointer = input.pointer();
   if (!paused() && pointer) { resolveAim(pointer); lootLabels.hovered = adventureVisuals?.pick(pointerAim.ray) ?? null; }
+  const shake = impact.offset(options?.settings.cameraShake ?? true);
+  cameraOwner.applyShake(shake.x,shake.y,mount.clientHeight);
   lootLabels.sync(adventure.session(currentArea.id).drops, camera, [encounter.player.x, encounter.player.z], paused() || encounter.player.hp <= 0);
-  hud.positionEnemy(encounter, camera, mount, paused() ? 0 : dt, inspecting || transitioning);
-  active?.update(camera, paused() ? 0 : dt);
+  hud.positionEnemy(encounter, camera, mount, paused() ? 0 : gameDt, inspecting || transitioning);
+  active?.update(camera, paused() ? 0 : gameDt);
+  graphics?.effects.setGameplayDelta(gameDt);
+  graphics?.effects.weatherView(camera,player.root.position);
   renderer.info.reset();
   const rendered = graphics?.render(dt, paused()) ?? false;
   if (rendered) renderedFrames++;
@@ -456,6 +478,8 @@ try {
   const lighting = { get definition() { return committedLighting; }, get fires() { return active?.fires ?? []; }, get shadow() { return active?.shadow ?? null; } };
   options = new Options({
     apply: settings => {
+      hud.resourceNumbers(settings.resourceNumbers);
+      if (!settings.cameraShake) { impact.offset(false); cameraOwner.clearShake(); }
       if (cameraOwner.setDistance(settings.cameraDistance)) { graphics?.resetHistory(); invalidateFrame(); }
       graphics?.apply(settings);
     }, combatText: settings => hud.applyCombatText(settings), flushSettings: () => graphics?.flushSettings(),
@@ -486,6 +510,7 @@ try {
 }
 
 function dispose(): void {
+  impact.clear(); cameraOwner.clearShake();
   frameLoop.dispose();
   hud.dispose();
   input.dispose();

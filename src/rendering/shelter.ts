@@ -29,6 +29,16 @@ export function createShelter(definition: NonNullable<AreaDefinition['shelter']>
   } else {
     box([2.8,.13,.16],[.25,.18,.4],timber,[0,.32,.06]); box([1.5,.10,.12],[-.65,.14,-.35],timber,[0,-.45,0]);
   }
+  // Repair changes the silhouette and purposeful arrangement, without obscuring the stash approach.
+  if (restored) {
+    for (const x of [-1.64,1.64]) for (const z of [-.95,.95]) box([.09,.65,.1],[x,1.55,z],timber,[0,0,x<0 ? -.38 : .38]);
+    for (const x of [-1.3,-.95,-.6]) box([.16,.18,.75],[x,.16,-.8],timber);
+    box([.48,.16,.66],[-1.13,.23,.32],canvas);
+    box([.5,.06,.12],[-1.13,.34,.5],timber);
+  } else {
+    box([.9,.08,.14],[-1.16,.11,.82],timber,[0,.48,.06]);
+    box([.54,.16,.5],[.85,.18,-.65],canvas,[0,-.3,.1]);
+  }
   // Broad canvas facets and a shallow sag read as cloth without noisy geometry.
   const roof=new THREE.BufferGeometry(), vertices:number[]=[];
   const points=[[-1.83,restored?1.97:.32,-1.3],[0,restored?1.88:.16,-1.3],[1.83,restored?1.97:.4,-1.3],[-1.83,restored?2.35:1.47,1.35],[0,restored?2.25:.74,1.35],[1.83,restored?2.35:1.16,1.35]];

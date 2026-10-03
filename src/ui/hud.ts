@@ -1,3 +1,4 @@
+import { hudFrame } from './hud-art';
 import * as THREE from 'three';
 import { enemyMaxHealth, type EnemyId, type Encounter, type EncounterEvent } from '../gameplay/encounter';
 import './orbs.css';
@@ -11,6 +12,9 @@ export function createHud(onRetry: () => void) {
   const status = element<HTMLParagraphElement>('asset-status');
   const playerHealth = element<HTMLDivElement>('player-health');
   const playerMana = element<HTMLDivElement>('player-mana');
+  for (const orb of [playerHealth, playerMana]) {
+    const number = document.createElement('span'); number.className = 'orb-number'; number.setAttribute('aria-hidden','true'); number.innerHTML='<strong></strong><small></small>'; orb.insertAdjacentHTML('afterbegin',hudFrame('orb')); orb.append(number);
+  }
   const enemyHealth = element<HTMLDivElement>('enemy-health');
   const healthBars: Record<EnemyId, HTMLDivElement> = {};
   enemyHealth.hidden = true;
@@ -41,6 +45,7 @@ export function createHud(onRetry: () => void) {
   const anchor = new THREE.Vector3();
   const damagedFor: Record<EnemyId,number> = {};
   let safe = false;
+  let showNumbers = true;
   const resources = new WeakMap<HTMLElement, { count: number; max: number }>();
   const enemyValues: Partial<Record<EnemyId, number>> = {};
   const enemyTransforms: Partial<Record<EnemyId, string>> = {};
@@ -55,7 +60,10 @@ export function createHud(onRetry: () => void) {
     orb.setAttribute('aria-valuemax',String(max));
     orb.setAttribute('aria-valuenow', String(count));
     orb.setAttribute('aria-valuetext', `${Math.ceil(count)} / ${max}`);
-    orb.title = `${name} · ${Math.ceil(count)} / ${max}`;
+    orb.title = showNumbers ? `${name} · ${Math.ceil(count)} / ${max}` : name;
+    orb.querySelector('.orb-number strong')!.textContent = String(Math.ceil(count));
+    orb.querySelector('.orb-number small')!.textContent = `/ ${max}`;
+    orb.dataset.low = String(count > 0 && count / max <= .25);
   }
   function finish(won: boolean): void {
     resultTitle.textContent = won ? 'Victory' : 'Defeat'; resultCopy.textContent = '';
@@ -63,6 +71,11 @@ export function createHud(onRetry: () => void) {
   }
   retry.addEventListener('click', onRetry);
   return {
+    resourceNumbers(visible: boolean): void {
+      showNumbers=visible;
+      document.documentElement.dataset.resourceNumbers=String(visible);
+      for(const [orb,name] of [[playerHealth,'Health'],[playerMana,'Mana']] as const) orb.title=visible ? `${name} · ${orb.getAttribute('aria-valuetext') ?? ''}` : name;
+    },
     update(encounter: Encounter, events: EncounterEvent[]) {
       bars(encounter);
       combatText.encounter(events);

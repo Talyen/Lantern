@@ -1,0 +1,32 @@
+[
+  {
+    "name": "centered",
+    "prompt": "Use case: ui-mockup. Original UI-only HUD layout study for Lantern, desktop fantasy action RPG, 1280x800 composition. A compact centered combat instrument. At bottom center, two slim horizontal resource meters flank a single six-slot ability row. Health left, Mana right. Utility potion on far left, return scroll far right, small Set I switch beneath. No orbs. Show the same exact content: Health 74 / 100; Mana 45 / 100; six ability slots: Sweep, Piercing Shot, empty, empty, Sword Basic, empty; each slot has a discreet binding badge 1 2 3 4 LMB RMB; Sweep cooling down 3s, Piercing Shot incompatible, Sword Basic ready. Potion count 3 and Return Scroll count 2, Set I. Distinct states by shape and value, not just color. Materials: forged iron structure, soot-charcoal opaque surfaces, sparse worn brass accents, warm ivory readable numerals and labels. Short Gothic headings only. Restrained finely crafted fantasy, generous protected central play space. Background is an absolutely flat quiet dark gray, no world imagery, no characters, no licensed art, no logo, no lore, no top HUD, no extra status panels. Render one polished coherent screen study with HUD confined to bottom 140px. Labels legible at intended scale. No gold border around every slot, no constant glow.",
+    "filename": "centered.png",
+    "sha256": "a3f9b122478e2287deecc15f1a318291090ae28f8441544b18aea81cf544e771",
+    "date": "2026-10-02",
+    "tool": "built-in ImageGen",
+    "inputs": "Original text only",
+    "status": "Concept; awaiting owner layout selection"
+  },
+  {
+    "name": "split",
+    "prompt": "Use case: ui-mockup. Original UI-only HUD layout study for Lantern, desktop fantasy action RPG, 1280x800 composition. Split resource and ability groups. At bottom left a stacked pair of sturdy horizontal Health and Mana meters, with values. At bottom center-right a six-slot ability row with potion left and return scroll right, small Set I switch. Leave a generous gap between resource group and abilities. Show the same exact content: Health 74 / 100; Mana 45 / 100; six ability slots: Sweep, Piercing Shot, empty, empty, Sword Basic, empty; each slot has a discreet binding badge 1 2 3 4 LMB RMB; Sweep cooling down 3s, Piercing Shot incompatible, Sword Basic ready. Potion count 3 and Return Scroll count 2, Set I. Distinct states by shape and value, not just color. Materials: forged iron structure, soot-charcoal opaque surfaces, sparse worn brass accents, warm ivory readable numerals and labels. Short Gothic headings only. Restrained finely crafted fantasy, generous protected central play space. Background is an absolutely flat quiet dark gray, no world imagery, no characters, no licensed art, no logo, no lore, no top HUD, no extra status panels. Render one polished coherent screen study with HUD confined to bottom 140px. Labels legible at intended scale. No gold border around every slot, no constant glow.",
+    "filename": "split.png",
+    "sha256": "1638b4fe59ae4fde6dd7b55efdf841f2c3b4fad496575c2d47472c60241bfbae",
+    "date": "2026-10-02",
+    "tool": "built-in ImageGen",
+    "inputs": "Original text only",
+    "status": "Concept; awaiting owner layout selection"
+  },
+  {
+    "name": "orbs",
+    "prompt": "Use case: ui-mockup. Original UI-only HUD layout study for Lantern, desktop fantasy action RPG, 1280x800 composition. A restrained orb-led arrangement. Two small smoky glass resource orbs in iron and tarnished brass cradles flank a central six-slot ability row, Health red on left and Mana blue on right. Potion and scroll outside the orbs, small Set I switch below. Show the same exact content: Health 74 / 100; Mana 45 / 100; six ability slots: Sweep, Piercing Shot, empty, empty, Sword Basic, empty; each slot has a discreet binding badge 1 2 3 4 LMB RMB; Sweep cooling down 3s, Piercing Shot incompatible, Sword Basic ready. Potion count 3 and Return Scroll count 2, Set I. Distinct states by shape and value, not just color. Materials: forged iron structure, soot-charcoal opaque surfaces, sparse worn brass accents, warm ivory readable numerals and labels. Short Gothic headings only. Restrained finely crafted fantasy, generous protected central play space. Background is an absolutely flat quiet dark gray, no world imagery, no characters, no licensed art, no logo, no lore, no top HUD, no extra status panels. Render one polished coherent screen study with HUD confined to bottom 140px. Labels legible at intended scale. No gold border around every slot, no constant glow.",
+    "filename": "orbs.png",
+    "sha256": "e6a00ae546ef20c7ff81ae360cfbbe16a64b695269be1d3b55c4d8a1b479161a",
+    "date": "2026-10-02",
+    "tool": "built-in ImageGen",
+    "inputs": "Original text only",
+    "status": "Concept; awaiting owner layout selection"
+  }
+]

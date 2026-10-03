@@ -6,7 +6,7 @@ import { enemyAttackDamage, type ActorId, type Encounter, type EncounterEvent, t
 export function hit(state: Encounter, actor: ActorId, timing: Timings, events: EncounterEvent[], source?: Weapon, incoming?: {
   x: number;
   z: number;
-}, impactOffset = 0, rawDamage = enemyAttackDamage): void {
+}, impactOffset = 0, rawDamage = enemyAttackDamage, origin?: Extract<EncounterEvent, {type: 'impact'}>['origin']): void {
   const immunity = impactOffset < state.dodgeFrameOffset ? state.invulnerabilityBeforeDodge : state.invulnerability;
   if ((actor === 'player' ? state.player : state.enemies[actor]).hp <= 0 || actor === 'player' && immunity > impactOffset)
     return;
@@ -44,7 +44,7 @@ export function hit(state: Encounter, actor: ActorId, timing: Timings, events: E
   }
   else if (!committed)
     target.contactIndex = 0;
-  events.push({ type: 'hit', actor }, { type: 'impact', actor, weapon: source ?? null, damage, position: { x: target.x, y: target.y, z: target.z }, blocked, lethal: target.hp <= 0 });
+  events.push({ type: 'hit', actor }, { type: 'impact', actor, weapon: source ?? null, damage, position: { x: target.x, y: target.y, z: target.z }, blocked, lethal: target.hp <= 0, ...(origin ? { origin } : {}) });
   if (!blocked && !committed)
     events.push({ type: 'animation', actor, motion: 'hit' });
   if (target.hp <= 0) {

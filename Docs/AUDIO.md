@@ -1,6 +1,6 @@
 # Gameplay sound
 
-Lantern uses recorded weapon and movement foley, compact creature reactions, subdued magic and quiet woodland/refuge ambience. Combat leads the mix; there is no background music, hit pause, camera shake or continuous reward chatter.
+Lantern uses recorded weapon and movement foley, compact creature reactions, subdued magic and quiet woodland/refuge ambience. Combat leads the mix; there is no background music or continuous reward chatter. The approved combat-polish direction permits brief selected-contact hit pause and strongest-Skill camera shake; see [impact clocks](RUNTIME.md#combat-impact-clocks).
 
 Follow the shared [interaction feedback principle](INTERACTION_FEEDBACK.md): sound may reinforce meaningful actions and outcomes, while essential meaning remains visible with sound muted or unavailable. A clear existing visual response can suffice; this does not require a sound for every input or change the event timing and bounded playback rules below.
 
@@ -51,3 +51,5 @@ The raider plants and commits facing at acceptance. Contact checks the forward 1
 ## Acceptance evidence
 
 The local native WebGPU preview checks action/event playback, the solo raider dodge/retaliation exchange, gathering, rewards, menus and travel through both playable areas. All 40 files decode without audio errors. Focused simulation checks protect early/late commitment, directional misses, lethal cancellation and exactly-once action/reward events. Export checks record 1.18 MiB of prepared sounds without clipping. These are technical/local interaction checks; listening-based approval of the final mix and other-platform playback remain unverified.
+
+Clearing rain uses a quiet recorded forest-leaves excerpt on the Ambience bus. Weather Effects controls its loop; Homestead remains dry. Sword/axe impact pitch and successful-Skill emphasis are presentation-only and retain exactly-once event ownership. The private rain master remains read-only; its source identity, hash and excerpt/loop recipe are in the audio manifest.
