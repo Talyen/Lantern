@@ -53,7 +53,8 @@ export async function acquire(resource, { cwd = root, ctx, slots = RESOURCE_LIMI
     cleanupGroup: group => child.stdin.write(JSON.stringify({ cleanupGroup: group }) + '\n'),
     release: async () => {
     if (owned.get(resource) === lease) owned.delete(resource);
-    child.stdin.end(); await exited;
+    child.stdin.end(); const code = await exited;
+    if (code !== 0) throw new Error(`${resource} guardian cleanup failed; preserve its ownership records.`);
   } };
   // Explicit acquire is used by the single preview owner. Callback leases use async scopes.
   if (!scope.getStore()) owned.set(resource, lease);

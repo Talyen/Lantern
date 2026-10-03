@@ -11,7 +11,23 @@ import { context, readJSON, writeJSON, processIdentity } from './state.mjs';
 import { acquire } from './resources.mjs';
 import { run, root } from '../lib/cli.mjs';
 export const sessionPath = cwd => join(cwd, '.local/agents/preview.json');
+export const browserHistoryPath = cwd => join(cwd, '.local/agents/browser-history.json');
 const execute = promisify(execFile);
+const previewResource = cwd => `preview-${createHash('sha256').update(cwd).digest('hex').slice(0, 16)}`;
+async function cleanupBrowserGroups(groups) {
+  if (groups?.length) await execute('python3', [resolve(root, 'scripts/agents/native.py'), 'cleanup-groups', JSON.stringify(groups)]);
+}
+/** Recover only recorded browser launches whose preview owner has exited. */
+export async function recoverBrowsers(cwd) {
+  const history = await readJSON(browserHistoryPath(cwd), []);
+  let changed = false;
+  for (const record of history) {
+    if (record.closed || !record.started || await processIdentity(record.pid) === record.started) continue;
+    await cleanupBrowserGroups(record.browserProcesses);
+    record.closed = true; changed = true;
+  }
+  if (changed) await writeJSON(browserHistoryPath(cwd), history);
+}
 /** Only groups descended from this preview's uniquely named browser daemon. */
 export async function browserProcessGroups(session) {
   const directory = process.env.AGENT_BROWSER_SOCKET_DIR ?? join(homedir(), '.agent-browser');
@@ -50,7 +66,15 @@ export async function livePreview(cwd) {
 export async function stopPreview(cwd) {
   const record = await readJSON(sessionPath(cwd), null);
   if (!record) return;
-  if (await processIdentity(record.pid) !== record.started) { await rm(sessionPath(cwd)); return; }
+  if (await processIdentity(record.pid) !== record.started) {
+    const lease = await acquire(previewResource(cwd), { cwd, tryOnly: true });
+    if (!lease) throw new Error('Preview cleanup is already owned; preserve its records and retry.');
+    try {
+      if ((await readJSON(sessionPath(cwd), null))?.token !== record.token) return;
+      await recoverBrowsers(cwd); await cleanupBrowserGroups(record.browserProcesses);
+      await rm(sessionPath(cwd)); return;
+    } finally { await lease.release(); }
+  }
   if (record.status !== 'starting' && !await livePreview(cwd)) throw new Error(`Preview identity could not be verified; preserve its session record: ${cwd}`);
   process.kill(record.pid, 'SIGTERM');
   for (let attempt = 0; attempt < 100; attempt++) {
@@ -101,11 +125,19 @@ async function serve() {
     session, renderer: 'webgpu', browser: options.browser, author: options.author, lab: options.lab ?? null, status: 'starting', ready: false };
   const trackBrowser = () => {
     browserScan = browserScan.catch(() => {}).then(async () => {
-      for (const group of await browserProcessGroups(session)) if (trackedGroups.get(group.pid) !== group.started) {
-        if (trackedGroups.has(group.pid)) throw new Error('Browser PID was reused; preserve the new process and inspect preview.log.');
-        trackedGroups.set(group.pid, group.started); lease.cleanupGroup(group);
+      let changed = false;
+      for (const group of await browserProcessGroups(session)) if (!trackedGroups.has(`${group.pid}:${group.started}`)) {
+        trackedGroups.set(`${group.pid}:${group.started}`, group); lease.cleanupGroup(group); changed = true;
       }
-      record.browserProcesses = [...trackedGroups].map(([pid, started]) => ({ pid, started }));
+      record.browserProcesses = [...trackedGroups.values()];
+      if (changed) {
+        const history = await readJSON(browserHistoryPath(cwd), []);
+        const index = history.findIndex(entry => entry.token === record.token);
+        const entry = { pid: record.pid, started: record.started, token: record.token, session, browserProcesses: record.browserProcesses };
+        if (index < 0) history.push(entry); else history[index] = entry;
+        await writeJSON(browserHistoryPath(cwd), history);
+        await writeJSON(sessionPath(cwd), record);
+      }
     });
     return browserScan;
   };
@@ -115,6 +147,10 @@ async function serve() {
     if (options.browser && lease) await trackBrowser().catch(error => console.error(error));
     await server?.close();
     await lease?.release();
+    await cleanupBrowserGroups(record.browserProcesses);
+    const history = await readJSON(browserHistoryPath(cwd), []);
+    const entry = history.find(entry => entry.token === record.token);
+    if (entry) { entry.closed = true; await writeJSON(browserHistoryPath(cwd), history); }
     if ((await readJSON(sessionPath(cwd), null))?.token === options.token) await rm(sessionPath(cwd), { force: true });
     if (options.author && (await readJSON(join(cwd, '.local/level-design/session.json'), null))?.token === options.token) await rm(join(cwd, '.local/level-design/session.json'), { force: true });
     await ownerLease?.release(); process.exit(0);
@@ -123,9 +159,10 @@ async function serve() {
   try {
     // A second startup must never overwrite this task's session or leave an
     // untracked server alive. This per-checkout lease also covers GPU admission.
-    const owner = `preview-${createHash('sha256').update(cwd).digest('hex').slice(0, 16)}`;
+    const owner = previewResource(cwd);
     ownerLease = await acquire(owner, { cwd, ctx, tryOnly: true });
     if (!ownerLease) throw new Error('An owned preview is already starting or running.');
+    await recoverBrowsers(cwd);
     await writeJSON(sessionPath(cwd), record);
     lease = options.browser ? await acquire('gpu', { cwd, ctx }) : null;
     if (closing) { await lease?.release(); return; }

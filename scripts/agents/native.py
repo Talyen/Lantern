@@ -48,6 +48,11 @@ def stop_owned_groups(groups):
                 os.killpg(pid, signal.SIGKILL)
             except ProcessLookupError:
                 pass
+    deadline = time.monotonic() + 2
+    while time.monotonic() < deadline and any(matches(pid, started) for pid, started in groups.items()):
+        time.sleep(.1)
+    if any(matches(pid, started) for pid, started in groups.items()):
+        raise RuntimeError('Owned browser groups survived cleanup; retain their identities for recovery')
 
 
 def clone(source, target, exclusions=(), small_copy=False):
@@ -218,6 +223,8 @@ copy = sub.add_parser('clone')
 copy.add_argument('source')
 copy.add_argument('target')
 copy.add_argument('--exclude', action='append', default=[])
+cleanup = sub.add_parser('cleanup-groups')
+cleanup.add_argument('groups')
 lock = sub.add_parser('lease')
 lock.add_argument('directory')
 lock.add_argument('resource')
@@ -228,7 +235,12 @@ lock.add_argument('--try-only', action='store_true')
 lock.add_argument('--token', required=True)
 lock.add_argument('--task', default='main')
 args = parser.parse_args()
-if args.operation == 'clone':
+if args.operation == 'cleanup-groups':
+    groups = json.loads(args.groups)
+    if not isinstance(groups, list) or any(not isinstance(group, dict) or not isinstance(group.get('pid'), int) or group['pid'] < 1 or not isinstance(group.get('started'), str) or not group['started'] for group in groups):
+        parser.error('Cleanup requires recorded PID and start identities')
+    stop_owned_groups({group['pid']: group['started'] for group in groups})
+elif args.operation == 'clone':
     source = Path(args.source)
     size = 0 if sys.platform == 'darwin' else (sum(p.stat().st_size for p in source.rglob('*') if p.is_file() and not p.is_symlink()) if source.is_dir() else source.stat().st_size)
     clone(args.source, args.target, set(args.exclude), small_copy=sys.platform != 'darwin' and size <= 1024 * 1024)

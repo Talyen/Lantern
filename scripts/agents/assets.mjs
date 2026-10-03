@@ -108,6 +108,8 @@ export async function retainSources(ctx, task) {
   }
   const previewLog = join(task.path, '.local/agents/preview.log');
   if (existsSync(previewLog)) await privateCopy(previewLog, join(archive, 'preview.log'));
+  const browsers = join(task.path, '.local/agents/browser-history.json');
+  if (existsSync(browsers)) await privateCopy(browsers, join(archive, 'browser-history.json'));
   const views = join(task.path, '.local/level-design');
   if (existsSync(views)) await privateTree(views, join(archive, 'level-design'));
   await writeJSON(join(ctx.main, '.local/agent-archives', task.id, 'retained.json'), { task: task.id, revision: task.candidate, retained: new Date().toISOString() });

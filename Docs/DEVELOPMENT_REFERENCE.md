@@ -41,10 +41,14 @@ Automatic limits default to eight task worktrees, one static-check job, one heav
 
 Reuse the task's managed browser for navigation and reloads; do not open replacement
 sessions alongside an unresponsive preview. The preview records its uniquely named
-browser daemon and Chrome process groups with PID/start identities. The lease
+browser daemon and Chrome process groups with PID/start identities. Restarted
+launches are appended to a durable browser history, retained in the task archive;
+unchanged scans do not rewrite it. Startup automatically recovers recorded launches
+whose preview owner has exited. The lease
 guardian attempts normal browser close, then stops only those verified groups if
-close fails or the preview owner exits abruptly. GPU admission stays reserved
-through cleanup. Do not use global browser-close or age-based reclamation against
+close fails or the preview owner exits abruptly, and verifies their exit before
+discarding ownership records. GPU admission stays reserved through cleanup.
+No extra agent registration or cleanup steps are required. Do not use global browser-close or age-based reclamation against
 another task or the user's browser. These limits belong to this repository;
 Alchemy browser tests and Trinket simulator builds can still compete for the same
 Mac's memory. Coordinate expensive inspections when host memory pressure is high,

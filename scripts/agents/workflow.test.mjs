@@ -10,7 +10,7 @@ import { join } from 'node:path';
 import { git, context, writeJSON, readJSON, taskPath, taskCapacity, spaceRequirement, processIdentity } from './state.mjs';
 import { startTask, finishTask, cleanupTask, recover, installedDependenciesMatch } from './workflow.mjs';
 import { acquire, childEnvironment, withResource } from './resources.mjs';
-import { sessionPath, stopPreview } from './preview.mjs';
+import { sessionPath, stopPreview, browserHistoryPath, recoverBrowsers } from './preview.mjs';
 
 import { checkStages } from '../check.mjs';
 
@@ -339,6 +339,27 @@ test('browser cleanup survives a failed close without touching a reused process 
     if (browser.exitCode === null && browser.signalCode === null) browser.kill('SIGKILL');
     unrelated.kill('SIGKILL'); await unrelatedExit;
     await lease?.release(); await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('durable browser history recovers earlier launches while preserving live owners and reused PIDs', { timeout: 15000 }, async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'lantern-browser-history-'));
+  const browsers = Array.from({ length: 3 }, () => spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { detached: true, stdio: 'ignore' }));
+  const exits = browsers.map(browser => once(browser, 'exit'));
+  try {
+    const groups = await Promise.all(browsers.map(async browser => ({ pid: browser.pid, started: await processIdentity(browser.pid) })));
+    await writeJSON(browserHistoryPath(directory), [
+      { pid: process.pid, started: 'exited owner', browserProcesses: [groups[0], { ...groups[2], started: 'reused PID' }] },
+      { pid: process.pid, started: await processIdentity(process.pid), browserProcesses: [groups[1]] },
+    ]);
+    await recoverBrowsers(directory); await exits[0];
+    assert.ok(await processIdentity(browsers[1].pid));
+    assert.ok(await processIdentity(browsers[2].pid));
+    const history = await readJSON(browserHistoryPath(directory));
+    assert.equal(history[0].closed, true); assert.equal(history[1].closed, undefined);
+  } finally {
+    for (const browser of browsers) if (browser.exitCode === null && browser.signalCode === null) browser.kill('SIGKILL');
+    await Promise.all(exits); await rm(directory, { recursive: true, force: true });
   }
 });
 
