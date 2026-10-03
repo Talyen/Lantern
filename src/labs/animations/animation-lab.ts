@@ -7,6 +7,7 @@ import { clone } from 'three/addons/utils/SkeletonUtils.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createRenderer } from '../../rendering/renderer';
 import { WebGPUPipeline } from '../../rendering/webgpu-pipeline';
+import { FrameLoop } from '../../clearing/frame-loop';
 import { resolveLighting } from '../../levels/lighting';
 import { AreaLightingResources } from '../../rendering/area-lighting';
 import { readSettings } from '../../rendering/graphics-settings';
@@ -141,8 +142,17 @@ const previews = lanes.map((lane, i) => {
   return { renderer, camera: laneCamera, pipeline, lighting };
 });
 await Promise.all(previews.map((preview) => preview.pipeline.ready()));
-const resetHistories = () => previews.forEach((preview) => preview.pipeline.resetHistory());
-window.addEventListener('pagehide', () => { disposed = true; controls.dispose(); lanes.forEach(clearLane); void Promise.allSettled(characterCache.values()).then(results => results.forEach(result => { if (result.status === 'fulfilled') disposeSceneResources(result.value); })).catch((error: unknown) => console.error('Unable to release character models.', error)); void asterfallLibrary.dispose().catch((error: unknown) => console.error('Unable to release Asterfall assets.', error)); void assetLibrary.dispose().catch((error: unknown) => console.error('Unable to release lab assets.', error)); previews.forEach(({ pipeline, renderer, lighting }) => { pipeline.dispose(); lighting.dispose(); void renderer.dispose().catch((error: unknown) => console.error('Unable to release graphics.', error)); }); }, { once: true });
+const frameLoop = new FrameLoop({
+  hidden: () => document.hidden || document.documentElement.hasAttribute('data-window-hidden'),
+  paused: () => !playing || !lanes.some(lane => lane.action),
+  fpsLimit: () => 0, maxDeltaSeconds: .1,
+  onPause() {}, render: renderFrame,
+});
+const resetHistories = () => { previews.forEach((preview) => preview.pipeline.resetHistory()); frameLoop.invalidate(); };
+controls.addEventListener('change', () => frameLoop.invalidate());
+document.addEventListener('visibilitychange', () => frameLoop.visibilityChanged());
+window.addEventListener('lanternvisibilitychange', () => frameLoop.visibilityChanged());
+window.addEventListener('pagehide', () => { disposed = true; frameLoop.dispose(); controls.dispose(); lanes.forEach(clearLane); void Promise.allSettled(characterCache.values()).then(results => results.forEach(result => { if (result.status === 'fulfilled') disposeSceneResources(result.value); })).catch((error: unknown) => console.error('Unable to release character models.', error)); void asterfallLibrary.dispose().catch((error: unknown) => console.error('Unable to release Asterfall assets.', error)); void assetLibrary.dispose().catch((error: unknown) => console.error('Unable to release lab assets.', error)); previews.forEach(({ pipeline, renderer, lighting }) => { pipeline.dispose(); lighting.dispose(); void renderer.dispose().catch((error: unknown) => console.error('Unable to release graphics.', error)); }); }, { once: true });
 const loader = new GLTFLoader();
 const cache = new Map<string, Promise<THREE.AnimationClip>>();
 const characterCache = new Map<string, Promise<THREE.Group>>();
@@ -210,6 +220,7 @@ function applyPose(): void {
   }
   scrub.value = String(loop.checked && !linkedCycles() ? (seconds % reference) / reference : progress);
   time.textContent = `${seconds.toFixed(2)} s`;
+  frameLoop.invalidate();
 }
 function resetPlayback(): void { resetHistories(); seconds = 0; progress = 0; applyPose(); }
 function previewFailed(error: unknown): void { console.error('Unable to update animation preview.', error); }
@@ -332,7 +343,7 @@ for (const lane of lanes) {
   });
 }
 category.addEventListener('change', () => lanes.forEach(lane => { void fillClips(lane).catch(previewFailed); }));
-pause.addEventListener('click', () => { playing = !playing; pause.textContent = playing ? 'Pause' : 'Play'; });
+pause.addEventListener('click', () => { playing = !playing; pause.textContent = playing ? 'Pause' : 'Play'; frameLoop.invalidate(); });
 restart.addEventListener('click', resetPlayback);
 step.addEventListener('click', () => { playing = false; pause.textContent = 'Play'; seconds += 1 / 30; progress += 1 / (30 * referenceDuration()); if (loop.checked) progress %= 1; else progress = Math.min(1, progress); applyPose(); });
 scrub.addEventListener('input', () => { playing = false; pause.textContent = 'Play'; progress = Number(scrub.value); seconds = progress * referenceDuration(); applyPose(); resetHistories(); });
@@ -350,6 +361,7 @@ function resize(): void {
     if (!visibleLane(index)) return;
     preview.camera.copy(camera); preview.renderer.setSize(Math.max(1, mounts[index].clientWidth), h); preview.pipeline.resize();
   });
+  frameLoop.invalidate();
 }
 function updateStatus(): void {
   const shown = lanes.filter((_, index) => visibleLane(index));
@@ -408,11 +420,8 @@ window.addEventListener('keydown', event => {
   event.preventDefault(); pause.click();
 });
 new ResizeObserver(resize).observe(canvas); resize();
-const clock = new THREE.Timer();
-function tick(): void {
-  if (disposed) return;
-  clock.update();
-  const dt = Math.min(clock.getDelta(), 0.1) * Number(speed.value);
+function renderFrame(delta: number): boolean {
+  const dt = delta * Number(speed.value);
   if (playing && lanes.some((l) => l.action)) {
     seconds += dt;
     if (linkedCycles()) { progress += dt / referenceDuration(); progress = loop.checked ? progress % 1 : Math.min(1, progress); }
@@ -425,10 +434,10 @@ function tick(): void {
     preview.pipeline.render();
     preview.renderer.domElement.dataset.graphics = JSON.stringify({ renderer: 'webgpu', settings, pipeline: preview.pipeline.diagnostics() });
   }
-  requestAnimationFrame(tick);
+  return true;
 }
 setDisplay('a');
-tick();
+frameLoop.start();
 await Promise.all(lanes.map(lane => selectRig(lane, 'player')));
 if (new URLSearchParams(location.search).get('study') === 'weapons') await compareWeapons();
 const laneAt = (index: number | 'a' | 'b') => {

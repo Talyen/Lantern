@@ -98,6 +98,8 @@ The observations below record the original equipment/motion review. Its studio/s
 
 Open the [animation comparison route](../src/labs/animations/animation-lab.ts) on the development server with `/?lab=animations`. Each lane selects its own Player/Goblin rig and weapon model, browses that rig's compatible clips, and retains independent temporal history in the shared native WebGPU pipeline. Use normal/half/quarter speed, frame steps, linked cycle lengths, scrub, and the contact/release marker to inspect hand placement and timing. Goblin has Axe and Staff gameplay profiles; Staff supplies the separate caster fight in the normal clearing. Other lab equipment models do not imply weapon-specific Goblin gameplay motions.
 
+Paused previews retain their pose and stop scheduling frames after temporal history and camera damping settle. Orbiting, resizing, scrubbing, frame steps and selection changes wake the preview; Play resumes from the retained pose. Hidden lab windows stop rendering and resume without advancing through the time spent hidden.
+
 The representative automated flows cover v1 save migration, unique equipment rewards, two-hand Shield return, separate saved progression, contact/release timing, buffered aim and recovery boundaries, frontal/rear block damage, swept terrain obstruction and exactly-once ranged damage. A presented-pose regression verifies that contact actions fully replace manually phased locomotion. Level flows cover systematic tree identity, depletion/regrowth, occupancy and removed/restored collision/navigation.
 
 Native WebGPU browser observations on macOS:

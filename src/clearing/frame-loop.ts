@@ -5,6 +5,7 @@ type FrameContext = {
   hidden(): boolean;
   paused(): boolean;
   fpsLimit(): FrameRateLimit;
+  maxDeltaSeconds?: number;
   onPause(): void;
   render(dt: number): boolean;
 };
@@ -82,7 +83,7 @@ export class FrameLoop {
       this.settle = settlingFrames;
     }
     const dt = !paused && !this.previouslyPaused && this.lastTick !== undefined
-      ? Math.min((now - this.lastTick) / 1000, .05)
+      ? Math.min((now - this.lastTick) / 1000, this.context.maxDeltaSeconds ?? .05)
       : 0;
     this.lastTick = now;
     this.previouslyPaused = paused;
