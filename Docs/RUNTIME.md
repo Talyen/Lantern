@@ -97,6 +97,8 @@ Read the affected owner and consumers first. Preserve existing work; introduce d
 
 ## HUD and player controls
 
+Confirmed impact events carry resolved damage after mitigation and before overkill clamping, plus a copied target world position. Adventure emits actual potion/campfire recovery amounts separately from sound cues; zero-amount campfire completion flushes pending totals. The HUD consumes both streams once, following the [floating feedback contract](UI_DESIGN.md#floating-combat-feedback). Presentation preferences remain separate from character saves.
+
 Health and mana use original text-prompted ImageGen frames under `assets/ui/orbs/`, with clipped animated red/blue liquid and smooth fill/drain transitions owned by `src/ui/orbs.css`. Gameplay owns health maxima and the shared 100-point mana resource. Enemy health appears above the enemy for three gameplay seconds after damage; projection uses the unjittered camera. Death, reset and travel clear its visibility.
 
 Left click activates its assigned action-bar ability, with loot and world interactions taking priority. Shift starts a 2.4 m dodge over 0.45 seconds with 0.25 seconds of invulnerability and a one-second cooldown. It uses the same collision and area boundary rules as walking, including safe areas and cleared encounters. Attack/hit locks block dodge; dodge blocks attack. Player-only Mixamo Dive Roll From Standing is trimmed from 1.25–3.55 source seconds and scaled to the dodge clock. The five base roles remain, with directional, block, chop, mine, Skill and dodge roles supplied by compatible weapon profiles. Whole-canvas invulnerability flashing is removed; damage feedback stays local. Travel/reset clears transient dodge state. Hit sparks remain; weapon trails are removed.

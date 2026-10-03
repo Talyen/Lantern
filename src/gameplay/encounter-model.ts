@@ -164,6 +164,8 @@ export type EncounterEvent = {
 } | {
   type: 'impact';
   actor: ActorId;
+  damage: number;
+  position: { x: number; y: number; z: number };
   weapon: Weapon | null;
   blocked: boolean;
   lethal: boolean;

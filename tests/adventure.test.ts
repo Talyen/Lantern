@@ -113,8 +113,15 @@ test('campfires heal over time only when safe and unsafe destinations cannot be 
   encounter.enemies.enemy.engaged = false; encounter.enemies.enemy.returning = true;
   expect(state.fireSafe(field, fire, encounter)).toBe(false);
   encounter.enemies.enemy.returning = false;
+  state.takeEvents();
   state.step(encounter, field, .5); expect(encounter.player.hp).toBe(51.5);
+  expect(state.takeEvents()).toContainEqual(expect.objectContaining({type:'healthRecovered',source:'campfire',amount:1.5,elapsed:.5,finished:false}));
   encounter.enemies.enemy.hp = 0; state.step(encounter, field, 30); expect(encounter.player.hp).toBe(100);
+  expect(state.takeEvents()).toContainEqual(expect.objectContaining({type:'healthRecovered',source:'campfire',amount:48.5,finished:true}));
+  encounter.player.hp = 99; state.step(encounter, field, .1); state.takeEvents();
+  encounter.player.x += 10; state.step(encounter, field, .1);
+  expect(state.takeEvents()).toContainEqual(expect.objectContaining({type:'healthRecovered',source:'campfire',amount:0,finished:true}));
+  encounter.player.x -= 10;
   expect(state.canTravel(encounter, field, fire, home, homeFire)).toBe(true);
   state.enter(encounter, home, homeFire.arrival);
   expect(state.destinations({ clearing: field })[0].available).toBe(true);
@@ -345,6 +352,11 @@ test('potions heal during an action, never consume at full health, and keep thei
   expect(adventure.usePotion(encounter)).toBe(false);encounter.playerMana=37;encounter.abilityCooldowns.sweep=3;adventure.character.items=[...adventure.character.items.filter(item=>item.slot!=='main'),{id:'sword-equipped',item:'sword',quantity:1,slot:'main',x:0,y:0},{id:'shield-equipped',item:'shield',quantity:1,slot:'off',x:0,y:0}];applyEquipment(encounter,adventure.character.items,0);
   adventure.enter(encounter,home);expect([encounter.potionCooldown,encounter.playerMana,encounter.abilityCooldowns.sweep,encounter.weapon,encounter.shield]).toEqual([8,37,3,'sword',true]);
   encounter.player.hp=0;expect(adventure.usePotion(encounter)).toBe(false);expect(adventure.character.potions).toBe(2);
+  adventure.takeEvents(); encounter.player.hp = 88; encounter.potionCooldown = 0;
+  expect(adventure.usePotion(encounter)).toBe(true);
+  expect(adventure.takeEvents()).toContainEqual(expect.objectContaining({type:'healthRecovered',source:'potion',amount:12,finished:true}));
+  expect(adventure.usePotion(encounter)).toBe(false);
+  expect(adventure.takeEvents()).toEqual([]);
 });
 
 test('inventory consumable actions use the requested stack without consuming its neighbours', () => {

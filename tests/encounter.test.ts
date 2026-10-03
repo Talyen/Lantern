@@ -430,11 +430,13 @@ test('raider commitment preserves a late nonlethal swing, allows early/recovery 
       expect(state.player.hp).toBe(80);
     }
   }
-  const lethal=closeEncounter(); lethal.enemies.enemy.hp=50; lethal.enemies.enemy.attackTime=.32; lethal.enemies.enemy.cooldown=999;
+  const lethal=closeEncounter(); lethal.enemies.enemy.hp=7; lethal.enemies.enemy.attackTime=.32; lethal.enemies.enemy.cooldown=999;
   lethal.player.attackTime=.25; lethal.player.yaw=0;
   const events=stepEncounter(lethal,.02,idle,clocks);
   expect(lethal.enemies.enemy.attackTime).toBe(-1);
-  expect(events).toContainEqual({type:'impact',actor:'enemy',weapon:'axe',blocked:false,lethal:true});
+  expect(events).toContainEqual({type:'impact',actor:'enemy',weapon:'axe',blocked:false,lethal:true,damage:50,position:{x:0,y:0,z:1.4}});
+  lethal.enemies.enemy.x = 99;
+  expect(events.find(event => event.type === 'impact')).toMatchObject({ position: { x: 0 } });
   expect(lethal.player.hp).toBe(100);
 });
 
@@ -551,11 +553,18 @@ test('armor reduces melee, arrows and magic without turning rear hits into shiel
     else {state.enemies.enemy.z=9;state.projectiles.push({id:1,owner:'enemy',kind,x:0,y:1.08,z:1,dx:0,dz:-1,remaining:12,damage:20});}
     const events=stepEncounter(state,kind==='melee' ? .03 : .2,{...idle,block:true},timing);
     expect(state.player.hp).toBeCloseTo(100-20*100/120);expect(state.blocking).toBe(false);
-    expect(events).toContainEqual({type:'impact',actor:'player',weapon:kind==='melee' ? 'axe' : kind==='arrow' ? 'bow' : 'staff',blocked:false,lethal:false});
+    const impact = events.find(event => event.type === 'impact' && event.actor === 'player');
+    expect(impact).toMatchObject({type:'impact',actor:'player',weapon:kind==='melee' ? 'axe' : kind==='arrow' ? 'bow' : 'staff',blocked:false,lethal:false});
+    expect(impact?.type === 'impact' ? impact.damage : undefined).toBeCloseTo(20*100/120);
     expect(events).toContainEqual({type:'animation',actor:'player',motion:'hit'});
   }
   const front=closeEncounter();applyEquipment(front,[{id:'sword',item:'sword',quantity:1,slot:'main',x:0,y:0},{id:'shield',item:'shield',quantity:1,slot:'off',x:0,y:0},{id:'mail',item:'weathered-mail',quantity:1,slot:'body',x:0,y:0}],0);
-  front.enemies.enemy.attackTime=.4;front.enemies.enemy.cooldown=999;stepEncounter(front,.03,{...idle,block:true},timing);expect(front.player.hp).toBeCloseTo(100-20*100/112*.5);expect(front.blocking).toBe(true);
+  front.enemies.enemy.attackTime=.4;front.enemies.enemy.cooldown=999;
+  const impacts = stepEncounter(front,.03,{...idle,block:true},timing);
+  expect(front.player.hp).toBeCloseTo(100-20*100/112*.5);expect(front.blocking).toBe(true);
+  const impact = impacts.find(event => event.type === 'impact' && event.actor === 'player');
+  expect(impact).toMatchObject({type:'impact',actor:'player',blocked:true});
+  expect(impact?.type === 'impact' ? impact.damage : undefined).toBeCloseTo(20*100/112*.5);
 });
 
 test('weapon rate scales contacts and recovery, and a launched arrow keeps its properties across a swap', () => {

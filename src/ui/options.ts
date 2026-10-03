@@ -2,6 +2,7 @@ import { diagnosticExportButton } from '../diagnostics/report';
 import { qualityLevels } from '../rendering/quality-presets';
 import { cameraDistances, defaults, depthOfFieldModes, frameRateLimits, ranges, readSettings, saveSettings, upscaleQualities, type GraphicsSettings, type NumericSetting, type FrameRateLimit } from '../rendering/graphics-settings';
 import './options.css';
+import { combatTextDefaults, readCombatTextSettings, saveCombatTextSettings, type CombatTextSettings } from './combat-text-settings';
 import { audioDefaults, readAudioSettings, saveAudioSettings, type AudioSettings } from '../audio/settings';
 import { bindMenuDismissal } from './menu';
 
@@ -9,6 +10,7 @@ const labels: Record<NumericSetting, string> = { sharpness: 'Sharpening',
   exposure: 'Exposure', warmth: 'Firelight', fog: 'Atmosphere', bloom: 'Bloom', ao: 'Ambient occlusion' };
 type OptionsContext = {
   apply: (settings: GraphicsSettings) => void;
+  combatText: (settings: CombatTextSettings) => void;
   flushSettings: () => void;
   resetMeasurements: () => void;
   clearInput: () => void;
@@ -21,9 +23,10 @@ export class Options {
   paused = false;
   settings = readSettings();
   audioSettings = readAudioSettings();
+  private combatTextSettings = readCombatTextSettings();
   private dialog = document.getElementById('options-dialog') as HTMLDialogElement;
   constructor(private ctx: OptionsContext) {
-    this.buildControls(); this.buildAudio(); this.apply();
+    this.buildControls(); this.buildAudio(); this.buildCombatText(); this.apply();
     this.dialog.querySelector('.options-footer')!.prepend(diagnosticExportButton());
     const bindings=document.createElement('button'); bindings.type='button'; bindings.textContent='Keybindings'; bindings.id='options-keybindings'; bindings.onclick=()=>{this.close();this.ctx.keybindings();};this.dialog.querySelector('#options-close')!.before(bindings);
     const error = document.createElement('p'); error.hidden = true; error.setAttribute('role', 'alert');
@@ -71,7 +74,7 @@ export class Options {
       const value = Number(this.input<HTMLInputElement>(key).value);
       this.settings[key] = value; this.apply(); this.save(key);
     });
-    document.getElementById('options-reset')!.addEventListener('click', () => { this.settings = defaults(); this.audioSettings = audioDefaults(); this.applyAudio(); this.apply(); this.save(); });
+    document.getElementById('options-reset')!.addEventListener('click', () => { this.settings = defaults(); this.combatTextSettings = combatTextDefaults(); this.applyCombatText(); this.audioSettings = audioDefaults(); this.applyAudio(); this.apply(); this.save(); });
   }
   private buildAudio(): void {
     const section = document.createElement('section'); section.className = 'audio-settings'; section.innerHTML = '<h2>Sound</h2><div></div>';
@@ -85,6 +88,30 @@ export class Options {
       label.querySelector('input')!.addEventListener('input', event => { this.audioSettings[key] = Number((event.target as HTMLInputElement).value)/100; this.applyAudio(); });
     }
     this.applyAudio();
+  }
+  private buildCombatText(): void {
+    const section = document.createElement('section'); section.className = 'combat-text-settings';
+    section.innerHTML = '<h2>Combat Text</h2><div></div>';
+    this.dialog.querySelector('.options-content')!.append(section);
+    const labels = { outgoing: 'Damage dealt', incoming: 'Damage received', healing: 'Healing', blocks: 'Block labels', size: 'Text size' };
+    for (const key of ['outgoing', 'incoming', 'healing', 'blocks', 'size'] as const) {
+      const label = document.createElement('label');
+      label.innerHTML = `${labels[key]}<select id="combat-text-${key}">${key === 'size' ? '<option value="normal">Normal</option><option value="large">Large</option>' : '<option value="true">On</option><option value="false">Off</option>'}</select>`;
+      section.querySelector('div')!.append(label);
+      label.querySelector('select')!.addEventListener('change', event => {
+        const value = (event.target as HTMLSelectElement).value;
+        if (key === 'size') this.combatTextSettings.size = value === 'large' ? 'large' : 'normal';
+        else this.combatTextSettings[key] = value === 'true';
+        this.applyCombatText();
+      });
+    }
+    this.applyCombatText();
+  }
+  private applyCombatText(): void {
+    for (const key of ['outgoing', 'incoming', 'healing', 'blocks', 'size'] as const) {
+      this.dialog.querySelector<HTMLSelectElement>(`#combat-text-${key}`)!.value = String(this.combatTextSettings[key]);
+    }
+    this.ctx.combatText({ ...this.combatTextSettings }); saveCombatTextSettings(this.combatTextSettings);
   }
   private applyAudio(): void {
     for (const key of ['master','effects','ambience'] as const) {

@@ -331,7 +331,9 @@ function syncAdventure(): void {
   adventureVisuals?.sync(adventure.session(currentArea.id).drops, adventure.portalPosition(currentArea), lootLabels.hovered, adventure.portalHeight(currentArea));
   for (const chest of currentArea.chests ?? []) active?.setChestOpened(chest.id, adventure.chest(currentArea, chest).opened);
   const prompt=paused() || encounter.player.hp<=0 ? '' : adventure.notice || (hoveredInteraction ? interactionError(hoveredInteraction) || hoveredInteraction.name : '');
-  gameplayAudio.adventure(adventure.takeEvents());
+  const adventureEvents = adventure.takeEvents();
+  gameplayAudio.adventure(adventureEvents);
+  hud.adventure(adventureEvents);
   if (adventure.castRemaining<=0) audio.stop('return-cast');
   menus.updateCharacter(adventure.character);
   shop.update(adventure.character);
@@ -456,7 +458,7 @@ try {
     apply: settings => {
       if (cameraOwner.setDistance(settings.cameraDistance)) { graphics?.resetHistory(); invalidateFrame(); }
       graphics?.apply(settings);
-    }, flushSettings: () => graphics?.flushSettings(),
+    }, combatText: settings => hud.applyCombatText(settings), flushSettings: () => graphics?.flushSettings(),
     resetMeasurements: () => graphics?.resetMeasurements(), clearInput,
     focus: () => renderer.domElement.focus(), keybindings:()=>bindingsMenu.open(), audio: {apply:settings=>audio.applySettings(settings),play:cue=>audio.play(cue)},
   });
@@ -485,6 +487,7 @@ try {
 
 function dispose(): void {
   frameLoop.dispose();
+  hud.dispose();
   input.dispose();
   generation++;
   adventure.closeSave();
@@ -547,6 +550,7 @@ async function changeArea(change: AreaChange): Promise<boolean> {
     ? cameraOwner.captureView()
     : null;
   transitioning = true;
+  hud.clearCombatText();
   clearInput();
   let preparedEnemies: PreparedEnemies | undefined;
   let actorsAccepted = false;

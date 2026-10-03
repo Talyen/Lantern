@@ -1,9 +1,13 @@
 import * as THREE from 'three';
 import { enemyMaxHealth, type EnemyId, type Encounter, type EncounterEvent } from '../gameplay/encounter';
 import './orbs.css';
+import { CombatText } from './combat-text';
+import type { CombatTextSettings } from './combat-text-settings';
+import type { AdventureEvent } from '../gameplay/adventure';
 
 export function createHud(onRetry: () => void) {
   const element = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+  const combatText = new CombatText(element<HTMLElement>('scene'));
   const status = element<HTMLParagraphElement>('asset-status');
   const playerHealth = element<HTMLDivElement>('player-health');
   const playerMana = element<HTMLDivElement>('player-mana');
@@ -61,6 +65,7 @@ export function createHud(onRetry: () => void) {
   return {
     update(encounter: Encounter, events: EncounterEvent[]) {
       bars(encounter);
+      combatText.encounter(events);
       for (const event of events) {
         if (event.type === 'hit' && event.actor !== 'player') damagedFor[event.actor] = 3;
         else if (event.type === 'outcome') finish(event.won);
@@ -78,6 +83,7 @@ export function createHud(onRetry: () => void) {
       }
     },
     positionEnemy(encounter: Encounter, camera: THREE.Camera, mount: HTMLElement, dt: number, obscured: boolean) {
+      combatText.update(camera, dt, obscured);
       let width: number | undefined, height = 0;
       for (const id of encounter.enemyIds) {
         const enemy=encounter.enemies[id], bar=healthBars[id];
@@ -97,7 +103,11 @@ export function createHud(onRetry: () => void) {
     },
     setSafe(value: boolean) { safe = value; if (safe) for (const bar of Object.values(healthBars)) bar.hidden=true; },
     dismissResult: () => { resultPanel.hidden = true; },
-    reset: () => { resultPanel.hidden = true; for (const id of Object.keys(healthBars)) {damagedFor[id]=0;healthBars[id].hidden=true;} },
+    reset: () => { combatText.clear(); resultPanel.hidden = true; for (const id of Object.keys(healthBars)) {damagedFor[id]=0;healthBars[id].hidden=true;} },
+    adventure: (events: AdventureEvent[]) => combatText.adventure(events),
+    applyCombatText: (settings: CombatTextSettings) => combatText.apply(settings),
+    clearCombatText: () => combatText.clear(),
+    dispose: () => combatText.dispose(),
     environmentLoaded(count: number) { status.textContent = count === 3 ? '' : 'Missing environment art.'; },
     characterUnavailable() { status.textContent = 'Character art unavailable. Run npm run assets:export-character to prepare playable art.'; },
     setAssetStatus: (message: string) => { status.textContent = message; },

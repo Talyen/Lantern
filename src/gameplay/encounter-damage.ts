@@ -44,7 +44,7 @@ export function hit(state: Encounter, actor: ActorId, timing: Timings, events: E
   }
   else if (!committed)
     target.contactIndex = 0;
-  events.push({ type: 'hit', actor }, { type: 'impact', actor, weapon: source ?? null, blocked, lethal: target.hp <= 0 });
+  events.push({ type: 'hit', actor }, { type: 'impact', actor, weapon: source ?? null, damage, position: { x: target.x, y: target.y, z: target.z }, blocked, lethal: target.hp <= 0 });
   if (!blocked && !committed)
     events.push({ type: 'animation', actor, motion: 'hit' });
   if (target.hp <= 0) {

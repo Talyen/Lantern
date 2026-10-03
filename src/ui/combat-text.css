@@ -1,0 +1,16 @@
+.combat-text{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:4;font-family:system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.combat-text-group{position:absolute;top:0;left:0;display:flex;align-items:center;flex-direction:column;white-space:nowrap;line-height:1.1;font-weight:750;color:#f0e6d2;-webkit-text-stroke:1.5px #171411;paint-order:stroke fill;text-shadow:0 2px 3px #100e0ccc}
+.combat-text-group[hidden],.combat-text-value[hidden],.combat-text-caption[hidden],.combat-text[hidden]{display:none}
+.combat-text-value{font-size:24px}
+.combat-text-group[data-category="incoming"]{color:#e3a38f}
+.combat-text-group[data-category="incoming"] .combat-text-value{font-size:26px}
+.combat-text-group[data-category="healing"]{color:#c0cd9b}
+.combat-text-caption{font-size:16px;margin-top:2px;-webkit-text-stroke:1px #171411}
+.combat-text[data-size="large"] .combat-text-value{font-size:30px}
+.combat-text[data-size="large"] .combat-text-group[data-category="incoming"] .combat-text-value{font-size:32px}
+.combat-text[data-size="large"] .combat-text-caption{font-size:20px}
+.combat-text-settings>div{display:grid;grid-template-columns:1fr 1fr;gap:15px 28px}
+.combat-text-settings label{font-size:13px;min-width:0}
+.combat-text-settings select{display:block;width:100%;padding:8px;margin-top:7px}
+
+@media(max-width:600px){.combat-text-settings>div{grid-template-columns:1fr}}
