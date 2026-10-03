@@ -27,7 +27,10 @@ await cli(async () => {
     const report = await statusReport(ctx, { all: !!args['--all'], task: args['--task'] });
     console.log(args['--json'] ? JSON.stringify(report, null, 2) : formatStatus(report));
   } else if (operation === 'main') {
-    await withResource('promotion', () => recover(ctx), { ctx });
+    await withResource('promotion', async () => {
+      await recover(ctx);
+      if (!args['--stop']) await ensureDependencies({ path: ctx.main });
+    }, { ctx });
     if (args['--stop']) await stopPreview(ctx.main);
     else console.log((await startPreview(ctx.main, { main: true, browser: !!args['--browser'] })).url);
   } else {

@@ -6,6 +6,8 @@ Use Node 24 from `.node-version`, npm 11+, and `npm ci`. Begin with `git status 
 
 One agent owns each private task worktree through local integration. Main stays on `main`; the user's integrated preview stays at `http://127.0.0.1:5173`. Routine tasks need no inter-agent messages or path reservations.
 
+Integration installs changed locked dependencies on main before completing promotion. `npm run main:dev` also checks dependency readiness before starting or reusing the integrated preview.
+
 1. Run `npm run agent:start -- --task <slug>` from main before any edits, including documentation. Use the exact printed directory for every task command and edit. Registered tasks resume; archived slugs need a fresh name. Admission queues at capacity (`--no-wait` fails immediately).
 2. Implement the behavior and its blockers, preserving other tasks and private sources. Before tooling edits read [script conventions](DEVELOPMENT_REFERENCE.md#script-conventions); before preparing art read [resource rules](DEVELOPMENT_REFERENCE.md#private-assets-and-resource-use) and [asset preparation](ASSET_PREPARATION.md).
 3. After player-facing edits, start one owned normal-settings preview with `npm run agent:dev -- --browser`, inspect the result and exercise one changed interaction. `--author --area clearing` enables level tools; without `--browser` the source server uses no GPU-review slot. Close it with `npm run agent:dev -- --stop`. Documentation needs links/diff review; tooling needs one relevant observable outcome.

@@ -28,6 +28,9 @@ export async function recover(ctx) {
     } else if (!existsSync(vendor)) throw new Error('Prepared vendor snapshot is missing; preserve the promotion journal.');
   }
   if (head === journal.base) await git(['merge', '--ff-only', journal.candidate], ctx.main);
+  const dependencyChanges = await git(['diff', '--name-only', journal.base, journal.candidate, '--', 'package.json', 'package-lock.json'], ctx.main);
+  // Keep the recovery journal until the integrated preview can resolve its dependencies.
+  if (dependencyChanges || !await installedDependenciesMatch(ctx.main)) await ensureDependencies({ path: ctx.main });
   const task = await readJSON(taskPath(ctx, journal.task));
   task.status = 'integrated'; task.candidate = journal.candidate; task.integratedAt = new Date().toISOString();
   await saveTask(ctx, task);
