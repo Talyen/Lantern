@@ -56,7 +56,8 @@
     "assets:prepare-particle-study": "node scripts/agents/run.mjs --resource heavy -- python3 scripts/assets/synty/prepare-particle-study.py",
     "materials:check": "node scripts/assets/surfaces/validate.mjs",
     "materials:probe": "node scripts/agents/run.mjs --resource gpu --reuse-preview -- node scripts/materials/probe.mjs",
-    "assets:import-asterfall": "node scripts/agents/run.mjs --resource heavy -- node scripts/assets/asterfall/import.mjs"
+    "assets:import-asterfall": "node scripts/agents/run.mjs --resource heavy -- node scripts/assets/asterfall/import.mjs",
+    "assets:import-ashen-veil": "node scripts/agents/run.mjs --resource heavy -- node scripts/assets/ashen-veil/import.mjs"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "0.21.0",
