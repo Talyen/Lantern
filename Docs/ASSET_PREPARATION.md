@@ -121,7 +121,7 @@ The six owner-supplied archives add **65 standalone assets** to the existing pri
 npm run assets:import-generated -- --pack ashen-veil-lights,full-autumn-trees,dungeon-tiles,gothic-lootables,hearthwood-furniture,outdoor-crypt-lootables
 ```
 
-`--downloads PATH` selects another source directory. `--pack` accepts any distinct selection from the following table, plus the existing `autumn-atlas` and `hearthsteel` packs. Omitting it still selects only Autumn Atlas and Hearthsteel.
+`--downloads PATH` selects another source directory. `--pack` accepts any distinct selection from the following table, the existing `autumn-atlas` and `hearthsteel` packs, and the [generated environment packs](#generated-village-interior-storytelling-water-and-terrain-packs) below. Omitting it still selects only Autumn Atlas and Hearthsteel.
 
 | Pack ID | Downloads archive | Standalone assets |
 | --- | --- | --- |
@@ -151,3 +151,33 @@ It verifies preserved archives/extracted sources, prepared output hashes, decode
 Use authored metre scale and placement roots without recentering. Dungeon floor thickness extends below the walk datum; wall/suspension light origins are attachment points rather than floor contact. Full Autumn uses single-sided closed geometric leaves. Preserve chest lids, doors, drawers, removable payloads and equipment children when adding interactions. Chests & Breakables contains intact states only. Light props supply static emissive geometry and emitter markers, with no runtime lights or animation; later placement uses [shared Golden lighting and local flame recipes](LIGHTING.md).
 
 These are library-ready visual assets. Collision, navigation, wind, LODs, dynamic flames and opening/breaking gameplay remain explicit later adoption work. Appearance review belongs to the separate asset review tool; import checks do not establish visual quality, in-scene behavior or runtime performance. No gallery or review route is added by this preparation.
+
+## Generated village, interior, storytelling, water and terrain packs
+
+Five owner-supplied Downloads archives add **66 standalone assets** to the existing library and Asset Review Lab. Import in an owned task:
+
+```sh
+npm run assets:import-generated -- --pack sootward-village,blackthorn-interiors,silent-roads,stillwater-deepstone,hollowmere-terrain
+```
+
+| Pack ID | Downloads archive | Standalone assets |
+| --- | --- | --- |
+| `sootward-village` | `Sootward_Village_Structures.zip` | 18 village modules |
+| `blackthorn-interiors` | `Blackthorn_Interior_Furnishings.zip` | 12 furnishings |
+| `silent-roads` | `Silent_Roads_Storytelling_Props.zip` | 10 storytelling props |
+| `stillwater-deepstone` | `Stillwater_Deepstone_Water_Underground.zip` | 12 water/underground modules |
+| `hollowmere-terrain` | `Hollowmere_Dry_Terrain_Transitions.zip` | 14 dry terrain transitions |
+
+Standalone IDs use `<pack>:model:<hyphenated-source-id>`, with GLBs under ignored `public/vendor/synty/library/models/<pack>/`. They appear automatically in the existing [Asset Review Lab](ASSET_REVIEW.md), initially unreviewed. Import adds no scene placements or build selections. The two Sootward assemblies, Stillwater/Deepstone assembly and Hollowmere forest-to-cave demo remain private reference scenes under `public/vendor/<pack>/reference-scenes/`, outside the placeable catalog.
+
+The importer retains unchanged archives and every delivered Blender source, script, preview, manifest and QA report under `.local/animation-packs/generated-packs/<pack>/`; bundled scripts are never executed. Task cleanup preserves them in `.local/agent-archives/<task>/animation-packs/generated-packs/`. Supplied current GLB checksums are verified for Blackthorn and Silent Roads. The other three packs supply no current-file checksums; retained import fingerprints establish a baseline rather than independent delivery verification.
+
+Pinned three.js decodes all 70 GLBs and checks declared standalone triangle/primitive counts, finite geometry, unit normals, authored roots, metre-scale Y-up bounds and node-material compatibility. Sootward socket coordinates and Hollowmere named anchors retain their source-to-glTF mapping. Preserve the authored roots: foundations, thresholds and water channels extend below their walk datums; roofs, tapestries and stalactites have attachment origins. Vertex colors, PBR factors, sidedness and hierarchy remain authored. Stillwater's separate `Water_Surface` child is optional opaque preview geometry requiring a production water treatment on later adoption. Collision, navigation and interactions remain later authoring work.
+
+Verify preserved sources, prepared models and library registrations without writing, including on main after cleanup:
+
+```sh
+npm run assets:import-generated -- --pack sootward-village,blackthorn-interiors,silent-roads,stillwater-deepstone,hollowmere-terrain --verify
+```
+
+This preparation establishes library availability; appearance approval remains a separate review in the Asset Lab.

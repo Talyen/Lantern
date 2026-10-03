@@ -1,5 +1,6 @@
 import { DoubleSide, FrontSide } from 'three';
 import { yUpBounds } from './validate.mjs';
+import { environmentEntries, environmentDemoExpected } from './environment-packs.mjs';
 
 /** Delivery-specific schemas stay beside their explicit import recipe. */
 export const packs = {
@@ -14,6 +15,14 @@ export const packs = {
   'hearthwood-furniture': { archive: 'Hearthwood_Racks_Furniture.zip', prefix: 'Hearthwood_Racks_Furniture_Gothic/', count: 6,
     supporting: ['source/resources/axe.glb', 'source/resources/bow.glb', 'source/resources/mace.glb', 'source/resources/sword.glb'] },
   'outdoor-crypt-lootables': { archive: 'Outdoor_Crypt_Lootables.zip', prefix: 'Outdoor_Crypt_Lootables/', count: 7 },
+  'sootward-village': { archive: 'Sootward_Village_Structures.zip', prefix: 'village_structure_pack_polished/', count: 18,
+    demos: ['glb/demo_joined_cottage.glb', 'glb/demo_sootward_hamlet.glb'], environment: true },
+  'blackthorn-interiors': { archive: 'Blackthorn_Interior_Furnishings.zip', prefix: 'Blackthorn_Interior_Furnishings/', count: 12, environment: true },
+  'silent-roads': { archive: 'Silent_Roads_Storytelling_Props.zip', prefix: 'Silent_Roads_Storytelling_Props/', count: 10, environment: true },
+  'stillwater-deepstone': { archive: 'Stillwater_Deepstone_Water_Underground.zip', prefix: 'water_underground_pack_polished/', count: 12,
+    demos: ['glb/assembled_water_underground_demo.glb'], environment: true },
+  'hollowmere-terrain': { archive: 'Hollowmere_Dry_Terrain_Transitions.zip', prefix: '', count: 14,
+    demos: ['glb/demo_forest_to_cave.glb'], environment: true },
 };
 export const defaultPacks = ['autumn-atlas', 'hearthsteel'];
 const gltfPosition = ([x, y, z]) => [x, z, -y];
@@ -23,6 +32,7 @@ const json = (files, path) => JSON.parse(files.get(path));
 
 export function entriesFor(id, files) {
   const manifest = json(files, 'manifest.json');
+  if (packs[id].environment) return environmentEntries(id, files, packs[id].count);
   if (id === 'autumn-atlas') {
     if (manifest.units !== 'metres' || manifest.assets?.length !== 24) throw new Error('Unexpected botanical manifest');
     return manifest.assets.map(entry => ({ file: entry.glb, name: entry.title, slug: entry.id.replaceAll('_', '-'), category: entry.category,
@@ -75,11 +85,13 @@ export function entriesFor(id, files) {
 }
 
 export function demoExpected(id, file, files) {
+  if (packs[id].environment) return environmentDemoExpected(id, file, files);
   if (id === 'full-autumn-trees') return { triangles: json(files, 'validation/demo_structure.json').triangles_across_all_placements };
   if (id === 'dungeon-tiles') return { triangles: json(files, 'manifest.json').demos.find(demo => demo.file === file)?.triangles_expanded };
   return {};
 }
 export function packWarnings(id) {
+  if (id === 'stillwater-deepstone') return ['Static visual geometry only; water is an optional opaque preview surface. Author production water, collision, navigation and interactions when placing.'];
   if (id === 'hearthsteel') return ['Static grip-centred prop; author rig-specific hand rotation, secondary grip and any bow/reload animation before equipping.'];
   if (id === 'autumn-atlas') return ['Static visual geometry only; author collision, navigation, wind and interactions when placing.'];
   if (id === 'ashen-veil-lights') return ['Static visual geometry and emitter markers only; use shared Golden lighting and local flame recipes when placing. No runtime lights or animation supplied.'];
