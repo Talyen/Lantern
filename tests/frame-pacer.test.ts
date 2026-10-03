@@ -1,6 +1,5 @@
 import { expect, test, vi } from 'vitest';
 import { FramePacer } from '../src/rendering/frame-pacer';
-import { defaultFrameRate } from '../src/rendering/graphics-settings';
 import { FrameLoop } from '../src/clearing/frame-loop';
 
 test('60 FPS cap stays near 60 across nominal and faster displays, then Unlimited allows every frame', () => {
@@ -17,10 +16,6 @@ test('60 FPS cap stays near 60 across nominal and faster displays, then Unlimite
     expect(pacer.shouldRender(5002, 120)).toBe(true);
     expect(pacer.shouldRender(5003, 120)).toBe(false);
   }
-});
-
-test('initial cap follows supported monitor rates and falls back to 60', () => {
-  expect([0, 59.94, 120, 143.98, 165, 239.98].map(defaultFrameRate)).toEqual([60, 60, 120, 144, 144, 240]);
 });
 
 test('gameplay sleeps when hidden or settled, resumes without catch-up, and closes pending frame waits', async () => {

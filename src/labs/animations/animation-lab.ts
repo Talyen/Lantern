@@ -1,5 +1,6 @@
+import { readPreference, savePreference } from '../../data/preferences';
 import { isRecord } from '../../data/json';
-import { disposeSceneResources, sceneTextures } from '../../assets/resource-ownership';
+import { disposeSceneInstances, disposeSceneResources, sceneTextures } from '../../assets/resource-ownership';
 import { applyShadowQuality } from '../../rendering/quality-presets';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -18,7 +19,7 @@ import { GatheringTools } from '../../rendering/gathering-tools';
 import { asterfallLibrary, armoryDefinitions } from '../weapons/armory';
 import { itemDefinitions } from '../../gameplay/equipment';
 import { assetLibrary } from '../../assets/asset-library';
-import { getMotionCatalog, loadEquipmentMotions, holdStaffArm, type MotionCatalog, type MotionClip, type MotionPack } from '../../animation/combat-animations';
+import { getMotionCatalog, loadEquipmentMotions, loadMotionClip, holdStaffArm, type MotionCatalog, type MotionClip, type MotionPack } from '../../animation/combat-animations';
 import type { RigId } from '../../animation/combat-animations';
 import type { Loadout } from '../../gameplay/equipment';
 import './animation-lab.css';
@@ -82,12 +83,12 @@ let disposed = false;
 let playing = true;
 let seconds = 0;
 let progress = 0;
-let favorites: Favorite[] = [];
-try { const value: unknown = JSON.parse(localStorage.getItem('lantern-animation-favorites') ?? '[]'); if (Array.isArray(value)) favorites = value.filter((f: unknown): f is Favorite => isRecord(f) && typeof f.pack === 'string' && typeof f.clip === 'string'); } catch { /* Storage can be unavailable. */ }
+const favoriteKey = 'lantern-animation-favorites', savedFavorites = readPreference(favoriteKey);
+let favorites: Favorite[] = Array.isArray(savedFavorites) ? savedFavorites.filter((f: unknown): f is Favorite => isRecord(f) && typeof f.pack === 'string' && typeof f.clip === 'string') : [];
 const retainedFavorites = favorites.filter((favorite) => favorite.pack === 'mixamo');
 if (retainedFavorites.length !== favorites.length) {
   favorites = retainedFavorites;
-  try { localStorage.setItem('lantern-animation-favorites', JSON.stringify(favorites)); } catch { /* Preview still works without storage. */ }
+  savePreference(favoriteKey, favorites);
 }
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(33, 1, 0.1, 50);
@@ -154,7 +155,6 @@ document.addEventListener('visibilitychange', () => frameLoop.visibilityChanged(
 window.addEventListener('lanternvisibilitychange', () => frameLoop.visibilityChanged());
 window.addEventListener('pagehide', () => { disposed = true; frameLoop.dispose(); controls.dispose(); lanes.forEach(clearLane); void Promise.allSettled(characterCache.values()).then(results => results.forEach(result => { if (result.status === 'fulfilled') disposeSceneResources(result.value); })).catch((error: unknown) => console.error('Unable to release character models.', error)); void asterfallLibrary.dispose().catch((error: unknown) => console.error('Unable to release Asterfall assets.', error)); void assetLibrary.dispose().catch((error: unknown) => console.error('Unable to release lab assets.', error)); previews.forEach(({ pipeline, renderer, lighting }) => { pipeline.dispose(); lighting.dispose(); void renderer.dispose().catch((error: unknown) => console.error('Unable to release graphics.', error)); }); }, { once: true });
 const loader = new GLTFLoader();
-const cache = new Map<string, Promise<THREE.AnimationClip>>();
 const characterCache = new Map<string, Promise<THREE.Group>>();
 function updatePlaybackControls(): void { updateStatus(); const disabled = !lanes.some((lane) => lane.action); pause.disabled = restart.disabled = step.disabled = scrub.disabled = disabled; }
 function saved(lane: Lane): boolean { return favorites.some((f) => f.pack === lane.pack?.id && f.clip === lane.clip?.id); }
@@ -177,7 +177,7 @@ function clearLane(lane: Lane): void {
   lane.mixer?.stopAllAction();
   if (lane.model) {
     lane.mixer?.uncacheRoot(lane.model);
-    lane.model.traverse(object => { if (object instanceof THREE.SkinnedMesh) object.skeleton.dispose(); });
+    disposeSceneInstances(lane.model, { skeletons: true });
     lane.model.removeFromParent();
   }
   lane.model = undefined; lane.mixer = undefined; lane.action = undefined; lane.clip = undefined;
@@ -235,11 +235,7 @@ async function selectClip(lane: Lane): Promise<void> {
   let tools: GatheringTools | undefined;
   let model: THREE.Group | undefined;
   try {
-    if (!cache.has(clip.url)) cache.set(clip.url, loader.loadAsync(clip.url).then((gltf) => {
-      if (gltf.animations.length !== 1) throw new Error('Expected one baked animation');
-      return gltf.animations[0];
-    }).catch((error: unknown) => { cache.delete(clip.url); throw error; }));
-    const motion=(await cache.get(clip.url)!).clone();
+    const motion = (await loadMotionClip(loader, clip)).clone();
     if (lane.loadout.main==='staff' && !clip.audit && !['hit','death','dodge','chop','mine'].includes(clip.category)) {
       const preparedMotions=await loadEquipmentMotions(loader,lane.rig,lane.rig==='player' ? lane.loadout : {main:'axe',off:null});
       if (lane.rig==='player') holdStaffArm(motion,preparedMotions.clips.idle);
@@ -250,16 +246,16 @@ async function selectClip(lane: Lane): Promise<void> {
     if (generation !== lane.generation || disposed) return;
     model = fitModel(lane); equipment = new Equipment(model, lane.rig, asterfall ? asterfallLibrary : assetLibrary, definitions);
     const prepared = await equipment.stage(lane.loadout);
-    if (generation !== lane.generation || disposed) { equipment.dispose(); model.traverse(object => { if (object instanceof THREE.SkinnedMesh) object.skeleton.dispose(); }); return; }
+    if (generation !== lane.generation || disposed) { equipment.dispose(); disposeSceneInstances(model, { skeletons: true }); return; }
     equipment.commit(prepared);
     if (lane.rig === 'player') {
       lantern = new PlayerLantern(model, el<HTMLInputElement>('lab-lantern').checked);
       await lantern.initialize();
-      if (generation !== lane.generation || disposed) { lantern.dispose(); equipment.dispose(); model.traverse(object => { if (object instanceof THREE.SkinnedMesh) object.skeleton.dispose(); }); return; }
+      if (generation !== lane.generation || disposed) { lantern.dispose(); equipment.dispose(); disposeSceneInstances(model, { skeletons: true }); return; }
     }
     if (lane.rig === 'player' && ['chop', 'mine'].includes(clip.category)) {
       tools = new GatheringTools(model, equipment); await tools.prepare();
-      if (generation !== lane.generation || disposed) { tools.dispose(); lantern?.dispose(); equipment.dispose(); model.traverse(object => { if (object instanceof THREE.SkinnedMesh) object.skeleton.dispose(); }); return; }
+      if (generation !== lane.generation || disposed) { tools.dispose(); lantern?.dispose(); equipment.dispose(); disposeSceneInstances(model, { skeletons: true }); return; }
       tools.show(clip.category === 'chop' ? 'tree' : 'stone');
     }
     clearLane(lane);
@@ -277,7 +273,7 @@ async function selectClip(lane: Lane): Promise<void> {
     tools?.dispose();
     lantern?.dispose();
     equipment?.dispose();
-    if (model && model !== lane.model) model.traverse(object => { if (object instanceof THREE.SkinnedMesh) object.skeleton.dispose(); });
+    if (model && model !== lane.model) disposeSceneInstances(model, { skeletons: true });
     if (generation === lane.generation) lane.info.textContent = `Preview unavailable: ${String(error)}`;
   }
 }
@@ -337,7 +333,7 @@ for (const lane of lanes) {
     if (!lane.pack || !lane.clip) return;
     if (saved(lane)) favorites = favorites.filter((f) => f.pack !== lane.pack!.id || f.clip !== lane.clip!.id);
     else favorites.push({ pack: lane.pack.id, clip: lane.clip.id });
-    try { localStorage.setItem('lantern-animation-favorites', JSON.stringify(favorites)); } catch { status.textContent = 'Favorites could not be saved in this browser.'; }
+    if (!savePreference(favoriteKey, favorites)) status.textContent = 'Favorites could not be saved in this browser.';
     lanes.forEach(updateFavorite);
     if (category.value === 'favorites') lanes.forEach(l => { void fillClips(l).catch(previewFailed); });
   });

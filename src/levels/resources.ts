@@ -8,8 +8,8 @@ export const resourceSkill = (kind: ResourceKind): GatheringSkill => kind === 't
 export const resourceItem = (kind: ResourceKind) => kind === 'tree' ? 'wood' as const : kind;
 export function resourceDefinitions(area: AreaDefinition): ResourceDefinition[] {
   const props=[...area.props,...generateDecoration(area)];
-  const metadata = (id: string) => props.find(p => p.id === id)?.harvest;
+  const metadata = new Map(props.map(prop => [prop.id, prop.harvest]));
   const rules = (harvest?: NonNullable<AreaDefinition['props'][number]['harvest']>) => ({ level: harvest?.level ?? gathering.resourceLevel, baseYield: harvest?.baseYield ?? gathering.baseYield, contacts: harvest?.contacts ?? gathering.contacts });
-  return [...treeDefinitions(area).map(t => ({ ...t, kind: 'tree' as const, ...rules(metadata(t.id)) })),
+  return [...treeDefinitions(area, props).map(t => ({ ...t, kind: 'tree' as const, ...rules(metadata.get(t.id)) })),
     ...props.filter(p => p.harvest && p.harvest.kind !== 'tree').map(p => ({ id: p.id, position: p.position, radius: p.harvest!.radius ?? .65, kind: p.harvest!.kind, ...rules(p.harvest) }))];
 }

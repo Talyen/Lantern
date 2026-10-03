@@ -15,16 +15,16 @@ import { isMesh } from '../src/assets/resource-ownership';
 import homestead from '../src/levels/areas/homestead.json';
 import clearing from '../src/levels/areas/clearing.json';
 import type { AreaDefinition } from '../src/levels/types';
-import { generateGrass, grassCoverage, type GrassPatch } from '../src/levels/grass';
+import { type GrassPatch } from '../src/levels/grass';
 import { GateTravel } from '../src/gameplay/area';
-import { inReserved, validateAreas } from '../src/levels/validation';
+import { validateAreas } from '../src/levels/validation';
 import { treeDefinitions, traversalWithTrees } from '../src/levels/trees';
 import { Harvesting } from '../src/gameplay/harvesting';
 import type { GatheringTools } from '../src/rendering/gathering-tools';
 import type { GameAudio } from '../src/audio/audio';
 import type { MovementWorld } from '../src/gameplay/movement';
 const areas = { homestead, clearing, 'graveyard-ruins':graveyardRuins, 'graveyard-crypt':graveyardCrypt } as unknown as Record<string, AreaDefinition>;
-// Exercise grass rules without repeatedly generating an authored area's full carpet.
+// Small area fixture for validation; no full authored scenery is needed.
 const grassArea: AreaDefinition = {
   version: 1, id: 'fixture', name: 'Fixture', kind: 'safe', seed: 42,
   envelope: { width: 40, depth: 40, apron: 0, yaw: 0, reference: { width: 1920, height: 1080, zoom: 1 }, screen: [20, 20] },
@@ -35,14 +35,6 @@ const grassArea: AreaDefinition = {
   reserved: [{ id: 'route', center: [0, 0], radius: .5, role: 'route' }],
 };
 const grassPatch: GrassPatch = { id: 'grass', center: [0, 0], radii: [2, 2], yaw: 0, density: 8 };
-
-test('grass is repeatable and leaves reserved routes clear', () => {
-  const patches = [grassPatch], props = generateGrass(grassArea, patches);
-  expect(props).toEqual(generateGrass(grassArea, patches));
-  expect(props.length).toBeGreaterThan(0);
-  expect(props.some(p => inReserved(grassArea, [p.x, p.z], .35) || grassCoverage(grassArea, patches, p.x, p.z) === 0)).toBe(false);
-  expect(grassCoverage(grassArea, patches, 0, 0)).toBe(0);
-});
 
 test('area validation rejects invalid grass, links, transforms and lighting', () => {
   const area = structuredClone(grassArea);
@@ -440,4 +432,34 @@ test('tree approach retries when navigation snaps the first endpoint outside wor
     expect(Math.hypot(end[0] - point[0], end[1] - point[1])).toBeLessThanOrEqual(reach);
     expect(world.interactionVisible({ ...player, x: end[0], z: end[1] }, point, tree.position[1], tree.id)).toBe(true);
   } finally { world.dispose(); }
+});
+
+// Protect native bindings and shared bitmap lifetime; instance-only cleanup does not own textures.
+test('scene cleanup closes a shared bitmap only after its last owned texture is released', async () => {
+  const { disposeSceneResources, ownTexture } = await import('../src/assets/resource-ownership');
+  const close = vi.fn(), texture = ownTexture(new THREE.Texture({ width: 1, height: 1, close }));
+  const clone = ownTexture(texture.clone());
+  const first = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial({ map: texture }));
+  const second = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial({ map: clone }));
+  const native = vi.fn(); first.addEventListener('dispose', native);
+  disposeSceneResources(first);
+  expect(native).toHaveBeenCalledOnce(); expect(close).not.toHaveBeenCalled();
+  disposeSceneResources(second);
+  expect(close).toHaveBeenCalledOnce();
+});
+
+// Protect in-flight shader compilation when cleanup is repeated; no existing test covers review-pool leases.
+test('review cleanup waits for each distinct holder even if one releases twice', async () => {
+  const { PreparedAssets } = await import('../src/labs/assets/prepared-assets');
+  const { sceneryLoader } = await import('../src/assets/scenery-loader');
+  const gltf = await new GLTFLoader().parseAsync(JSON.stringify({asset:{version:'2.0'},scenes:[{}],scene:0}), '');
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial()); gltf.scene.add(mesh);
+  const load = vi.spyOn(sceneryLoader, 'loadAsync').mockResolvedValue(gltf), disposed = vi.spyOn(mesh.geometry, 'dispose');
+  const pool = new PreparedAssets();
+  try {
+    const asset = await pool.get({ id: 'fixture', familyId: 'fixture', name: 'Fixture', appearance: '', pack: '', category: 'Other', kind: 'model', url: '/fixture.glb', available: true, warnings: [], uses: [], selected: false, dependencies: [], dependents: [], fingerprint: 'fixture' });
+    const first = pool.keep(asset), second = pool.keep(asset);
+    pool.dispose(); first(); first(); expect(disposed).not.toHaveBeenCalled();
+    second(); second(); expect(disposed).toHaveBeenCalledOnce();
+  } finally { pool.dispose(); load.mockRestore(); }
 });

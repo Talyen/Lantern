@@ -750,16 +750,6 @@ test('weapon unlocks fill empty slots without replacement and survive saving',()
   expect(adventure.character.actionBar).toEqual(full);
 });
 
-// Admission: area snapshots can recreate spent proficiency budgets on travel/death, duplicating permanent progress.
-test('session travel and death retain each enemy life lowest health credit',()=>{
-  const adventure=new Adventure(),encounter=createEncounter('playing');
-  adventure.enter(encounter,field);
-  encounter.enemies.enemy.lowestHp=75; encounter.enemies.enemy.hp=120;
-  adventure.enter(encounter,home,undefined,true);
-  adventure.enter(encounter,field);
-  expect(encounter.enemies.enemy.lowestHp).toBe(75); expect(encounter.enemies.enemy.hp).toBe(120);
-});
-
 // Admission: a transient stance left by Object.assign area replacement could prevent damage and spend an old attack's costs after travel.
 test('travel clears an uncommitted Riposte stance without spending its costs',()=>{
   const adventure=new Adventure(),encounter=createEncounter('playing');

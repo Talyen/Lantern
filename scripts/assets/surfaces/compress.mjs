@@ -1,5 +1,4 @@
-import { surfaceAssets, preparedSurfacePath } from './jobs.mjs';
-import { readFile, mkdir, writeFile } from 'node:fs/promises';
+import { writeSurfaceJobs } from './jobs.mjs';
 import { resolve } from 'node:path';
 import { cli, parseArgs, root, run } from '../../lib/cli.mjs';
 await cli(async () => {
@@ -8,10 +7,6 @@ await cli(async () => {
   if (!args['--encoder']) throw new Error('Supply a local KTX-Software toktx encoder.');
   const kinds = (args['--only'] ?? 'chest,tent,pine').split(',');
   if (kinds.some(kind => !['chest', 'tent', 'pine'].includes(kind))) throw new Error('Compression trials support chest, tent and pine.');
-  const manifest = JSON.parse(await readFile(resolve(root, 'assets/textures/environment/manifest.json'), 'utf8'));
-  const jobs = surfaceAssets(manifest, { '--only': kinds.join(',') }).map(asset => preparedSurfacePath(resolve(root, 'public'), asset));
-  const directory = resolve(root, '.local/compressed-surfaces'), archive = resolve(root, '.local/synty-library/Archives/compressed-surfaces');
-  await mkdir(directory, { recursive: true }); await mkdir(archive, { recursive: true });
-  const jobsPath = resolve(directory, 'jobs.json'); await writeFile(jobsPath, JSON.stringify(jobs));
+  const { jobsPath, archive } = await writeSurfaceJobs('compressed-surfaces', { '--only': kinds.join(',') });
   await run('python3', [resolve(root, 'scripts/assets/surfaces/compress.py'), '--encoder', resolve(args['--encoder']), '--jobs', jobsPath, '--archive', archive]);
 });

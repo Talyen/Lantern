@@ -18,8 +18,8 @@ export function harvestableTree(placement: Placement): boolean {
 }
 
 /** IDs remain placement-local; the session owner scopes them by area. No asset loading is needed. */
-export function treeDefinitions(area: AreaDefinition): TreeDefinition[] {
-  return [...area.props, ...generateDecoration(area)].filter(harvestableTree).map(p => {
+export function treeDefinitions(area: AreaDefinition, props = [...area.props, ...generateDecoration(area)]): TreeDefinition[] {
+  return props.filter(harvestableTree).map(p => {
     const proxy = area.traversal?.obstacles.find(o => o.id === p.id);
     const radius = p.harvest?.radius ?? (proxy ? Math.max(proxy.size[0], proxy.size[2]) / 2 : .28 * Math.max(p.scale[0], p.scale[2]));
     return { id: p.id, position: [...p.position], radius };
@@ -28,8 +28,9 @@ export function treeDefinitions(area: AreaDefinition): TreeDefinition[] {
 
 /** Every standing tree blocks movement, even when its optional model could not load. */
 export function traversalWithTrees(area: AreaDefinition): Traversal {
-  const trees = treeDefinitions(area), ids = new Set(trees.map(t => t.id));
-  const minerals = new Set([...area.props, ...generateDecoration(area)].filter(p => p.harvest && p.harvest.kind !== 'tree').map(p => p.id));
+  const props = [...area.props, ...generateDecoration(area)];
+  const trees = treeDefinitions(area, props), ids = new Set(trees.map(t => t.id));
+  const minerals = new Set(props.filter(p => p.harvest && p.harvest.kind !== 'tree').map(p => p.id));
   const obstacles: Traversal['obstacles'] = (area.traversal?.obstacles ?? []).map(o => ({ ...o, tree: ids.has(o.id) || undefined, depletedScale: minerals.has(o.id) ? gathering.mineralDepletedScale : undefined }));
   const existing = new Set(obstacles.map(o => o.id));
   for (const tree of trees) if (!existing.has(tree.id)) obstacles.push({ id: tree.id, position: [tree.position[0], tree.position[1] + 1, tree.position[2]], size: [tree.radius * 2, 2, tree.radius * 2], yaw: 0, tree: true });

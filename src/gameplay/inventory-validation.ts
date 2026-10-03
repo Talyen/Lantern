@@ -38,12 +38,10 @@ function validItem(value: unknown): value is InventoryItem {
 
 export function validItems(value: unknown): value is InventoryItem[] {
   if (!Array.isArray(value)) return false;
-  const items: InventoryItem[] = [];
   const ids = new Set<string>();
   const slots = new Set<string>();
   for (const entry of value) {
     if (!validItem(entry)) return false;
-    items.push(entry);
     if (ids.has(entry.id)) return false;
     ids.add(entry.id);
     if (isEquipmentSlot(entry.slot)) {
@@ -52,6 +50,8 @@ export function validItems(value: unknown): value is InventoryItem[] {
       slots.add(slot);
     }
   }
+  // Every entry, including sparse-array holes, has been checked above.
+  const items = value as InventoryItem[];
   if (
     items.some(
       (entry) => entry.slot === 'bag' && !fits(items, entry.item, entry.x, entry.y, entry.id),

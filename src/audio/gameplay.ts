@@ -81,20 +81,14 @@ export class GameplayAudio {
       this.fireDefinitions = fires;
       this.authoredFlames = fires.map(fire => ({key:`fire-${fire.id}`,position:{x:fire.position[0],z:fire.position[1]},camp:fire.role==='campfire',distance:0}));
     }
-    // Refill in authored order so equal-distance flames retain the same stable
-    // priority, even after the listener has moved between previous frames.
+    // Refill before stable sorting so ties always retain authored order.
     this.nearestFlames.length = 0;
     for (const flame of this.authoredFlames) {
       flame.distance = Math.hypot(flame.position.x-listener.x,flame.position.z-listener.z);
-      // Insert after equal distances, matching stable sorting of authored order.
-      // Only the six selected flames need ordering; distant flames stay outside the array.
-      let index = 0;
-      while (index < this.nearestFlames.length && flame.distance >= this.nearestFlames[index].distance) index++;
-      if (index >= 6) continue;
-      const length = Math.min(6, this.nearestFlames.length + 1);
-      for (let i = length - 1; i > index; i--) this.nearestFlames[i] = this.nearestFlames[i - 1];
-      this.nearestFlames[index] = flame;
+      this.nearestFlames.push(flame);
     }
+    this.nearestFlames.sort((a, b) => a.distance - b.distance);
+    this.nearestFlames.length = Math.min(6, this.nearestFlames.length);
     this.loopKeys.clear(); if(rain)this.loopKeys.add('rain'); if (ambience === 'woodland') this.loopKeys.add('woodland');
     for (const fire of this.nearestFlames) this.loopKeys.add(fire.key);
     if (portal) this.loopKeys.add('portal-hum');

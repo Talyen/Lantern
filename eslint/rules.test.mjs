@@ -138,10 +138,11 @@ test('Python and CSS lint catch correctness failures while allowing fallback val
 });
 
 test('only existing named storage owners are exempt', async () => {
-  for (const file of ['src/clearing/clearing.ts', 'src/rendering/graphics-settings.ts', 'src/audio/settings.ts', 'src/labs/animations/animation-lab.ts', 'src/labs/characters/character-gallery.ts']) {
+  for (const file of ['src/clearing/clearing.ts', 'src/rendering/graphics-settings.ts', 'src/data/preferences.ts']) {
     assert.equal((await messages(file, 'localStorage.clear();', 'lantern/no-unowned-web-storage')).length, 0, file);
   }
-  assert.equal((await messages('src/labs/animations/new-lab.ts', 'localStorage.clear();', 'lantern/no-unowned-web-storage')).length, 1);
+  for (const file of ['src/audio/settings.ts', 'src/ui/combat-text-settings.ts', 'src/labs/animations/animation-lab.ts', 'src/labs/characters/character-gallery.ts', 'src/labs/animations/new-lab.ts'])
+    assert.equal((await messages(file, 'localStorage.clear();', 'lantern/no-unowned-web-storage')).length, 1, file);
 });
 
 test('gameplay and rendering imports respect their owners', async () => {

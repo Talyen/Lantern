@@ -1,7 +1,7 @@
 export type Weapon = 'axe' | 'sword' | 'bow' | 'staff';
 export type WeaponItem = Weapon | 'iron-broadsword' | 'yew-longbow';
 export type HandItem = WeaponItem | 'shield';
-export const sharedSlots = ['helmet','body','gloves','boots','ring-left','ring-right','amulet','belt'] as const;
+const sharedSlots = ['helmet','body','gloves','boots','ring-left','ring-right','amulet','belt'] as const;
 export type SharedSlot = typeof sharedSlots[number];
 export type EquipmentSlot = 'main' | 'off' | SharedSlot;
 export type ItemId = HandItem | 'guard-helm' | 'weathered-mail' | 'quilted-coat' | 'duelist-gloves' | 'trail-boots' | 'iron-signet' | 'hearth-ring' | 'amber-amulet' | 'leather-belt';

@@ -1,3 +1,4 @@
+import { disposeSceneResources } from '../assets/resource-ownership';
 import { skywardShot } from './arrow-rain-motion';
 import { heldShot } from './held-shot';
 import type { AbilityMotion } from '../gameplay/abilities';
@@ -29,11 +30,13 @@ export function getMotionCatalog(who: RigId): Promise<MotionCatalog> {
   }).catch((error: unknown) => { catalogs.delete(url); throw error; }));
   return catalogs.get(url)!;
 }
-async function loadClip(loader: GLTFLoader, clip: MotionClip): Promise<THREE.AnimationClip> {
+export async function loadMotionClip(loader: GLTFLoader, clip: MotionClip): Promise<THREE.AnimationClip> {
   const url = clip.url;
   if (!cache.has(url)) cache.set(url, loader.loadAsync(url).then(gltf => {
-    if (gltf.animations.length !== 1) throw new Error(`Invalid motion: ${clip.name}`);
-    return gltf.animations[0];
+    try {
+      if (gltf.animations.length !== 1) throw new Error(`Invalid motion: ${clip.name}`);
+      return gltf.animations[0];
+    } finally { disposeSceneResources(gltf.scene); }
   }).catch((error: unknown) => { cache.delete(url); throw error; }));
   const source = await cache.get(url)!;
   // Playback state belongs to each clip/action; keyframe buffers stay read-only.
@@ -59,7 +62,7 @@ export async function loadEquipmentMotions(loader: GLTFLoader, who: RigId, loado
     if (clip) all[role] = clip;
   }
   const clips = Object.fromEntries(await Promise.all(Object.entries(all).map(async ([role, source]) => {
-    const clip = await loadClip(loader, source); clip.name = role; return [role, clip];
+    const clip = await loadMotionClip(loader, source); clip.name = role; return [role, clip];
   }))) as CombatMotions['clips'];
   // Every contact owner uses the same numeric/clip-boundary check before gameplay can consume it.
   const contactsFor = (role: AnimationRole, multiple = false): number[] => {

@@ -46,10 +46,6 @@ export class Harvesting {
     return node && { hits: node.hits, felled: node.regrowAt !== undefined };
   }
   isDepleted(areaId: string, id: string): boolean { return this.areas.get(areaId)?.get(id)?.regrowAt !== undefined; }
-  available(areaId: string): ResourceDefinition[] { return [...(this.areas.get(areaId)?.values() ?? [])].filter(n => n.regrowAt === undefined).map(n => n.definition); }
-  nearest(areaId: string, point: Point, reach = gathering.reach): ResourceDefinition | undefined {
-    return this.closest(areaId, point, reach);
-  }
   facing(areaId: string, point: Point, yaw: number): ResourceDefinition | undefined {
     return this.closest(areaId, point, gathering.reach, yaw);
   }

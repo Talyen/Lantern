@@ -1,3 +1,4 @@
+import { readPreference } from '../data/preferences';
 import { isRecord, parseJson } from '../data/json';
 import { qualityLevels, type QualityLevel } from './quality-presets';
 export const frameRateLimits = [60, 120, 144, 240, 0] as const;
@@ -50,8 +51,7 @@ export function saveSettings(settings: GraphicsSettings, changedKey?: keyof Grap
   } catch { /* Current settings still apply. */ }
 }
 export function readSettings(): GraphicsSettings {
-  let saved: Record<string, unknown> = {};
-  try { const value = parseJson(localStorage.getItem(settingsKey) ?? '{}'); if (isRecord(value)) saved = value; } catch { /* Defaults remain usable. */ }
+  const value = readPreference(settingsKey), saved = isRecord(value) ? value : {};
   const query = new URLSearchParams(location.search);
   const migrated = migrateSettings({ fpsLimit: defaults(query).fpsLimit, ...saved });
   // Persist before URL overrides so temporary comparison URLs do not become preferences.

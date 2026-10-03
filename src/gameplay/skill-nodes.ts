@@ -3,8 +3,8 @@ import { passives } from './mastery';
 import { skillDefinitions, type Skill } from './skills';
 
 /** Unimplemented tracks retain proposals; Sword/Bow use live unlock definitions. */
-export const majorMilestones = [1,10,20,30,40,50] as const;
-export const minorMilestones = [[3,6],[13,16],[23,26],[33,36],[43,46]] as const;
+const majorMilestones = [1,10,20,30,40,50] as const;
+const minorMilestones = [[3,6],[13,16],[23,26],[33,36],[43,46]] as const;
 export type SkillNode = {id:string; name:string; kind:'ability' | 'major' | 'minor'; role:string; index:number; level:number; ability?:AbilityId; description?:string; implemented?:boolean};
 const existing: Partial<Record<Skill,readonly [AbilityId,AbilityId?,AbilityId?]>> = {axeCombat:['axe-basic','crushing-blow','berserking'],staff:['staff-basic'],shield:['shield-basic']};
 export function nodesForSkill(skill: Skill): {major:SkillNode[]; minor:SkillNode[]} {

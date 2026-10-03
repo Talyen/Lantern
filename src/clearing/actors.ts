@@ -1,3 +1,4 @@
+import { unmatchedMotionNode } from '../animation/rig-bindings';
 import { prepareStandardMaterials } from '../rendering/surface-detail';
 import * as THREE from 'three';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
@@ -52,18 +53,8 @@ export function attachCharacter(actor: Actor, source: THREE.Group, clips: THREE.
 export function duration(actor: Actor, state: AnimationRole): number { return actor.actions[state]?.getClip().duration ?? 0; }
 function installActions(actor: Actor, clips: Partial<Record<AnimationRole, THREE.AnimationClip>>): void {
   const mixer = actor.mixer!;
-  // Weapon profiles repeat rig bindings across clips. Validate each distinct
-  // track name, then search each node once per installation; no rig cache can stale.
-  const checkedTracks = new Set<string>(), checkedNodes = new Set<string>();
-  for (const clip of Object.values(clips)) for (const track of clip.tracks) {
-    if (checkedTracks.has(track.name)) continue;
-    const binding = THREE.PropertyBinding.parseTrackName(track.name);
-    checkedTracks.add(track.name);
-    if (!checkedNodes.has(binding.nodeName)) {
-      if (!THREE.PropertyBinding.findNode(mixer.getRoot(), binding.nodeName)) throw new Error(`Motion does not match character: ${binding.nodeName}`);
-      checkedNodes.add(binding.nodeName);
-    }
-  }
+  const missing = unmatchedMotionNode(mixer.getRoot(), Object.values(clips));
+  if (missing !== undefined) throw new Error(`Motion does not match character: ${missing}`);
   mixer.stopAllAction();
   for (const role in actor.actions) {
     const action = actor.actions[role as PlaybackRole];

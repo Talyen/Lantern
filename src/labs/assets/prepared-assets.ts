@@ -12,8 +12,7 @@ export type PreparedReviewAsset = { asset: ReviewAsset; object: THREE.Group; con
 export class PreparedAssets {
   private entries = new Map<string, { promise: Promise<PreparedReviewAsset>; loaded?: PreparedReviewAsset }>();
   private pinned?: string;
-  private held = new WeakMap<PreparedReviewAsset, number>();
-  private retired = new WeakSet<PreparedReviewAsset>();
+  private leases = new WeakMap<PreparedReviewAsset, { count: number; retired: boolean }>();
   private disposed = false;
   private readonly byteLimit = 512 * 1024 * 1024;
   private key(asset: ReviewAsset): string { return `${asset.id}:${asset.fingerprint}`; }
@@ -36,14 +35,26 @@ export class PreparedAssets {
     let bytes = [...this.entries.values()].reduce((sum, entry) => sum + (entry.loaded?.bytes ?? 0), 0);
     for (const [key, entry] of this.entries) {
       if (this.entries.size <= 4 && bytes <= this.byteLimit) break;
-      if (key === this.pinned || entry.loaded && this.held.get(entry.loaded)) continue;
+      if (key === this.pinned || entry.loaded && this.leases.get(entry.loaded)?.count) continue;
       this.entries.delete(key); bytes -= entry.loaded?.bytes ?? 0; if (entry.loaded) this.retire(entry.loaded);
     }
   }
-  private retire(asset: PreparedReviewAsset): void { if (this.held.get(asset)) this.retired.add(asset); else asset.release(); }
+  private retire(asset: PreparedReviewAsset): void {
+    const lease = this.leases.get(asset);
+    if (lease?.count) lease.retired = true;
+    else asset.release();
+  }
   keep(asset: PreparedReviewAsset): () => void {
-    this.held.set(asset, (this.held.get(asset) ?? 0) + 1);
-    return () => { const remaining = (this.held.get(asset) ?? 1) - 1; this.held.set(asset, remaining); if (!remaining && this.retired.has(asset)) asset.release(); this.trim(); };
+    let lease = this.leases.get(asset);
+    if (!lease) { lease = { count: 0, retired: false }; this.leases.set(asset, lease); }
+    lease.count++;
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      if (--lease.count === 0 && lease.retired) asset.release();
+      this.trim();
+    };
   }
   unpin(): void { this.pinned = undefined; this.trim(); }
   diagnostics() { return { entries: this.entries.size, estimatedBytes: [...this.entries.values()].reduce((sum, entry) => sum + (entry.loaded?.bytes ?? 0), 0), byteLimit: this.byteLimit }; }

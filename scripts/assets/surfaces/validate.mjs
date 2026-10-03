@@ -3,11 +3,14 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import * as THREE from 'three';
 import { validateMaterial } from '../../../src/assets/material-validation.ts';
+import { parseGlb } from '../../lib/glb.mjs';
 import { cli,isMain,parseArgs,root } from '../../lib/cli.mjs';
 const components={5120:Int8Array,5121:Uint8Array,5122:Int16Array,5123:Uint16Array,5125:Uint32Array,5126:Float32Array};
 const widths={SCALAR:1,VEC2:2,VEC3:3,VEC4:4};
 export async function validateGlb(path) {
-  const file=await readFile(path);if(file.readUInt32LE(0)!==0x46546c67)throw Error('Invalid GLB header');const length=file.readUInt32LE(12),data=JSON.parse(file.subarray(20,20+length)),bin=file.subarray(28+length);
+  const { json: data, tail } = parseGlb(await readFile(path), path);
+  if (tail.length < 8 || tail.readUInt32LE(4) !== 0x004e4942 || tail.readUInt32LE(0) !== tail.length - 8) throw Error(`Invalid GLB binary chunk: ${path}`);
+  const bin = tail.subarray(8);
   const accessor=index=>{const a=data.accessors[index],v=data.bufferViews[a.bufferView],Type=components[a.componentType],width=widths[a.type];if(!Type||!width||a.sparse)throw Error('Unsupported material-validation accessor');const values=new Type(a.count*width),stride=v.byteStride??width*Type.BYTES_PER_ELEMENT,offset=(v.byteOffset??0)+(a.byteOffset??0);for(let i=0;i<a.count;i++)for(let c=0;c<width;c++){const start=offset+i*stride+c*Type.BYTES_PER_ELEMENT;values[i*width+c]=new Type(Uint8Array.from(bin.subarray(start,start+Type.BYTES_PER_ELEMENT)).buffer)[0];}return new THREE.BufferAttribute(values,width,a.normalized??false);};
   const failures=[],recipes=JSON.parse(await readFile(resolve(root,'assets/material-recipes.json')));
   for(const mesh of data.meshes??[])for(const primitive of mesh.primitives){

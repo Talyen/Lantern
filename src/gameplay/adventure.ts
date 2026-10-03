@@ -32,7 +32,7 @@ type AreaSession = {
 };
 export const chestUnlocked = (encounter: Encounter, chest: Chest) => chest.guard === null
   || (chest.guards ?? [chest.guard ?? 'enemy']).every(id => !!encounter.enemies[id] && encounter.enemies[id].hp <= 0);
-export const fireKey = (area: string, fire: string) => `${area}/${fire}`;
+const fireKey = (area: string, fire: string) => `${area}/${fire}`;
 
 export type AdventureEvent =
   | {

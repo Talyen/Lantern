@@ -1,3 +1,4 @@
+import { unmatchedMotionNode } from '../animation/rig-bindings';
 import * as THREE from 'three';
 import { sceneryLoader } from '../assets/scenery-loader';
 import { disposeSceneResources, isMesh } from '../assets/resource-ownership';
@@ -12,7 +13,7 @@ export async function createMerchant(shop: Shop) {
   const mixer = new THREE.AnimationMixer(model);
   try {
     const idle = gltf.animations.find(clip => clip.name === 'idle');
-    if (!idle || idle.tracks.some(track => !THREE.PropertyBinding.findNode(model, THREE.PropertyBinding.parseTrackName(track.name).nodeName)))
+    if (!idle || unmatchedMotionNode(model, [idle]) !== undefined)
       throw new Error('Prepare the Peasant Man and compatible neutral idle with npm run assets:export-merchant.');
     mixer.clipAction(idle).play(); mixer.update(0);
     model.updateMatrixWorld(true);

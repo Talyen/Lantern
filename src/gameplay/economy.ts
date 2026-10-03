@@ -10,7 +10,7 @@ export type GoldSource = RewardMetadata & { areaLevel?: number } & (
 );
 export type BuybackEntry = { id: string; item: ItemId; price: number };
 export const buybackLimit = 10;
-export const goldRanks: Record<EnemyRank, { chance: number; multiplier: number }> = {
+const goldRanks: Record<EnemyRank, { chance: number; multiplier: number }> = {
   normal: { chance: .5, multiplier: 1 }, elite: { chance: .75, multiplier: 2 }, boss: { chance: 1, multiplier: 5 },
 };
 /** Reward levels affect gold only. Unspecified creatures never inherit humanoid eligibility. */

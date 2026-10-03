@@ -1,3 +1,4 @@
+import { unmatchedMotionNode } from '../../animation/rig-bindings';
 import * as THREE from 'three';
 import { MeshStandardNodeMaterial } from 'three/webgpu';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -160,7 +161,7 @@ export class ReviewStage {
     }
     if (this.disposed || generation !== this.generation || motionGeneration !== this.motionGeneration || !this.mixer || !this.object) return;
     const root = this.mixer.getRoot();
-    for (const track of clip.tracks) if (!THREE.PropertyBinding.findNode(root, THREE.PropertyBinding.parseTrackName(track.name).nodeName)) throw new Error('Motion does not match this character. Static preview remains available.');
+    if (unmatchedMotionNode(root, [clip]) !== undefined) throw new Error('Motion does not match this character. Static preview remains available.');
     this.clips.set(role, clip); this.mixer.clipAction(clip).reset().play(); this.paused = false;
   }
   pause(paused: boolean): void { this.paused = paused; }

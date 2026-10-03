@@ -30,11 +30,6 @@ export function createInput(
       : undefined;
   }
 
-  function dispatch(binding: string, repeat = false): void {
-    const action = inputFor(preferences.value, binding);
-    if (action && !repeat) onAction(action);
-  }
-
   canvas.addEventListener('pointermove', event => {
     if (!menuOpen()) trackPointer(event);
   }, { signal });
@@ -53,7 +48,8 @@ export function createInput(
     if (event.button === 0 && onWorldClick(event.clientX, event.clientY)) return;
     const binding = `mouse:${event.button}`;
     down.add(binding);
-    dispatch(binding);
+    const action = inputFor(preferences.value, binding);
+    if (action) onAction(action);
   }, { signal });
 
   window.addEventListener('pointerdown', event => {
@@ -64,7 +60,7 @@ export function createInput(
     if (!action || !menus.has(action)) return;
     event.preventDefault();
     event.stopPropagation();
-    dispatch(binding);
+    onAction(action);
   }, { signal });
 
   window.addEventListener('pointerup', event => down.delete(`mouse:${event.button}`), { signal });
@@ -89,7 +85,7 @@ export function createInput(
     // Clearing or suppressing a held key requires a fresh press, not its next repeat.
     if (event.repeat && !down.has(binding)) return;
     down.add(binding);
-    dispatch(binding, event.repeat);
+    if (!event.repeat) onAction(action);
   }, { signal });
   window.addEventListener('keyup', event => down.delete(keyboardInput(event)), { signal });
   window.addEventListener('blur', clear, { signal });

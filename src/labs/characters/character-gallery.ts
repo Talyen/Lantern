@@ -1,4 +1,6 @@
-import { sceneTextures, isMesh, isTexture } from '../../assets/resource-ownership';
+import { readPreference, savePreference } from '../../data/preferences';
+import { unmatchedMotionNode } from '../../animation/rig-bindings';
+import { disposeSceneResources, isMesh } from '../../assets/resource-ownership';
 import { applyShadowQuality } from '../../rendering/quality-presets';
 import * as THREE from 'three';
 import { MeshStandardNodeMaterial } from 'three/webgpu';
@@ -43,8 +45,8 @@ const motion = el<HTMLSelectElement>('character-motion');
 const pause = el<HTMLButtonElement>('character-pause');
 const speed = el<HTMLSelectElement>('character-speed');
 const favoriteKey = 'lantern.character-favorites.v1';
-let favorites = new Set<string>();
-try { const saved: unknown = JSON.parse(localStorage.getItem(favoriteKey) ?? '[]'); if (Array.isArray(saved)) favorites = new Set(saved.filter((id): id is string => typeof id === 'string')); } catch { /* Gallery works without storage. */ }
+const savedFavorites = readPreference(favoriteKey);
+const favorites = new Set(Array.isArray(savedFavorites) ? savedFavorites.filter((id): id is string => typeof id === 'string') : []);
 const response = await fetch('/vendor/character-gallery/catalog.json');
 if (!response.ok) {
   rosterStatus.textContent = 'Character assets missing. Run npm run assets:export-characters, then reload.';
@@ -86,16 +88,6 @@ setView('iso');
 let playing = true;
 let capturing = false;
 let disposed = false;
-function disposeModel(model: THREE.Object3D): void {
-  sceneTextures(model);
-  const textures = new Set<THREE.Texture>(), materials = new Set<THREE.Material>(), geometries = new Set<THREE.BufferGeometry>();
-  model.traverse(object => { if (isMesh(object)) {
-    geometries.add(object.geometry); const meshMaterials = Array.isArray(object.material) ? object.material : [object.material];
-    if (object instanceof THREE.SkinnedMesh) object.skeleton.dispose();
-    for (const material of meshMaterials) { materials.add(material); for (const value of Object.values(material)) if (isTexture(value)) textures.add(value); }
-  } });
-  textures.forEach(texture => texture.dispose()); materials.forEach(material => material.dispose()); geometries.forEach(geometry => geometry.dispose());
-}
 function refreshCaption(index: number): void {
   const stage = stages[index], row = stage.character;
   el(`name-${index}`).textContent = `${index === 0 ? 'A' : 'B'} · ${row?.name ?? 'Choose a character'}`;
@@ -132,11 +124,9 @@ async function applyMotion(index: number, generation: number): Promise<void> {
       const gltf = await loader.loadAsync(row.motions[role].url);
       clip = gltf.animations[0];
       if (!clip) throw new Error('Motion has no animation');
-      for (const track of clip.tracks) {
-        const binding = THREE.PropertyBinding.parseTrackName(track.name);
-        if (!THREE.PropertyBinding.findNode(model, binding.nodeName)) throw new Error(`Motion does not match skeleton: ${binding.nodeName}`);
-      }
-      disposeModel(gltf.scene);
+      disposeSceneResources(gltf.scene);
+      const missing = unmatchedMotionNode(model, [clip]);
+      if (missing !== undefined) throw new Error(`Motion does not match skeleton: ${missing}`);
       if (stage.generation !== generation || stage.motionGeneration !== motionGeneration || disposed) return;
       stage.clips.set(role, clip);
     }
@@ -153,18 +143,18 @@ async function select(index: number, id: string): Promise<void> {
   try {
     if (row.status !== 'ready') throw new Error(row.error ?? 'Model not converted');
     const gltf = await loader.loadAsync(row.url);
-    if (stage.generation !== generation || disposed) { disposeModel(gltf.scene); return; }
+    if (stage.generation !== generation || disposed) { disposeSceneResources(gltf.scene); return; }
     const model = gltf.scene;
     model.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(model), height = box.getSize(new THREE.Vector3()).y;
-    if (!Number.isFinite(height) || height <= 0) { disposeModel(model); throw new Error('Model has no visible body'); }
+    if (!Number.isFinite(height) || height <= 0) { disposeSceneResources(model); throw new Error('Model has no visible body'); }
     // Parent normalization preserves skeletal root transforms and original proportions.
     const wrapper = new THREE.Group(); wrapper.add(model); wrapper.scale.setScalar(1.8 / height); wrapper.updateMatrixWorld(true);
     const bounds = new THREE.Box3().setFromObject(wrapper), center = bounds.getCenter(new THREE.Vector3()); wrapper.position.set(-center.x, -bounds.min.y, -center.z);
     model.traverse(object => { if (isMesh(object)) { object.castShadow = true; object.receiveShadow = true; } });
     markOutline(model, 'actor');
     stage.scene.add(wrapper); stage.model = model; stage.mixer = new THREE.AnimationMixer(model);
-    stage.release = () => { stage.mixer?.stopAllAction(); stage.mixer?.uncacheRoot(model); wrapper.removeFromParent(); disposeModel(model); stage.release = () => {}; };
+    stage.release = () => { stage.mixer?.stopAllAction(); stage.mixer?.uncacheRoot(model); wrapper.removeFromParent(); disposeSceneResources(model); stage.release = () => {}; };
     stage.error = ''; stage.pipeline.resetHistory(); await applyMotion(index, generation); refreshCaption(index);
   } catch (error) { if (stage.generation === generation) { stage.error = `Model unavailable: ${String(error)}`; refreshCaption(index); } }
 }
@@ -181,7 +171,7 @@ for (const stage of stages) el(`favorite-${stage.index}`).addEventListener('poin
 for (const stage of stages) el(`favorite-${stage.index}`).addEventListener('click', () => {
   const row = stage.character; if (!row) return;
   if (favorites.has(row.id)) favorites.delete(row.id); else favorites.add(row.id);
-  try { localStorage.setItem(favoriteKey, JSON.stringify([...favorites])); } catch { /* Optional preferences. */ }
+  savePreference(favoriteKey, [...favorites]);
   stages.forEach(stage => refreshCaption(stage.index)); drawList();
 });
 let last = performance.now();
@@ -216,4 +206,4 @@ const bridge = {
   },
 };
 if (import.meta.env.DEV) Object.assign(window, { lanternCharacters: bridge });
-window.addEventListener('pagehide', () => { disposed = true; observer.disconnect(); controls.dispose(); for (const stage of stages) { stage.generation++; stage.release(); stage.pipeline.dispose(); stage.lighting.dispose(); disposeModel(stage.scene); void stage.renderer.dispose().catch((error: unknown) => console.error('Unable to release graphics.', error)); } }, { once: true });
+window.addEventListener('pagehide', () => { disposed = true; observer.disconnect(); controls.dispose(); for (const stage of stages) { stage.generation++; stage.release(); stage.pipeline.dispose(); stage.lighting.dispose(); disposeSceneResources(stage.scene); void stage.renderer.dispose().catch((error: unknown) => console.error('Unable to release graphics.', error)); } }, { once: true });

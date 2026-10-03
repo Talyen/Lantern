@@ -1,5 +1,6 @@
+import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { UsageError } from '../../lib/cli.mjs';
+import { root, UsageError } from '../../lib/cli.mjs';
 import { assetPath } from '../../lib/assets.mjs';
 
 export function surfaceAssets(manifest, args) {
@@ -13,4 +14,14 @@ export function surfaceAssets(manifest, args) {
 export function preparedSurfacePath(publicRoot, asset) {
   if (!asset.url?.startsWith('/vendor/synty/environment/')) throw new Error('Invalid prepared surface URL.');
   return assetPath(resolve(publicRoot, 'vendor/synty/environment'), asset.url, '/vendor/synty/environment/');
+}
+
+/** Packing and compression consume the same selected paths and private job layout. */
+export async function writeSurfaceJobs(name, args) {
+  const manifest = JSON.parse(await readFile(resolve(root, 'assets/textures/environment/manifest.json'), 'utf8'));
+  const jobs = surfaceAssets(manifest, args).map(asset => preparedSurfacePath(resolve(root, 'public'), asset));
+  const directory = resolve(root, '.local', name), archive = resolve(root, '.local/synty-library/Archives', name);
+  await mkdir(directory, { recursive: true }); await mkdir(archive, { recursive: true });
+  const jobsPath = resolve(directory, 'jobs.json'); await writeFile(jobsPath, JSON.stringify(jobs));
+  return { jobsPath, archive };
 }

@@ -3,10 +3,7 @@ import { relative, resolve } from 'node:path';
 const storageOwners = new Set([
   'src/clearing/clearing.ts',
   'src/rendering/graphics-settings.ts',
-  'src/audio/settings.ts',
-  'src/ui/combat-text-settings.ts',
-  'src/labs/animations/animation-lab.ts',
-  'src/labs/characters/character-gallery.ts',
+  'src/data/preferences.ts',
 ]);
 const storageNames = new Set(['localStorage', 'sessionStorage', 'indexedDB']);
 const globalObjects = new Set(['window', 'globalThis', 'self']);

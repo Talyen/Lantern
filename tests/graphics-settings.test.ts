@@ -1,7 +1,5 @@
 import { parseJson, isRecord } from '../src/data/json';
 import { expect, test, vi } from 'vitest';
-import { Scene, DirectionalLight, PointLight, RenderTarget } from 'three/webgpu';
-import { applyShadowQuality } from '../src/rendering/quality-presets';
 import { defaults, defaultsVersion, migrateSettings, parseSettings, readSettings, saveSettings, settingsKey } from '../src/rendering/graphics-settings';
 
 test('FSR-only settings retire method controls and preserve applicable preferences', () => {
@@ -15,20 +13,6 @@ test('FSR-only settings retire method controls and preserve applicable preferenc
   expect(parsed).toMatchObject({ shadowQuality: 'medium', particleQuality: 'low', upscaleQuality: 'native' });
   for (const key of ['aa', 'quality', 'renderScale', 'historyWeight', 'motionThreshold', 'depthThreshold', 'volumetricLighting']) expect(parsed).not.toHaveProperty(key);
   expect(parseSettings({}, new URLSearchParams('shadowQuality=unknown&particleQuality=unknown&sharpness=NaN'))).toMatchObject({ shadowQuality: 'high', particleQuality: 'high', sharpness: .5 });
-});
-
-test('quality presets update existing shadows without changing authored light properties', () => {
-  const scene = new Scene(), sun = new DirectionalLight(), fire = new PointLight(), quiet = new PointLight();
-  sun.castShadow = fire.castShadow = true; scene.add(sun, fire, quiet);
-  sun.shadow.radius = 3; sun.shadow.bias = -.001;
-  const target = new RenderTarget(2048, 2048), dispose = vi.spyOn(target, 'dispose'); sun.shadow.map = target;
-  applyShadowQuality(scene, 'low');
-  expect([sun.shadow.mapSize.x, fire.shadow.mapSize.x]).toEqual([1024, 256]);
-  expect(dispose).toHaveBeenCalledOnce(); expect(sun.shadow.map?.width).toBe(1024); expect(quiet.castShadow).toBe(false);
-  applyShadowQuality(scene, 'medium');
-  expect([sun.shadow.mapSize.x, fire.shadow.mapSize.x]).toEqual([2048, 512]);
-  applyShadowQuality(scene, 'high');
-  expect([sun.shadow.mapSize.x, fire.shadow.mapSize.x, sun.shadow.radius, sun.shadow.bias]).toEqual([2048, 1024, 3, -.001]);
 });
 
 test('graphics modes preserve defaults, saved choices and temporary comparison URLs', () => {

@@ -1,3 +1,4 @@
+import { encodeGlb } from '../../../lib/glb.mjs';
 // three.js handles legacy ASCII FBX that Blender's importer rejects. No licensed content leaves this machine.
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { dirname, relative } from 'node:path';
@@ -50,11 +51,9 @@ for (const job of Array.isArray(jobs) ? jobs : [jobs]) {
       }
     }
     const binary = Buffer.from(gltf.buffers[0].uri.split(',')[1], 'base64'); delete gltf.buffers[0].uri;
-    const json = Buffer.from(JSON.stringify(gltf)); const jsonPad = Buffer.alloc(Math.ceil(json.length / 4) * 4, 32); json.copy(jsonPad);
     const binPad = Buffer.alloc(Math.ceil(binary.length / 4) * 4); binary.copy(binPad);
-    const header = Buffer.alloc(20); header.writeUInt32LE(0x46546c67); header.writeUInt32LE(2, 4); header.writeUInt32LE(28 + jsonPad.length + binPad.length, 8); header.writeUInt32LE(jsonPad.length, 12); header.writeUInt32LE(0x4e4f534a, 16);
     const binHeader = Buffer.alloc(8); binHeader.writeUInt32LE(binPad.length); binHeader.writeUInt32LE(0x004e4942, 4);
-    const output = Buffer.concat([header, jsonPad, binHeader, binPad]); await mkdir(dirname(job.target), { recursive: true }); await writeFile(job.target, output);
+    const output = encodeGlb(gltf, Buffer.concat([binHeader, binPad])); await mkdir(dirname(job.target), { recursive: true }); await writeFile(job.target, output);
     const bounds = new THREE.Box3().setFromObject(object); const bones = []; object.traverse((o) => { if (o.isBone) bones.push(o.name); });
     Object.assign(result, { status: 'converted', bytes: output.length, bounds: [bounds.min.toArray(), bounds.max.toArray()], rig: { bones }, dependencies: [...used], warnings: ['Converted legacy ASCII FBX using three.js; engine animation clips excluded'] });
   } catch (error) { result.reason = String(error); console.error(job.id, error); }

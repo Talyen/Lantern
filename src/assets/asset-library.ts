@@ -22,7 +22,6 @@ interface MaterialSpec {
 type CachedModel = LibraryModel & { skinned: boolean };
 /** A library owns shared art. Instances release native bindings and skeletons independently. */
 export class AssetLibrary {
-  private catalog?: Promise<AssetCatalog>;
   private gltfs = new Map<string, Promise<CachedModel>>();
   private json = new Map<string, Promise<unknown>>();
   private textures = new Map<string, Promise<THREE.Texture>>();
@@ -52,15 +51,13 @@ export class AssetLibrary {
   }
   getCatalog(): Promise<AssetCatalog> {
     if (this.disposed) throw new Error('Asset library disposed');
-    if (this.catalog) return this.catalog;
-    const request = this.fetchJson<AssetCatalog>(this.catalogUrl).then(catalog => {
+    return this.cached(this.json, `catalog:${this.catalogUrl}`, async () => {
+      const catalog = await this.fetchJson<AssetCatalog>(this.catalogUrl);
       if (catalog.version !== 1) throw new Error('Unsupported asset catalog version');
       return catalog;
-    });
-    this.catalog = request;
-    request.catch(() => { if (this.catalog === request) this.catalog = undefined; });
-    return request;
+    }) as Promise<AssetCatalog>;
   }
+
   private async entry(id: string): Promise<LibraryAsset> {
     const asset = (await this.getCatalog()).assets[id];
     if (!asset || asset.status !== 'converted') throw new Error(`Asset not converted: ${id}`);
@@ -68,7 +65,7 @@ export class AssetLibrary {
   }
   private async data<T>(id: string): Promise<T> {
     const asset = await this.entry(id);
-    return this.cached(this.json, id, () => this.fetchJson(asset.url)) as Promise<T>;
+    return this.cached(this.json, `asset:${id}`, () => this.fetchJson(asset.url)) as Promise<T>;
   }
   private async gltf(id: string): Promise<CachedModel> {
     const asset = await this.entry(id);
@@ -174,7 +171,7 @@ export class AssetLibrary {
     for (const material of this.ownedMaterials) for (const value of Object.values(material)) if (isTexture(value)) this.ownedTextures.add(value);
     geometries.forEach((g) => g.dispose()); this.ownedMaterials.forEach((m) => m.dispose()); this.ownedTextures.forEach((t) => t.dispose());
     this.gltfs.clear(); this.json.clear(); this.textures.clear(); this.materials.clear();
-    this.ownedMaterials.clear(); this.ownedTextures.clear(); this.catalog = undefined;
+    this.ownedMaterials.clear(); this.ownedTextures.clear();
   }
 }
 export const assetLibrary = new AssetLibrary();

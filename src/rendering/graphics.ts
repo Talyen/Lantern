@@ -69,7 +69,6 @@ export class Graphics {
     try { return await this.areaLighting.prepare(area, root); }
     finally { this.preparingLighting--; }
   }
-  discardLighting(prepared: PreparedLighting): void { prepared.release(); }
   exportLighting() { return this.areaLighting.exportCurrent(); }
   lightingDiagnostics() { return this.areaLighting.diagnostics(); }
   commitLighting(prepared: PreparedLighting): void { this.areaLighting.commit(this.ctx.scene, prepared); }

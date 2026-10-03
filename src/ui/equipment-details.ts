@@ -14,10 +14,10 @@ const bonusLabels: Record<keyof Bonuses, string> = {
 };
 const comparisonStats = ['damage', 'attackRate', 'reach', 'armor', 'maxHealth', 'maxMana', 'manaRegen', 'moveSpeed'] as const;
 
-export function statLabel(key: keyof CombatStats): string {
+function statLabel(key: keyof CombatStats): string {
   return statLabels[key];
 }
-export function statValue(key: keyof CombatStats, value: number): string {
+function statValue(key: keyof CombatStats, value: number): string {
   if (key === 'attackRate') return `${Math.round(value * 100)}%`;
   const amount = Number(value.toFixed(2));
   if (key === 'reach') return `${amount} m`;

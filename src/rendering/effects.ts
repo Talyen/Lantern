@@ -129,7 +129,6 @@ export class CoreEffects {
     for (const emitter of this.emitters) if (atmosphericKinds.has(emitter.kind)) emitter.carry = 0;
     this.weatherCarry = 0;
   }
-  setWind(x: number, z: number): void { this.wind.value.set(x, 0, z); }
   setWeather(kind: 'rain' | 'snow' | null): void { this.weather = kind; this.weatherCarry = 0; }
   addEmitter(kind: ParticleKind, position: THREE.Vector3, space: THREE.Object3D, rate = 12): () => void {
     const emitter = { kind, position: position.clone(), space, rate, carry: 0 }; this.emitters.push(emitter);

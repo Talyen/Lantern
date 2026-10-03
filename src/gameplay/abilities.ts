@@ -42,7 +42,7 @@ export const initialBar = (weapon: Weapon | null): ActionBar => [weapon==='axe' 
 export function validBar(value: unknown): value is ActionBar {
   return Array.isArray(value) && value.length === 6 && value.every((id: unknown)=>id===null || typeof id==='string' && abilityIds.includes(id as AbilityId));
 }
-export const supportsAbility = (set: Loadout, id: AbilityId) => abilities[id].family === 'shield' ? set.off === 'shield' : weaponFamily(set.main) === abilities[id].family;
+const supportsAbility = (set: Loadout, id: AbilityId) => abilities[id].family === 'shield' ? set.off === 'shield' : weaponFamily(set.main) === abilities[id].family;
 export function abilitySet(sets: readonly [Loadout,Loadout], active: WeaponSet, id: AbilityId): WeaponSet | undefined {
   if (supportsAbility(sets[active],id)) return active;
   const other = (1-active) as WeaponSet;
