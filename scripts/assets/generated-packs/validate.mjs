@@ -1,4 +1,4 @@
-import { Box3, Vector3, DoubleSide } from 'three';
+import { Box3, Vector3 } from 'three';
 import { MeshStandardNodeMaterial } from 'three/webgpu';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { parseGlb, encodeGlb } from '../../lib/glb.mjs';
@@ -6,7 +6,7 @@ import { parseGlb, encodeGlb } from '../../lib/glb.mjs';
 /** Preserve authored binary data; r186 reserves extras.pivot for numeric offsets. */
 export function prepareModel(source, name) {
   const { json, tail } = parseGlb(source, name);
-  if (json.asset?.version !== '2.0' || json.extensionsRequired?.length || json.images?.length || json.textures?.length
+  if (json.asset?.version !== '2.0' || json.extensionsRequired?.some(extension => extension !== 'KHR_materials_emissive_strength') || json.images?.length || json.textures?.length
     || json.cameras?.length || json.extensions?.KHR_lights_punctual || json.buffers?.length !== 1 || json.buffers[0].uri
     || tail.length < 8 || tail.readUInt32LE(4) !== 0x004e4942 || tail.readUInt32LE(0) !== tail.length - 8
     || json.buffers[0].byteLength > tail.length - 8) throw new Error(`Expected self-contained, uncompressed geometry: ${name}`);
@@ -61,17 +61,31 @@ export async function inspectModel(bytes, name, expected = {}) {
       for (const material of meshMaterials) {
         materials.add(material);
         if (!material.isMeshStandardMaterial || material.transparent || material.opacity !== 1
-          || !material.color.toArray().concat(material.roughness, material.metalness).every(Number.isFinite)) fail('Unsupported PBR material');
+          || !material.color.toArray().concat(material.emissive.toArray(), material.emissiveIntensity, material.roughness, material.metalness).every(Number.isFinite)) fail('Unsupported PBR material');
         const adapted = new MeshStandardNodeMaterial().copy(material);
         try {
           if (!adapted.color.equals(material.color) || adapted.side !== material.side || adapted.vertexColors !== material.vertexColors
-            || adapted.roughness !== material.roughness || adapted.metalness !== material.metalness) fail('Node-material adaptation changed authored values');
+            || adapted.roughness !== material.roughness || adapted.metalness !== material.metalness
+            || !adapted.emissive.equals(material.emissive) || adapted.emissiveIntensity !== material.emissiveIntensity) fail('Node-material adaptation changed authored values');
         } finally { adapted.dispose(); }
-        if (expected.vertexColors && (!geometry.attributes.color || !material.vertexColors || material.side !== DoubleSide)) fail('Lost botanical vertex colors or double-sided leaves');
+        if (expected.vertexColors && (!geometry.attributes.color || !material.vertexColors)) fail('Lost authored vertex colors');
+        if (expected.side !== undefined && material.side !== expected.side) fail('Changed authored material sidedness');
       }
       if (node.isSkinnedMesh) fail('Static prop unexpectedly skinned');
     });
     const bounds = loadedBounds();
+    if (expected.root) {
+      const roots = gltf.scene.children;
+      if (roots.length !== 1 || roots[0].name !== expected.root || roots[0].position.length() > 1e-6
+        || roots[0].quaternion.angleTo(gltf.scene.quaternion) > 1e-6 || !roots[0].scale.equals(new Vector3(1, 1, 1))) fail('Authored placement root changed');
+    }
+    for (const pivot of expected.pivots ?? []) {
+      const matches = [];
+      gltf.scene.traverse(node => { if (node.name === pivot.name) matches.push(node); });
+      if (matches.length !== 1) fail(`Missing or ambiguous named child: ${pivot.name}`);
+      if (pivot.position && matches[0].getWorldPosition(new Vector3()).toArray()
+        .some((value, axis) => Math.abs(value - pivot.position[axis]) > .001)) fail(`Changed authored pivot: ${pivot.name}`);
+    }
     if (expected.triangles !== undefined && triangles !== expected.triangles) fail('Triangle count differs from source manifest');
     if (expected.primitives !== undefined && primitives !== expected.primitives) fail('Material primitive count differs from source manifest');
     if (expected.bounds && bounds.some((point, side) => point.some((value, axis) => Math.abs(value - expected.bounds[side][axis]) > .001))) fail('Y-up bounds differ from source manifest');

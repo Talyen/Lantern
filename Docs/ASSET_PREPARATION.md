@@ -108,3 +108,42 @@ These original models use the existing library directory convention and shared m
 Keep the root at authored metre scale without another up-axis correction. Botanicals have ground-level pivots, opaque vertex colors and double-sided geometric leaves, with no textures. Weapons are static, grip-centred props: most extend along +Y; the bow fires along −X, crossbow along +Y, and shield face points +Z. The importer renames Hearthsteel's descriptive `extras.pivot` string to `placement_pivot_description` for r186, leaving binary geometry and materials unchanged. Author weapon attachment rotation/secondary grips and any bow/reload motion when adopting them. Botanicals need authored collision/navigation, wind, LODs and interactions as appropriate; these packs provide visual art only. Geometry/import checks do not establish scene composition or runtime performance.
 
 Unmodified archives, editable Blender libraries, previews, scripts, source GLBs and hash/import reports stay under `.local/animation-packs/generated-packs/<pack>/`. Cleanup retains them under `.local/agent-archives/<task>/animation-packs/generated-packs/`. `npm run assets:import-generated -- --verify` validates preserved archives, prepared outputs and library references without writing; on main it also searches the completed-task archives. Before shipping, explicitly select used IDs through `levels:assets` and author the appropriate scene/gameplay data.
+
+## Additional generated environment and lootable libraries
+
+The six owner-supplied archives add **65 standalone assets** to the existing private scene library. Import them together in an owned task:
+
+```sh
+npm run assets:import-generated -- --pack ashen-veil-lights,full-autumn-trees,dungeon-tiles,gothic-lootables,hearthwood-furniture,outdoor-crypt-lootables
+```
+
+`--downloads PATH` selects another source directory. `--pack` accepts any distinct selection from the following table, plus the existing `autumn-atlas` and `hearthsteel` packs. Omitting it still selects only Autumn Atlas and Hearthsteel.
+
+| Pack ID | Downloads archive | Standalone assets |
+| --- | --- | --- |
+| `ashen-veil-lights` | `Ashen_Veil_Light_Source_Variants.zip` | 12 lights/fire props |
+| `full-autumn-trees` | `full_autumn_trees.zip` | Six trees |
+| `dungeon-tiles` | `dungeon_tile_expansion.zip` | 24 modules across Worn Cryptstone, Mossy Ruins and Dark Fortress |
+| `gothic-lootables` | `Warm_Fantasy_Chests_Breakables.zip` | Four chests and six intact breakables |
+| `hearthwood-furniture` | `Hearthwood_Racks_Furniture.zip` | Six racks/furniture props |
+| `outdoor-crypt-lootables` | `Outdoor_Crypt_Lootables.zip` | Three outdoor and four crypt props |
+
+Library IDs are `<pack>:model:<hyphenated-source-id>`, for example `full-autumn-trees:model:tree-copper-beech` and `gothic-lootables:model:chest-simple-wooden`. Find a pack with `npm run levels:find -- --query dungeon-tiles --limit 30`. Models live under ignored `public/vendor/synty/library/models/<pack>/`; that existing directory convention does not make these generated models licensed Synty art. Import preserves other packs and adds no gameplay placements or production selections.
+
+The importer retains the unchanged ZIPs and all delivered Blender sources, GLBs, scripts, previews, manifests and QA reports under ignored `.local/animation-packs/generated-packs/<pack>/`. Bundled scripts are never executed. Cleanup retains these files under `.local/agent-archives/<task>/animation-packs/generated-packs/`. The Full Autumn forest and three dungeon demos are prepared under ignored `public/vendor/<pack>/reference-scenes/`, outside the placeable catalog. Hearthwood's four original Hearthsteel weapon references remain supporting source files rather than new library registrations.
+
+Preparation validates all selected packs before exposing their models/catalog entries. It checks safe unique archive paths and exact model inventories, verifies supplied file receipts and current-file hashes from manifests/QA reports, and records every delivered file's import-time SHA-256 fingerprint. Dungeon Tiles supplies no current-file checksums; unsupplied hashes establish a retained import baseline, not independent delivery verification. Historical geometry/revision fingerprints remain private evidence rather than current-file receipts.
+
+Pinned three.js decodes all 65 models, four demos and four supporting weapon references. Validation checks finite attributes/transforms, indexed geometry, unit normals, declared triangle/primitive counts and metre-scale Y-up bounds. Standalone origins and named articulation/emitter pivots are checked against their manifests; dungeon connector coordinates retain their source-to-glTF mapping. Material adaptation retains vertex colors, sidedness, PBR factors and emissive strength. Descriptive `extras.pivot` strings are renamed to `placement_pivot_description` for r186 compatibility; binary geometry, authored hierarchy and material data are preserved.
+
+Run the read-only verification after import, or on main after task cleanup:
+
+```sh
+npm run assets:import-generated -- --pack ashen-veil-lights,full-autumn-trees,dungeon-tiles,gothic-lootables,hearthwood-furniture,outdoor-crypt-lootables --verify
+```
+
+It verifies preserved archives/extracted sources, prepared output hashes, decoded models and library metadata. Catalog records retain dimensions, placement conventions and relevant articulation, emitter and modular data for later adoption.
+
+Use authored metre scale and placement roots without recentering. Dungeon floor thickness extends below the walk datum; wall/suspension light origins are attachment points rather than floor contact. Full Autumn uses single-sided closed geometric leaves. Preserve chest lids, doors, drawers, removable payloads and equipment children when adding interactions. Chests & Breakables contains intact states only. Light props supply static emissive geometry and emitter markers, with no runtime lights or animation; later placement uses [shared Golden lighting and local flame recipes](LIGHTING.md).
+
+These are library-ready visual assets. Collision, navigation, wind, LODs, dynamic flames and opening/breaking gameplay remain explicit later adoption work. Appearance review belongs to the separate asset review tool; import checks do not establish visual quality, in-scene behavior or runtime performance. No gallery or review route is added by this preparation.
