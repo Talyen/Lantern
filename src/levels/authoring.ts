@@ -5,9 +5,11 @@ import type { Encounter } from '../gameplay/encounter';
 import type { PreparedProbeBake } from '../rendering/lighting-bake';
 import type { SurfaceMode } from '../assets/environment-surfaces';
 import type { AreaDefinition } from './types';
+import { setMaterialCalibration, resetMaterialCalibration, materialCalibration } from '../rendering/material-calibration';
+import { calibrationStrengths, type CalibrationFamily } from '../rendering/material-recipes';
 type Diagnostics = Pick<ClearingSnapshot, 'area' | 'revision' | 'renderedRevision' | 'ready' | 'errors' | 'missing' | 'contentHash' | 'camera' | 'renderedFrames' | 'phase' | 'updateMs' | 'objects' | 'resources' | 'graphics'>;
 type Appearance = { lantern: boolean; surfaces: SurfaceMode };
-type Context = { invalidate(): void; exportLighting(this: void): Promise<PreparedProbeBake>; lighting(this: void): unknown; appearance(this: void): Appearance; setAppearance(appearance: { surfaces?: SurfaceMode; lantern?: boolean }): Promise<boolean>; scene: THREE.Scene; camera: THREE.OrthographicCamera; renderer: { domElement: HTMLCanvasElement }; definitions(): Record<string, AreaDefinition>; area(): AreaDefinition; encounter: Encounter; changeArea(id: string): Promise<boolean>; restart(this: void): void; inspect(): boolean; waitFrames(count?: number): Promise<void>; setFrozen(value: boolean): void; setView(id: string): void; diagnostics(): Diagnostics };
+type Context = { invalidate(): void; resetMaterials(): void; exportLighting(this: void): Promise<PreparedProbeBake>; lighting(this: void): unknown; appearance(this: void): Appearance; setAppearance(appearance: { surfaces?: SurfaceMode; lantern?: boolean }): Promise<boolean>; scene: THREE.Scene; camera: THREE.OrthographicCamera; renderer: { domElement: HTMLCanvasElement }; definitions(): Record<string, AreaDefinition>; area(): AreaDefinition; encounter: Encounter; changeArea(id: string): Promise<boolean>; restart(this: void): void; inspect(): boolean; waitFrames(count?: number): Promise<void>; setFrozen(value: boolean): void; setView(id: string): void; diagnostics(): Diagnostics };
 export function attachAuthoring(ctx: Context): void {
   const runtimeId = crypto.randomUUID();
   const diagnostics = () => ({ ...ctx.diagnostics(), runtimeId });
@@ -15,6 +17,23 @@ export function attachAuthoring(ctx: Context): void {
   panel.innerHTML = '<select aria-label="Area"></select> <select aria-label="View"></select> <button>Play</button> <button data-restart>Restart</button> <button data-inspect>Inspect rock</button> <label><input type="checkbox" checked> Guides</label><label> Surfaces <select aria-label="Surfaces"><option value="projected">Projected</option><option value="authored">Authored</option><option value="showcase">Woodland showcase</option></select></label><label><input type="checkbox" data-lantern> Lantern</label><pre style="white-space:pre-wrap;margin:6px 0 0"></pre>';
   document.body.append(panel);
   const selects = panel.querySelectorAll('select'), play = panel.querySelector('button')!, guides = panel.querySelector('input')!, status = panel.querySelector('pre')!;
+  const calibration = document.createElement('details');
+  calibration.innerHTML = '<summary>Material relief</summary>';
+  const comparisonControls = new Map<CalibrationFamily, HTMLSelectElement>();
+  const compare = (family: CalibrationFamily, strength: number) => {
+    setMaterialCalibration(family, strength); comparisonControls.get(family)!.value = String(strength); ctx.resetMaterials(); ctx.invalidate();
+  };
+  for (const family of ['stone', 'bark', 'ground'] as const) {
+    const label = document.createElement('label'), select = document.createElement('select');
+    label.textContent = `${family[0].toUpperCase()}${family.slice(1)} `; select.setAttribute('aria-label', `${family} relief`);
+    select.replaceChildren(...calibrationStrengths.map(value => new Option(value === 0 ? 'Relief off' : `${value}×`, String(value)))); select.value = '1';
+    select.onchange = () => compare(family, Number(select.value)); comparisonControls.set(family, select); label.append(select); calibration.append(label);
+  }
+  const replay = document.createElement('button'); replay.textContent = 'Replay'; replay.onclick = () => { ctx.restart(); ctx.resetMaterials(); };
+  const restore = document.createElement('button'); restore.textContent = 'Reset material comparisons'; restore.onclick = () => {
+    resetMaterialCalibration(); comparisonControls.forEach(select => { select.value = '1'; }); ctx.resetMaterials(); ctx.invalidate();
+  };
+  calibration.append(replay, restore); panel.append(calibration);
   const overlay = new THREE.Group(); ctx.scene.add(overlay); let overlayRevision = -1, frozen = true, selectedView = 'center';
   function clearOverlay(): void { overlay.children.forEach(o => { if (isLine(o)) { o.geometry.dispose(); (o.material as THREE.Material).dispose(); } }); overlay.clear(); }
   function line(points: number[][], color: string): void { const object = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points.map(p => new THREE.Vector3(...p as [number, number, number]))), new THREE.LineBasicMaterial({ color, depthTest: false, transparent: true, opacity: .85 })); object.renderOrder = 100; overlay.add(object); }
@@ -51,6 +70,7 @@ export function attachAuthoring(ctx: Context): void {
   const setLantern = (lantern: boolean) => ctx.setAppearance({ lantern });
   panel.querySelector<HTMLInputElement>('[data-lantern]')!.onchange = event => { void setLantern((event.target as HTMLInputElement).checked).catch(appearanceFailed); };
   const bridge = {
+    setMaterialCalibration: compare, materialCalibration,
     setSurfaces, setLantern, appearance: ctx.appearance, lighting: ctx.lighting, exportLighting: ctx.exportLighting,
     diagnostics, restart: ctx.restart, inspect,
     area: () => ctx.area(),
@@ -64,5 +84,5 @@ export function attachAuthoring(ctx: Context): void {
     zoom: (value:number) => {ctx.camera.zoom=value;ctx.camera.updateProjectionMatrix();ctx.invalidate();},
   };
   Object.assign(window,{lanternAuthoring:bridge}); refresh(); setView(ctx.appearance().surfaces === 'showcase' && ctx.area().id === 'clearing' ? 'entrance' : 'center');
-  const timer=setInterval(refresh,100);window.addEventListener('pagehide',()=>{clearInterval(timer);clearOverlay();overlay.removeFromParent();panel.remove();},{once:true});
+  const timer=setInterval(refresh,100);window.addEventListener('pagehide',()=>{resetMaterialCalibration();clearInterval(timer);clearOverlay();overlay.removeFromParent();panel.remove();},{once:true});
 }

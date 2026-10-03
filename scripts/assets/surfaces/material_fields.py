@@ -2,11 +2,12 @@
 Color is retained. Material-specific broad contrast and form fields describe
 shallow relief, not a physical reconstruction of image brightness.
 """
-import bpy, numpy as np
+import bpy, numpy as np, json
 from pathlib import Path
 
 ROUGH={'stone':.92,'bark':.95,'timber':.88,'foliage':.94,'cloth':.96,'leather':.82,'earth':.97,'litter':.94,'rocky-soil':.93}
-DEPTH={'stone':.055,'bark':.032,'timber':.018,'foliage':.025,'cloth':.008,'leather':.01,'earth':.025,'litter':.045,'rocky-soil':.045}
+RECIPES=json.loads((Path(__file__).resolve().parents[3]/'assets/material-recipes.json').read_text())
+DEPTH={family:recipe['heightMetres'] for family,recipe in RECIPES['families'].items()}
 
 def pixels(image):
     values=np.empty(len(image.pixels),dtype=np.float32);image.pixels.foreach_get(values)
@@ -75,10 +76,11 @@ def author_fields(source,family,recipe=None):
 
 def ground_fields(root):
     root=Path(root);out=root/'assets/textures/environment/ground';out.mkdir(parents=True,exist_ok=True)
-    recipes=[('earth','earth-v2.png',.29,'earth'),('litter','litter-v2.png',.64,'litter'),('rocky-soil','rocky-soil-v2.png',.48,'rocky-soil'),('stone-v1','../stone-v1.png',.45,'stone'),('stone-v2','stone-v2.png',.45,'stone')]
+    scales=RECIPES['groundBakeScales'];stone=RECIPES['stoneProjection']
+    recipes=[('earth','earth-v2.png',scales['earth'],'earth'),('litter','litter-v2.png',scales['litter'],'litter'),('rocky-soil','rocky-soil-v2.png',scales['rocky-soil'],'rocky-soil'),('stone-v1','../stone-v1.png',stone['bakeScale'],'stone'),('stone-v2','stone-v2.png',stone['bakeScale'],'stone')]
     for family,filename,scale,material in recipes:
         source=bpy.data.images.load(str(root/'assets/textures/environment/showcase'/filename));source.colorspace_settings.name='Non-Color'
-        recipe={'roughness':[.7,.94],'relief':1.25,'cavity':1.5} if material=='stone' else None
+        recipe=stone['fields'] if material=='stone' else None
         source.scale(2048,2048);field=author_fields(source,material,recipe);data=pixels(field);height=data[:,:,0]
         dx=(np.roll(height,-1,1)-np.roll(height,1,1))*2048*.5*DEPTH[material]*scale
         dy=(np.roll(height,-1,0)-np.roll(height,1,0))*2048*.5*DEPTH[material]*scale
@@ -88,3 +90,5 @@ def ground_fields(root):
         field_image(family+' normal',rgba,out/(family+'-normal.png'))
         field.filepath_raw=str((out/(family+'-surface.png')).resolve());field.file_format='PNG';field.save()
         print('GROUND_FIELDS',family,'2048')
+    snapshot={'heights':{f:DEPTH[f] for f in ['earth','litter','rocky-soil','stone']},'scales':RECIPES['groundBakeScales'],'stoneScale':stone['bakeScale'],'stoneFields':stone['fields']}
+    (out/'recipe.json').write_text(json.dumps(snapshot,indent=2)+'\n')

@@ -1,3 +1,4 @@
+import { materialRecipes } from './material-recipes';
 import { isMesh, isTexture } from '../assets/resource-ownership';
 import * as THREE from 'three';
 import type { ProbeLighting, ResolvedAreaDefinition } from '../levels/types';
@@ -5,7 +6,7 @@ import type { LightProbeGrid } from 'three/addons/lighting/LightProbeGrid.js';
 import type { RenderTarget, WebGPURenderer } from 'three/webgpu';
 
 /** Increment when static shading or the pinned probe adapter changes. */
-export const lightingBakeVersion = 5;
+export const lightingBakeVersion = 6;
 export type PreparedProbeBake = { version: number; three: string; signature: string; probes: ProbeLighting; dimensions: [number, number, number]; data: number[] };
 
 /** Render inputs only: gameplay names, arrivals, enemies and rewards do not invalidate GI. */
@@ -60,7 +61,7 @@ export async function lightingBakeSignature(area: ResolvedAreaDefinition, root: 
     sources.push(await digest(new Uint8Array(await response.arrayBuffer())));
   }
   const look = area.lighting;
-  const payload = { version: lightingBakeVersion, three: THREE.REVISION,
+  const payload = { version: lightingBakeVersion, three: THREE.REVISION, materialRecipes,
     sun: look.sun, environment: look.environment, probes: look.probes, meshes: meshes.sort(), sources: sources.sort(),
     procedural: ((root.userData.lightingProcedural as unknown[] | undefined) ?? []).map((value: unknown) => JSON.stringify(value)).sort(), surfaces: (root.userData.surfaceMode as string | undefined) ?? 'authored' };
   return digest(new TextEncoder().encode(JSON.stringify(payload)));

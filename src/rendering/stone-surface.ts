@@ -7,8 +7,10 @@ import normalV2 from '../../assets/textures/environment/ground/stone-v2-normal.p
 import fieldV1 from '../../assets/textures/environment/ground/stone-v1-surface.png?url';
 import fieldV2 from '../../assets/textures/environment/ground/stone-v2-surface.png?url';
 import { mappedSurfaceNormal, surfaceSample } from './surface-detail';
+import { materialRecipes } from './material-recipes';
+import { calibrationGain } from './material-calibration';
 
-export const stoneSurfaceRecipe = { scale: .45, normalStrength: 1 };
+export const stoneSurfaceRecipe = materialRecipes.stoneProjection;
 
 /** Color and material fields share each local projection; blended normals are
  * transformed by that projection's derivatives, not the mesh's unrelated UV0. */
@@ -19,7 +21,8 @@ export function stoneSurface(load: (url: string, data: boolean) => THREE.Texture
   const axes = [position.yz, position.zx, position.xy];
   const colors = axes.map(coords => surfaceSample(color, coords).rgb);
   const fields = axes.map(coords => surfaceSample(field, coords));
-  const normals = axes.map(coords => mappedSurfaceNormal(surfaceSample(normal, coords), coords, vec2(stoneSurfaceRecipe.normalStrength)));
+  const strength = vec2(materialRecipes.families.stone.normalStrength * stoneSurfaceRecipe.scale / stoneSurfaceRecipe.bakeScale).mul(stoneSurfaceRecipe.relief).mul(calibrationGain('stone'));
+  const normals = axes.map(coords => mappedSurfaceNormal(surfaceSample(normal, coords), coords, strength));
   return {
     color: colors[0].mul(weight.x).add(colors[1].mul(weight.y)).add(colors[2].mul(weight.z)),
     normal: normals[0].mul(weight.x).add(normals[1].mul(weight.y)).add(normals[2].mul(weight.z)).normalize(),

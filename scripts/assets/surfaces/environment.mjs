@@ -2,6 +2,7 @@ import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { existsSync } from 'node:fs';
 import { cli, parseArgs, root, blender } from '../../lib/cli.mjs';
+import { validateGlb } from './validate.mjs';
 await cli(async () => {
   const args = parseArgs(process.argv.slice(2), { '--blender': 'value', '--output': 'value', '--only': 'value', '--area': 'value', '--showcase': 'boolean', '--ground-fields': 'boolean' });
   if (args['--help']) { console.log('Usage: node scripts/assets/surfaces/environment.mjs [--blender PATH] [--output PATH] [--only pine,rock,log,crate] [--area clearing | --showcase] [--ground-fields]'); return; }
@@ -23,5 +24,7 @@ await cli(async () => {
   const suffix = args['--area'] ? `/${args['--area']}` : args['--showcase'] ? '/showcase' : '';
   const jobsPath = resolve(root, `.local/environment-art/${args['--area'] ? args['--area'] + '-' : args['--showcase'] ? 'showcase-' : ''}jobs.json`); await mkdir(resolve(root, '.local/environment-art'), { recursive: true });
   await writeFile(jobsPath, JSON.stringify(jobs, null, 2));
-  await blender('assets/surfaces/environment.py', ['--jobs', jobsPath, '--textures', resolve(root, 'assets/textures/environment'), '--output', resolve(args['--output'] ?? resolve(root, `public/vendor/synty/environment${suffix}`))], args['--blender']);
+  const output = resolve(args['--output'] ?? resolve(root, `public/vendor/synty/environment${suffix}`));
+  await blender('assets/surfaces/environment.py', ['--jobs', jobsPath, '--textures', resolve(root, 'assets/textures/environment'), '--output', output], args['--blender']);
+  for (const job of jobs) { const failures = await validateGlb(resolve(output, job.filename)); if (failures.length) throw new Error(`Incomplete prepared material ${job.id}: ${failures.join('; ')}`); }
 });

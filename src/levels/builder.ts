@@ -139,11 +139,12 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
       } }
       if ('libraryId' in ref) {
         const instance = await assetLibrary.loadAsset(ref.libraryId); instances.push(instance);
+        instance.object.traverse(object => { for (const issue of (object.userData.materialIssues as string[] | undefined) ?? []) if (!missing.includes(issue)) missing.push(issue); });
         const catalog = await assetLibrary.getCatalog(), visited = new Set<string>();
         const source = (id: string) => { if (visited.has(id)) return; visited.add(id); const entry = catalog.assets[id]; if (entry) { lightingSources.add(entry.url); entry.dependencies.forEach(source); } };
         source(instance.asset.id); return instance.object;
       }
-      const lease = cache.acquire(ref.url, () => loader.loadAsync(ref.url).then(async gltf => { if (ref.url.startsWith('/vendor/synty/environment/')) await prepareEnvironmentMaterials(gltf.scene); return gltf.scene; }));
+      const lease = cache.acquire(ref.url, () => loader.loadAsync(ref.url).then(async gltf => { if (ref.url.startsWith('/vendor/synty/environment/')) await prepareEnvironmentMaterials(gltf.scene, ref.url); return gltf.scene; }));
       sceneLeases.push(lease.release);
       const object = (await lease.scene).clone(true); lightingSources.add(ref.url);
       for (const url of (object.userData.surfaceSources as string[] | undefined) ?? []) lightingSources.add(url);

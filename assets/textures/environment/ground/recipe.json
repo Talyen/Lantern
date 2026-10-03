@@ -1,0 +1,22 @@
+{
+  "heights": {
+    "earth": 0.025,
+    "litter": 0.045,
+    "rocky-soil": 0.045,
+    "stone": 0.055
+  },
+  "scales": {
+    "earth": 0.29,
+    "litter": 0.64,
+    "rocky-soil": 0.48
+  },
+  "stoneScale": 0.45,
+  "stoneFields": {
+    "roughness": [
+      0.7,
+      0.94
+    ],
+    "relief": 1.25,
+    "cavity": 1.5
+  }
+}

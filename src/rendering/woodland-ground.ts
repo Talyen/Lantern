@@ -13,14 +13,16 @@ import { Fn } from 'three/tsl';
 import { type Node, type NodeBuilder } from 'three/webgpu';
 import { reliefUV, reliefSample, surfaceBias, mappedSurfaceNormal } from './surface-detail';
 import type { GroundLayer, GroundPatch, GroundPath } from '../levels/types';
+import { materialRecipes } from './material-recipes';
+import { calibrationGain } from './material-calibration';
 
 export const woodlandLayerUrls: Record<GroundLayer, string> = { earth: earthUrl, litter: litterUrl, 'rocky-soil': rockyUrl };
 const fields = { earth: [earthNormal, earthData], litter: [litterNormal, litterData], 'rocky-soil': [rockyNormal, rockyData] };
-export const woodlandGroundRecipe = { scales: { earth: .29, litter: .64, 'rocky-soil': .48 }, depths: { earth: .015, litter: .045, 'rocky-soil': .045 }, edge: 1.1, tint: .08, litterSaturation: .72, litterValue: .86, heightBlend: .12, normalStrength: { earth: .45, litter: .8, 'rocky-soil': .8 } };
+export const woodlandGroundRecipe = { ...materialRecipes.ground.default, edge: 1.1, heightBlend: .12 };
 type WoodlandGroundRecipe = typeof woodlandGroundRecipe;
 // Clearing is the first composed material study. Other areas retain their
 // accepted treatment until the same art pass is deliberately authored there.
-const clearingGroundRecipe = { ...woodlandGroundRecipe, scales: { earth: .16, litter: .3, 'rocky-soil': .26 }, litterSaturation: .92, litterValue: .97, normalStrength: { earth: .65, litter: .85, 'rocky-soil': .85 } };
+const clearingGroundRecipe = { ...woodlandGroundRecipe, ...materialRecipes.ground.clearing };
 export function woodlandGroundRecipeFor(area: string): WoodlandGroundRecipe { return area === 'clearing' ? clearingGroundRecipe : woodlandGroundRecipe; }
 
 export function woodlandPatchWeight(patch: Pick<GroundPatch, 'center' | 'radius' | 'strength'>) {
@@ -53,13 +55,15 @@ export function woodlandMaterial(load: (url: string, data: boolean) => THREE.Tex
   const layer = (kind: GroundLayer, coverage: typeof litter) => {
     const coords = positionWorld.xz.mul(recipe.scales[kind]);
     const data = load(fields[kind][1], true), map = load(woodlandLayerUrls[kind], false), normal = load(fields[kind][0], true);
-    const displaced = reliefUV(data, coords, recipe.depths[kind], coverage).toVar();
+    const family = materialRecipes.families[kind], gain = calibrationGain(kind).mul(recipe.relief);
+    const displaced = reliefUV(data, coords, family.heightMetres, coverage, 'a', gain).toVar();
     let color = reliefSample(map, coords, displaced).rgb;
     if (kind === 'litter') color = mix(vec3(color.dot(vec3(.2126, .7152, .0722))), color, recipe.litterSaturation).mul(recipe.litterValue);
     const field = reliefSample(data, coords, displaced);
     const surfaceNormal = Fn((builder: NodeBuilder) => {
       const scale = surfaceBias(builder).exp2();
-      return mappedSurfaceNormal(texture(normal, displaced).grad(dFdx(coords).mul(scale), dFdy(coords).mul(scale)), coords, vec2(recipe.normalStrength[kind]));
+      const correction = recipe.scales[kind] / materialRecipes.groundBakeScales[kind];
+      return mappedSurfaceNormal(texture(normal, displaced).grad(dFdx(coords).mul(scale), dFdy(coords).mul(scale)), coords, vec2(family.normalStrength * correction).mul(gain));
     })();
     return { color, field, normal: surfaceNormal };
   };

@@ -2,6 +2,9 @@ import { isMesh } from '../assets/resource-ownership';
 import * as THREE from 'three';
 import { Fn, If, Loop, float, vec2, vec3, color, uniform, uv, texture, dFdx, dFdy, positionView, positionViewDirection, normalViewGeometry, cross, dot, normalMap, negateOnBackSide } from 'three/tsl';
 import { MeshStandardNodeMaterial, type Node, type NodeBuilder } from 'three/webgpu';
+import { calibrationGain } from './material-calibration';
+import { materialRecipes, type MaterialFamily } from './material-recipes';
+import { validateMaterial } from '../assets/material-validation';
 
 type SurfaceContext = { materialMipBias?: Node<'float'>; textureDepth?: boolean };
 // The pinned r186 builder exposes this method; its declarations omit it.
@@ -40,7 +43,7 @@ export function surfaceSample(map: THREE.Texture, coordinates: Node<'vec2'> = su
   return Fn((builder: NodeBuilder) => texture(map, coordinates).bias(surfaceBias(builder)))();
 }
 /** Use physical surface gradients so depth remains in metres across UV islands and world-space terrain. */
-export function reliefUV(map: THREE.Texture, coordinates: Node<'vec2'>, depth: number, coverage: Node<'float'> = float(1), maskChannel: 'a' | 'b' = 'a') {
+export function reliefUV(map: THREE.Texture, coordinates: Node<'vec2'>, depth: number, coverage: Node<'float'> = float(1), maskChannel: 'a' | 'b' = 'a', gain: Node<'float'> = float(1)) {
   filterMaterialTexture(map);
   return Fn((builder: NodeBuilder) => {
     if (!(builder.context as SurfaceContext).textureDepth || depth <= 0) return coordinates;
@@ -54,7 +57,7 @@ export function reliefUV(map: THREE.Texture, coordinates: Node<'vec2'>, depth: n
     const gu = a.mul(dx.x).add(b.mul(dy.x)).mul(inverse);
     const gv = a.mul(dx.y).add(b.mul(dy.y)).mul(inverse);
     const direction = positionViewDirection;
-    const delta = vec2(dot(direction, gu), dot(direction, gv)).mul(depth).div(dot(direction, normalViewGeometry).abs().max(.3)).toVar();
+    const delta = vec2(dot(direction, gu), dot(direction, gv)).mul(depth).mul(gain).div(dot(direction, normalViewGeometry).abs().max(.3)).toVar();
     const mask = (field: Node<'vec4'>) => maskChannel === 'b' ? field.b : field.a;
     const first = texture(map, coordinates).grad(gx, gy).toVar();
     const result = coordinates.toVar();
@@ -94,18 +97,25 @@ export function reliefSample(map: THREE.Texture, base: Node<'vec2'>, displaced: 
 }
 export function prepareSurfaceMaterial(material: MeshStandardNodeMaterial, data?: THREE.Texture, depth = 0, format: 1 | 2 | 3 = 2): void {
   for (const key of ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'emissiveMap', 'alphaMap'] as const) if (material[key]) filterMaterialTexture(material[key]);
-  const base = material.map ? surfaceUV(material.map) : uv(0), displaced = data ? reliefUV(data, base, depth, float(1), format === 2 ? 'b' : 'a').toVar() : base;
+  const descriptor = material.userData.lanternSurface as { family?: MaterialFamily } | undefined;
+  const family = descriptor?.family;
+  const recipeGain = family === 'stone' || family === 'bark' || family === 'timber' ? materialRecipes.prepared[family] : 1;
+  const gain = family ? calibrationGain(family).mul(recipeGain) : float(1);
+  const base = material.map ? surfaceUV(material.map) : uv(0), displaced = data ? reliefUV(data, base, depth, float(1), format === 2 ? 'b' : 'a', gain).toVar() : base;
   const sample = (map: THREE.Texture) => data ? reliefSample(map, base, displaced) : surfaceSample(map);
   if (material.map) material.colorNode = sample(material.map).rgb.mul(color(material.color));
   if (material.normalMap) {
     const map = material.normalMap, normalCoordinates = data ? base : surfaceUV(map), normalDisplaced = data ? displaced : normalCoordinates;
+    // Mixed pine/log atlases amplify bark only; their foliage/cut ends keep authored normals.
+    const eligible = data ? sample(data)[format === 2 ? 'b' : 'a'] : float(1);
+    const amount = float(1).mix(gain.mul(family ? materialRecipes.families[family].normalStrength : 1), eligible);
     material.normalNode = Fn((builder: NodeBuilder) => {
       const node = texture(map, normalDisplaced).grad(dFdx(normalCoordinates).mul(surfaceBias(builder).exp2()), dFdy(normalCoordinates).mul(surfaceBias(builder).exp2()));
       // Supplied tangents remain authoritative for authored/skinned assets.
       if (material.normalMapType === THREE.ObjectSpaceNormalMap || builder.geometry.hasAttribute('tangent')) {
-        const normal = normalMap(node, uniform(material.normalScale)); normal.normalMapType = material.normalMapType; return normal;
+        const normal = normalMap(node, uniform(material.normalScale).mul(amount)); normal.normalMapType = material.normalMapType; return normal;
       }
-      return mappedSurfaceNormal(node, normalCoordinates, uniform(material.normalScale));
+      return mappedSurfaceNormal(node, normalCoordinates, uniform(material.normalScale).mul(amount));
     })();
   }
   if (material.roughnessMap) material.roughnessNode = sample(material.roughnessMap).g.mul(material.roughness);
@@ -124,6 +134,7 @@ export function prepareSurfaceMaterial(material: MeshStandardNodeMaterial, data?
 /** Convert shared loaded surfaces once while keeping authored textures and render flags. */
 export function prepareStandardMaterials(root: THREE.Object3D): void {
   const converted = new Map<THREE.Material, MeshStandardNodeMaterial>();
+  const issues: string[] = [];
   root.traverse(object => {
     if (!isMesh(object)) return;
     const convert = (source: THREE.Material) => {
@@ -133,6 +144,10 @@ export function prepareStandardMaterials(root: THREE.Object3D): void {
       return material;
     };
     object.material = Array.isArray(object.material) ? object.material.map(convert) : convert(object.material);
+    for (const material of Array.isArray(object.material) ? object.material : [object.material]) if (material instanceof THREE.MeshStandardMaterial) {
+      for (const issue of validateMaterial(material, object.geometry)) issues.push(`material:${object.name}:${issue.material}:${issue.message}`);
+    }
   });
+  root.userData.materialIssues = issues;
   converted.forEach((_material, source) => source.dispose());
 }

@@ -4,6 +4,8 @@ import { MeshStandardNodeMaterial } from 'three/webgpu';
 import manifest from '../../assets/textures/environment/manifest.json';
 import { prepareSurfaceMaterial } from '../rendering/surface-detail';
 import type { AssetRef } from '../levels/types';
+import { validateMaterial } from './material-validation';
+import { materialRecipes, type MaterialFamily } from '../rendering/material-recipes';
 
 export type SurfaceMode = 'projected' | 'authored' | 'showcase';
 const variants = new Map(manifest.assets.map(asset => [asset.id, asset]));
@@ -23,9 +25,11 @@ export function copyStandardNodeMaterial(source: THREE.MeshStandardMaterial | Me
   return new MeshStandardNodeMaterial().copy(source);
 }
 /** The area cache owns material textures, including optional relief sidecars. */
-export async function prepareEnvironmentMaterials(root: THREE.Object3D): Promise<void> {
+export async function prepareEnvironmentMaterials(root: THREE.Object3D, sourceUrl?: string): Promise<void> {
   const materials = new Map<THREE.Material, MeshStandardNodeMaterial>();
   const sources: string[] = [], missing: string[] = [];
+  const asset = [...manifest.assets, ...manifest.showcase.assets, ...Object.values(manifest.areaAssets).flat()].find(asset => asset.url === sourceUrl);
+  const family: MaterialFamily | undefined = asset?.kind === 'rock' || asset?.kind === 'campfire' ? 'stone' : asset?.kind === 'pine' || asset?.kind === 'log' ? 'bark' : asset ? 'timber' : undefined;
   root.traverse(object => {
     if (!isMesh(object)) return;
     const convert = (source: THREE.Material) => {
@@ -37,7 +41,14 @@ export async function prepareEnvironmentMaterials(root: THREE.Object3D): Promise
     object.material = Array.isArray(object.material) ? object.material.map(convert) : convert(object.material);
   });
   await Promise.all([...materials.values()].map(async material => {
-    const descriptor = material.userData.lanternSurface as { url?: string; depth: number; version: number } | undefined;
+    const descriptor = material.userData.lanternSurface as { url?: string; depth: number; version: number; family?: MaterialFamily } | undefined;
+    if (descriptor && (!Number.isFinite(descriptor.depth) || descriptor.depth < 0 || ![1, 2, 3].includes(descriptor.version))) {
+      missing.push(`material:${material.name}:invalid relief metadata`); delete material.userData.lanternSurface; prepareSurfaceMaterial(material); return;
+    }
+    if (descriptor?.family && !Object.hasOwn(materialRecipes.families, descriptor.family)) {
+      missing.push(`material:${material.name}:unknown recipe family`); delete descriptor.family;
+    }
+    if (descriptor && !descriptor.family && family) descriptor.family = family;
     let data: THREE.Texture | undefined;
     if (descriptor?.version === 3) data = material.roughnessMap ?? undefined;
     else if (descriptor?.url && [1, 2].includes(descriptor.version) && descriptor.url.startsWith('/vendor/synty/environment/') && !descriptor.url.includes('..')) {
@@ -49,6 +60,12 @@ export async function prepareEnvironmentMaterials(root: THREE.Object3D): Promise
     }
     prepareSurfaceMaterial(material, data, descriptor?.depth ?? 0, descriptor?.version === 3 ? 3 : descriptor?.version === 1 ? 1 : 2);
   }));
+  root.traverse(object => {
+    if (!isMesh(object)) return;
+    for (const material of Array.isArray(object.material) ? object.material : [object.material]) if (material instanceof THREE.MeshStandardMaterial) {
+      for (const issue of validateMaterial(material, object.geometry, !!material.userData.lanternSurface)) missing.push(`material:${object.name}:${issue.material}:${issue.message}`);
+    }
+  });
   root.userData.surfaceSources = sources; root.userData.surfaceMissing = missing;
   materials.forEach((_material, source) => source.dispose());
   sceneTextures(root);

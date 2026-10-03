@@ -8,7 +8,7 @@ from collections import Counter
 import bpy
 import numpy as np
 sys.path.insert(0,str(Path(__file__).parent))
-from material_fields import author_fields, pixels as field_pixels, DEPTH
+from material_fields import author_fields, pixels as field_pixels, DEPTH, RECIPES
 
 
 def linear(c): return c / 12.92 if c <= .04045 else ((c + .055) / 1.055) ** 2.4
@@ -118,7 +118,7 @@ def bake(row, textures, output, size):
         pixels[:,:,:3]=autumn_colors(pixels[:,:,:3],look,reference)
         image.pixels.foreach_set(pixels.ravel());image.update()
         surfaces['foliage']=image
-    fields={family:author_fields(surface,family,row.get('materialFields',{}).get(family)) for family,surface in surfaces.items()}
+    fields={family:author_fields(surface,family,RECIPES['fieldProfiles'].get(row.get('fieldProfile'),{}).get(family)) for family,surface in surfaces.items()}
     for mesh in meshes:
         bpy.ops.object.select_all(action='DESELECT'); mesh.select_set(True); bpy.context.view_layer.objects.active=mesh
         if row.get('bevel') and row['kind']=='rock':
@@ -199,7 +199,7 @@ def bake(row, textures, output, size):
                 links.new(tex.inputs['Vector'].links[0].from_socket,fieldtex.inputs['Vector'])
                 channels=nodes.new('ShaderNodeSeparateColor');channels.mode='RGB';links.new(fieldtex.outputs['Color'],channels.inputs[0])
                 field={key:channels.outputs[channel] for key,channel in [('height','Red'),('roughness','Green'),('cavity','Blue')]}
-                bump=nodes.new('ShaderNodeBump');bump.inputs['Strength'].default_value=.55;bump.inputs['Distance'].default_value=DEPTH[family]*1.8
+                bump=nodes.new('ShaderNodeBump');bump.inputs['Strength'].default_value=1;bump.inputs['Distance'].default_value=DEPTH[family]
                 links.new(channels.outputs['Red'],bump.inputs['Height'])
                 # Retain the authored palette; individual recipes choose how
                 # strongly painted marks carry the form at gameplay distance.
@@ -277,7 +277,8 @@ def bake(row, textures, output, size):
         for channel,socket in [('color','Base Color'),('roughness','Roughness'),('metalness','Metallic')]:
             tex=nodes.new('ShaderNodeTexImage');tex.image=baked[channel];links.new(tex.outputs['Color'],bsdf.inputs[socket])
         tex=nodes.new('ShaderNodeTexImage');tex.image=baked['normal'];normal_node=nodes.new('ShaderNodeNormalMap');links.new(tex.outputs['Color'],normal_node.inputs['Color']);links.new(normal_node.outputs['Normal'],bsdf.inputs['Normal'])
-        mat['lanternSurface']={'url':str(Path(row['url']).parent/ basename),'depth':max([DEPTH[f] for f in counts if f in ['stone','bark','timber']],default=0),'version':2}
+        family='stone' if row['kind'] in ['rock','campfire'] else 'bark' if row['kind'] in ['pine','log'] else 'timber'
+        mat['lanternSurface']={'url':str(Path(row['url']).parent/ basename),'depth':max([DEPTH[f] for f in counts if RECIPES['families'].get(f,{}).get('parallax')],default=0),'version':2,'recipeVersion':RECIPES['version'],'family':family,'normalDepthMetres':DEPTH[family] if family in DEPTH else 0,'bakeRecipe':{'heights':{f:DEPTH[f] for f in counts if f in DEPTH},'fieldProfile':row.get('fieldProfile'),'fields':{f:RECIPES['fieldProfiles'].get(row.get('fieldProfile'),{}).get(f) for f in counts if f in DEPTH}}}
         if source_alpha:
             tex=nodes.new('ShaderNodeTexImage');tex.image=baked['alpha'];links.new(tex.outputs['Color'],bsdf.inputs['Alpha']);mat.surface_render_method='DITHERED'
         mat.use_backface_culling=not any(originals[m][2].use_backface_culling is False for m in originals)

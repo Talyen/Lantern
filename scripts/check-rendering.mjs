@@ -124,6 +124,7 @@ export function renderingViolations(path, source) {
     }
     if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) { if (node.moduleSpecifier) modulePath(node.moduleSpecifier); }
     if (ts.isCallExpression(node)) {
+      if (origin(node.expression) === 'normalMap' && !['src/rendering/surface-detail.ts', 'src/labs/materials/probe.ts'].includes(path)) errors.add('Custom normal mapping must use mappedSurfaceNormal from the shared surface adapter; the pinned derivative frame otherwise assumes UV0.');
       if (node.expression.kind === ts.SyntaxKind.ImportKeyword || ts.isIdentifier(node.expression) && node.expression.text === 'require') modulePath(node.arguments[0]);
       if (property(node.expression) === 'getContext' && /^(?:webgl2?|experimental-webgl)$/i.test(constant(node.arguments[0]) ?? '')) legacy();
     }

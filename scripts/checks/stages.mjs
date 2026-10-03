@@ -1,3 +1,4 @@
+import { probeOwners } from '../materials/probe.mjs';
 // Change-aware stage selection; full validation remains opt-in locally.
 export function checkStages(files, args = {}) {
   const node = process.execPath;
@@ -10,6 +11,8 @@ export function checkStages(files, args = {}) {
   const python = full || !files.length || lintSetup || files.some(name => name.endsWith('.py') || name === 'ruff.config.json');
   const css = full || !files.length || lintSetup || files.some(name => name.endsWith('.css') || name === 'stylelint.config.js');
   const lintPolicy = full || files.some(name => /^eslint\//.test(name) || ['eslint.config.js', 'scripts/check-rendering.mjs', 'scripts/lint.mjs', 'ruff.config.json', 'stylelint.config.js'].includes(name));
+  const materials = full || files.some(name => /^src\/(?:assets\/(?:material-validation|environment-surfaces|asset-library)|rendering\/(?:surface-detail|material-|stone-surface|woodland-ground))|^scripts\/assets\/surfaces\/|^assets\/(?:material-recipes|textures\/environment)/.test(name));
+  const nativeMaterials = files.some(name => probeOwners.includes(name));
   return [
     ...(!docsOnly || full ? [['rendering', node, ['scripts/check-rendering.mjs']]] : []),
     ...(docs ? [['docs', node, ['scripts/check-docs.mjs']]] : []),
@@ -21,6 +24,9 @@ export function checkStages(files, args = {}) {
     ...(full ? [['workflow', node, ['--test', 'scripts/agents/workflow.test.mjs']]] : []),
     ...(full ? [['tests', node, ['node_modules/vitest/vitest.mjs', 'run']]] : []),
     ...(levels ? [['levels', node, ['scripts/levels/check.mjs']]] : []),
+    ...(materials ? [['materials', node, ['scripts/assets/surfaces/validate.mjs']]] : []),
+    ...(materials ? [['material-contract', node, ['--test', 'scripts/assets/surfaces/validate.test.mjs']]] : []),
+    ...(nativeMaterials ? [['material-native-proof', node, ['scripts/materials/proof.mjs']]] : []),
     ...(full ? [['build', node, ['scripts/build.mjs', '--skip-typecheck']], ['inventory', node, ['scripts/check-assets.mjs', '--build']], ['preview', node, ['scripts/smoke-preview.mjs']]] : []),
     ...(args['--assets'] ? [['assets', node, ['scripts/check-assets.mjs']]] : []),
     ...(args['--base'] ? [['candidate-diff', 'git', ['diff', '--check', `${args['--base']}...HEAD`]]] : []),
