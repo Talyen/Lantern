@@ -1,4 +1,3 @@
-import { SyntyParticleStudy } from './synty-particle-study';
 import { isRecord } from '../../data/json';
 import { disposeSceneResources, sceneTextures } from '../../assets/resource-ownership';
 import { applyShadowQuality } from '../../rendering/quality-presets';
@@ -10,34 +9,23 @@ import { createRenderer } from '../../rendering/renderer';
 import { WebGPUPipeline } from '../../rendering/webgpu-pipeline';
 import { resolveLighting } from '../../levels/lighting';
 import { AreaLightingResources } from '../../rendering/area-lighting';
-import { cameraOffset, desktopViewHeight } from '../../clearing/projection';
-import { cameraDistanceMultipliers } from '../../rendering/graphics-settings';
 import { readSettings } from '../../rendering/graphics-settings';
 import { markOutline } from '../../rendering/outlines';
 import { Equipment } from '../../rendering/equipment';
 import { PlayerLantern } from '../../rendering/player-lantern';
 import { GatheringTools } from '../../rendering/gathering-tools';
 import { assetLibrary } from '../../assets/asset-library';
-import { getMotionCatalog, joinShot, loadEquipmentMotions, holdStaffArm, type MotionCatalog, type MotionClip, type MotionPack } from '../../animation/combat-animations';
+import { getMotionCatalog, loadEquipmentMotions, holdStaffArm, type MotionCatalog, type MotionClip, type MotionPack } from '../../animation/combat-animations';
 import type { RigId } from '../../animation/combat-animations';
 import type { Loadout } from '../../gameplay/equipment';
 import './animation-lab.css';
 import characters from '../../../assets/playable-characters.json';
-import motionProfiles from '../../../assets/motion-profiles.json';
 
-const ultimateStudy = new URLSearchParams(location.search).get('study') === 'ultimates';
-const studyCandidates = [
-  { id: 'study-power-slash', name: 'Sword · Power Slash', loadout: 'sword', effect: 'SwordSlash' },
-  { id: 'study-cross-slash', name: 'Sword · Cross Slash', loadout: 'sword', effect: 'Slash_Large' },
-  { id: 'study-sword-combo', name: 'Sword · One Hand Combo', loadout: 'sword', effect: 'SwordSlash' },
-  { id: 'study-bow-shot', name: 'Bow · Shooting Arrow', loadout: 'bow', effect: 'Impact_Small' },
-  { id: 'study-bow-draw', name: 'Bow · Overdraw + Release', loadout: 'bow', effect: 'Sparks' },
-] as const;
 type Clip = MotionClip & { mappedBones?: number; auditRole?: string };
 type Pack = Omit<MotionPack, 'clips'> & { license?: string; url?: string; clips: Clip[] };
 type Catalog = Omit<MotionCatalog, 'packs'> & { character: string; characterLabel: string; motion: string; packs: Pack[] };
 type Favorite = { pack: string; clip: string };
-type Lane = { study?: SyntyParticleStudy; group: THREE.Group; rig: RigId; rigLoading: boolean; catalog?: Catalog; source?: THREE.Group; equipment?: Equipment; lantern?: PlayerLantern; tools?: GatheringTools; loadout: Loadout; model?: THREE.Group; mixer?: THREE.AnimationMixer; action?: THREE.AnimationAction; clip?: Clip; pack?: Pack; generation: number; rigSelect: HTMLSelectElement; loadoutSelect: HTMLSelectElement; packSelect: HTMLSelectElement; clipSelect: HTMLSelectElement; search: HTMLInputElement; info: HTMLElement; favorite: HTMLButtonElement; timing: HTMLElement };
+type Lane = { group: THREE.Group; rig: RigId; rigLoading: boolean; catalog?: Catalog; source?: THREE.Group; equipment?: Equipment; lantern?: PlayerLantern; tools?: GatheringTools; loadout: Loadout; model?: THREE.Group; mixer?: THREE.AnimationMixer; action?: THREE.AnimationAction; clip?: Clip; pack?: Pack; generation: number; rigSelect: HTMLSelectElement; loadoutSelect: HTMLSelectElement; packSelect: HTMLSelectElement; clipSelect: HTMLSelectElement; search: HTMLInputElement; info: HTMLElement; favorite: HTMLButtonElement; timing: HTMLElement };
 const loadouts: Record<string, Loadout> = { axe: { main: 'axe', off: null }, 'axe-shield': { main: 'axe', off: 'shield' }, sword: { main: 'sword', off: null }, 'sword-shield': { main: 'sword', off: 'shield' }, bow: { main: 'bow', off: null }, staff: { main: 'staff', off: null } };
 const loadoutNames: Record<string, string> = { axe: 'Axe', 'axe-shield': 'Axe + Shield', sword: 'Sword', 'sword-shield': 'Sword + Shield', bow: 'Bow', staff: 'Staff' };
 document.title = 'Lantern — Animations';
@@ -47,7 +35,7 @@ app.innerHTML = `
     <header class="lab-header"><a href="/">← Clearing</a><h1>Animations</h1><p id="lab-status" role="status">Loading…</p><div class="lab-header-tools"><label>Preview<select id="lab-display"><option value="a">A</option><option value="b">B</option><option value="compare">Compare A / B</option></select></label><button id="lab-fit">Fit character</button><button id="lab-controls" aria-expanded="true" aria-controls="lab-inspector">Controls</button><button id="lab-fullscreen">Fullscreen</button></div></header>
     <section class="lab-stage" aria-label="Animation preview"><div id="lab-canvas"></div><div class="stage-label stage-label-a">A</div><div class="stage-label stage-label-b">B</div><div class="stage-tip">Drag to orbit · right-drag to pan · scroll to zoom</div></section>
     <section class="lab-toolbar" aria-label="Playback controls">
-      <label>Show <select id="lab-category"><option value="all">All motions</option>${ultimateStudy ? '<option value="study">Ultimate candidates</option>' : ''}<option value="attack" selected>Attacks</option><option value="skill">Skills</option><option value="idle">Idles</option><option value="run">Running</option><option value="directional">Backward & strafe</option><option value="walk">Walking</option><option value="hit">Hit reactions</option><option value="death">Deaths</option><option value="block">Blocking</option><option value="chop">Chopping</option><option value="mine">Mining</option><option value="dodge">Dodges & rolls</option><option value="movement">Other movement</option><option value="other">Interactions & emotes</option><option value="favorites">Favorites</option></select></label>
+      <label>Show <select id="lab-category"><option value="all">All motions</option><option value="attack" selected>Attacks</option><option value="skill">Skills</option><option value="idle">Idles</option><option value="run">Running</option><option value="directional">Backward & strafe</option><option value="walk">Walking</option><option value="hit">Hit reactions</option><option value="death">Deaths</option><option value="block">Blocking</option><option value="chop">Chopping</option><option value="mine">Mining</option><option value="dodge">Dodges & rolls</option><option value="movement">Other movement</option><option value="other">Interactions & emotes</option><option value="favorites">Favorites</option></select></label>
       <button id="lab-pause" disabled>Pause</button><button id="lab-restart" disabled>Restart</button><button id="lab-step" disabled>Step 1 frame</button>
       <label>Speed <select id="lab-speed"><option value="0.25">¼ speed</option><option value="0.5">½ speed</option><option value="1" selected>Normal</option><option value="1.5">1½ speed</option></select></label>
       <label class="lab-check"><input id="lab-loop" type="checkbox" checked> Loop</label>
@@ -99,12 +87,12 @@ if (retainedFavorites.length !== favorites.length) {
   try { localStorage.setItem('lantern-animation-favorites', JSON.stringify(favorites)); } catch { /* Preview still works without storage. */ }
 }
 const scene = new THREE.Scene();
-const camera = ultimateStudy ? new THREE.OrthographicCamera(-9, 9, desktopViewHeight / 2, -desktopViewHeight / 2, .1, 100) : new THREE.PerspectiveCamera(33, 1, 0.1, 50);
+const camera = new THREE.PerspectiveCamera(33, 1, 0.1, 50);
 camera.position.set(2.8, 2.6, 5.2);
 // Each comparison lane uses the shared graph, with independent render state/history.
 const settings = readSettings();
 // Inspection retains the shared Golden graph while removing lens blur/glare.
-if (!ultimateStudy) { settings.dof = 'off'; settings.bloom = 0; }
+settings.dof = 'off'; settings.bloom = 0;
 const mounts = ['a', 'b'].map((id) => { const mount = document.createElement('div'); mount.dataset.lane = id; canvas.append(mount); return mount; });
 const renderers: Awaited<ReturnType<typeof createRenderer>>[] = [];
 for (const mount of mounts) renderers.push(await createRenderer(mount));
@@ -151,12 +139,8 @@ const previews = lanes.map((lane, i) => {
   return { renderer, camera: laneCamera, pipeline, lighting };
 });
 await Promise.all(previews.map((preview) => preview.pipeline.ready()));
-function copyCamera(destination: THREE.OrthographicCamera | THREE.PerspectiveCamera): void {
-  if (destination instanceof THREE.OrthographicCamera && camera instanceof THREE.OrthographicCamera) destination.copy(camera);
-  else if (destination instanceof THREE.PerspectiveCamera && camera instanceof THREE.PerspectiveCamera) destination.copy(camera);
-}
 const resetHistories = () => previews.forEach((preview) => preview.pipeline.resetHistory());
-window.addEventListener('pagehide', () => { disposed = true; controls.dispose(); lanes.forEach(lane => { clearLane(lane); lane.study?.dispose(); }); void Promise.allSettled(characterCache.values()).then(results => results.forEach(result => { if (result.status === 'fulfilled') disposeSceneResources(result.value); })).catch((error: unknown) => console.error('Unable to release character models.', error)); void assetLibrary.dispose().catch((error: unknown) => console.error('Unable to release lab assets.', error)); previews.forEach(({ pipeline, renderer, lighting }) => { pipeline.dispose(); lighting.dispose(); void renderer.dispose().catch((error: unknown) => console.error('Unable to release graphics.', error)); }); }, { once: true });
+window.addEventListener('pagehide', () => { disposed = true; controls.dispose(); lanes.forEach(clearLane); void Promise.allSettled(characterCache.values()).then(results => results.forEach(result => { if (result.status === 'fulfilled') disposeSceneResources(result.value); })).catch((error: unknown) => console.error('Unable to release character models.', error)); void assetLibrary.dispose().catch((error: unknown) => console.error('Unable to release lab assets.', error)); previews.forEach(({ pipeline, renderer, lighting }) => { pipeline.dispose(); lighting.dispose(); void renderer.dispose().catch((error: unknown) => console.error('Unable to release graphics.', error)); }); }, { once: true });
 const loader = new GLTFLoader();
 const cache = new Map<string, Promise<THREE.AnimationClip>>();
 const characterCache = new Map<string, Promise<THREE.Group>>();
@@ -217,7 +201,6 @@ function applyPose(): void {
     const t = linkedCycles() ? progress * duration : seconds;
     lane.action.time = loop.checked && t < duration ? t : loop.checked ? t % duration : Math.min(t, duration);
     lane.mixer.update(0);
-    lane.study?.seek(lane.action.time, camera);
     const playhead = lane.timing.querySelector<HTMLElement>('.lane-playhead');
     if (playhead) playhead.style.left = `${lane.action.time / duration * 100}%`;
     const readout = lane.timing.querySelector<HTMLOutputElement>('.lane-time');
@@ -229,7 +212,6 @@ function applyPose(): void {
 function resetPlayback(): void { resetHistories(); seconds = 0; progress = 0; applyPose(); }
 function previewFailed(error: unknown): void { console.error('Unable to update animation preview.', error); }
 async function selectClip(lane: Lane): Promise<void> {
-  lane.study?.seek(-1, camera);
   const generation = ++lane.generation;
   lane.favorite.disabled = true; updatePlaybackControls();
   const clip = lane.pack?.clips.find((c) => c.id === lane.clipSelect.value);
@@ -244,24 +226,7 @@ async function selectClip(lane: Lane): Promise<void> {
       if (gltf.animations.length !== 1) throw new Error('Expected one baked animation');
       return gltf.animations[0];
     }).catch((error: unknown) => { cache.delete(clip.url); throw error; }));
-    let motion=(await cache.get(clip.url)!).clone();
-    let studyMarker: number | undefined;
-    if (ultimateStudy && clip.id === 'study-bow-draw') {
-      const release = lane.pack!.clips.find(candidate => candidate.id === 'study-bow-release');
-      if (!release) throw new Error('Prepare the source Bow release for the Ultimate study.');
-      if (!cache.has(release.url)) cache.set(release.url, loader.loadAsync(release.url).then(gltf => {
-        if (gltf.animations.length !== 1) throw new Error('Expected one baked release');
-        return gltf.animations[0];
-      }).catch((error: unknown) => { cache.delete(release.url); throw error; }));
-      const releaseMotion = await cache.get(release.url)!;
-      const reviewed = motionProfiles.clips['bow-recoil'];
-      studyMarker = motion.duration + reviewed.contact / reviewed.duration * releaseMotion.duration;
-      motion = joinShot(motion, releaseMotion);
-    }
-    if (ultimateStudy && clip.id === 'study-bow-shot') {
-      const reviewed = motionProfiles.clips['bow-attack'];
-      studyMarker = reviewed.trim[0] + reviewed.contact / reviewed.duration * (reviewed.trim[1] - reviewed.trim[0]);
-    }
+    const motion=(await cache.get(clip.url)!).clone();
     if (lane.loadout.main==='staff' && !clip.audit && !['hit','death','dodge','chop','mine'].includes(clip.category)) {
       const preparedMotions=await loadEquipmentMotions(loader,lane.rig,lane.rig==='player' ? lane.loadout : {main:'axe',off:null});
       if (lane.rig==='player') holdStaffArm(motion,preparedMotions.clips.idle);
@@ -287,14 +252,10 @@ async function selectClip(lane: Lane): Promise<void> {
     lane.mixer = new THREE.AnimationMixer(lane.model);
     lane.action = lane.mixer.clipAction(motion); lane.action.setLoop(THREE.LoopOnce, 1); lane.action.clampWhenFinished = true; lane.action.play(); lane.action.paused = true;
     lane.clip = clip;
-    if (lane.study) {
-      lane.study.trigger = studyMarker ?? clip.contact ?? motion.duration * .45;
-      el<HTMLInputElement>(`${lanes.indexOf(lane) ? 'b' : 'a'}-effect-time`).value = lane.study.trigger.toFixed(2);
-    }
     lane.info.textContent = `${motion.duration.toFixed(2)} s${clip.auditRole ? ' · Previous ' + clip.auditRole : ''}${clip.description ? ' · ' + clip.description : ''}`;
     lane.favorite.disabled = false; updateFavorite(lane); updateTiming(lane); resetPlayback();
     updatePlaybackControls();
-    if (!ultimateStudy && visibleLane(lanes.indexOf(lane))) fitPreview();
+    if (visibleLane(lanes.indexOf(lane))) fitPreview();
   } catch (error) {
     tools?.dispose();
     lantern?.dispose();
@@ -325,14 +286,7 @@ async function selectRig(lane: Lane, rig: RigId): Promise<void> {
   lane.rigLoading = true; lane.info.textContent = 'Loading character…';
   lane.rigSelect.disabled = lane.loadoutSelect.disabled = lane.packSelect.disabled = lane.clipSelect.disabled = lane.search.disabled = true;
   try {
-    let catalog = await getMotionCatalog(rig) as Catalog;
-    if (ultimateStudy && rig === 'player') {
-      const response = await fetch(characters.player.catalog.replace('catalog.json', 'study.json'));
-      if (!response.ok) throw new Error('Prepare Ultimate study motions with npm run assets:export-character -- --player-only --motions-only.');
-      const study = await response.json() as { version: number; clips: Clip[] };
-      if (study.version !== 1 || !Array.isArray(study.clips)) throw new Error('Unsupported study motion export.');
-      catalog = { ...catalog, packs: catalog.packs.map(pack => pack.id === 'mixamo' ? { ...pack, clips: [...pack.clips, ...study.clips] } : pack) };
-    }
+    const catalog = await getMotionCatalog(rig) as Catalog;
     if (!characterCache.has(catalog.character)) characterCache.set(catalog.character, loader.loadAsync(catalog.character).then(gltf => { sceneTextures(gltf.scene); return gltf.scene; }).catch((error: unknown) => { characterCache.delete(catalog.character); throw error; }));
     const source = await characterCache.get(catalog.character)!;
     if (disposed || generation !== lane.generation) return;
@@ -380,13 +334,10 @@ el<HTMLSelectElement>('lab-view').addEventListener('change', (e) => {
 });
 function resize(): void {
   const h = Math.max(1, canvas.clientHeight), width = canvas.clientWidth / (display === 'compare' ? 2 : 1);
-  const aspect = Math.max(1, width) / h;
-  if (camera instanceof THREE.OrthographicCamera) { camera.left = -desktopViewHeight * aspect / 2; camera.right = desktopViewHeight * aspect / 2; }
-  else camera.aspect = aspect;
-  camera.updateProjectionMatrix();
+  camera.aspect = Math.max(1, width) / h; camera.updateProjectionMatrix();
   previews.forEach((preview, index) => {
     if (!visibleLane(index)) return;
-    copyCamera(preview.camera); preview.renderer.setSize(Math.max(1, mounts[index].clientWidth), h); preview.pipeline.resize();
+    preview.camera.copy(camera); preview.renderer.setSize(Math.max(1, mounts[index].clientWidth), h); preview.pipeline.resize();
   });
 }
 function updateStatus(): void {
@@ -404,16 +355,8 @@ function fitPreview(): void {
   });
   if (bounds.isEmpty()) return;
   const direction = camera.position.clone().sub(controls.target).normalize();
-  const size = bounds.getSize(new THREE.Vector3());
-  let distance = 9;
-  if (camera instanceof THREE.OrthographicCamera) {
-    const aspect = (camera.right - camera.left) / (camera.top - camera.bottom);
-    camera.zoom = desktopViewHeight / (Math.max(size.y, size.x / aspect) * 1.12 + size.z * .35);
-    camera.updateProjectionMatrix();
-  } else {
-    const tangent = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-    distance = Math.max(size.y / (2 * tangent), size.x / (2 * tangent * camera.aspect)) * 1.12 + size.z * .35;
-  }
+  const size = bounds.getSize(new THREE.Vector3()), tangent = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  const distance = Math.max(size.y / (2 * tangent), size.x / (2 * tangent * camera.aspect)) * 1.12 + size.z * .35;
   controls.target.copy(bounds.getCenter(new THREE.Vector3()));
   camera.position.copy(controls.target).addScaledVector(direction, distance); controls.update(); resetHistories();
 }
@@ -458,9 +401,7 @@ function tick(): void {
   controls.update();
   for (const [index, preview] of previews.entries()) {
     if (!visibleLane(index)) continue;
-    copyCamera(preview.camera);
-    const lane = lanes[index];
-    lane.study?.seek(lane.action?.time ?? -1, camera);
+    preview.camera.copy(camera);
     preview.pipeline.render();
     preview.renderer.domElement.dataset.graphics = JSON.stringify({ renderer: 'webgpu', settings, pipeline: preview.pipeline.diagnostics() });
   }
@@ -469,76 +410,12 @@ function tick(): void {
 setDisplay('a');
 tick();
 await Promise.all(lanes.map(lane => selectRig(lane, 'player')));
-async function studyCandidate(lane: Lane, id: string): Promise<void> {
-  const candidate = studyCandidates.find(candidate => candidate.id === id);
-  if (!candidate || !lane.study) return;
-  lane.rigSelect.value = 'player';
-  if (lane.rig !== 'player') await selectRig(lane, 'player');
-  lane.loadout = { ...loadouts[candidate.loadout] }; lane.loadoutSelect.value = candidate.loadout;
-  category.value = 'study'; lane.search.value = '';
-  await fillClips(lane, candidate.id);
-  lane.study.position.set(0, 1, candidate.loadout === 'bow' && candidate.effect !== 'Sparks' ? 2 : .65);
-  lane.study.select(candidate.effect);
-  const prefix = lanes.indexOf(lane) ? 'b' : 'a';
-  el<HTMLSelectElement>(`${prefix}-candidate`).value = candidate.id;
-  el<HTMLSelectElement>(`${prefix}-effect`).value = candidate.effect;
-  el<HTMLInputElement>(`${prefix}-effect-distance`).value = String(lane.study.position.z);
-  updateStudyInfo(lane); resetPlayback();
-}
-function updateStudyInfo(lane: Lane): void {
-  const prefix = lanes.indexOf(lane) ? 'b' : 'a';
-  el<HTMLElement>(`${prefix}-effect-info`).textContent = lane.study?.warnings.join(' ') ?? '';
-}
-if (ultimateStudy) {
-  document.title = 'Lantern — Ultimate study';
-  main.querySelector('h1')!.textContent = 'Ultimate study';
-  notes.querySelector('p')!.textContent = 'Compare the original Mixamo motion and Synty appearance on Erika. Effect start is a provisional review marker, not a gameplay hit. Adjust it, replay, or scrub; Effects Off isolates the motion. Candidates retain full source timing; Overdraw + Release uses an 80 ms transition at the join. This study does not change abilities or character progress.';
-  for (const [index, lane] of lanes.entries()) {
-    const id = index ? 'b' : 'a';
-    const panel = document.createElement('section'); panel.className = 'study-controls';
-    panel.innerHTML = `<label>Candidate<select id="${id}-candidate">${studyCandidates.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}</select></label><label>Synty effect<select id="${id}-effect"><option value="">Off</option></select></label><div class="study-values"><label>Effect start (s)<input id="${id}-effect-time" type="number" min="0" step="0.05" value="0"></label><label>Size<input id="${id}-effect-scale" type="number" min="0.1" max="3" step="0.1" value="1"></label><label>Distance (m)<input id="${id}-effect-distance" type="number" min="0" max="5" step="0.1" value="0.65"></label></div><details class="study-notes"><summary>Source approximation notes</summary><p id="${id}-effect-info" class="study-limit" role="status">Preparing Synty effects…</p></details>`;
-    const card = el(`${id}-settings`);
-    card.querySelector('.lane-heading')!.after(panel);
-    const advanced = document.createElement('details'); advanced.className = 'study-advanced';
-    const summary = document.createElement('summary'); summary.textContent = 'Motion and equipment'; advanced.append(summary);
-    advanced.append(card.querySelector('.lane-loadout')!);
-    for (const control of [lane.packSelect, lane.search, lane.clipSelect]) advanced.append(control.closest('label')!);
-    card.append(advanced); lane.favorite.hidden = true;
-    lane.study = new SyntyParticleStudy(settings.particleQuality); lane.group.add(lane.study.root);
-    try {
-      await lane.study.prepare();
-      el<HTMLSelectElement>(`${id}-effect`).append(...lane.study.recipes.map(r => new Option(r.name, r.id)));
-      await studyCandidate(lane, studyCandidates[index].id);
-    } catch (error) { el(`${id}-effect-info`).textContent = `Synty study unavailable: ${String(error)}`; }
-    el(`${id}-candidate`).addEventListener('change', event => { void studyCandidate(lane, (event.target as HTMLSelectElement).value).catch(previewFailed); });
-    el(`${id}-effect`).addEventListener('change', event => { lane.study!.select((event.target as HTMLSelectElement).value); updateStudyInfo(lane); resetPlayback(); });
-    for (const field of ['time', 'scale', 'distance']) el(`${id}-effect-${field}`).addEventListener('input', event => {
-      const value = Number((event.target as HTMLInputElement).value);
-      if (!Number.isFinite(value)) return;
-      if (field === 'time') lane.study!.trigger = Math.max(0, value);
-      if (field === 'scale') lane.study!.scale = THREE.MathUtils.clamp(value, .1, 3);
-      if (field === 'distance') lane.study!.position.z = THREE.MathUtils.clamp(value, 0, 5);
-      resetHistories(); applyPose();
-    });
-  }
-  const gameplayView = document.createElement('button'); gameplayView.textContent = 'Gameplay scale';
-  gameplayView.addEventListener('click', () => {
-    controls.target.set(0, .9, 0);
-    camera.position.copy(controls.target).add(new THREE.Vector3(...cameraOffset));
-    camera.zoom = 1 / cameraDistanceMultipliers[settings.cameraDistance]; camera.updateProjectionMatrix();
-    controls.update(); resetHistories();
-  });
-  el('lab-fit').after(gameplayView);
-  setDisplay('compare'); gameplayView.click();
-}
-
 const laneAt = (index: number | 'a' | 'b') => {
   const lane = lanes[typeof index === 'number' ? index : index === 'a' ? 0 : 1];
   if (!lane) throw new Error('Unknown comparison lane'); return lane;
 };
 const diagnostics = {
   setDisplay,
-  studyCandidate: (index: number | 'a' | 'b', id: string) => studyCandidate(laneAt(index), id),
   fit: fitPreview,
   frame(view: 'front' | 'side' | 'back', target: [number, number, number] = [0, 0.9, 0], distance = 3.5) {
     controls.target.fromArray(target);
@@ -555,6 +432,6 @@ const diagnostics = {
     await Promise.all(lanes.map(current => fillClips(current, current === lane ? clip : current.clip?.id)));
   },
   setTime(value: number) { playing = false; pause.textContent = 'Play'; seconds = Math.max(0, value); progress = seconds / referenceDuration(); applyPose(); resetHistories(); },
-  snapshot: () => ({ display, playing, seconds, progress, lanes: lanes.map(lane => ({ rig: lane.rig, loadout: lane.loadout, clip: lane.clip?.id, duration: lane.action?.getClip().duration, time: lane.action?.time, marker: lane.clip?.contact, clips: lane.catalog?.packs.flatMap(pack => pack.clips.map(clip => ({ id: clip.id, category: clip.category, contact: clip.contact, auditRole: clip.auditRole }))), effects: lane.study?.snapshot(), equipment: lane.equipment?.diagnostics(), lantern: lane.lantern?.diagnostics(), error: lane.info.textContent })) }),
+  snapshot: () => ({ display, playing, seconds, progress, lanes: lanes.map(lane => ({ rig: lane.rig, loadout: lane.loadout, clip: lane.clip?.id, duration: lane.action?.getClip().duration, time: lane.action?.time, marker: lane.clip?.contact, clips: lane.catalog?.packs.flatMap(pack => pack.clips.map(clip => ({ id: clip.id, category: clip.category, contact: clip.contact, auditRole: clip.auditRole }))), equipment: lane.equipment?.diagnostics(), lantern: lane.lantern?.diagnostics(), error: lane.info.textContent })) }),
 };
 (window as Window & { lanternAnimations?: typeof diagnostics }).lanternAnimations = diagnostics;

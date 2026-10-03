@@ -4,7 +4,8 @@ try {
   if (import.meta.env.DEV && new URLSearchParams(location.search).get('lab') === 'characters') {
     await import('./labs/characters/character-gallery');
   } else if (import.meta.env.DEV && new URLSearchParams(location.search).get('lab') === 'animations') {
-    await import('./labs/animations/animation-lab');
+    if (new URLSearchParams(location.search).get('study') === 'ultimates') await import('./labs/animations/ultimate-lab');
+    else await import('./labs/animations/animation-lab');
   } else {
     await import('./clearing/clearing');
   }
