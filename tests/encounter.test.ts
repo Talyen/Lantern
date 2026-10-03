@@ -4,7 +4,7 @@ import { expect, test } from 'vitest';
 import { applyEquipment, useAbility, swapWeaponSet, attack, dodge, dodgeDistance, stepExploration, createEncounter, resetEncounter, stepEncounter, enemyMaxHealth, type Timings } from '../src/gameplay/encounter';
 const timing: Timings = { player: { attack: 1, hit: 0.5, contacts: [0.42] }, enemy: { attack: 1, hit: 0.5, contacts: [0.42] }, caster: {attack:1.6,hit:.35,contacts:[.8]} };
 import type { Loadout, WeaponItem } from '../src/gameplay/equipment';
-import type { Encounter } from '../src/gameplay/encounter';
+import type { Encounter, EncounterEvent } from '../src/gameplay/encounter';
 function equip(state: Encounter, main: WeaponItem) { sets(state,[{main,off:null},{main:null,off:null}]); }
 function sets(state: Encounter, loadouts: [Loadout,Loadout]) {
   applyEquipment(state,loadouts.flatMap((loadout,set)=>[loadout.main,loadout.off].flatMap((item,index)=>item ? [{id:`set-${set}-${index}`,item,quantity:1,slot:index===0 ? 'main' as const : 'off' as const,weaponSet:set as 0|1,x:0,y:0}] : [])),0);
@@ -229,7 +229,7 @@ test('safe and cleared attacks accept buffered input within recovery, keep commi
   expect(state.player.lock).toBeCloseTo(.98);
   expect(state.player.yaw).toBe(Math.PI/2);
   for (let i=0;i<17;i++) stepExploration(state,.05,idle,undefined,timing);
-  expect(dodge(state,{x:0,z:1},false)).toEqual([]);
+  expect(dodge(state,{x:0,z:1},false)).toContainEqual({type:'action',actor:'player',action:'dodge',weapon:'axe'});
   for (let i=0;i<3;i++) stepExploration(state,.05,idle,undefined,timing);
   expect(state.dodgeRemaining).toBeGreaterThan(0);
   resetEncounter(state);
@@ -244,6 +244,7 @@ test('safe and cleared attacks accept buffered input within recovery, keep commi
 
 test('a buffered ranged skill releases only after its own windup and retains the matching cooldown', () => {
   const state = createEncounter('won');
+  state.proficiency.bow=5000;
   state.weapon = 'bow'; state.weaponSets[0] = {main:'bow',off:null};
   state.player.lock = state.attackCooldown = .04;
   const clocks = {...timing,player:{...timing.player,abilities:{'piercing-shot':{attack:.2,contacts:[.03]}}}};
@@ -251,14 +252,16 @@ test('a buffered ranged skill releases only after its own windup and retains the
   stepExploration(state,.05,idle,undefined,clocks);
   expect(state.projectiles).toHaveLength(0);
   expect(state.player.attackTime).toBeCloseTo(.01);
-  expect(state.abilityCooldowns['piercing-shot']).toBeCloseTo(5.99);
-  expect(state.playerMana).toBeCloseTo(70.08);
+  expect(state.abilityCooldowns['piercing-shot'] ?? 0).toBe(0);
+  expect(state.playerMana).toBe(100);
   stepExploration(state,.025,idle,undefined,clocks);
+  expect(state.abilityCooldowns['piercing-shot']).toBeCloseTo(5.995);
+  expect(state.playerMana).toBeCloseTo(71.54);
   expect(state.projectiles).toHaveLength(1);
   expect(state.projectiles[0].z).toBeCloseTo(state.player.z + .35 + .005 * 24);
 });
 
-test('a held shield halves frontal damage and walking speed, while rear hits interrupt and dodge releases it', () => {
+test('a held shield halves frontal damage and walking speed, while rear hits remain damaging without interruption and dodge releases it', () => {
   const front = closeEncounter(); front.shield=true; front.enemies.enemy.attackTime=.4; front.enemies.enemy.cooldown=999;
   stepEncounter(front,.03,{...idle,block:true},timing);
   expect(front.player.hp).toBe(90); expect(front.blocking).toBe(true);
@@ -269,8 +272,8 @@ test('a held shield halves frontal damage and walking speed, while rear hits int
   expect(front.blocking).toBe(false);
   const rear = closeEncounter(); rear.shield=true; rear.player.yaw=Math.PI; rear.enemies.enemy.attackTime=.4; rear.enemies.enemy.cooldown=999;
   const hit = stepEncounter(rear,.03,{...idle,block:true},timing);
-  expect(rear.player.hp).toBe(80); expect(rear.blocking).toBe(false);
-  expect(hit).toContainEqual({type:'animation',actor:'player',motion:'hit'});
+  expect(rear.player.hp).toBe(80); expect(rear.blocking).toBe(true);
+  expect(hit).not.toContainEqual({type:'animation',actor:'player',motion:'hit'});
 });
 
 test('ranged releases are timed, swept walls stop damage, and released arrows hit once without becoming Axe combat', () => {
@@ -382,7 +385,7 @@ test('enemy bolts sweep into the player once, stop at terrain, and respect dodge
   expect(front.player.hp).toBe(90); expect(front.blocking).toBe(true);
   const rear=shot(); rear.shield=true; rear.player.yaw=Math.PI;
   stepEncounter(rear,.3,{...idle,block:true},timing);
-  expect(rear.player.hp).toBe(80); expect(rear.blocking).toBe(false);
+  expect(rear.player.hp).toBe(80); expect(rear.blocking).toBe(true);
 });
 
 test('two fights stay independent, with player clocks advancing once', () => {
@@ -480,23 +483,23 @@ test('Sword Basic is focused while Sweep covers the forward half-circle with one
 test('Piercing Shot automatically equips Bow, crosses each enemy once, and stops at terrain', () => {
   const layout={boundary:{kind:'circle' as const,center:[0,0] as [number,number],radius:20},player:{position:[0,0] as [number,number],yaw:0},enemy:{position:[0,2] as [number,number],yaw:0},caster:{position:[0,4] as [number,number],yaw:0}};
   const clocks={...timing,player:{...timing.player,abilities:{'piercing-shot':{attack:1,contacts:[.7]}}}};
-  const make=()=>{const state=createEncounter('playing',layout);sets(state,[{main:'sword',off:null},{main:'bow',off:null}]);return state;};
+  const make=()=>{const state=createEncounter('playing',layout);state.proficiency.bow=5000;sets(state,[{main:'sword',off:null},{main:'bow',off:null}]);return state;};
   const state=make();expect(useAbility(state,'piercing-shot',clocks.player,false)).toContainEqual({type:'weaponSet',set:1});
   stepExploration(state,.7,idle,undefined,clocks);for(let i=0;i<10;i++)stepExploration(state,.025,idle,undefined,clocks);
-  expect([state.enemies.enemy.hp,state.enemies.caster.hp]).toEqual([146,146]);expect(state.playerMana).toBeCloseTo(77.6);
+  expect([state.enemies.enemy.hp,state.enemies.caster.hp]).toEqual([144.38,144.38]);expect(state.playerMana).toBeCloseTo(73.6121568627451);
   const blocked=make();useAbility(blocked,'piercing-shot',clocks.player,false);
   const world={move:()=>{},direction:()=>({x:0,z:0}),lineOfSight:()=>true,segmentHit:(from:{z:number},to:{z:number})=>from.z<3 && to.z>=3 ? (3-from.z)/(to.z-from.z) : null};
   stepExploration(blocked,.7,idle,world,clocks);for(let i=0;i<10;i++)stepExploration(blocked,.025,idle,world,clocks);
-  expect([blocked.enemies.enemy.hp,blocked.enemies.caster.hp,blocked.projectiles.length]).toEqual([146,200,0]);
+  expect([blocked.enemies.enemy.hp,blocked.enemies.caster.hp,blocked.projectiles.length]).toEqual([144.38,200,0]);
 });
 
 test('automatic swaps and repeated slot assignments preserve skill cooldowns and action locks', () => {
-  const state=createEncounter('won');sets(state,[{main:'sword',off:'shield'},{main:'bow',off:null}]);
+  const state=createEncounter('won');state.proficiency.bow=5000;sets(state,[{main:'sword',off:'shield'},{main:'bow',off:null}]);
   const clocks={...timing,player:{...timing.player,abilities:{sweep:{attack:.8,contacts:[.38]},'piercing-shot':{attack:1,contacts:[.7]}}}};
   useAbility(state,'sweep',clocks.player,false);const mana=state.playerMana;
   expect(useAbility(state,'piercing-shot',clocks.player,false)).toEqual([]);expect(state.activeSet).toBe(0);expect(state.playerMana).toBe(mana);
   stepExploration(state,.8,idle,undefined,clocks);expect(state.activeSet).toBe(0); // The early request expired.
-  useAbility(state,'piercing-shot',clocks.player,false);expect(state.activeSet).toBe(1);expect(state.abilityCooldowns.sweep).toBeCloseTo(4.2);
+  useAbility(state,'piercing-shot',clocks.player,false);expect(state.activeSet).toBe(1);expect(state.abilityCooldowns.sweep).toBeCloseTo(4.58);
   stepExploration(state,1,idle,undefined,clocks);swapWeaponSet(state,false);expect(state.activeSet).toBe(0);
   const before=state.playerMana;expect(useAbility(state,'sweep',clocks.player,false)).toEqual([]);expect(state.playerMana).toBe(before);
   const cooldown=state.abilityCooldowns.sweep;stepExploration(state,1,{...idle,paused:true},undefined,clocks);expect(state.abilityCooldowns.sweep).toBe(cooldown);
@@ -552,11 +555,11 @@ test('armor reduces melee, arrows and magic without turning rear hits into shiel
     if(kind==='melee')state.enemies.enemy.attackTime=.4;
     else {state.enemies.enemy.z=9;state.projectiles.push({id:1,owner:'enemy',kind,x:0,y:1.08,z:1,dx:0,dz:-1,remaining:12,damage:20});}
     const events=stepEncounter(state,kind==='melee' ? .03 : .2,{...idle,block:true},timing);
-    expect(state.player.hp).toBeCloseTo(100-20*100/120);expect(state.blocking).toBe(false);
+    expect(state.player.hp).toBeCloseTo(100-20*100/120);expect(state.blocking).toBe(true);
     const impact = events.find(event => event.type === 'impact' && event.actor === 'player');
     expect(impact).toMatchObject({type:'impact',actor:'player',weapon:kind==='melee' ? 'axe' : kind==='arrow' ? 'bow' : 'staff',blocked:false,lethal:false});
     expect(impact?.type === 'impact' ? impact.damage : undefined).toBeCloseTo(20*100/120);
-    expect(events).toContainEqual({type:'animation',actor:'player',motion:'hit'});
+    expect(events).not.toContainEqual({type:'animation',actor:'player',motion:'hit'});
   }
   const front=closeEncounter();applyEquipment(front,[{id:'sword',item:'sword',quantity:1,slot:'main',x:0,y:0},{id:'shield',item:'shield',quantity:1,slot:'off',x:0,y:0},{id:'mail',item:'weathered-mail',quantity:1,slot:'body',x:0,y:0}],0);
   front.enemies.enemy.attackTime=.4;front.enemies.enemy.cooldown=999;
@@ -592,37 +595,39 @@ test('buffered skills retain equipped mana capacity and recovery', () => {
   const clocks = { ...timing, player: { ...timing.player, abilities: { sweep: { attack: .2, contacts: [.1] } } } };
   useAbility(state, 'sweep', clocks.player, false);
   stepExploration(state, .05, idle, undefined, clocks);
-  expect(state.playerMana).toBeCloseTo(105.5);
+  expect(state.playerMana).toBeCloseTo(130.5);
+  stepExploration(state,.1,idle,undefined,clocks);
+  expect(state.playerMana).toBeCloseTo(106.5);
 });
 
-test('buffered dodges begin movement and immunity at recovery unlock', () => {
+test('available dodge cancels attack locks while cooldown-buffered dodge retains within-frame immunity', () => {
   const state = createEncounter('won');
   state.player.x = state.player.z = 0;
   state.player.lock = .04;
   dodge(state, { x: 1, z: 0 }, false);
-  // This bolt reaches the player before recovery unlocks, so the queued dodge cannot evade it.
+  // The available dodge cancels recovery immediately and evades both contacts.
   state.enemies.caster.hp = 200;
   state.projectiles.push(
     { id: 1, owner: 'caster', kind: 'bolt', x: 0, y: 1, z: .5, dx: 0, dz: -1, remaining: 12 },
     { id: 2, owner: 'caster', kind: 'bolt', x: 0, y: 1, z: .58, dx: 0, dz: -1, remaining: 12 },
   );
   stepExploration(state, .05, idle, undefined, timing);
-  expect(state.player.hp).toBe(80);
-  expect(state.dodgeRemaining).toBe(0);
+  expect(state.player.hp).toBe(100);
+  expect(state.dodgeRemaining).toBeCloseTo(.4);
 
   const clear = createEncounter('won');
   clear.player.x = clear.player.z = 0;
   clear.player.lock = .04;
   dodge(clear, { x: 1, z: 0 }, false);
   stepExploration(clear, .05, idle, undefined, timing);
-  expect(clear.player.x).toBeCloseTo(dodgeDistance * .01 / .45);
-  expect(clear.dodgeRemaining).toBeCloseTo(.44);
-  expect(clear.dodgeCooldown).toBeCloseTo(.99);
-  expect(clear.invulnerability).toBeCloseTo(.24);
+  expect(clear.player.x).toBeCloseTo(dodgeDistance * .05 / .45);
+  expect(clear.dodgeRemaining).toBeCloseTo(.4);
+  expect(clear.dodgeCooldown).toBeCloseTo(.95);
+  expect(clear.invulnerability).toBeCloseTo(.2);
 
   const later = createEncounter('won');
   later.player.x = later.player.z = 0;
-  later.player.lock = .04;
+  later.dodgeCooldown = .04;
   later.enemies.caster.hp = 200;
   later.projectiles.push({ id: 1, owner: 'caster', kind: 'bolt', x: 0, y: 1, z: .78, dx: 0, dz: -1, remaining: 12 });
   dodge(later, { x: 1, z: 0 }, false);
@@ -755,4 +760,91 @@ test('ranged launches collide with terrain between the actor and the muzzle', as
       expect(events.some(event => event.type === 'projectileImpact')).toBe(true);
     }
   } finally { world.dispose(); }
+});
+
+// Admission: new commitment and cancellation paths can consume resources twice or leave attacks active after dodge; existing fixtures only covered recovery buffering.
+test('dodge abandons preparation for free and never refunds a committed strike',()=>{
+  const state=closeEncounter(); equip(state,'sword');
+  const clocks={...timing,player:{...timing.player,abilities:{sweep:{attack:.8,contacts:[.4]}}}};
+  const mana=state.playerMana;
+  useAbility(state,'sweep',clocks.player,false);
+  stepExploration(state,.2,idle,undefined,clocks);
+  expect(state.playerMana).toBe(mana); expect(state.abilityCooldowns.sweep ?? 0).toBe(0);
+  expect(dodge(state,{x:1,z:0},false).some(e=>e.type==='action' && e.action==='dodge')).toBe(true);
+  stepExploration(state,1,idle,undefined,clocks);
+  expect(state.enemies.enemy.hp).toBe(enemyMaxHealth); expect(state.playerMana).toBe(mana);
+  state.player.x=0; state.player.z=0;
+  useAbility(state,'sweep',clocks.player,false); stepExploration(state,.41,idle,undefined,clocks);
+  const health=state.enemies.enemy.hp,spentMana=state.playerMana,remaining=state.abilityCooldowns.sweep;
+  dodge(state,{x:1,z:0},false);
+  expect(state.playerMana).toBe(spentMana); expect(state.abilityCooldowns.sweep).toBe(remaining);
+  stepExploration(state,1,idle,undefined,clocks); expect(state.enemies.enemy.hp).toBe(health);
+});
+
+test('player hits leave attack preparation and held defense intact',async()=>{
+  const {hit}=await import('../src/gameplay/encounter-damage');
+  const state=closeEncounter(); equip(state,'sword'); attack(state,timing.player,false);
+  const lock=state.player.lock,events:EncounterEvent[]=[];
+  hit(state,'player',timing,events,'axe',{x:0,z:1},0,20);
+  expect(state.player.hp).toBe(80); expect(state.player.lock).toBe(lock); expect(state.player.attackTime).toBe(0);
+  expect(events.some(e=>e.type==='animation' && e.actor==='player' && e.motion==='hit')).toBe(false);
+  expect(dodge(state,{x:1,z:0},false).some(e=>e.type==='action' && e.action==='dodge')).toBe(true);
+});
+
+test('committed Ultimates share readiness across weapons and cancellation',()=>{
+  const state=closeEncounter(); state.proficiency={sword:24000,bow:24000}; sets(state,[{main:'sword',off:null},{main:'bow',off:null}]);
+  const clocks={...timing,player:{...timing.player,abilities:{executioner:{attack:1.05,contacts:[.65]},'arrow-rain':{attack:1.5,contacts:[.93]}}}};
+  useAbility(state,'executioner',clocks.player,false); stepExploration(state,.7,idle,undefined,clocks);
+  expect(state.ultimateCooldown).toBeGreaterThan(29); const mana=state.playerMana;
+  dodge(state,{x:1,z:0},false); stepExploration(state,.5,idle,undefined,clocks);
+  useAbility(state,'arrow-rain',clocks.player,false,{x:0,z:2}); expect(state.rains).toHaveLength(0); expect(state.playerMana).toBeGreaterThanOrEqual(mana);
+  stepExploration(state,30,idle,undefined,clocks);
+  expect(useAbility(state,'arrow-rain',clocks.player,false,{x:0,z:2})).toContainEqual({type:'weaponSet',set:1});
+  stepExploration(state,.94,idle,undefined,clocks); expect(state.rains).toHaveLength(1); expect(state.ultimateCooldown).toBeGreaterThan(29);
+});
+
+// Admission: finite credit and refresh timing prevent repeat rewards from healed damage and attacks that postpone Poison indefinitely.
+test('proficiency credits only new health loss, excluding healing and overkill',async()=>{
+  const {hit}=await import('../src/gameplay/encounter-damage');
+  const state=closeEncounter(),events:EncounterEvent[]=[];
+  hit(state,'enemy',timing,events,'sword',undefined,0,100);
+  state.enemies.enemy.hp=200;
+  hit(state,'enemy',timing,events,'sword',undefined,0,80);
+  hit(state,'enemy',timing,events,'bow',undefined,0,500);
+  expect(events.filter(e=>e.type==='proficiency')).toEqual([{type:'proficiency',family:'sword',amount:100},{type:'proficiency',family:'bow',amount:100}]);
+});
+
+test('Poison refresh keeps its next tick and uses Bow attribution after swapping',()=>{
+  const state=closeEncounter(); state.enemies.enemy.cooldown=999;
+  const shot=(id:number)=>({id,owner:'player',kind:'arrow' as const,x:0,y:1.22,z:0,dx:0,dz:1,remaining:12,damage:1,poisonDamage:80,impactId:id,ability:'poison-arrow' as const});
+  state.projectiles.push(shot(1)); stepExploration(state,.1,idle,undefined,timing);
+  stepExploration(state,.2,idle,undefined,timing); const before=state.enemies.enemy.poison!.nextTick;
+  state.projectiles.push(shot(2)); stepExploration(state,.1,idle,undefined,timing);
+  expect(state.enemies.enemy.poison!.nextTick).toBeLessThan(before);
+  const events=stepExploration(state,.2,idle,undefined,timing);
+  expect(events.some(e=>e.type==='impact' && e.periodic)).toBe(true);
+  expect(events.some(e=>e.type==='proficiency' && e.family==='bow')).toBe(true);
+  expect(events.some(e=>e.type==='animation' && e.motion==='hit')).toBe(false);
+});
+
+test('Riposte prevents one frontal melee hit and commits once; rear and ranged hits remain damaging',async()=>{
+  const {hit}=await import('../src/gameplay/encounter-damage');
+  const make=()=>{const state=closeEncounter(); state.proficiency.sword=5000; equip(state,'sword'); useAbility(state,'riposte',{...timing.player,abilities:{riposte:{attack:.62,contacts:[.26]}}},false); return state;};
+  const state=make(),events:EncounterEvent[]=[];
+  hit(state,'player',timing,events,'axe',{x:0,z:1,melee:'enemy'},0,20);
+  expect(state.player.hp).toBe(100); expect(state.riposte).toBeUndefined(); expect(state.playerMana).toBeLessThan(100); expect(state.abilityCooldowns.riposte).toBeGreaterThan(0);
+  const mana=state.playerMana; dodge(state,{x:1,z:0},false); expect(state.playerMana).toBe(mana);
+  const rear=make(); hit(rear,'player',timing,[],'axe',{x:0,z:-1,melee:'enemy'},0,20); expect(rear.player.hp).toBe(80); expect(rear.riposte).toBeDefined();
+  const ranged=make(); hit(ranged,'player',timing,[],'staff',{x:0,z:1},0,20); expect(ranged.player.hp).toBe(80); expect(ranged.riposte).toBeDefined();
+});
+
+// Admission: a repeated area pulse can duplicate kill credit or damage targets through a wall.
+test('rain pulses respect walls and cannot reaward a defeated enemy',()=>{
+  const state=createEncounter('playing',{boundary:{kind:'circle',center:[0,0],radius:20},player:{position:[0,0],yaw:0},enemy:{position:[0,3],yaw:0},caster:{position:[1,3],yaw:0}});
+  state.rains.push({id:1,x:0,y:0,z:3,age:.93,damage:80,pulse:0,rate:1});
+  const world:Movement={move:()=>{},direction:()=>({x:0,z:0}),lineOfSight:(_from,to)=>to.x===0};
+  const events=stepExploration(state,4,idle,world,timing);
+  expect(state.enemies.enemy.hp).toBe(0); expect(state.enemies.caster.hp).toBe(200);
+  expect(events.filter(e=>e.type==='proficiency').reduce((total,e)=>total+e.amount,0)).toBe(200);
+  expect(stepExploration(state,1,idle,world,timing).some(e=>e.type==='proficiency')).toBe(false);
 });

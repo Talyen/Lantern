@@ -13,6 +13,8 @@ export class ProjectileVisuals {
   private disposed = false;
   private liveIds = new Set<number>();
   private objects = new Map<number, THREE.Object3D>();
+  private poisonGeometry=new THREE.SphereGeometry(.045,6,4);
+  private poisonMaterial=new MeshBasicNodeMaterial({color:'#a2b570'});
   private boltGeometry = new THREE.SphereGeometry(.045, 8, 6);
   private boltMaterial = new MeshBasicNodeMaterial({color:'#ffd29a'});
   private enemyBoltMaterial = new MeshBasicNodeMaterial({color:'#91e4ef'});
@@ -32,6 +34,7 @@ export class ProjectileVisuals {
       if (!object) {
         object = projectile.kind === 'arrow' ? this.arrows?.object.clone(true) : new THREE.Mesh(this.boltGeometry,projectile.owner !== 'player' ? this.enemyBoltMaterial : this.boltMaterial);
         if (!object) continue;
+        if (projectile.ability==='poison-arrow') {const tip=new THREE.Mesh(this.poisonGeometry,this.poisonMaterial); tip.position.z=.38; object.add(tip);}
         if (projectile.kind === 'bolt') object.scale.set(projectile.owner !== 'player' ? 2 : 1, projectile.owner !== 'player' ? 2 : 1, projectile.owner !== 'player' ? 5 : 2.5);
         this.root.add(object); this.objects.set(projectile.id,object);
       }
@@ -39,7 +42,7 @@ export class ProjectileVisuals {
     }
   }
   clear(): void { disposeSceneInstances(this.root); this.root.clear(); this.objects.clear(); this.liveIds.clear(); }
-  dispose(): void { this.disposed=true; this.clear(); this.root.removeFromParent(); this.arrows?.release(); this.boltGeometry.dispose(); this.boltMaterial.dispose(); this.enemyBoltMaterial.dispose(); }
+  dispose(): void { this.disposed=true; this.clear(); this.root.removeFromParent(); this.arrows?.release(); this.poisonGeometry.dispose(); this.poisonMaterial.dispose(); this.boltGeometry.dispose(); this.boltMaterial.dispose(); this.enemyBoltMaterial.dispose(); }
 }
 
 /** A small hand charge and release flash read the cast clock without awarding or firing anything. */

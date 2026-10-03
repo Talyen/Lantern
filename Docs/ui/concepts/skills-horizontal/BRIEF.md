@@ -34,4 +34,9 @@ No new ability effects, passive effects or XP earning rules. Woodcutting, Mining
 
 The current mockup gallery retains original image inputs, exact prompts and hashes. Inspect one owned normal-settings preview at 1280 × 800; exercise hover/focus, planned nodes, all-category navigation, assignment/cancellation and preservation. Focused save regressions protect migration and all-track round trips. Finish with the change-aware sanity gate, documenting actual visual evidence and material limits. No full local suite or benchmark.
 
+## October 3 mastery implementation
+
+Sword/Bow now use the owner-selected learning order: Basic I, Skill I, Basic II, Ultimate I, Skill II, Ultimate II. The six large nodes retain the horizontal composition; ten chronological passives form a quieter secondary row. Learned/locked states and tooltips use real definitions and thresholds. Earned actions fill the first empty bar slot and never replace an assignment. Any six unlocked actions may be assigned safely; all Ultimates share one cooldown. Other categories retain their existing planned nodes. [Weapon mastery](../../../EQUIPMENT.md#sword-and-bow-mastery) owns the complete roster, passives, XP curve and initial tuning.
+
+
 October 3 Axe addition: the existing Axe Basic remains available, Crushing Blow occupies its live Skill node and Berserking occupies its first Ultimate node. The real Berserking requirement is Axe level 2 / 100 XP; its visible level label and tooltip replace the prospective requirement for that live action. Locked Berserking remains inspectable but cannot be assigned, and the picker only offers unlocked actions. The adopted six-position composition and future placeholders remain intact.

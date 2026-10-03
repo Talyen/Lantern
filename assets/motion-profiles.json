@@ -1,151 +1,261 @@
 {
-  "version": 1,
+  "player": {
+    "audit": [
+      "previous-player-d8032a5068fd",
+      "previous-player-67f00db83d3a",
+      "previous-player-0a403075cd90",
+      "previous-player-d2108c466373",
+      "previous-player-2902725d4d50",
+      "previous-player-6aba37749540",
+      "previous-player-0884ff0ca646",
+      "previous-player-cdf93ebcc39b",
+      "previous-player-d3c5763d6df8",
+      "previous-player-105760b50203"
+    ],
+    "profiles": {
+      "bow": {
+        "idle": "bow-idle",
+        "run": "bow-forward",
+        "attack": "bow-attack",
+        "hit": "impact",
+        "death": "death",
+        "dodge": "roll",
+        "backward": "bow-backward",
+        "left": "bow-left",
+        "right": "bow-right",
+        "block": "shield-block",
+        "chop": "axe-chop",
+        "blockForward": "block-forward",
+        "blockBackward": "block-backward",
+        "blockLeft": "block-left",
+        "blockRight": "block-right",
+        "mine": "pickaxe-mine",
+        "pierceDraw": "bow-overdraw",
+        "pierceRelease": "bow-recoil"
+      },
+      "sword": {
+        "idle": "axe-idle",
+        "run": "axe-forward",
+        "attack": "sword-attack",
+        "hit": "impact",
+        "death": "death",
+        "dodge": "roll",
+        "backward": "axe-backward",
+        "left": "axe-left",
+        "right": "axe-right",
+        "block": "shield-block",
+        "chop": "axe-chop",
+        "blockForward": "block-forward",
+        "blockBackward": "block-backward",
+        "blockLeft": "block-left",
+        "blockRight": "block-right",
+        "mine": "pickaxe-mine",
+        "sweep": "sword-sweep",
+        "thrust": "sword-thrust",
+        "executioner": "sword-executioner",
+        "onslaught": "sword-onslaught",
+        "riposte": "sword-attack"
+      },
+      "unarmed": {
+        "idle": "axe-idle",
+        "run": "axe-forward",
+        "attack": "axe-attack",
+        "hit": "impact",
+        "death": "death",
+        "dodge": "roll",
+        "backward": "axe-backward",
+        "left": "axe-left",
+        "right": "axe-right",
+        "block": "shield-block",
+        "chop": "axe-chop",
+        "blockForward": "block-forward",
+        "blockBackward": "block-backward",
+        "blockLeft": "block-left",
+        "blockRight": "block-right",
+        "mine": "pickaxe-mine"
+      },
+      "sword-shield": {
+        "idle": "shield-idle",
+        "run": "shield-forward",
+        "attack": "sword-attack",
+        "hit": "impact",
+        "death": "death",
+        "dodge": "roll",
+        "backward": "shield-backward",
+        "left": "shield-left",
+        "right": "shield-right",
+        "block": "shield-block",
+        "chop": "axe-chop",
+        "blockForward": "block-forward",
+        "blockBackward": "block-backward",
+        "blockLeft": "block-left",
+        "blockRight": "block-right",
+        "mine": "pickaxe-mine",
+        "sweep": "sword-sweep",
+        "thrust": "sword-thrust",
+        "executioner": "sword-executioner",
+        "onslaught": "sword-onslaught",
+        "riposte": "sword-attack"
+      },
+      "axe-shield": {
+        "idle": "shield-idle",
+        "run": "shield-forward",
+        "attack": "axe-attack",
+        "hit": "impact",
+        "death": "death",
+        "dodge": "roll",
+        "backward": "shield-backward",
+        "left": "shield-left",
+        "right": "shield-right",
+        "block": "shield-block",
+        "chop": "axe-chop",
+        "blockForward": "block-forward",
+        "blockBackward": "block-backward",
+        "blockLeft": "block-left",
+        "blockRight": "block-right",
+        "mine": "pickaxe-mine",
+        "crush": "axe-crushing-blow",
+        "battleCry": "axe-battle-cry"
+      },
+      "staff": {
+        "idle": "staff-idle",
+        "run": "axe-forward",
+        "attack": "staff-attack",
+        "hit": "impact",
+        "death": "death",
+        "dodge": "roll",
+        "backward": "axe-backward",
+        "left": "axe-left",
+        "right": "axe-right",
+        "block": "shield-block",
+        "chop": "axe-chop",
+        "blockForward": "block-forward",
+        "blockBackward": "block-backward",
+        "blockLeft": "block-left",
+        "blockRight": "block-right",
+        "grip": "bow-idle",
+        "mine": "pickaxe-mine"
+      },
+      "axe": {
+        "idle": "axe-idle",
+        "run": "axe-forward",
+        "attack": "axe-attack",
+        "hit": "impact",
+        "death": "death",
+        "dodge": "roll",
+        "backward": "axe-backward",
+        "left": "axe-left",
+        "right": "axe-right",
+        "block": "shield-block",
+        "chop": "axe-chop",
+        "blockForward": "block-forward",
+        "blockBackward": "block-backward",
+        "blockLeft": "block-left",
+        "blockRight": "block-right",
+        "mine": "pickaxe-mine",
+        "crush": "axe-crushing-blow",
+        "battleCry": "axe-battle-cry"
+      }
+    },
+    "comparison": [
+      "study-power-slash",
+      "study-cross-slash",
+      "study-sword-combo",
+      "study-bow-shot",
+      "study-bow-draw",
+      "study-bow-release"
+    ],
+    "defaults": {
+      "idle": "axe-idle",
+      "run": "axe-forward",
+      "attack": "axe-attack",
+      "hit": "impact",
+      "death": "death",
+      "dodge": "roll",
+      "backward": "axe-backward",
+      "left": "axe-left",
+      "right": "axe-right",
+      "block": "shield-block",
+      "chop": "axe-chop",
+      "blockForward": "block-forward",
+      "blockBackward": "block-backward",
+      "blockLeft": "block-left",
+      "blockRight": "block-right"
+    }
+  },
+  "skeleton": {
+    "defaults": {
+      "idle": "axe-idle",
+      "run": "axe-forward",
+      "attack": "skeleton-sword-attack",
+      "hit": "impact",
+      "death": "death",
+      "backward": "axe-backward",
+      "left": "axe-left",
+      "right": "axe-right"
+    },
+    "profiles": {
+      "sword": {
+        "idle": "axe-idle",
+        "run": "axe-forward",
+        "attack": "skeleton-sword-attack",
+        "hit": "impact",
+        "death": "death",
+        "backward": "axe-backward",
+        "left": "axe-left",
+        "right": "axe-right"
+      },
+      "staff": {
+        "idle": "staff-idle",
+        "run": "axe-forward",
+        "attack": "skeleton-cast",
+        "hit": "impact",
+        "death": "death",
+        "backward": "axe-backward",
+        "left": "axe-left",
+        "right": "axe-right",
+        "grip": "bow-idle"
+      }
+    }
+  },
   "clips": {
-    "axe-idle": {
-      "sourceId": "9f98aa235935",
-      "name": "Axe Idle",
-      "category": "idle"
+    "study-bow-draw": {
+      "sourceId": "0e01e003edfb",
+      "name": "Bow Overdraw \u2014 source timing",
+      "category": "study"
     },
-    "axe-forward": {
-      "sourceId": "a2f2cb52e02c",
-      "name": "Axe Forward",
-      "category": "run",
-      "speed": 4
+    "previous-player-0a403075cd90": {
+      "sourceId": "0a403075cd90",
+      "name": "Previous sword and shield slash",
+      "category": "attack",
+      "audit": true
     },
-    "axe-backward": {
-      "sourceId": "a0728d2f8c5d",
-      "name": "Axe Backward",
-      "category": "run",
-      "speed": 3.6
+    "sword-onslaught": {
+      "sourceId": "88912c8dc02a",
+      "name": "Onslaught",
+      "category": "attack",
+      "trim": [
+        0.3,
+        3.4
+      ],
+      "duration": 1.25,
+      "contacts": [
+        0.25,
+        0.55,
+        0.9
+      ]
     },
-    "axe-left": {
-      "sourceId": "c952f31119ac",
-      "name": "Axe Left",
+    "previous-enemy-018d2df8a8a5": {
+      "sourceId": "018d2df8a8a5",
+      "name": "Previous Running",
       "category": "run",
-      "speed": 3.6
+      "audit": true
     },
     "axe-right": {
       "sourceId": "ebbf09d339ed",
       "name": "Axe Right",
       "category": "run",
       "speed": 3.6
-    },
-    "axe-attack": {
-      "sourceId": "8e1bcad1d15b",
-      "name": "Axe Attack",
-      "category": "attack",
-      "duration": 0.68,
-      "trim": [
-        0.15,
-        2.1
-      ],
-      "contact": 0.28
-    },
-    "axe-chop": {
-      "sourceId": "50032fca84ef",
-      "name": "Axe Chop",
-      "category": "chop",
-      "duration": 0.8,
-      "trim": [
-        0.15,
-        2.05
-      ],
-      "contact": 0.32
-    },
-    "shield-idle": {
-      "sourceId": "4ff45b15e0c4",
-      "name": "Shield Idle",
-      "category": "idle"
-    },
-    "shield-forward": {
-      "sourceId": "d2ec7498470b",
-      "name": "Shield Forward",
-      "category": "run",
-      "speed": 4.2
-    },
-    "shield-backward": {
-      "sourceId": "f77d5f12110a",
-      "name": "Shield Backward",
-      "category": "run",
-      "speed": 4.2
-    },
-    "shield-left": {
-      "sourceId": "ff152dd174c6",
-      "name": "Shield Left",
-      "category": "run",
-      "speed": 4
-    },
-    "shield-right": {
-      "sourceId": "7350e9f99109",
-      "name": "Shield Right",
-      "category": "run",
-      "speed": 4
-    },
-    "sword-attack": {
-      "sourceId": "0a403075cd90",
-      "name": "Sword Attack",
-      "category": "attack",
-      "duration": 0.62,
-      "trim": [
-        0.05,
-        1.6
-      ],
-      "contact": 0.26
-    },
-    "shield-block": {
-      "sourceId": "164f23cdf4a4",
-      "name": "Shield Block",
-      "category": "block"
-    },
-    "bow-idle": {
-      "sourceId": "353201bea81d",
-      "name": "Bow Idle",
-      "category": "idle"
-    },
-    "bow-forward": {
-      "sourceId": "c838505264f6",
-      "name": "Bow Forward",
-      "category": "run",
-      "speed": 4
-    },
-    "bow-backward": {
-      "sourceId": "bd95f526b73e",
-      "name": "Bow Backward",
-      "category": "run",
-      "speed": 3.6
-    },
-    "bow-left": {
-      "sourceId": "1b078e863dfd",
-      "name": "Bow Left",
-      "category": "run",
-      "speed": 3.6
-    },
-    "bow-right": {
-      "sourceId": "49ff9bc7d91c",
-      "name": "Bow Right",
-      "category": "run",
-      "speed": 3.6
-    },
-    "bow-attack": {
-      "sourceId": "010bad084e89",
-      "name": "Bow Attack",
-      "category": "attack",
-      "duration": 0.8,
-      "trim": [
-        2.4,
-        4.85
-      ],
-      "contact": 0.53
-    },
-    "staff-idle": {
-      "sourceId": "3d50ea4358fe",
-      "name": "Staff Idle",
-      "category": "idle",
-      "duration": 1,
-      "trim": [
-        0,
-        0.2
-      ]
     },
     "staff-attack": {
       "sourceId": "3d50ea4358fe",
@@ -158,15 +268,187 @@
       ],
       "contact": 0.32
     },
-    "impact": {
-      "sourceId": "ebf5bc188c09",
-      "name": "Impact",
+    "shield-right": {
+      "sourceId": "7350e9f99109",
+      "name": "Shield Right",
+      "category": "run",
+      "speed": 4
+    },
+    "previous-enemy-922eb5fb18ab": {
+      "sourceId": "922eb5fb18ab",
+      "name": "Previous Orc Idle",
+      "category": "idle",
+      "audit": true
+    },
+    "bow-left": {
+      "sourceId": "1b078e863dfd",
+      "name": "Bow Left",
+      "category": "run",
+      "speed": 3.6
+    },
+    "study-power-slash": {
+      "sourceId": "c9452c86935f",
+      "name": "Power Slash \u2014 source timing",
+      "category": "study"
+    },
+    "previous-player-105760b50203": {
+      "sourceId": "105760b50203",
+      "name": "Previous sword and shield run (2)",
+      "category": "run",
+      "audit": true
+    },
+    "bow-attack": {
+      "sourceId": "010bad084e89",
+      "name": "Bow Attack",
+      "category": "attack",
+      "duration": 0.8,
+      "trim": [
+        2.4,
+        4.85
+      ],
+      "contact": 0.53
+    },
+    "shield-forward": {
+      "sourceId": "d2ec7498470b",
+      "name": "Shield Forward",
+      "category": "run",
+      "speed": 4.2
+    },
+    "skeleton-cast": {
+      "sourceId": "3d50ea4358fe",
+      "name": "Skeleton Cast",
+      "category": "attack",
+      "duration": 1.6,
+      "trim": [
+        0.15,
+        1.815
+      ],
+      "contact": 0.8
+    },
+    "axe-idle": {
+      "sourceId": "9f98aa235935",
+      "name": "Axe Idle",
+      "category": "idle"
+    },
+    "previous-player-d2108c466373": {
+      "sourceId": "d2108c466373",
+      "name": "Previous sword and shield impact",
       "category": "hit",
-      "duration": 0.3,
+      "audit": true
+    },
+    "bow-recoil": {
+      "sourceId": "57f928ff818a",
+      "name": "Bow Recoil",
+      "category": "skill",
+      "duration": 0.35,
+      "contact": 0.08
+    },
+    "goblin-attack": {
+      "sourceId": "8e1bcad1d15b",
+      "name": "Goblin Attack",
+      "category": "attack",
+      "duration": 1.05,
+      "trim": [
+        0.05,
+        2.1
+      ],
+      "contact": 0.46,
+      "commitLead": 0.16
+    },
+    "sword-attack": {
+      "sourceId": "0a403075cd90",
+      "name": "Sword Attack",
+      "category": "attack",
+      "duration": 0.62,
+      "trim": [
+        0.05,
+        1.6
+      ],
+      "contact": 0.26
+    },
+    "bow-backward": {
+      "sourceId": "bd95f526b73e",
+      "name": "Bow Backward",
+      "category": "run",
+      "speed": 3.6
+    },
+    "block-right": {
+      "sourceId": "b733b035491c",
+      "name": "Block Right",
+      "category": "walk",
+      "speed": 1.7
+    },
+    "goblin-hit": {
+      "sourceId": "ebf5bc188c09",
+      "name": "Goblin Hit",
+      "category": "hit",
+      "duration": 0.35,
       "trim": [
         0.05,
         0.95
       ]
+    },
+    "previous-enemy-883aa65601a4": {
+      "sourceId": "883aa65601a4",
+      "name": "Previous Run",
+      "category": "run",
+      "audit": true
+    },
+    "study-bow-release": {
+      "sourceId": "57f928ff818a",
+      "name": "Bow Release \u2014 source timing",
+      "category": "study"
+    },
+    "staff-idle": {
+      "sourceId": "3d50ea4358fe",
+      "name": "Staff Idle",
+      "category": "idle",
+      "duration": 1,
+      "trim": [
+        0,
+        0.2
+      ]
+    },
+    "previous-enemy-9d04b2b6e4db": {
+      "sourceId": "9d04b2b6e4db",
+      "name": "Previous Dying",
+      "category": "death",
+      "audit": true
+    },
+    "goblin-forward": {
+      "sourceId": "82957d173cd5",
+      "name": "Goblin Forward",
+      "category": "run",
+      "speed": 1.7
+    },
+    "previous-enemy-4407470dc1dc": {
+      "sourceId": "4407470dc1dc",
+      "name": "Previous Hit Reaction",
+      "category": "hit",
+      "audit": true
+    },
+    "study-cross-slash": {
+      "sourceId": "8ed6a1767231",
+      "name": "Cross Slash \u2014 source timing",
+      "category": "study"
+    },
+    "shield-backward": {
+      "sourceId": "f77d5f12110a",
+      "name": "Shield Backward",
+      "category": "run",
+      "speed": 4.2
+    },
+    "previous-player-d3c5763d6df8": {
+      "sourceId": "d3c5763d6df8",
+      "name": "Previous sword and shield slash (2)",
+      "category": "attack",
+      "audit": true
+    },
+    "axe-left": {
+      "sourceId": "c952f31119ac",
+      "name": "Axe Left",
+      "category": "run",
+      "speed": 3.6
     },
     "death": {
       "sourceId": "762416ba451b",
@@ -184,146 +466,15 @@
         3.55
       ]
     },
-    "goblin-idle": {
-      "sourceId": "922eb5fb18ab",
-      "name": "Goblin Idle",
-      "category": "idle"
-    },
-    "goblin-forward": {
-      "sourceId": "82957d173cd5",
-      "name": "Goblin Forward",
-      "category": "run",
-      "speed": 1.7
-    },
-    "goblin-attack": {
-      "sourceId": "8e1bcad1d15b",
-      "name": "Goblin Attack",
-      "category": "attack",
-      "duration": 1.05,
+    "axe-battle-cry": {
+      "sourceId": "cc64b1879065",
+      "name": "Berserking Battle Cry",
+      "category": "skill",
+      "duration": 0.5,
       "trim": [
-        0.05,
-        2.1
-      ],
-      "contact": 0.46,
-      "commitLead": 0.16
-    },
-    "goblin-hit": {
-      "sourceId": "ebf5bc188c09",
-      "name": "Goblin Hit",
-      "category": "hit",
-      "duration": 0.35,
-      "trim": [
-        0.05,
-        0.95
+        0.5,
+        1.6
       ]
-    },
-    "goblin-death": {
-      "sourceId": "762416ba451b",
-      "name": "Goblin Death",
-      "category": "death",
-      "duration": 1.55
-    },
-    "previous-player-d8032a5068fd": {
-      "sourceId": "d8032a5068fd",
-      "name": "Previous sword and shield idle",
-      "category": "idle",
-      "audit": true
-    },
-    "previous-player-67f00db83d3a": {
-      "sourceId": "67f00db83d3a",
-      "name": "Previous sword and shield run",
-      "category": "run",
-      "audit": true
-    },
-    "previous-player-0a403075cd90": {
-      "sourceId": "0a403075cd90",
-      "name": "Previous sword and shield slash",
-      "category": "attack",
-      "audit": true
-    },
-    "previous-player-d2108c466373": {
-      "sourceId": "d2108c466373",
-      "name": "Previous sword and shield impact",
-      "category": "hit",
-      "audit": true
-    },
-    "previous-player-2902725d4d50": {
-      "sourceId": "2902725d4d50",
-      "name": "Previous sword and shield death",
-      "category": "death",
-      "audit": true
-    },
-    "previous-player-6aba37749540": {
-      "sourceId": "6aba37749540",
-      "name": "Previous Dive Roll",
-      "category": "dodge",
-      "audit": true
-    },
-    "previous-player-0884ff0ca646": {
-      "sourceId": "0884ff0ca646",
-      "name": "Previous sword and shield block idle",
-      "category": "idle",
-      "audit": true
-    },
-    "previous-player-cdf93ebcc39b": {
-      "sourceId": "cdf93ebcc39b",
-      "name": "Previous sword and shield attack",
-      "category": "attack",
-      "audit": true
-    },
-    "previous-player-d3c5763d6df8": {
-      "sourceId": "d3c5763d6df8",
-      "name": "Previous sword and shield slash (2)",
-      "category": "attack",
-      "audit": true
-    },
-    "previous-player-105760b50203": {
-      "sourceId": "105760b50203",
-      "name": "Previous sword and shield run (2)",
-      "category": "run",
-      "audit": true
-    },
-    "previous-enemy-922eb5fb18ab": {
-      "sourceId": "922eb5fb18ab",
-      "name": "Previous Orc Idle",
-      "category": "idle",
-      "audit": true
-    },
-    "previous-enemy-018d2df8a8a5": {
-      "sourceId": "018d2df8a8a5",
-      "name": "Previous Running",
-      "category": "run",
-      "audit": true
-    },
-    "previous-enemy-537a32095318": {
-      "sourceId": "537a32095318",
-      "name": "Previous standing melee attack horizontal",
-      "category": "attack",
-      "audit": true
-    },
-    "previous-enemy-4407470dc1dc": {
-      "sourceId": "4407470dc1dc",
-      "name": "Previous Hit Reaction",
-      "category": "hit",
-      "audit": true
-    },
-    "previous-enemy-9d04b2b6e4db": {
-      "sourceId": "9d04b2b6e4db",
-      "name": "Previous Dying",
-      "category": "death",
-      "audit": true
-    },
-    "previous-enemy-8e1bcad1d15b": {
-      "sourceId": "8e1bcad1d15b",
-      "name": "Previous Standing Melee Attack Horizontal",
-      "category": "attack",
-      "audit": true
-    },
-    "previous-enemy-883aa65601a4": {
-      "sourceId": "883aa65601a4",
-      "name": "Previous Run",
-      "category": "run",
-      "audit": true
     },
     "block-forward": {
       "sourceId": "82957d173cd5",
@@ -331,33 +482,145 @@
       "category": "walk",
       "speed": 1.7
     },
+    "bow-overdraw": {
+      "sourceId": "0e01e003edfb",
+      "name": "Bow Overdraw",
+      "category": "skill",
+      "duration": 0.65,
+      "trim": [
+        0.05,
+        3.7
+      ]
+    },
+    "shield-block": {
+      "sourceId": "164f23cdf4a4",
+      "name": "Shield Block",
+      "category": "block"
+    },
+    "shield-idle": {
+      "sourceId": "4ff45b15e0c4",
+      "name": "Shield Idle",
+      "category": "idle"
+    },
+    "previous-player-2902725d4d50": {
+      "sourceId": "2902725d4d50",
+      "name": "Previous sword and shield death",
+      "category": "death",
+      "audit": true
+    },
+    "study-sword-combo": {
+      "sourceId": "88912c8dc02a",
+      "name": "One Hand Sword Combo \u2014 source timing",
+      "category": "study"
+    },
+    "previous-player-6aba37749540": {
+      "sourceId": "6aba37749540",
+      "name": "Previous Dive Roll",
+      "category": "dodge",
+      "audit": true
+    },
+    "axe-forward": {
+      "sourceId": "a2f2cb52e02c",
+      "name": "Axe Forward",
+      "category": "run",
+      "speed": 4
+    },
+    "bow-forward": {
+      "sourceId": "c838505264f6",
+      "name": "Bow Forward",
+      "category": "run",
+      "speed": 4
+    },
+    "bow-right": {
+      "sourceId": "49ff9bc7d91c",
+      "name": "Bow Right",
+      "category": "run",
+      "speed": 3.6
+    },
+    "sword-executioner": {
+      "sourceId": "077fa0a1d9e5",
+      "name": "Executioner's Strike",
+      "category": "attack",
+      "trim": [
+        0.2,
+        2.4
+      ],
+      "duration": 1.05,
+      "contact": 0.74
+    },
+    "previous-enemy-537a32095318": {
+      "sourceId": "537a32095318",
+      "name": "Previous standing melee attack horizontal",
+      "category": "attack",
+      "audit": true
+    },
+    "skeleton-sword-attack": {
+      "sourceId": "0a403075cd90",
+      "name": "Skeleton Sword Slash",
+      "category": "attack",
+      "duration": 1.05,
+      "trim": [
+        0.05,
+        1.6
+      ],
+      "contact": 0.44,
+      "commitLead": 0.16
+    },
+    "axe-chop": {
+      "sourceId": "50032fca84ef",
+      "name": "Axe Chop",
+      "category": "chop",
+      "duration": 0.8,
+      "trim": [
+        0.15,
+        2.05
+      ],
+      "contact": 0.32
+    },
     "block-backward": {
       "sourceId": "0e73972a4c6e",
       "name": "Block Backward",
       "category": "walk",
       "speed": 1.7
     },
+    "shield-left": {
+      "sourceId": "ff152dd174c6",
+      "name": "Shield Left",
+      "category": "run",
+      "speed": 4
+    },
+    "goblin-idle": {
+      "sourceId": "922eb5fb18ab",
+      "name": "Goblin Idle",
+      "category": "idle"
+    },
+    "study-bow-shot": {
+      "sourceId": "010bad084e89",
+      "name": "Shooting Arrow \u2014 source timing",
+      "category": "study"
+    },
+    "goblin-death": {
+      "sourceId": "762416ba451b",
+      "name": "Goblin Death",
+      "category": "death",
+      "duration": 1.55
+    },
+    "sword-sweep": {
+      "sourceId": "601fe909df8a",
+      "name": "Sword Sweep",
+      "category": "skill",
+      "duration": 0.8,
+      "trim": [
+        0.05,
+        2.0
+      ],
+      "contact": 0.33
+    },
     "block-left": {
       "sourceId": "31abf00b6bf2",
       "name": "Block Left",
       "category": "walk",
       "speed": 1.7
-    },
-    "block-right": {
-      "sourceId": "b733b035491c",
-      "name": "Block Right",
-      "category": "walk",
-      "speed": 1.7
-    },
-    "goblin-cast-idle": {
-      "sourceId": "3d50ea4358fe",
-      "name": "Goblin Casting Idle",
-      "category": "idle",
-      "duration": 1,
-      "trim": [
-        0,
-        0.2
-      ]
     },
     "goblin-cast": {
       "sourceId": "3d50ea4358fe",
@@ -381,86 +644,44 @@
       ],
       "contact": 0.36
     },
-    "sword-sweep": {
-      "sourceId": "601fe909df8a",
-      "name": "Sword Sweep",
-      "category": "skill",
-      "duration": 0.8,
-      "trim": [
-        0.05,
-        2.0
-      ],
-      "contact": 0.33
+    "previous-enemy-8e1bcad1d15b": {
+      "sourceId": "8e1bcad1d15b",
+      "name": "Previous Standing Melee Attack Horizontal",
+      "category": "attack",
+      "audit": true
     },
-    "bow-overdraw": {
-      "sourceId": "0e01e003edfb",
-      "name": "Bow Overdraw",
-      "category": "skill",
-      "duration": 0.65,
+    "goblin-cast-idle": {
+      "sourceId": "3d50ea4358fe",
+      "name": "Goblin Casting Idle",
+      "category": "idle",
+      "duration": 1,
       "trim": [
-        0.05,
-        3.7
+        0,
+        0.2
       ]
     },
-    "bow-recoil": {
-      "sourceId": "57f928ff818a",
-      "name": "Bow Recoil",
-      "category": "skill",
-      "duration": 0.35,
-      "contact": 0.08
-    },
-    "skeleton-sword-attack": {
-      "sourceId": "0a403075cd90",
-      "name": "Skeleton Sword Slash",
+    "axe-attack": {
+      "sourceId": "8e1bcad1d15b",
+      "name": "Axe Attack",
       "category": "attack",
-      "duration": 1.05,
-      "trim": [
-        0.05,
-        1.6
-      ],
-      "contact": 0.44,
-      "commitLead": 0.16
-    },
-    "skeleton-cast": {
-      "sourceId": "3d50ea4358fe",
-      "name": "Skeleton Cast",
-      "category": "attack",
-      "duration": 1.6,
+      "duration": 0.68,
       "trim": [
         0.15,
-        1.815
+        2.1
       ],
-      "contact": 0.8
+      "contact": 0.28
     },
-    "study-power-slash": {
-      "sourceId": "c9452c86935f",
-      "name": "Power Slash \u2014 source timing",
-      "category": "study"
+    "previous-player-d8032a5068fd": {
+      "sourceId": "d8032a5068fd",
+      "name": "Previous sword and shield idle",
+      "category": "idle",
+      "audit": true
     },
-    "study-cross-slash": {
-      "sourceId": "8ed6a1767231",
-      "name": "Cross Slash \u2014 source timing",
-      "category": "study"
-    },
-    "study-sword-combo": {
-      "sourceId": "88912c8dc02a",
-      "name": "One Hand Sword Combo \u2014 source timing",
-      "category": "study"
-    },
-    "study-bow-shot": {
-      "sourceId": "010bad084e89",
-      "name": "Shooting Arrow \u2014 source timing",
-      "category": "study"
-    },
-    "study-bow-draw": {
-      "sourceId": "0e01e003edfb",
-      "name": "Bow Overdraw \u2014 source timing",
-      "category": "study"
-    },
-    "study-bow-release": {
-      "sourceId": "57f928ff818a",
-      "name": "Bow Release \u2014 source timing",
-      "category": "study"
+    "axe-backward": {
+      "sourceId": "a0728d2f8c5d",
+      "name": "Axe Backward",
+      "category": "run",
+      "speed": 3.6
     },
     "axe-crushing-blow": {
       "sourceId": "50032fca84ef",
@@ -473,192 +694,50 @@
       ],
       "contact": 0.38
     },
-    "axe-battle-cry": {
-      "sourceId": "cc64b1879065",
-      "name": "Berserking Battle Cry",
-      "category": "skill",
-      "duration": 0.5,
+    "impact": {
+      "sourceId": "ebf5bc188c09",
+      "name": "Impact",
+      "category": "hit",
+      "duration": 0.3,
       "trim": [
-        0.5,
-        1.6
+        0.05,
+        0.95
       ]
+    },
+    "previous-player-cdf93ebcc39b": {
+      "sourceId": "cdf93ebcc39b",
+      "name": "Previous sword and shield attack",
+      "category": "attack",
+      "audit": true
+    },
+    "previous-player-67f00db83d3a": {
+      "sourceId": "67f00db83d3a",
+      "name": "Previous sword and shield run",
+      "category": "run",
+      "audit": true
+    },
+    "bow-idle": {
+      "sourceId": "353201bea81d",
+      "name": "Bow Idle",
+      "category": "idle"
+    },
+    "previous-player-0884ff0ca646": {
+      "sourceId": "0884ff0ca646",
+      "name": "Previous sword and shield block idle",
+      "category": "idle",
+      "audit": true
+    },
+    "sword-thrust": {
+      "sourceId": "03d0fa095e67",
+      "name": "Sword Thrust",
+      "category": "attack",
+      "trim": [
+        0.3,
+        1.45
+      ],
+      "duration": 0.85,
+      "contact": 0.4
     }
-  },
-  "player": {
-    "defaults": {
-      "idle": "axe-idle",
-      "run": "axe-forward",
-      "attack": "axe-attack",
-      "hit": "impact",
-      "death": "death",
-      "dodge": "roll",
-      "backward": "axe-backward",
-      "left": "axe-left",
-      "right": "axe-right",
-      "block": "shield-block",
-      "chop": "axe-chop",
-      "blockForward": "block-forward",
-      "blockBackward": "block-backward",
-      "blockLeft": "block-left",
-      "blockRight": "block-right"
-    },
-    "profiles": {
-      "axe": {
-        "idle": "axe-idle",
-        "run": "axe-forward",
-        "attack": "axe-attack",
-        "hit": "impact",
-        "death": "death",
-        "dodge": "roll",
-        "backward": "axe-backward",
-        "left": "axe-left",
-        "right": "axe-right",
-        "block": "shield-block",
-        "chop": "axe-chop",
-        "blockForward": "block-forward",
-        "blockBackward": "block-backward",
-        "blockLeft": "block-left",
-        "blockRight": "block-right",
-        "mine": "pickaxe-mine",
-        "crush": "axe-crushing-blow",
-        "battleCry": "axe-battle-cry"
-      },
-      "axe-shield": {
-        "idle": "shield-idle",
-        "run": "shield-forward",
-        "attack": "axe-attack",
-        "hit": "impact",
-        "death": "death",
-        "dodge": "roll",
-        "backward": "shield-backward",
-        "left": "shield-left",
-        "right": "shield-right",
-        "block": "shield-block",
-        "chop": "axe-chop",
-        "blockForward": "block-forward",
-        "blockBackward": "block-backward",
-        "blockLeft": "block-left",
-        "blockRight": "block-right",
-        "mine": "pickaxe-mine",
-        "crush": "axe-crushing-blow",
-        "battleCry": "axe-battle-cry"
-      },
-      "sword": {
-        "idle": "axe-idle",
-        "run": "axe-forward",
-        "attack": "sword-attack",
-        "hit": "impact",
-        "death": "death",
-        "dodge": "roll",
-        "backward": "axe-backward",
-        "left": "axe-left",
-        "right": "axe-right",
-        "block": "shield-block",
-        "chop": "axe-chop",
-        "blockForward": "block-forward",
-        "blockBackward": "block-backward",
-        "blockLeft": "block-left",
-        "blockRight": "block-right",
-        "mine": "pickaxe-mine",
-        "sweep": "sword-sweep"
-      },
-      "sword-shield": {
-        "idle": "shield-idle",
-        "run": "shield-forward",
-        "attack": "sword-attack",
-        "hit": "impact",
-        "death": "death",
-        "dodge": "roll",
-        "backward": "shield-backward",
-        "left": "shield-left",
-        "right": "shield-right",
-        "block": "shield-block",
-        "chop": "axe-chop",
-        "blockForward": "block-forward",
-        "blockBackward": "block-backward",
-        "blockLeft": "block-left",
-        "blockRight": "block-right",
-        "mine": "pickaxe-mine",
-        "sweep": "sword-sweep"
-      },
-      "bow": {
-        "idle": "bow-idle",
-        "run": "bow-forward",
-        "attack": "bow-attack",
-        "hit": "impact",
-        "death": "death",
-        "dodge": "roll",
-        "backward": "bow-backward",
-        "left": "bow-left",
-        "right": "bow-right",
-        "block": "shield-block",
-        "chop": "axe-chop",
-        "blockForward": "block-forward",
-        "blockBackward": "block-backward",
-        "blockLeft": "block-left",
-        "blockRight": "block-right",
-        "mine": "pickaxe-mine",
-        "pierceDraw": "bow-overdraw",
-        "pierceRelease": "bow-recoil"
-      },
-      "staff": {
-        "idle": "staff-idle",
-        "run": "axe-forward",
-        "attack": "staff-attack",
-        "hit": "impact",
-        "death": "death",
-        "dodge": "roll",
-        "backward": "axe-backward",
-        "left": "axe-left",
-        "right": "axe-right",
-        "block": "shield-block",
-        "chop": "axe-chop",
-        "blockForward": "block-forward",
-        "blockBackward": "block-backward",
-        "blockLeft": "block-left",
-        "blockRight": "block-right",
-        "grip": "bow-idle",
-        "mine": "pickaxe-mine"
-      },
-      "unarmed": {
-        "idle": "axe-idle",
-        "run": "axe-forward",
-        "attack": "axe-attack",
-        "hit": "impact",
-        "death": "death",
-        "dodge": "roll",
-        "backward": "axe-backward",
-        "left": "axe-left",
-        "right": "axe-right",
-        "block": "shield-block",
-        "chop": "axe-chop",
-        "blockForward": "block-forward",
-        "blockBackward": "block-backward",
-        "blockLeft": "block-left",
-        "blockRight": "block-right",
-        "mine": "pickaxe-mine"
-      }
-    },
-    "audit": [
-      "previous-player-d8032a5068fd",
-      "previous-player-67f00db83d3a",
-      "previous-player-0a403075cd90",
-      "previous-player-d2108c466373",
-      "previous-player-2902725d4d50",
-      "previous-player-6aba37749540",
-      "previous-player-0884ff0ca646",
-      "previous-player-cdf93ebcc39b",
-      "previous-player-d3c5763d6df8",
-      "previous-player-105760b50203"
-    ],
-    "comparison": [
-      "study-power-slash",
-      "study-cross-slash",
-      "study-sword-combo",
-      "study-bow-shot",
-      "study-bow-draw",
-      "study-bow-release"
-    ]
   },
   "enemy": {
     "defaults": {
@@ -695,39 +774,5 @@
       "previous-enemy-883aa65601a4"
     ]
   },
-  "skeleton": {
-    "defaults": {
-      "idle": "axe-idle",
-      "run": "axe-forward",
-      "attack": "skeleton-sword-attack",
-      "hit": "impact",
-      "death": "death",
-      "backward": "axe-backward",
-      "left": "axe-left",
-      "right": "axe-right"
-    },
-    "profiles": {
-      "sword": {
-        "idle": "axe-idle",
-        "run": "axe-forward",
-        "attack": "skeleton-sword-attack",
-        "hit": "impact",
-        "death": "death",
-        "backward": "axe-backward",
-        "left": "axe-left",
-        "right": "axe-right"
-      },
-      "staff": {
-        "idle": "staff-idle",
-        "run": "axe-forward",
-        "attack": "skeleton-cast",
-        "hit": "impact",
-        "death": "death",
-        "backward": "axe-backward",
-        "left": "axe-left",
-        "right": "axe-right",
-        "grip": "bow-idle"
-      }
-    }
-  }
+  "version": 1
 }

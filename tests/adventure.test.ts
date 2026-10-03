@@ -340,6 +340,7 @@ test('revision 3 migration preserves a full bag and grants starter potions only 
   storage.setItem(characterSaveKey,JSON.stringify({version:3,items,campfires:['homestead/camp'],xp:{woodcutting:30,axeCombat:40},campClaims:['sword']}));
   const migrated=new Adventure(storage);expect(migrated.character.version).toBe(8);expect(migrated.character.items.filter(i=>i.item!=='potion')).toEqual(items);
   expect(migrated.character.items.find(i=>i.item==='potion')).toMatchObject({slot:'overflow',quantity:3});
+  migrated.character.xp.bow=5000;
   migrated.setActionBar(['sweep','piercing-shot',null,null,'axe-basic','shield-basic']);migrated.setWeaponSet(1);
   const restored=new Adventure(storage);expect(restored.character).toEqual(migrated.character);expect(restored.character.items.filter(i=>i.item==='potion')).toHaveLength(1);
 });
@@ -751,4 +752,38 @@ test('all saved skill tracks round-trip and invalid planned progress cannot repl
   expect(()=>decodeCharacter(JSON.stringify({...value,xp:{...value.xp,herbalism:undefined}}))).toThrow('Invalid skill progress');
   expect(JSON.stringify(value)).toBe(raw);
   adventure.closeSave();
+});
+
+// Admission: earned abilities mutate a saved action bar; existing all-track round trips do not protect automatic placement or occupied slots.
+test('weapon unlocks fill empty slots without replacement and survive saving',()=>{
+  const adventure=new Adventure();
+  adventure.setActionBar(['sweep','multishot',null,null,'axe-basic',null]);
+  const occupied=[...adventure.character.actionBar];
+  adventure.grantWeaponXp('sword',1000);
+  expect(adventure.character.actionBar[0]).toBe(occupied[0]); expect(adventure.character.actionBar[1]).toBe(occupied[1]); expect(adventure.character.actionBar[4]).toBe(occupied[4]);
+  expect(adventure.character.actionBar[2]).toBe('thrust'); expect(adventure.character.actionBar[3]).toBe('executioner');
+  const decoded=decodeCharacter(JSON.stringify(adventure.character));
+  expect(decoded.xp.sword).toBe(adventure.character.xp.sword); expect(decoded.actionBar).toEqual(adventure.character.actionBar);
+  const full=['sword-basic','sweep','thrust','executioner','bow-basic','multishot'] as const;
+  adventure.setActionBar([...full]); adventure.grantWeaponXp('sword',24000);
+  expect(adventure.character.actionBar).toEqual(full);
+});
+
+// Admission: area snapshots can recreate spent proficiency budgets on travel/death, duplicating permanent progress.
+test('session travel and death retain each enemy life lowest health credit',()=>{
+  const adventure=new Adventure(),encounter=createEncounter('playing');
+  adventure.enter(encounter,field);
+  encounter.enemies.enemy.lowestHp=75; encounter.enemies.enemy.hp=120;
+  adventure.enter(encounter,home,undefined,true);
+  adventure.enter(encounter,field);
+  expect(encounter.enemies.enemy.lowestHp).toBe(75); expect(encounter.enemies.enemy.hp).toBe(120);
+});
+
+// Admission: a transient stance left by Object.assign area replacement could prevent damage and spend an old attack's costs after travel.
+test('travel clears an uncommitted Riposte stance without spending its costs',()=>{
+  const adventure=new Adventure(),encounter=createEncounter('playing');
+  adventure.enter(encounter,field);
+  encounter.riposte={remaining:.5,action:{duration:.62,contacts:[.26],damage:100,rate:1,reach:2,arc:Math.PI/4,weapon:'sword',ability:'riposte',mana:20,cooldown:6}};
+  adventure.enter(encounter,home);
+  expect(encounter.riposte).toBeUndefined(); expect(encounter.playerAction).toBeNull(); expect(encounter.playerMana).toBe(100); expect(encounter.abilityCooldowns.riposte ?? 0).toBe(0);
 });

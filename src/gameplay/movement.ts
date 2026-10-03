@@ -1,8 +1,8 @@
 import RAPIER from '@dimforge/rapier3d-compat';
 import { DEFAULT_QUERY_FILTER, findPath, type NavMesh } from 'navcat';
 import { buildNavigation, type NavigationGeometry } from './navigation';
-import { constrain, type Boundary } from './area';
-import type { ActorId, ActorState, Movement } from './encounter';
+import { constrain, boundaryDistance, type Boundary } from './area';
+import type { ActorId, ActorState, Movement, AimPoint } from './encounter';
 
 export type Surface = { positions: number[]; indices: number[] };
 export type Obstacle = { id: string; position: [number, number, number]; size: [number, number, number]; yaw: number; tree?: boolean; depletedScale?: number };
@@ -195,6 +195,16 @@ export class MovementWorld implements Movement {
     return this.visible(from, { x: point[0], y: height, z: point[1] }, .9, this.obstacles.get(obstacleId)?.collider);
   }
 
+  attackGround(from: ActorState, point: AimPoint): (AimPoint & {y:number}) | null {
+    if (boundaryDistance(this.boundary,[point.x,point.z])<0) return null;
+    const start=from.y+1.5;
+    const ray=this.setQueryRay(point.x,start,point.z,0,-1,0);
+    const hit=this.world.castRay(ray,4,true,undefined,undefined,undefined,undefined,this.isSolid);
+    if (!hit || this.blockingObstacles.has(hit.collider.handle)) return null;
+    const target={x:point.x,z:point.z,y:start-hit.timeOfImpact};
+    return this.lineOfSight(from,target) ? target : null;
+  }
+
   lootGround(origin: [number, number], index: number, player: ActorState): { position: [number, number]; height: number } {
     for (let attempt = 0; attempt < 24; attempt++) {
       const angle = index * 2.4 + attempt * 2.4, distance = .65 + (attempt % 4) * .25;
@@ -212,7 +222,7 @@ export class MovementWorld implements Movement {
   resourceVisible(from: ActorState, id: string, point: {x:number;y:number;z:number}): boolean {
     return this.visible(from, point, .7, this.obstacles.get(id)?.collider);
   }
-  lineOfSight(from: ActorState, to: ActorState): boolean {
+  lineOfSight(from: Pick<ActorState,'x' | 'y' | 'z'>, to: Pick<ActorState,'x' | 'y' | 'z'>): boolean {
     return this.visible(from, to, .9);
   }
   private setQueryRay(x: number, y: number, z: number, dx: number, dy: number, dz: number): RAPIER.Ray {
@@ -221,7 +231,7 @@ export class MovementWorld implements Movement {
     ray.dir.x = dx; ray.dir.y = dy; ray.dir.z = dz;
     return ray;
   }
-  private visible(from: ActorState, to: { x: number; y: number; z: number }, eyeHeight: number, ignored?: RAPIER.Collider): boolean {
+  private visible(from: Pick<ActorState,'x' | 'y' | 'z'>, to: { x: number; y: number; z: number }, eyeHeight: number, ignored?: RAPIER.Collider): boolean {
     const dx = to.x - from.x, dy = to.y - from.y, dz = to.z - from.z, length = Math.hypot(dx, dy, dz);
     if (length < .001) return true;
     const ray = this.setQueryRay(from.x, from.y + eyeHeight, from.z, dx / length, dy / length, dz / length);

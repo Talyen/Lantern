@@ -1,11 +1,13 @@
-import { abilities, abilitySet, basicAbility, abilityUnlocked, cooldownForAbility, berserking, type AbilityId, type WeaponSet } from './abilities';
+import { abilityMana, ultimateBonus } from './mastery';
+import { abilityCooldown, commitAction } from './action-commit';
+import { abilities, abilitySet, basicAbility, abilityUnlocked, berserking, type AbilityId, type WeaponSet } from './abilities';
 import { itemLoadout, type InventoryItem } from './inventory';
 import { resolveCombatStats } from './combat-stats';
-import { constrain } from './area';
+import { constrain, boundaryDistance } from './area';
 import {
   dodgeDuration, dodgeDistance, dodgeInvulnerability, dodgeCooldown, type ActorState,
   type AimPoint, type ActorTiming, type Encounter, type EncounterEvent, type Input, type Movement,
-  type Timings,
+  type Timings, type PlayerAction,
 } from './encounter-model';
 import { hit } from './encounter-damage';
 import { projectileLaunchClear } from './encounter-projectiles';
@@ -20,15 +22,14 @@ function faceAim(player: ActorState, aim: AimPoint): void {
 /** Commit derived equipment state only after presentation preparation succeeds. */
 export function applyEquipment(state: Encounter, items: readonly InventoryItem[], active: WeaponSet): void {
   state.weaponSets = [itemLoadout(items, 0), itemLoadout(items, 1)];
-  state.setStats = [resolveCombatStats(items, 0), resolveCombatStats(items, 1)];
+  state.setStats = [resolveCombatStats(items, 0,state.proficiency), resolveCombatStats(items, 1,state.proficiency)];
   state.activeSet = active;
   applyActiveStats(state);
 }
 
 function applyActiveStats(state: Encounter): void {
-  const base = state.setStats[state.activeSet];
-  state.stats = state.berserkingRemaining > 0 && base.family === 'axe'
-    ? { ...base, damage: base.damage * berserking.damage, attackRate: base.attackRate * berserking.attackRate, moveSpeed: base.moveSpeed * berserking.moveSpeed } : base;
+  const base=state.setStats[state.activeSet];
+  state.stats=state.berserkingRemaining>0 && base.family==='axe' ? {...base,damage:base.damage*berserking.damage,attackRate:base.attackRate*berserking.attackRate,moveSpeed:base.moveSpeed*berserking.moveSpeed} : base;
   state.weapon = state.stats.family;
   state.shield = !!state.weaponSets[state.activeSet].off;
   state.player.speed = state.stats.moveSpeed;
@@ -52,7 +53,7 @@ export function attack(state: Encounter, timing: ActorTiming, paused: boolean, a
   state.attackCooldown = duration;
   state.player.attackTime = 0;
   state.player.contactIndex = 0;
-  state.playerAction = { impactId: state.nextImpact = (state.nextImpact ?? 0) + 1, duration, contacts: timing.contacts.map(contact => contact / rate), damage: state.stats.damage, rate, reach: state.stats.reach, arc: state.weapon === 'sword' ? Math.PI / 4 : Math.acos(.1), weapon: state.weapon, ability: basicAbility(state.weapon) };
+  state.playerAction = { committed:false, mana:0, cooldown:0, baseDamage:state.stats.damage, impactId: state.nextImpact = (state.nextImpact ?? 0) + 1, duration, contacts: timing.contacts.map(contact => contact / rate), damage: state.stats.damage, rate, reach: state.stats.reach, arc: state.weapon === 'sword' ? Math.PI / 4 : Math.acos(.1), weapon: state.weapon, ability: basicAbility(state.weapon) };
   return [{ type: 'label', value: 'DEFEAT THE RAIDER' }, { type: 'animation', actor: 'player', motion: 'attack' }, { type: 'action', actor: 'player', action: 'attack', weapon: state.weapon }];
 }
 
@@ -78,18 +79,22 @@ export function swapWeaponSet(state: Encounter, paused: boolean): EncounterEvent
 }
 
 /** All slots route through one acceptance rule; duplicate icons cannot bypass a cooldown. */
-export function useAbility(state: Encounter, id: AbilityId, timing: ActorTiming, paused: boolean, aim?: AimPoint): EncounterEvent[] {
+export function useAbility(state: Encounter, id: AbilityId, timing: ActorTiming, paused: boolean, aim?: AimPoint, movement?: Movement): EncounterEvent[] {
   const definition = abilities[id], set = abilitySet(state.weaponSets, state.activeSet, id);
-  if (paused || state.player.hp <= 0 || !['playing', 'won'].includes(state.phase) || set === undefined || state.playerMana < definition.mana || !abilityUnlocked(id, state.proficiency))
+  if (paused || state.player.hp <= 0 || !['playing', 'won'].includes(state.phase) || set === undefined || !abilityUnlocked(id,state.proficiency) || state.playerMana < abilityMana(id,state.proficiency))
     return [];
-  if (state.player.lock > 0 || state.dodgeRemaining > 0 || state.attackCooldown > 0 || cooldownForAbility(state, id) > 0) {
+  if (state.player.lock > 0 || state.dodgeRemaining > 0 || state.attackCooldown > 0 || abilityCooldown(state,id) > 0) {
     state.pending = { kind: 'ability', ability: id, remaining: .15, aim: aim ? { ...aim } : undefined };
     return [];
   }
   if (state.blocking && definition.activation !== 'hold')
     return [];
+  if (id==='arrow-rain') {
+    if (!aim || boundaryDistance(state.layout.boundary,[aim.x,aim.z])<0 || Math.hypot(aim.x-state.player.x,aim.z-state.player.z)>state.setStats[set].reach) return [];
+    if (movement?.attackGround) {const target=movement.attackGround(state.player,aim); if (!target) return []; aim=target;}
+  }
   const action = timing.abilities?.[id] ?? (definition.motion === 'attack' ? timing : undefined);
-  if (definition.activation !== 'hold' && (!action || action.attack <= 0 || (!action.contacts.length && id !== 'berserking')))
+  if (definition.activation !== 'hold' && (!action || action.attack <= 0 || (!action.contacts.length && id!=='berserking')))
     return [];
   const events = activateSet(state, set);
   state.pending = null;
@@ -99,20 +104,27 @@ export function useAbility(state: Encounter, id: AbilityId, timing: ActorTiming,
     state.blocking = true;
     return [...events, { type: 'animation', actor: 'player', motion: 'block' }];
   }
-  if (id === 'berserking' && action) {
-    if (aim) faceAim(state.player, aim);
-    state.player.lock = state.attackCooldown = action.attack;
-    state.player.attackTime = 0; state.player.contactIndex = 0;
-    state.playerAction = { duration: action.attack, contacts: [], damage: 0, rate: 1, reach: 0, arc: 0, weapon: 'axe', ability: id };
-    return [...events, { type: 'animation', actor: 'player', motion: 'battleCry' }, { type: 'action', actor: 'player', action: 'battleCry', weapon: 'axe' }];
+  if (id==='berserking' && action) {
+    if (aim) faceAim(state.player,aim);
+    state.player.lock=state.attackCooldown=action.attack;
+    state.player.attackTime=0; state.player.contactIndex=0;
+    state.playerAction={impactId:state.nextImpact=(state.nextImpact ?? 0)+1,committed:false,mana:definition.mana,cooldown:definition.cooldown,duration:action.attack,contacts:[],damage:0,rate:1,reach:0,arc:0,weapon:'axe',ability:id};
+    return [...events,{type:'animation',actor:'player',motion:'battleCry'},{type:'action',actor:'player',action:'battleCry',weapon:'axe'}];
   }
   const attackEvents = attack(state, { ...timing, ...action }, false, aim);
   if (!attackEvents.length || !state.playerAction)
     return events;
-  state.playerMana -= definition.mana;
-  if (definition.tier === 'ultimate') state.ultimateCooldown = definition.cooldown;
-  else state.abilityCooldowns[id] = definition.cooldown;
-  Object.assign(state.playerAction, { ability: id, damage: state.stats.damage * definition.damageScale, arc: id === 'sweep' ? Math.PI / 2 : id === 'crushing-blow' ? Math.PI / 6 : state.playerAction.arc });
+  Object.assign(state.playerAction, { ability: id, mana:abilityMana(id,state.proficiency), cooldown:definition.cooldown,
+    baseDamage:state.stats.damage + state.stats.baseDamage * ultimateBonus(id,state.proficiency),
+    damage:(state.stats.damage + state.stats.baseDamage * ultimateBonus(id,state.proficiency)) * definition.damageScale,
+    aim:aim ? {...aim} : undefined,
+    reach:state.stats.reach + (id === 'thrust' ? .45 : 0),
+    arc:id === 'sweep' ? Math.PI/2 : id === 'thrust' ? Math.PI/12 : id==='crushing-blow' ? Math.PI/6 : id === 'executioner' ? Math.PI/7 : state.playerAction.arc });
+  if (id === 'riposte') {
+    state.riposte = {remaining:.75,action:state.playerAction};
+    state.player.attackTime = -1; state.player.lock = .75; state.attackCooldown = 0;
+    return [...events,{type:'animation',actor:'player',motion:'riposte-stance'}];
+  }
   for (const event of attackEvents)
     if (event.type === 'animation' && event.actor === 'player')
       event.motion = definition.motion;
@@ -123,10 +135,13 @@ export function useAbility(state: Encounter, id: AbilityId, timing: ActorTiming,
 export function dodge(state: Encounter, direction: AimPoint, paused: boolean, aim?: AimPoint): EncounterEvent[] {
   if (paused || !['playing', 'won'].includes(state.phase) || state.player.hp <= 0)
     return [];
-  if (state.player.lock > 0 || state.dodgeCooldown > 0 || state.dodgeRemaining > 0) {
+  if (state.dodgeCooldown > 0 || state.dodgeRemaining > 0) {
     state.pending = { kind: 'dodge', remaining: .15, direction: { ...direction }, aim: aim ? { ...aim } : undefined };
     return [];
   }
+  const cancelled = state.playerAction;
+  if (cancelled && !cancelled.committed) state.attackCooldown = 0;
+  state.playerAction = null; state.riposte = undefined; state.player.lock = 0;
   state.pending = null;
   state.blocking = false;
   const length = Math.hypot(direction.x, direction.z);
@@ -138,14 +153,17 @@ export function dodge(state: Encounter, direction: AimPoint, paused: boolean, ai
   state.dodgeRemaining = dodgeDuration;
   state.dodgeCooldown = dodgeCooldown;
   state.invulnerability = Math.max(state.invulnerability, dodgeInvulnerability);
-  return [{ type: 'animation', actor: 'player', motion: 'dodge' }, { type: 'action', actor: 'player', action: 'dodge', weapon: state.weapon }];
+  return [...(cancelled ? [{type:'abilityCancelled' as const,ability:cancelled.ability}] : []), { type: 'animation', actor: 'player', motion: 'dodge' }, { type: 'action', actor: 'player', action: 'dodge', weapon: state.weapon }];
 }
 
 function advancePlayerClocks(state: Encounter, dt: number): void {
-  state.ultimateCooldown = Math.max(0, state.ultimateCooldown - dt);
-  const previousBuff = state.berserkingRemaining;
-  state.berserkingRemaining = Math.max(0, previousBuff - dt);
-  if (previousBuff > 0 && state.berserkingRemaining === 0) applyActiveStats(state);
+  state.ultimateCooldown = Math.max(0,state.ultimateCooldown-dt);
+  const previousBuff=state.berserkingRemaining;
+  state.berserkingRemaining=Math.max(0,previousBuff-dt);
+  if (previousBuff>0 && !state.berserkingRemaining) applyActiveStats(state);
+  if (state.riposte) {
+    state.riposte.remaining -= dt;
+  }
   state.attackCooldown = Math.max(0, state.attackCooldown - dt);
   state.player.lock = Math.max(0, state.player.lock - dt);
   state.dodgeCooldown = Math.max(0, state.dodgeCooldown - dt);
@@ -204,12 +222,13 @@ export function preparePlayer(state: Encounter, dt: number, input: Input, timing
   attackOffset: number;
   movementElapsed: number;
 } {
+  state.frameManaStart = state.playerMana; state.frameElapsed = dt;
+  if (state.riposte) state.riposte.frameOffset=0;
   const pending = state.pending;
   // A held shield cannot protect contacts that precede recovery in this frame.
   state.blockFrameOffset = state.blocking ? 0 : Math.min(dt, Math.max(state.player.lock, state.dodgeRemaining));
-  const cooldown = () => pending?.kind === 'dodge' ? state.dodgeCooldown : Math.max(state.attackCooldown, pending?.kind === 'ability' ? cooldownForAbility(state, pending.ability) : 0);
-  const availableAfter = pending ? Math.max(state.player.lock, state.dodgeRemaining, cooldown()) : 0;
-  const manaAtUnlock = Math.min(state.stats.maxMana, state.playerMana + Math.min(dt, availableAfter) * state.stats.manaRegen);
+  const cooldown = () => pending?.kind === 'dodge' ? state.dodgeCooldown : Math.max(state.attackCooldown, pending?.kind === 'ability' ? abilityCooldown(state,pending.ability) : 0);
+  const availableAfter = pending ? Math.max(pending.kind === 'dodge' ? 0 : state.player.lock, state.dodgeRemaining, cooldown()) : 0;
   const prepared = { events: [] as EncounterEvent[], attackElapsed: dt, attackOffset: 0,
     movementElapsed: state.dodgeRemaining > 0 ? dt : Math.max(0, dt - state.player.lock) };
   const validAtUnlock = availableAfter <= (pending?.remaining ?? 0) + 1e-6;
@@ -227,21 +246,24 @@ export function preparePlayer(state: Encounter, dt: number, input: Input, timing
   if (state.blocking && input.aim) faceAim(state.player, input.aim);
   if (!pending)
     return prepared;
-  if (state.playerAction?.ability === 'berserking' && state.player.attackTime >= 0) {
-    pending.remaining -= dt;
-    if (pending.remaining < 0) state.pending = null;
-    return prepared;
+  if (state.playerAction?.ability==='berserking' && state.player.attackTime>=0 && pending.kind!=='dodge') {
+    pending.remaining-=dt; if (pending.remaining<0) state.pending=null; return prepared;
   }
-  if (validAtUnlock && state.player.lock === 0 && state.dodgeRemaining === 0 && cooldown() === 0) {
+  if (validAtUnlock && (pending.kind === 'dodge' || state.player.lock === 0) && state.dodgeRemaining === 0 && cooldown() === 0) {
     const previousImmunity = state.invulnerability;
     const alreadyBlocking = state.blocking;
     state.pending = null;
     if (pending.kind === 'swap')
       prepared.events.push(...swapWeaponSet(state, false));
     else if (pending.kind === 'ability')
-      prepared.events.push(...useAbility(state, pending.ability, timing, false, pending.aim));
+      prepared.events.push(...useAbility(state, pending.ability, timing, false, pending.aim, movementWorld));
     else
       prepared.events.push(...(pending.kind === 'attack' ? attack(state, timing, false, pending.aim) : dodge(state, pending.direction, false, pending.aim)));
+    if (state.riposte && pending.kind==='ability' && pending.ability==='riposte') {
+      state.riposte.frameOffset=Math.min(dt,availableAfter);
+      state.riposte.remaining-=dt-state.riposte.frameOffset;
+      state.player.lock=Math.max(0,state.player.lock-(dt-state.riposte.frameOffset));
+    }
     if (!alreadyBlocking && state.blocking)
       state.blockFrameOffset = Math.max(state.blockFrameOffset, Math.min(dt, availableAfter));
     if (state.dodgeRemaining > 0 && pending.kind === 'dodge') {
@@ -258,12 +280,7 @@ export function preparePlayer(state: Encounter, dt: number, input: Input, timing
       prepared.attackElapsed = dt - prepared.attackOffset;
       state.player.lock = Math.max(0, state.player.lock - prepared.attackElapsed);
       state.attackCooldown = Math.max(0, state.attackCooldown - prepared.attackElapsed);
-      if (pending.kind === 'ability' && pending.ability !== 'berserking') {
-        const id = pending.ability;
-        if (abilities[id].tier === 'ultimate') state.ultimateCooldown = Math.max(0, state.ultimateCooldown - prepared.attackElapsed);
-        else state.abilityCooldowns[id] = Math.max(0, (state.abilityCooldowns[id] ?? 0) - prepared.attackElapsed);
-        state.playerMana = Math.min(state.stats.maxMana, manaAtUnlock - abilities[id].mana + prepared.attackElapsed * state.stats.manaRegen);
-      }
+
     }
     return prepared;
   }
@@ -279,50 +296,52 @@ export function preparePlayer(state: Encounter, dt: number, input: Input, timing
 
 export function stepPlayerAttack(state: Encounter, dt: number, timing: Timings, events: EncounterEvent[], movementWorld?: Movement, frameOffset = 0): void {
   const { player } = state;
-  if (player.attackTime < 0)
+  if (player.attackTime < 0 || !state.weapon)
     return;
-  const action = state.playerAction ?? { impactId: undefined, duration: timing.player.attack / state.stats.attackRate, contacts: timing.player.contacts.map(contact => contact / state.stats.attackRate), damage: state.stats.damage, rate: state.stats.attackRate, reach: state.stats.reach, arc: Math.acos(.1), weapon: state.weapon, ability: null };
-  if (action.ability === 'berserking') { player.attackTime += dt; return; }
+  const action: PlayerAction = state.playerAction ?? { impactId: undefined, duration: timing.player.attack / state.stats.attackRate, contacts: timing.player.contacts.map(contact => contact / state.stats.attackRate), damage: state.stats.damage, rate: state.stats.attackRate, reach: state.stats.reach, arc: Math.acos(.1), weapon: state.weapon, ability: null };
+  if (action.ability==='berserking') {player.attackTime+=dt; return;}
   const contacts = action.contacts;
   player.attackTime += dt;
   while (player.contactIndex < contacts.length && player.attackTime >= contacts[player.contactIndex]) {
-    player.contactIndex++;
-    events.push({ type: 'action', actor: 'player', action: 'contact', weapon: action.weapon });
-    if (action.weapon === 'bow' || action.weapon === 'staff') {
-      const dx = Math.sin(player.yaw), dz = Math.cos(player.yaw);
-      const projectile = { id: ++state.nextProjectile, owner: 'player', kind: action.weapon === 'bow' ? 'arrow' as const : 'bolt' as const, x: player.x + dx * .35, y: player.y + 1.22, z: player.z + dz * .35, dx, dz, remaining: action.reach, damage: action.damage, impactId: action.impactId, ability: action.ability, pierced: action.ability === 'piercing-shot' ? [] : undefined, firstStep: Math.min(dt, player.attackTime - contacts[player.contactIndex - 1]) };
-      if (projectileLaunchClear(projectile, player, events, movementWorld)) state.projectiles.push(projectile);
-    }
-    else {
-      let nearest: string | undefined, nearestDistance = Infinity;
-      for (const id of state.enemyIds) {
-        const enemy = state.enemies[id];
-        if (!enemy.home || enemy.hp <= 0)
-          continue;
-        const dx = enemy.x - player.x, dz = enemy.z - player.z, distance = Math.hypot(dx, dz);
-        const facing = distance > 0 ? (Math.sin(player.yaw) * dx + Math.cos(player.yaw) * dz) / distance : 1;
-        if (distance < action.reach && facing >= Math.cos(action.arc) - 1e-6 && (!movementWorld || movementWorld.lineOfSight(player, enemy)) && Math.abs(player.y - enemy.y) < .8)
-          if (action.ability === 'crushing-blow') {
-            if (distance < nearestDistance) { nearest = id; nearestDistance = distance; }
-          } else hit(state, id, timing, events, action.weapon ?? undefined, undefined, frameOffset + Math.max(0, contacts[player.contactIndex - 1] - (player.attackTime - dt)), action.damage, action.impactId === undefined ? undefined : { actor: 'player', ability: action.ability, id: action.impactId });
+    const index=player.contactIndex++;
+    const offset=frameOffset+Math.max(0,contacts[index]-(player.attackTime-dt));
+    commitAction(state,action,events,offset);
+    events.push({type:'action',actor:'player',action:'contact',weapon:action.weapon,...(action.ability && ['thrust','riposte','executioner','onslaught'].includes(action.ability) ? {ability:action.ability} : {})});
+    if (action.ability === 'arrow-rain' && action.aim) {
+      state.rains.push({id:action.impactId!,x:action.aim.x,y:action.aim.y ?? player.y,z:action.aim.z,age:.93,damage:action.damage/3,pulse:0,rate:action.rate,firstStep:Math.max(0,(state.frameElapsed ?? dt)-offset)});
+    } else if (action.weapon === 'bow' || action.weapon === 'staff') {
+      const angles=action.ability==='multishot' ? [-Math.PI/6,-Math.PI/12,0,Math.PI/12,Math.PI/6] : [0];
+      const sharedHits: string[]=[];
+      for (const angle of angles) {
+        const dx=Math.sin(player.yaw+angle),dz=Math.cos(player.yaw+angle);
+        const projectile={id:++state.nextProjectile,owner:'player',kind:action.weapon==='bow' ? 'arrow' as const : 'bolt' as const,x:player.x+dx*.35,y:player.y+1.22,z:player.z+dz*.35,dx,dz,remaining:action.reach,damage:action.damage,impactId:action.impactId,ability:action.ability,poisonDamage:action.ability==='poison-arrow' ? (action.baseDamage ?? 0)*.8 : undefined,sharedHits:action.ability==='multishot' ? sharedHits : undefined,pierced:action.ability==='piercing-shot' ? [] : undefined,firstStep:Math.min(dt,player.attackTime-contacts[index])};
+        if (projectileLaunchClear(projectile,player,events,movementWorld)) state.projectiles.push(projectile);
       }
-      if (nearest) hit(state, nearest, timing, events, action.weapon ?? undefined, undefined, frameOffset + Math.max(0, contacts[player.contactIndex - 1] - (player.attackTime - dt)), action.damage, { actor: 'player', ability: action.ability, id: action.impactId! });
+    } else {
+      const single=action.ability==='crushing-blow' || action.ability==='thrust' || action.ability==='executioner' || action.ability==='riposte';
+      const targets=state.enemyIds.filter(id=> {
+        const enemy=state.enemies[id],dx=enemy.x-player.x,dz=enemy.z-player.z,distance=Math.hypot(dx,dz);
+        return enemy.home && enemy.hp>0 && (!action.target || action.target===id) && distance<action.reach && (distance===0 || (Math.sin(player.yaw)*dx+Math.cos(player.yaw)*dz)/distance>=Math.cos(action.arc)-1e-6) && (!movementWorld || movementWorld.lineOfSight(player,enemy)) && Math.abs(player.y-enemy.y)<.8;
+      });
+      if (single) targets.sort((a,b)=>Math.hypot(state.enemies[a].x-player.x,state.enemies[a].z-player.z)-Math.hypot(state.enemies[b].x-player.x,state.enemies[b].z-player.z));
+      for (const id of single ? targets.slice(0,1) : targets) {
+        const damage=action.ability==='onslaught' ? (action.baseDamage ?? action.damage)*[1,1.5,2][index] : action.damage;
+        hit(state,id,timing,events,action.weapon ?? undefined,undefined,offset,damage,action.impactId===undefined ? undefined : {actor:'player',ability:action.ability,id:action.impactId});
+      }
     }
   }
-  if (player.attackTime >= action.duration)
-    player.attackTime = -1;
+  if (player.attackTime >= action.duration) { player.attackTime = -1; }
 }
 
-/** Commit only after this frame's enemy damage: death wins over cry completion. */
-export function finishBattleCry(state: Encounter, dt: number, events: EncounterEvent[]): void {
-  const action = state.playerAction;
-  if (action?.ability !== 'berserking' || state.player.attackTime < action.duration) return;
-  const remainder = Math.min(dt, Math.max(0, state.player.attackTime - action.duration));
-  state.player.attackTime = -1;
-  if (state.player.hp <= 0 || state.phase === 'lost') return;
-  state.playerMana -= abilities.berserking.mana;
-  state.ultimateCooldown = Math.max(0, abilities.berserking.cooldown - remainder);
-  state.berserkingRemaining = Math.max(0, berserking.seconds - remainder);
+/** Cry completion resolves after enemy contacts, so death cannot spend or grant a buff. */
+export function finishBattleCry(state:Encounter,dt:number,events:EncounterEvent[]): void {
+  const action=state.playerAction;
+  if (action?.ability!=='berserking' || state.player.attackTime<action.duration) return;
+  const remainder=Math.min(dt,Math.max(0,state.player.attackTime-action.duration));
+  state.player.attackTime=-1;
+  if (state.player.hp<=0 || state.phase==='lost') return;
+  commitAction(state,action,events,Math.max(0,dt-remainder));
+  state.berserkingRemaining=Math.max(0,berserking.seconds-remainder);
   applyActiveStats(state);
-  events.push({ type: 'action', actor: 'player', action: 'berserking', weapon: 'axe' });
+  events.push({type:'action',actor:'player',action:'berserking',weapon:'axe'});
 }

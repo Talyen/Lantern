@@ -14,3 +14,7 @@
 @keyframes orb-current{from{transform:translate(-3%,2%) rotate(4deg) scale(1.03)}to{transform:translate(3%,-2%) rotate(-4deg) scale(1.08)}}
 @media(max-width:600px){.resource-orb{bottom:8px}.resource-orb--health{left:6px}.resource-orb--mana{right:6px}#asset-status{bottom:128px;max-width:calc(100vw - 24px)}}
 @media(prefers-reduced-motion:reduce){.orb-surface,.orb-current{animation:none}.orb-liquid{transition:none}}
+
+.enemy-health{overflow:visible}
+.enemy-condition{position:absolute;top:8px;left:50%;transform:translateX(-50%);padding:1px 4px;border-radius:2px;background:#161b10e6;color:#d4dfb4;font:11px/1.2 system-ui,sans-serif;white-space:nowrap}
+.enemy-condition[hidden]{display:none}

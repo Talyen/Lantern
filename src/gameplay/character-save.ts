@@ -1,5 +1,5 @@
 import { isRecord, parseJson } from '../data/json';
-import { validBar } from './abilities';
+import { validBar, abilityUnlocked } from './abilities';
 import { character, type CharacterSave } from './character';
 import { isItemId, isWeaponItem, normalizeLoadout, type ItemId, type Loadout } from './equipment';
 import {
@@ -52,6 +52,7 @@ export function decodeCharacter(raw: string): CharacterSave {
   }
   result.campfires = [...new Set<string>(['homestead/camp', ...value.campfires])];
   if (!hasCombat) addLegacyPotions(result.items, newId);
+  result.actionBar=result.actionBar.map(id=>id && abilityUnlocked(id,result.xp) ? id : null);
   return result;
 }
 

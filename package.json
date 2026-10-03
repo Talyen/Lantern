@@ -67,7 +67,9 @@
     "@dimforge/rapier3d-compat": "0.21.0",
     "@pmndrs/upscaler": "0.2.0",
     "navcat": "0.4.1",
-    "three": "0.186.1"
+    "three": "0.186.1",
+    "three-plume": "0.1.1",
+    "tslfx": "0.6.0"
   },
   "devDependencies": {
     "@astral-sh/ruff-wasm-nodejs": "0.16.10",
@@ -82,8 +84,6 @@
     "globals": "^17.13.0",
     "stylelint": "17.16.0",
     "tar": "7.5.22",
-    "three-plume": "0.1.1",
-    "tslfx": "0.6.0",
     "typescript": "^5.9.0",
     "typescript-eslint": "^8.71.0",
     "vite": "^7.1.0",

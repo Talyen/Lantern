@@ -93,6 +93,16 @@ def main():
         recipes.append({'id': name, 'name': 'Synty ' + name.replace('_', ' '), 'sourceHash': row['sourceHash'], 'emitters': emitters, 'warnings': sorted(warnings)})
         print(f"Prepared {name}: {len(emitters)} emitters", flush=True)
     (output / 'recipes.json').write_text(json.dumps({'version': 1, 'recipes': recipes, 'dependencies': dependencies}, indent=2) + '\n')
+    # Production rain references only the adopted dust and spark art, not the study catalog.
+    rain = []
+    for recipe in recipes:
+        selected = [e for e in recipe['emitters'] if recipe['id'] == 'Impact_Small' and 'Dust' in e['name'] or recipe['id'] == 'SwordSlash' and e['mesh']]
+        if selected:
+            rain.append({'id': recipe['id'], 'sourceHash': recipe['sourceHash'], 'emitters': [{'name': e['name'], 'mesh': e['mesh'], 'material': {'texture': e['material']['texture']}} for e in selected[:1]]})
+    production = ROOT / 'public/vendor/synty/ability-effects'
+    production.mkdir(parents=True, exist_ok=True)
+    (production / 'arrow-rain.json').write_text(json.dumps({'version': 1, 'recipes': rain}, indent=2) + '\n')
+
 
 
 if __name__ == '__main__':

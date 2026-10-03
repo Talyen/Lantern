@@ -19,7 +19,6 @@ import { loadEquipmentMotions } from '../../animation/combat-animations';
 import { GameAudio } from '../../audio/audio';
 import characters from '../../../assets/playable-characters.json';
 import { UltimateEffects, ultimateSequences, ultimateTargets, type UltimateKind } from './ultimate-effects';
-import { skywardShot } from './arrow-rain-motion';
 import './ultimate-lab.css';
 
 const authored = areas.clearing;
@@ -28,7 +27,7 @@ if (!camp) throw new Error('Forest Clearing practice anchor is unavailable.');
 type PreviewActor = { root: THREE.Group; model: THREE.Object3D; mixer: THREE.AnimationMixer; idle: THREE.AnimationAction; hit?: THREE.AnimationAction; actions: Map<UltimateKind, THREE.AnimationAction>; equipment: Equipment; lantern?: PlayerLantern; location: THREE.Vector3 };
 const app = document.querySelector<HTMLElement>('#app')!;
 document.title = 'Lantern — Ultimate study';
-app.innerHTML = `<main class="ultimate-lab"><header><a href="/">← Lantern</a><h1>Ultimate study</h1><span class="ultimate-engine">Plume + TSLFX</span><label>Ability<select id="ultimate-kind"><option value="arrow-rain">Bow · Arrow Rain</option></select></label><button id="ultimate-replay" disabled>Replay</button><button id="ultimate-pause" disabled>Pause</button><label>Speed<select id="ultimate-speed"><option value="1">Normal</option><option value="0.5">½ speed</option><option value="0.25">¼ speed</option></select></label><label><input id="ultimate-loop" type="checkbox">Loop</label><label><input id="ultimate-effects" type="checkbox" checked>Effects</label><label><input id="ultimate-sound" type="checkbox" checked>Sound</label><button id="ultimate-view">Close view</button></header><section id="lab-canvas" aria-label="Woodland ability preview"><p id="ultimate-status" role="status">Preparing woodland…</p></section><footer><label>Sequence<input id="ultimate-time" type="range" min="0" max="4.8" step="0.01" value="0" disabled></label><output id="ultimate-clock">0.00 s</output></footer></main>`;
+app.innerHTML = `<main class="ultimate-lab"><header><a href="/">← Lantern</a><h1>Ultimate study</h1><span class="ultimate-engine">Plume + TSLFX</span><label>Ability<select id="ultimate-kind"><option value="arrow-rain">Bow · Rain of Arrows</option><option value="executioner">Sword · Executioner’s Strike</option><option value="onslaught">Sword · Onslaught</option></select></label><label><input id="ultimate-shield" type="checkbox">Shield</label><button id="ultimate-replay" disabled>Replay</button><button id="ultimate-pause" disabled>Pause</button><label>Speed<select id="ultimate-speed"><option value="1">Normal</option><option value="0.5">½ speed</option><option value="0.25">¼ speed</option></select></label><label><input id="ultimate-loop" type="checkbox">Loop</label><label><input id="ultimate-effects" type="checkbox" checked>Effects</label><label><input id="ultimate-sound" type="checkbox" checked>Sound</label><button id="ultimate-view">Close view</button></header><section id="lab-canvas" aria-label="Woodland ability preview"><p id="ultimate-status" role="status">Preparing woodland…</p></section><footer><label>Sequence<input id="ultimate-time" type="range" min="0" max="4.8" step="0.01" value="0" disabled></label><output id="ultimate-clock">0.00 s</output></footer></main>`;
 const element = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const mount = element<HTMLElement>('lab-canvas');
 const status = element<HTMLElement>('ultimate-status');
@@ -37,6 +36,7 @@ const replay = element<HTMLButtonElement>('ultimate-replay');
 const pause = element<HTMLButtonElement>('ultimate-pause');
 const speed = element<HTMLSelectElement>('ultimate-speed');
 const loop = element<HTMLInputElement>('ultimate-loop');
+const shield=element<HTMLInputElement>('ultimate-shield');
 const enabled = element<HTMLInputElement>('ultimate-effects');
 const sound = element<HTMLInputElement>('ultimate-sound');
 const timeline = element<HTMLInputElement>('ultimate-time');
@@ -98,8 +98,12 @@ async function initialize(): Promise<void> {
   const playerSource = await loader.loadAsync(characters.player.model); sources.push(playerSource.scene); sceneTextures(playerSource.scene);
   player = await actor(playerSource.scene, playerSource.animations, origin, yaw, 'player');
   const bow = await loadEquipmentMotions(loader, 'player', { main: 'bow', off: null });
-  player.actions.set('arrow-rain', action(player.mixer, skywardShot(player.model, bow.clips.pierce!, bow.clips.pierceDraw!.duration, bow.skillContacts.pierce![0] - bow.clips.pierceDraw!.duration)));
+  player.actions.set('arrow-rain', action(player.mixer,bow.clips['arrow-rain']!));
   const bowIdle = action(player.mixer, bow.clips.idle);
+  const sword=await loadEquipmentMotions(loader,'player',{main:'sword',off:null},player.model);
+  player.actions.set('executioner',action(player.mixer,sword.clips.executioner!));
+  player.actions.set('onslaught',action(player.mixer,sword.clips.onslaught!));
+  const swordIdle=action(player.mixer,sword.clips.idle);
   player.idle.setEffectiveWeight(0); player.idle = bowIdle;
   const enemySource = await loader.loadAsync(characters.enemy.model); sources.push(enemySource.scene); sceneTextures(enemySource.scene);
   const enemy = await loadEquipmentMotions(loader, 'enemy', { main: 'axe', off: null });
@@ -138,23 +142,25 @@ async function initialize(): Promise<void> {
       audio.update(origin, !playing || !sound.checked);
       if (playing && seconds > old) {
         const release = ultimateSequences[kind].release;
-        if (old < release && seconds >= release) audio.play(kind === 'crescent' ? 'swordSwing' : 'bowRelease', origin);
-        for (let i = 0; i < targets.length; i++) for (const hit of effects!.hitTimes(i)) if (old < hit && seconds >= hit) audio.play(kind === 'crescent' ? 'bodyImpact' : 'arrowImpact', targets[i].location);
+        if (old < release && seconds >= release) audio.play(kind!=='arrow-rain' ? 'swordSwing' : 'bowRelease',origin);
+        for (let i = 0; i < targets.length; i++) for (const hit of effects!.hitTimes(i)) if (old < hit && seconds >= hit) audio.play(kind!=='arrow-rain' ? 'bodyImpact' : 'arrowImpact',targets[i].location);
       }
       renderPose(); area!.update(cameraOwner!.camera, playing ? dt : 0); graphics!.render(dt, !playing);
     }
     if (!document.hidden && (playing || settling > 0)) frame = requestAnimationFrame(tick);
   }
+  shield.addEventListener('change',()=>{void changeKind(kind).catch(failed);});
   select.addEventListener('change', () => { void changeKind(select.value as UltimateKind).catch(failed); });
   async function changeKind(next: UltimateKind): Promise<void> {
-    if (next !== 'arrow-rain') throw new Error('Crescent Wave has been set aside.');
+    if (next!=='arrow-rain' && next!=='executioner' && next!=='onslaught') throw new Error('Unknown Ultimate study.');
     changing = true; select.disabled = replay.disabled = pause.disabled = timeline.disabled = true;
     audio.update(origin, true); status.hidden = false; status.textContent = `Preparing ${ultimateSequences[next].name}…`;
     const previous = kind;
     try {
-      const prepared = await player!.equipment.stage({ main: 'bow', off: null });
+      const prepared=await player!.equipment.stage(next!=='arrow-rain' ? {main:'sword',off:shield.checked ? 'shield' : null} : {main:'bow',off:null});
       if (disposed) return;
-      player!.equipment.commit(prepared); player!.idle.setEffectiveWeight(0); player!.idle = bowIdle;
+      player!.equipment.commit(prepared); player!.idle.setEffectiveWeight(0); player!.idle=next!=='arrow-rain' ? swordIdle : bowIdle;
+      targets.forEach((target,index)=>target.location.copy(at(next!=='arrow-rain' && index===0 ? new THREE.Vector3(0,0,1.6) : ultimateTargets[index])));
       if (next === 'arrow-rain') {
         pose(player!, ultimateSequences['arrow-rain'].release, player!.actions.get('arrow-rain'));
         updateBowFrame(true);
@@ -167,7 +173,7 @@ async function initialize(): Promise<void> {
   const diagnostics = {
     setKind: changeKind,
     setTime(value: number) { playing = false; pause.textContent = 'Play'; seconds = THREE.MathUtils.clamp(value, 0, ultimateSequences[kind].duration); renderPose(); graphics!.resetHistory(); invalidate(); },
-    snapshot: () => ({ kind, seconds, playing, feet: ['Ball_L','Ball_R','Ankle_L','Ankle_R'].map(name => ({ name, y: player!.root.getObjectByName(name)?.getWorldPosition(new THREE.Vector3()).y })), effects: effects!.snapshot(), targets: targets.map((target, index) => ({ hitTime: effects!.hitTime(index), hitWeight: target.hit?.getEffectiveWeight() ?? 0 })), pipeline: graphics!.pipelineDiagnostics() }),
+    snapshot: () => ({ kind, seconds, playing, hands: ['Hand_L','Hand_R'].map(name=>({name,y:player!.root.getObjectByName(name)?.getWorldPosition(new THREE.Vector3()).y})), feet: ['Ball_L','Ball_R','Ankle_L','Ankle_R'].map(name => ({ name, y: player!.root.getObjectByName(name)?.getWorldPosition(new THREE.Vector3()).y })), effects: effects!.snapshot(), targets: targets.map((target, index) => ({ hitTime: effects!.hitTime(index), hitWeight: target.hit?.getEffectiveWeight() ?? 0 })), pipeline: graphics!.pipelineDiagnostics() }),
   };
   (window as Window & { lanternUltimateStudy?: typeof diagnostics }).lanternUltimateStudy = diagnostics;
 }
@@ -183,7 +189,7 @@ function renderPose(): void {
   if (!player || !effects || !cameraOwner) return;
   for (const [id, stroke] of player.actions) if (id !== kind) stroke.setEffectiveWeight(0);
   pose(player, seconds, player.actions.get(kind));
-  player.root.position.copy(origin).addScaledVector(new THREE.Vector3(0, 0, 1).applyQuaternion(forward), kind === 'crescent' ? Math.sin(Math.min(1, seconds / ultimateSequences.crescent.motion) * Math.PI) * .18 : 0);
+  player.root.position.copy(origin);
   player.root.updateMatrixWorld(true);
   if (kind === 'arrow-rain') updateBowFrame();
   targets.forEach((target, index) => pose(target, seconds - effects!.lastHit(index, seconds), target.hit, true));

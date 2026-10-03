@@ -5,7 +5,7 @@ import { equipmentCatalog, isItemId, isWeaponItem, supportsShield, type Bonuses,
 import { lootDefinitions, type InventoryItem } from '../gameplay/inventory';
 
 const statLabels: Record<keyof CombatStats, string> = {
-  damage: 'Damage', attackRate: 'Attack speed', reach: 'Reach / Range', armor: 'Armor',
+  baseDamage: 'Weapon damage', damage: 'Damage', attackRate: 'Attack speed', reach: 'Reach / Range', armor: 'Armor',
   maxHealth: 'Health', maxMana: 'Mana', manaRegen: 'Mana recovery', moveSpeed: 'Movement', family: 'Weapon',
 };
 const bonusLabels: Record<keyof Bonuses, string> = {
@@ -80,8 +80,8 @@ export function renderEquipmentDetails(
     item.id !== entry.id && !occupiesDestination(item) &&
     !(displacesShield && item.slot === 'off' && (item.weaponSet ?? 0) === set));
   candidate.push({ ...entry, slot, weaponSet: hand ? set : undefined });
-  const before = resolveCombatStats(character.items, set);
-  const after = resolveCombatStats(candidate, set);
+  const before = resolveCombatStats(character.items, set,character.xp);
+  const after = resolveCombatStats(candidate, set,character.xp);
   for (const key of comparisonStats) {
     const delta = after[key] - before[key];
     if (Math.abs(delta) < .00001) continue;

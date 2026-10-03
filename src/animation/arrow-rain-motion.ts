@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { clone } from 'three/addons/utils/SkeletonUtils.js';
-import { disposeSceneInstances } from '../../assets/resource-ownership';
-import { ultimateSequences } from './ultimate-effects';
+import { disposeSceneInstances } from '../assets/resource-ownership';
+import { arrowRainSequence } from '../gameplay/arrow-rain-sequence';
 
 const point = (bone: THREE.Object3D) => bone.getWorldPosition(new THREE.Vector3());
 const rotation = (bone: THREE.Object3D) => bone.getWorldQuaternion(new THREE.Quaternion());
@@ -25,14 +25,15 @@ function aimArm(upper: THREE.Object3D, lower: THREE.Object3D, hand: THREE.Object
   worldRotation(hand, wrist);
 }
 
-/** A study-only authored variant: raise, hold, release and lower the compatible Mixamo shot. */
+/** The authored skyward variant: raise, hold, release and lower the compatible Mixamo shot. */
 export function skywardShot(source: THREE.Object3D, shot: THREE.AnimationClip, drawDuration: number, contact: number): THREE.AnimationClip {
   const rig = clone(source);
+  rig.traverse(object=>{if (object instanceof THREE.SkinnedMesh) object.skeleton.pose();});
   const names = ['Shoulder_L', 'Elbow_L', 'Hand_L', 'Shoulder_R', 'Elbow_R', 'Hand_R', 'Neck', 'Head'];
   const bones = names.map(name => { const bone = rig.getObjectByName(name); if (!bone) throw new Error(`Skyward shot requires ${name}.`); return bone; });
   const tracks = shot.tracks.map(track => ({ track, interpolant: track.InterpolantFactoryMethodLinear(), values: [] as number[] }));
   const authored = new Map(names.map(name => [name, [] as number[]]));
-  const sequence = ultimateSequences['arrow-rain'], times: number[] = [];
+  const sequence = arrowRainSequence, times: number[] = [];
   const hold = sequence.release - contact - drawDuration;
   const samples = Math.ceil(sequence.motion * 60);
   try {

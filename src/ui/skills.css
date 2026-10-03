@@ -60,3 +60,11 @@
 
 .skills-node-art,.skills-picker button>span:first-child{position:relative}
 .skills-node-art>.hud-icon{inset:0}
+
+.ability-art{position:absolute;inset:0;display:block}
+.ability-art>.hud-icon{opacity:.58}
+.ability-mark{position:absolute;inset:0;width:100%;height:100%;fill:none;stroke:#f0d5a0;stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 1px 2px #080604)}
+.ability-art--poison-arrow .ability-mark{stroke:#b4c28d}
+.skills-tree.mastery .skills-node-label{width:150px}
+.skills-node.minor:not(.planned){cursor:help;border-color:#aa915f;touch-action:auto}
+.skills-node[data-learned="true"] .skills-node-art{opacity:1}

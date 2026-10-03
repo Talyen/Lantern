@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { MeshBasicNodeMaterial, type WebGPURenderer } from 'three/webgpu';
 import { instanceIndex, mx_noise_float, smoothstep, vec4 } from 'three/tsl';
 import { Curve1D, Manager, MeshRenderer, system, type ParticleStorage, type SystemDef } from 'three-plume';
-import { isMesh } from '../../assets/resource-ownership';
+import { isMesh } from '../assets/resource-ownership';
 
 export type ImpactEvent = { time: number; position: THREE.Vector3; sparks: boolean };
 /** Plume's mesh renderer supplies RGB; explicitly retain its GPU alpha-over-life in our material. */
@@ -15,7 +15,7 @@ class FadingMeshRenderer extends MeshRenderer {
 }
 
 /** Plume owns particle storage, emission, integration, curves, batching and pooling. */
-export class UltimateParticles {
+export class ArrowRainParticles {
   readonly root = new THREE.Group();
   private manager: Manager;
   private materials = new Set<THREE.Material>();

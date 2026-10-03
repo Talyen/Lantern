@@ -6,7 +6,7 @@ import {
 } from './ground-loot';
 import { purchase, sale, repurchase } from './shop-transactions';
 import { canRepairShelter, restoredShelter, validatedContainers } from './homestead-transactions';
-import { validBar, abilityUnlocked, axeProgression, type ActionBar, type WeaponSet } from './abilities';
+import { validBar, abilityUnlocked, weaponTrees, axeProgression, type AbilityId, type ActionBar, type WeaponSet } from './abilities';
 import { createEncounter, type Encounter, type EnemyId } from './encounter';
 import { near, type Point, type Spawn } from './area';
 import type { AreaDefinition, Campfire, Chest } from '../levels/types';
@@ -48,6 +48,7 @@ export type AdventureEvent =
     finished: boolean;
     position: { x: number; y: number; z: number };
   }
+  | {type:'abilityLearned'; ability:AbilityId; slot:number | null}
   | LootEvent;
 
 /** Continuing character state and inactive area snapshots; no rendering/browser dependencies. */
@@ -104,7 +105,7 @@ export class Adventure {
   closeSave(): void { this.persistence.close(this.character); }
   saveDiagnostics() { return this.persistence.diagnostics(); }
   setActionBar(bar: ActionBar): void {
-    if (!validBar(bar) || bar.some(id => id && !abilityUnlocked(id, this.character.xp))) throw new Error('Invalid action bar');
+    if (!validBar(bar) || bar.some(id=>id && !abilityUnlocked(id,this.character.xp))) throw new Error('Invalid action bar');
     this.character.actionBar = [...bar];
     this.save();
   }
@@ -133,7 +134,7 @@ export class Adventure {
     this.save();
   }
 
-  message(text: string): void { this.notice = text; this.noticeTime = 2; }
+  message(text: string, seconds=2): void { this.notice = text; this.noticeTime = seconds; }
   cancelPickup(): void { this.pickupTarget = null; }
   /** Restart refreshes the outing while retaining permanent character progress. */
   restart(): void {
@@ -230,13 +231,25 @@ export class Adventure {
     ) / 1e6;
   }
 
-  grantAxeCombatXp(amount = 10): void { this.grantProficiency('axe', amount); }
+  grantWeaponXp(family: 'sword' | 'bow', amount: number): void {
+    if (!Number.isFinite(amount) || amount<=0) return;
+    const locked=weaponTrees[family].filter(id=>!abilityUnlocked(id,this.character.xp));
+    this.awardXp(family,amount);
+    for (const id of locked) if (abilityUnlocked(id,this.character.xp)) {
+      const empty=this.character.actionBar.indexOf(null);
+      if (empty>=0) this.character.actionBar[empty]=id;
+      this.events.push({type:'abilityLearned',ability:id,slot:empty>=0 ? empty : null});
+    }
+    this.save();
+  }
 
-  grantProficiency(family: 'axe' | 'sword' | 'bow', amount: number): void {
-    const previous = this.character.xp.axeCombat;
-    this.awardXp(family === 'axe' ? 'axeCombat' : family, amount);
-    if (family === 'axe' && previous < axeProgression.ultimateXp && this.character.xp.axeCombat >= axeProgression.ultimateXp) {
-      if (this.character.actionBar[2] === null) this.character.actionBar[2] = 'berserking';
+  grantAxeCombatXp(amount=10): void {this.grantProficiency('axe',amount);}
+  grantProficiency(family:'axe' | 'sword' | 'bow',amount:number): void {
+    if (family!=='axe') {this.grantWeaponXp(family,amount); return;}
+    const previous=this.character.xp.axeCombat;
+    this.awardXp('axeCombat',amount);
+    if (previous<axeProgression.ultimateXp && this.character.xp.axeCombat>=axeProgression.ultimateXp) {
+      if (this.character.actionBar[2]===null) this.character.actionBar[2]='berserking';
       this.message('Berserking unlocked');
     }
     this.save();

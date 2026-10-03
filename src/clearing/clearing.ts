@@ -1,3 +1,6 @@
+import { AbilityEffects } from '../rendering/ability-effects';
+import { abilities } from '../gameplay/abilities';
+import { bindingLabel } from '../input/bindings';
 import { loadingScreen } from '../ui/loading';
 import { registerRuntimeSnapshot, recordFailure } from '../diagnostics/report';
 import { ShopMenu } from '../ui/shop';
@@ -111,6 +114,7 @@ const travel = new GateTravel();
 const adventure = new Adventure(() => localStorage);
 await adventure.prepareSave();
 let adventureVisuals: AdventureVisuals | undefined;
+let abilityEffects: AbilityEffects | undefined;
 const waitFrames = (count = 16) => frameLoop.waitFrames(count);
 const renderer = await createRenderer(mount);
 renderer.domElement.setAttribute('aria-label', 'Lantern. Move and use abilities with your configured controls. Click objects to interact.');
@@ -159,7 +163,7 @@ const input = createInput(renderer.domElement, preferences, dispatchInput, world
   interruptApproach();
 });
 const combat = new CombatController(encounter, adventure, actors, input, pointerAim, equipmentSets, {
-  paused, impactHolding: () => impact.holding, safeArea: () => currentArea.kind === 'safe',
+  paused, cancelImpact: () => impact.clear(), navigation: () => movementWorld, impactHolding: () => impact.holding, safeArea: () => currentArea.kind === 'safe',
   interruptApproach, clearHold: () => combatUI?.clearHold(),
   blocking: () => !!combatUI?.blocking, present,
 });
@@ -223,11 +227,8 @@ const presentation = new EncounterPresentation(encounter, actors, gameplayAudio,
     menus.updateCharacter(adventure.character);
     shop.update(adventure.character);
   },
-  proficiency: (family, amount) => { adventure.grantProficiency(family, amount); encounter.proficiency = { ...adventure.character.xp }; },
-  playerHit: unblocked => {
-    interruptApproach(false);
-    if (unblocked) combat.releaseShield();
-  },
+  proficiency: (family,amount) => {adventure.grantProficiency(family,amount); inventory.syncLoadout();},
+  playerHit: () => interruptApproach(false),
 });
 function present(events: EncounterEvent[]): void {
   presentation.present(events);
@@ -238,7 +239,7 @@ function resetPresentation(): void {
   gameplayAudio.reset();
   clearInput();
   graphics?.effects.clear();
-  encounter.projectiles=[]; projectileVisuals.clear(); enemyActors.clear();
+  encounter.projectiles=[]; encounter.rains=[]; abilityEffects?.clear(); projectileVisuals.clear(); enemyActors.clear();
   inventory.syncLoadout();
   movementWorld?.reset();
   active?.portals.forEach(p => p.reset());
@@ -350,8 +351,13 @@ function worldClick(clientX: number, clientY: number): boolean {
 function syncAdventure(): void {
   adventureVisuals?.sync(adventure.session(currentArea.id).drops, adventure.portalPosition(currentArea), lootLabels.hovered, adventure.portalHeight(currentArea));
   for (const chest of currentArea.chests ?? []) active?.setChestOpened(chest.id, adventure.chest(currentArea, chest).opened);
-  const prompt=paused() || encounter.player.hp<=0 ? '' : adventure.notice || (hoveredInteraction ? interactionError(hoveredInteraction) || hoveredInteraction.name : '');
   const adventureEvents = adventure.takeEvents();
+  const learned=adventureEvents.filter(event=>event.type==='abilityLearned');
+  if (learned.length) adventure.message(learned.map(event=>{
+    const binding=event.slot===null ? null : preferences.value[actionSlotInputs[event.slot]].find(Boolean);
+    return abilities[event.ability].name+' learned'+(event.slot===null ? '' : ' · '+(binding ? bindingLabel(binding) : 'Slot '+(event.slot+1)));
+  }).join(' · '),4);
+  const prompt=paused() || encounter.player.hp<=0 ? '' : adventure.notice || (hoveredInteraction ? interactionError(hoveredInteraction) || hoveredInteraction.name : '');
   gameplayAudio.adventure(adventureEvents);
   hud.adventure(adventureEvents);
   if (adventure.castRemaining<=0) audio.stop('return-cast');
@@ -427,6 +433,7 @@ function renderFrame(dt: number): boolean {
     updateActor(actor, state, gameDt, paused(), id==='player' && encounter.blocking);
     gameplayAudio.locomotion(id,state,actor.gait,actor.current,paused());
   }
+  abilityEffects?.sync(encounter,player.root,cameraOwner.camera);
   if (!paused()) { active?.portals.forEach(p => p.update(gameDt)); adventureVisuals?.update(gameDt); }
   const portalPoint = adventure.portalPosition(currentArea);
   gameplayAudio.ambience(currentArea.effects.fires,encounter.player,portalPoint ? {x:portalPoint[0],z:portalPoint[1]} : null,lanternEnabled && encounter.player.hp>0 ? encounter.player : null, currentArea.ambience ?? 'woodland', !!currentArea.effects.weather && (options?.settings.weatherEffects ?? true));
@@ -492,7 +499,7 @@ try {
       hud.resourceNumbers(settings.resourceNumbers);
       if (!settings.cameraShake) { impact.offset(false); cameraOwner.clearShake(); }
       if (cameraOwner.setDistance(settings.cameraDistance)) { graphics?.resetHistory(); invalidateFrame(); }
-      graphics?.apply(settings);
+      graphics?.apply(settings); abilityEffects?.setQuality(settings.particleQuality);
     }, combatText: settings => hud.applyCombatText(settings), flushSettings: () => graphics?.flushSettings(),
     resetMeasurements: () => graphics?.resetMeasurements(), clearInput,
     focus: () => renderer.domElement.focus(), keybindings:()=>bindingsMenu.open(), audio: {apply:settings=>audio.applySettings(settings),play:cue=>audio.play(cue)},
@@ -535,7 +542,7 @@ function dispose(): void {
   playerEquipment.dispose();
   interactionHighlight.dispose();
   enemyActors.dispose();
-  projectileVisuals.dispose();
+  projectileVisuals.dispose(); abilityEffects?.dispose();
   adventureVisuals?.dispose();
   shop.dispose(); lootLabels.dispose();
   worldInteractions = undefined;
@@ -593,6 +600,7 @@ async function changeArea(change: AreaChange): Promise<boolean> {
   hud.clearCombatText();
   clearInput();
   let preparedEnemies: PreparedEnemies | undefined;
+  let candidateAbilities: AbilityEffects | undefined;
   let actorsAccepted = false;
   let committed = false;
   let candidateOwner: Awaited<ReturnType<typeof prepareAreaCandidate>> | undefined;
@@ -608,7 +616,9 @@ async function changeArea(change: AreaChange): Promise<boolean> {
     candidateOwner = await prepareAreaCandidate(
       () => buildArea(next, nextSurfaces, appearance?.shelterRestored ?? adventure.character.shelterRestored),
       () => MovementWorld.create(next.layout.boundary, traversalWithTrees(next)),
-      candidate => {
+      async candidate => {
+        candidateAbilities=new AbilityEffects(candidate,options!.settings.particleQuality,renderer);
+        await candidateAbilities.prepare(cameraOwner.camera);
         if (renderQuery.get('portal') === 'off') candidate.portals.forEach(p => { p.root.visible = false; });
         return graphics!.prepareLighting(resolved, candidate.root);
       },
@@ -631,6 +641,7 @@ async function changeArea(change: AreaChange): Promise<boolean> {
     committed = true;
     enemyActors.commit(preparedEnemies); actorsAccepted = true;
     graphics!.effects.clearArea();
+    abilityEffects?.dispose(); abilityEffects=candidateAbilities;
     adventureVisuals?.dispose();
     active?.dispose();
     movementWorld?.dispose();
@@ -695,6 +706,7 @@ async function changeArea(change: AreaChange): Promise<boolean> {
     if (await loadingScreen.ready(token)) renderer.domElement.focus();
     return false;
   } finally {
+    if (!committed) candidateAbilities?.dispose();
     if (!actorsAccepted) preparedEnemies?.dispose();
     candidateOwner?.dispose();
     if (request === generation) {

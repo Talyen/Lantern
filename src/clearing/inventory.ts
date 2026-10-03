@@ -44,6 +44,7 @@ export class InventoryController {
 
   syncLoadout(): void {
     const { character } = this.adventure;
+    this.encounter.proficiency={...character.xp};
     applyEquipment(this.encounter,character.items,character.activeSet);
   }
 

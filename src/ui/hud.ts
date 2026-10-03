@@ -33,6 +33,7 @@ export function createHud(onRetry: () => void) {
       const bar = enemyHealth.cloneNode(true) as HTMLDivElement; bar.id = `health-${id}`;
       const enemy = encounter.enemies[id];
       bar.setAttribute('aria-label', `${enemy.rig === 'skeleton' ? enemy.kind === 'caster' ? 'Bone Caster' : 'Skeleton Warrior' : enemy.kind === 'caster' ? 'Caster' : 'Goblin'} health`);
+      const condition=document.createElement('span'); condition.className='enemy-condition'; condition.textContent='Poison'; condition.hidden=true; bar.append(condition);
       enemyHealth.after(bar); healthBars[id] = bar; damagedFor[id] = 0;
     }
     roster.length = ids.length;
@@ -80,13 +81,14 @@ export function createHud(onRetry: () => void) {
       bars(encounter);
       combatText.encounter(events);
       for (const event of events) {
-        if (event.type === 'hit' && event.actor !== 'player') damagedFor[event.actor] = 3;
+        if ((event.type === 'hit' || event.type === 'impact') && event.actor !== 'player') damagedFor[event.actor] = 3;
         else if (event.type === 'outcome') finish(event.won);
       }
       resource(playerHealth, 'Health', encounter.player.hp, encounter.stats.maxHealth);
       resource(playerMana, 'Mana', encounter.playerMana, encounter.stats.maxMana);
       for (const id of encounter.enemyIds) {
         const enemy=encounter.enemies[id], bar=healthBars[id];
+        bar.querySelector<HTMLElement>('.enemy-condition')!.hidden=!enemy.poison || enemy.hp<=0;
         if (enemyValues[id] !== enemy.hp) {
           enemyValues[id] = enemy.hp;
           bar.setAttribute('aria-valuenow', String(Math.max(0, enemy.hp)));
@@ -100,6 +102,7 @@ export function createHud(onRetry: () => void) {
       let width: number | undefined, height = 0;
       for (const id of encounter.enemyIds) {
         const enemy=encounter.enemies[id], bar=healthBars[id];
+        bar.querySelector<HTMLElement>('.enemy-condition')!.hidden=!enemy.poison || enemy.hp<=0;
         damagedFor[id] = Math.max(0, damagedFor[id] - dt);
         if (safe || obscured || !enemy.home || enemy.hp <= 0 || damagedFor[id] <= 0) {
           if (!bar.hidden) bar.hidden = true;

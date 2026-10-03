@@ -124,6 +124,9 @@ export async function gameplayAssets(source = resolve(root, 'public')) {
     }
   }
   await references(JSON.parse(await readFile(resolve(root, 'assets/textures/environment/manifest.json'), 'utf8')));
+  const rainRecipe=assetPath(source,'/vendor/synty/ability-effects/arrow-rain.json','/');
+  await include(rainRecipe);
+  if (existsSync(rainRecipe)) await references(JSON.parse(await readFile(rainRecipe,'utf8')));
   const characters = JSON.parse(await readFile(resolve(root, 'assets/playable-characters.json'), 'utf8'));
   for (const config of Object.values(characters)) {
     await references(config.model); await references(config.catalog);

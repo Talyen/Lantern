@@ -43,9 +43,9 @@ Sweep and Piercing Shot deal 120% of equipped weapon damage. Their existing mana
 
 Bonuses to the same property add. Damage is weapon damage times one plus total damage bonus; attack rate is weapon rate times one plus total attack-rate bonus; movement speed follows the same rule. Health, mana, armor and mana recovery bonuses add to their base values.
 
-All direct hits, including melee, arrows and magic, apply `raw damage × 100 / (100 + armor)`. A successful frontal block then halves that result. Blocking is an explicit fact independent of armor, so armored rear hits still interrupt normally. Simulation retains fractional damage; displays round values only for readability.
+All direct hits, including melee, arrows and magic, apply `raw damage × 100 / (100 + armor)`. A successful frontal block then halves that result. Blocking is an explicit fact independent of armor, so armored rear hits remain damaging without interrupting the player. Simulation retains fractional damage; displays round values only for readability.
 
-Accepted attacks snapshot damage, reach/range, duration and contact markers. Duration and markers divide by effective attack rate, and the same rate drives attack animation playback. Released projectiles retain their launch damage and range after a swap. Armor uses the target's current equipped state when contact occurs. Existing interruption rules, dodge and terrain collision remain unchanged.
+Accepted attacks snapshot damage, reach/range, duration and contact markers. Duration and markers divide by effective attack rate, and the same rate drives attack animation playback. Released projectiles retain their launch damage and range after a swap. Armor uses the target's current equipped state when contact occurs. Enemy interruption remains attack-specific; player hits do not interrupt attacks or held defenses. Dodge and terrain collision retain their existing values.
 
 Equipment changes never refill health or mana. Preserve current amounts and clamp them when a maximum falls. Potions still restore 40 health with an eight-second cooldown; safe fires restore 3% of effective maximum health per second. Travel preserves current resources and cooldowns. Death recovery restores effective maximum health; application restart starts with effective maximum health and mana. No passive health regeneration is added here.
 
@@ -70,11 +70,59 @@ Character revision 7 retains `lantern.character.v1` and the existing backup/reco
 
 Use one owned normal-settings preview and one relevant gear interaction. Inspect hover properties, right-click equip/unequip, explicit ring dragging, truthful set activation and unchanged resources as appropriate to the change. Refine a visible weakness in the same session; do not run the full combat/reward flow on every UI task.
 
-Existing encounter/adventure tests protect armor versus blocking, contact/recovery scaling, projectile snapshots, shared-slot validation/displacement, claims and save migration. Finish with the normal [task handoff](DEVELOPMENT.md#working-alongside-other-agents); full suites remain CI-first. Gold, shops, Smithing, proficiency, Ultimates and worn-armor art remain subsequent roadmap work.
+Existing encounter/adventure tests protect armor versus blocking, contact/recovery scaling, projectile snapshots, shared-slot validation/displacement, claims and save migration. Finish with the normal [task handoff](DEVELOPMENT.md#working-alongside-other-agents); full suites remain CI-first. Smithing and worn-armor art remain subsequent roadmap work; Sword/Bow mastery is described below.
+
+## Sword and Bow mastery
+
+Sword/Bow progression now lives in [skills](../src/gameplay/skills.ts), [abilities](../src/gameplay/abilities.ts) and [mastery](../src/gameplay/mastery.ts). Level, unlocks and passives derive from saved XP; weapons require no proficiency to equip. New characters retain the integrated Axe Basic and Crushing Blow start. The Sword/Bow starter Skill choices are Sweep and Multishot.
+
+| Level | Sword | Bow |
+| --- | --- | --- |
+| 1 | Sword Basic; Sweep | Bow Basic; Multishot |
+| 3 | Thrust | Poison Arrow |
+| 5 | Executioner's Strike | Rain of Arrows |
+| 15 | Riposte | Piercing Shot |
+| 50 | Onslaught | Deadeye Shot |
+
+The twelve actions can share any six slots. Earned actions fill the first empty slot without replacement; a full bar leaves them available in Skills. Assignments require safe conditions. Locked actions remain inspectable. No skill points or separate saved unlock list exists.
+
+New abilities use the following initial tuning:
+
+- Thrust: 130% weapon damage, narrow single target and +0.45 m reach.
+- Riposte: a 0.75-second stance that prevents one frontal melee hit and counters its attacker for 200% damage if still within reach. No Shield is required. Rear, arrow and magical hits remain damaging. Base cost is 20 mana with a six-second cooldown, committed on the prevented hit; an unused stance expires free.
+- Executioner's Strike: 350% weapon damage to one target. Existing protected raider attacks are explicitly breakable; protected attacks opt out through `EnemyState.interruption`, while designated heavy windows permit the cut. Its reviewed planted overhead source uses a 1.05-second action and 0.74-second contact, before attack-rate scaling.
+- Onslaught: three frontal cuts for 100%, 150% and 200% damage. Dodge stops remaining cuts without refunding the first committed cut.
+- Poison Arrow: Basic shot timing, 60% immediate damage and 80% damage over four seconds. One Poison effect ticks every 0.5 seconds. Reapplication refreshes duration, replaces the damage snapshot and retains the next tick. Poison does not cause repeated flinches, hit pause or hurt sounds. No poison resistance system is introduced.
+- Multishot: five arrows over 60 degrees, 80% damage each, with at most one damaging arrow per enemy per use. Base cost is 25 mana with a five-second cooldown.
+- Rain of Arrows: cursor ground targeting within Bow range, approximately 2.2 m radius and three pulses totaling 300% weapon damage. Invalid or blocked targets spend nothing. Its existing skyward release, falling arrows, footprint and aftermath remain the same indoors and outdoors. Particle count never decides damage.
+- Deadeye Shot: one manually aimed non-piercing arrow for 500% weapon damage, with a 1.4-second action and release at 1.05 seconds before attack-rate scaling.
+
+Every Sword/Bow Ultimate costs 50 mana and starts the one shared Ultimate timer at 30 seconds across both sets and repeated assignments. Berserking retains its separately selected 60-second duration in that same readiness pool. Other Skills retain independent cooldowns. Preparation quotes costs but spends them only at the first swing/release, including a miss. Dodge before that moment is free. Dodge after commitment gives no refund; released projectiles and rain continue. Basic cadence is retained. Enemy hits no longer interrupt player attacks, movement or held defense; damage, armor, frontal Shield reduction and post-hit immunity remain. Death still ends actions.
+
+### Effective damage and passive benefits
+
+Each enemy life retains its lowest reached health through session travel and death. One base XP is awarded per point of damage pushing health below that minimum, attributed to the originating Sword/Bow action even after a swap. Overkill and restored damage earn nothing. Rested applies its existing multiplier. The concurrently integrated finite Axe credit and its 0.2 scale remain intact; gathering progression is unchanged. Restart still creates a fresh outing; cross-session world snapshots and time-away renewal remain separate roadmap work.
+
+Combat XP thresholds are level 1/0, 2/100, 3/250, 4/500, 5/1000, 15/5000 and 50/24000, with interpolation between anchors and the final slope continuing beyond level 50. The first Ultimate targets roughly five ordinary enemy lives of dedicated use; 3–5-hour full mastery and pre-boss practice remain provisional until the adventure is expanded and observed.
+
+| Level | Sword passive | Bow passive |
+| --- | --- | --- |
+| 2 | Honed Edge I: +3% damage | Steady Aim I: +3% damage |
+| 4 | Measured Cuts I: +2% attack rate | Smooth Draw I: +2% attack rate |
+| 7 | Long Reach I: +0.10 m reach | Long Shot I: +1 m range |
+| 10 | Economy I: −5% Skill mana | Economy I: −5% Skill mana |
+| 20 | Heavy Hand: +5% Executioner's Strike damage | Arrowstorm: +5% Rain damage |
+| 25 | Honed Edge II: +3% damage | Steady Aim II: +3% damage |
+| 30 | Measured Cuts II: +2% attack rate | Smooth Draw II: +2% attack rate |
+| 35 | Long Reach II: +0.10 m reach | Long Shot II: +1 m range |
+| 40 | Economy II: −5% Skill mana | Economy II: −5% Skill mana |
+| 50 | Relentless: +5% Onslaught damage | Deadeye Mastery: +5% Deadeye damage |
+
+Bonuses affect their weapon's actions, not global character power. Like damage bonuses add alongside equipment bonuses, attack-rate bonuses add, reach/range bonuses add and Skill discounts total 10%; Ultimates receive no discount. Accepted attacks snapshot those benefits, costs, damage, timing and range. Already released projectiles, Poison and rain retain their originating snapshots.
 
 ## Axe abilities and proficiency
 
-New characters retain the Axe Basic on LMB and begin with Crushing Blow on Q. Existing saves retain their action assignments. Crushing Blow deals 200% of equipped Axe damage to the nearest reachable target in a 60-degree frontal arc at the equipped reach. Its independently baked downward action targets 0.95 seconds with a 0.38-second contact; actual prepared duration owns the lock. It costs 25 mana at acceptance and has a six-second cooldown. It breaks current enemy windups, including the raider's late commitment. Future protected attacks remain protected unless their simulation explicitly opens a heavy-interruption window.
+New characters retain the Axe Basic on LMB and begin with Crushing Blow on Q. Existing saves retain their action assignments. Crushing Blow deals 200% of equipped Axe damage to the nearest reachable target in a 60-degree frontal arc at the equipped reach. Its independently baked downward action targets 0.95 seconds with a 0.38-second contact; actual prepared duration owns the lock. It costs 25 mana at its first strike and has a six-second cooldown. It breaks current enemy windups, including the raider's late commitment. Future protected attacks remain protected unless their simulation explicitly opens a heavy-interruption window.
 
 Berserking unlocks at 100 saved Axe Combat XP (level 2). Effective Axe damage awards 0.2 base XP per newly reached health point, with Rested applied once. Each enemy life retains its lowest health through healing, death recovery and area travel; overkill and re-damaging healed health earn no additional credit. Existing saved XP is retained. Crossing the threshold fills the third action slot (default R) only when empty; occupied slots and deliberately cleared saved assignments remain intact. Skills exposes the real requirement and only permits unlocked assignments.
 

@@ -89,7 +89,7 @@ def export(name, identity, config, motions_only=False):
                         bpy.data.objects.remove(obj, do_unlink=True)
                 gallery.reset_rig(rig)
         baked = json.loads(record.read_text())
-        results.append({**clip, **baked, 'id': key, 'sourceId': recipe['sourceId'], 'name': recipe['name'], 'category': recipe['category'], 'contact': recipe.get('contact'), 'speed': (sum(v*v for v in baked.get('rootVelocity',[0,0])) ** .5 or recipe.get('speed')) if recipe.get('speed') else None, 'audit': recipe.get('audit',False), 'url': f'/vendor/characters/{name}/motions/{key}.glb'})
+        results.append({**clip, **baked, 'id': key, 'sourceId': recipe['sourceId'], 'name': recipe['name'], 'category': recipe['category'], 'contact': recipe.get('contact'), 'contacts': recipe.get('contacts'), 'speed': (sum(v*v for v in baked.get('rootVelocity',[0,0])) ** .5 or recipe.get('speed')) if recipe.get('speed') else None, 'audit': recipe.get('audit',False), 'url': f'/vendor/characters/{name}/motions/{key}.glb'})
         print(f"{name.upper()} {index + 1}/{len(wanted)}: {key}", flush=True)
     expected = {clip['id'] for clip in results}
     for cached in (output / 'motions').iterdir():

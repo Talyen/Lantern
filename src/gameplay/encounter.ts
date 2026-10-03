@@ -1,3 +1,4 @@
+import { stepCombatEffects } from './encounter-effects';
 import { baseStats, resolveCombatStats } from './combat-stats';
 import { legacyLayout, type EncounterLayout } from './area';
 import {
@@ -44,18 +45,18 @@ export function createEncounter(phase: Phase = 'loading', layout: EncounterLayou
     const spawn = home ?? layout.player;
     return [definition.id, { ...actor(...spawn.position, home && phase !== 'loading' ? enemyMaxHealth : 0, 1.45),
         yaw: spawn.yaw, kind: definition.kind, rig: definition.rig, loadout: definition.loadout,
-        home, lowestHp: enemyMaxHealth, engaged: false, returning: false, cooldown: .8 + (layout.enemies ? index * .18 : 0) }];
+        home, engaged: false, returning: false, lowestHp: enemyMaxHealth, cooldown: .8 + (layout.enemies ? index * .18 : 0) }];
   }));
   const stats = resolveCombatStats([{ id: 'starter', item: 'axe', quantity: 1, slot: 'main', x: 0, y: 0 }]);
-  return { stats, setStats: [stats, resolveCombatStats([])], weapon: 'axe', shield: false, blocking: false, blockFrameOffset: 0, pending: null, projectiles: [], nextProjectile: 0, phase, layout, player, enemyIds, enemies,
+  return { proficiency:{}, ultimateCooldown:0, berserkingRemaining:0, rains:[], riposte:undefined, frameManaStart:undefined, frameElapsed:0, stats, setStats: [stats, resolveCombatStats([])], weapon: 'axe', shield: false, blocking: false, blockFrameOffset: 0, pending: null, projectiles: [], nextProjectile: 0, phase, layout, player, enemyIds, enemies,
     attackCooldown: 0, invulnerability: 0, playerMana: playerMaxMana,
-    weaponSets: [{ main: 'axe', off: null }, { main: null, off: null }], activeSet: 0, abilityCooldowns: {}, ultimateCooldown: 0, berserkingRemaining: 0, proficiency: {}, potionCooldown: 0, playerAction: null,
+    weaponSets: [{ main: 'axe', off: null }, { main: null, off: null }], activeSet: 0, abilityCooldowns: {}, potionCooldown: 0, playerAction: null,
     dodgeRemaining: 0, dodgeCooldown: 0, dodgeFrameOffset: 0, invulnerabilityBeforeDodge: 0, dodgeDirection: { x: 0, z: 0 } };
 }
 
 export function resetEncounter(state: Encounter): EncounterEvent[] {
-  const { weapon, shield, weaponSets, activeSet, stats, setStats } = state;
-  Object.assign(state, createEncounter('playing', state.layout, state.enemies.enemy?.kind ?? 'raider'), { weapon, shield, weaponSets, activeSet, stats, setStats });
+  const { weapon, shield, weaponSets, activeSet, stats, setStats, proficiency } = state;
+  Object.assign(state, createEncounter('playing', state.layout, state.enemies.enemy?.kind ?? 'raider'), { weapon, shield, weaponSets, activeSet, stats, setStats, proficiency });
   state.player.hp = stats.maxHealth;
   state.playerMana = stats.maxMana;
   state.player.speed = stats.moveSpeed;
@@ -65,7 +66,8 @@ export function resetEncounter(state: Encounter): EncounterEvent[] {
 
 /** Contacts compare immunity against their offset before the frame consumes its clock. */
 function finishPlayerFrame(state: Encounter, dt: number, events: EncounterEvent[]): EncounterEvent[] {
-  finishBattleCry(state, dt, events);
+  if (state.riposte && state.riposte.remaining<=0) {state.riposte=undefined; state.playerAction=null;}
+  finishBattleCry(state,dt,events);
   state.invulnerability = Math.max(0, state.invulnerability - dt);
   state.dodgeFrameOffset = state.invulnerabilityBeforeDodge = state.blockFrameOffset = 0;
   return events;
@@ -79,6 +81,7 @@ export function stepExploration(state: Encounter, dt: number, input: Input, move
   const { events, attackElapsed, attackOffset, movementElapsed } = preparePlayer(state, dt, input, clocks.player, movementWorld);
   stepPlayerAttack(state, attackElapsed, clocks, events, movementWorld, attackOffset);
   stepProjectiles(state, dt, clocks, events, movementWorld);
+  stepCombatEffects(state,dt,clocks,events,movementWorld);
   events.push(...movePlayer(state, movementElapsed, input, movementWorld));
   return finishPlayerFrame(state, dt, events);
 }
@@ -102,6 +105,7 @@ export function stepEncounter(state: Encounter, dt: number, input: Input, timing
   }
   stepPlayerAttack(state, attackElapsed, timing, events, movementWorld, attackOffset);
   stepProjectiles(state, dt, timing, events, movementWorld);
+  stepCombatEffects(state,dt,timing,events,movementWorld);
   if (state.phase !== 'playing')
     return finishPlayerFrame(state, dt, events);
   events.push(...movePlayer(state, movementElapsed, input, movementWorld));

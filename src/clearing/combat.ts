@@ -1,4 +1,8 @@
-import { abilities, abilitySet, abilityUnlocked, cooldownForAbility, type AbilityId } from '../gameplay/abilities';
+import { abilityMana } from '../gameplay/mastery';
+import { abilityCooldown } from '../gameplay/action-commit';
+import { boundaryDistance } from '../gameplay/area';
+import type { Movement } from '../gameplay/encounter-model';
+import { abilities, abilitySet, abilityUnlocked, type AbilityId } from '../gameplay/abilities';
 import type { Adventure } from '../gameplay/adventure';
 import {
   dodge, swapWeaponSet, useAbility,
@@ -13,6 +17,8 @@ import type { PointerAim } from './pointer-aim';
 type CombatContext = {
   paused(): boolean;
   impactHolding(): boolean;
+  cancelImpact?(): void;
+  navigation?(): Movement | undefined;
   safeArea(): boolean;
   interruptApproach(): void;
   clearHold(): void;
@@ -63,19 +69,26 @@ export class CombatController {
 
   startAbility(id: AbilityId): void {
     if (this.context.paused()) return;
-    this.encounter.proficiency = { ...this.adventure.character.xp };
-    if (!abilityUnlocked(id, this.encounter.proficiency)) { this.adventure.message('Berserking requires Axe level 2'); return; }
     this.context.interruptApproach();
     if (!this.holdingShield()) this.encounter.blocking = false;
     const pointer = this.input.pointer();
-    const aim = pointer
-      ? this.pointerAim.attack(pointer, this.encounter, this.context.safeArea(), this.actors)
-      : undefined;
+    let aim = pointer ? id==='arrow-rain' ? this.pointerAim.resolve(pointer,this.encounter.player.y) : this.pointerAim.attack(pointer,this.encounter,this.context.safeArea(),this.actors) : undefined;
+    this.encounter.proficiency={...this.adventure.character.xp};
+    if (!abilityUnlocked(id,this.adventure.character.xp)) {this.adventure.message('Requires '+(id==='berserking' ? 'Axe' : abilities[id].family)+' level '+abilities[id].level); return;}
+    if (id==='arrow-rain') {
+      const set=abilitySet(this.encounter.weaponSets,this.encounter.activeSet,id);
+      if (set!==undefined) {
+        if (!aim || boundaryDistance(this.encounter.layout.boundary,[aim.x,aim.z])<0) {this.adventure.message('Aim at the ground'); return;}
+        if (Math.hypot(aim.x-this.encounter.player.x,aim.z-this.encounter.player.z)>this.encounter.setStats[set].reach) {this.adventure.message('Out of range'); return;}
+        const navigation=this.context.navigation?.();
+        if (navigation?.attackGround) {const target=navigation.attackGround(this.encounter.player,aim); if (!target) {this.adventure.message('Target is blocked'); return;} aim=target;}
+      }
+    }
     if (this.context.impactHolding()) {
-      if (abilitySet(this.encounter.weaponSets,this.encounter.activeSet,id)!==undefined && this.encounter.playerMana>=abilities[id].mana && (!this.encounter.blocking || abilities[id].activation==='hold')) this.encounter.pending = { kind:'ability', ability:id, remaining:.15, aim };
+      if (abilitySet(this.encounter.weaponSets,this.encounter.activeSet,id)!==undefined && this.encounter.playerMana>=abilityMana(id,this.encounter.proficiency) && (!this.encounter.blocking || abilities[id].activation==='hold')) this.encounter.pending = { kind:'ability', ability:id, remaining:.15, aim };
       return;
     }
-    const events = useAbility(this.encounter, id, this.timings().player, false, aim);
+    const events = useAbility(this.encounter, id, this.timings().player, false, aim,this.context.navigation?.());
     this.context.present(events);
     if (events.length || this.encounter.pending) return;
 
@@ -85,10 +98,9 @@ export class CombatController {
       const family = definition.family;
       const item = family === 'shield' ? 'a Shield' : family === 'axe' ? 'an Axe' : `a ${family[0].toUpperCase() + family.slice(1)}`;
       this.adventure.message(`Equip ${item} in a weapon set`);
-    } else if (this.encounter.playerMana < definition.mana) {
+    } else if (this.encounter.playerMana < abilityMana(id,this.encounter.proficiency)) {
       this.adventure.message('Not enough mana');
-    } else if (cooldownForAbility(this.encounter, id) > 0) {
-      this.adventure.message(`${definition.name} is not ready`);
+    } else if (abilityCooldown(this.encounter,id)>0) {this.adventure.message('Ability is cooling down');
     } else if (this.encounter.blocking && definition.activation !== 'hold') {
       this.adventure.message('Release Shield to attack');
     }
@@ -114,9 +126,10 @@ export class CombatController {
     this.context.interruptApproach();
     this.releaseShield();
     const aim = this.pointerAim.resolve(this.input.pointer(), this.encounter.player.y);
-    if (this.context.impactHolding()) { this.encounter.pending = { kind:'dodge', remaining:.15, direction:this.input.movement(), aim }; return; }
-    this.context.present(dodge(this.encounter, this.input.movement(), false, aim));
-    if (this.encounter.pending?.kind === 'dodge' && Math.max(this.encounter.player.lock, this.encounter.dodgeCooldown, this.encounter.dodgeRemaining) > .15)
+    const events=dodge(this.encounter,this.input.movement(),false,aim);
+    if (events.some(event=>event.type==='action' && event.action==='dodge')) this.context.cancelImpact?.();
+    this.context.present(events);
+    if (this.encounter.pending?.kind === 'dodge' && Math.max(this.encounter.dodgeCooldown, this.encounter.dodgeRemaining) > .15)
       this.adventure.message('Dodge is not ready');
   }
 }

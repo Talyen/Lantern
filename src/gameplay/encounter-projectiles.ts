@@ -1,3 +1,4 @@
+import { advancePoison } from './encounter-effects';
 import {
   casterBoltSpeed, enemyAttackDamage, type ActorId, type Encounter, type EncounterEvent,
   type Movement, type Projectile, type Timings,
@@ -47,7 +48,19 @@ export function advanceProjectile(state: Encounter, projectile: Projectile, dt: 
     }
   }
   if (nearestId !== undefined) {
+    if (projectile.sharedHits?.includes(nearestId)) return false;
+    projectile.sharedHits?.push(nearestId);
+    if (nearestId!=='player' && projectile.poisonDamage && state.enemies[nearestId].poison) {
+      const offset=dt-elapsed+nearestFraction*distance/speed;
+      const started=state.enemies[nearestId].poison!.firstStep===undefined ? 0 : dt-state.enemies[nearestId].poison!.firstStep!;
+      advancePoison(state,nearestId,Math.max(0,offset-started),timing,events,started);
+    }
     hit(state, nearestId, timing, events, projectile.kind === 'arrow' ? 'bow' : 'staff', { x: -projectile.dx, z: -projectile.dz }, dt - elapsed + nearestFraction * distance / speed, projectile.damage ?? (projectile.owner === 'player' ? state.stats.damage : enemyAttackDamage), projectile.impactId === undefined ? undefined : { actor: projectile.owner, ability: projectile.ability ?? null, id: projectile.impactId });
+    if (nearestId !== 'player' && projectile.poisonDamage && state.enemies[nearestId].hp>0) {
+      const enemy=state.enemies[nearestId];
+      const impactOffset=dt-elapsed+nearestFraction*distance/speed;
+      enemy.poison={remaining:4,nextTick:enemy.poison ? enemy.poison.nextTick : .5,damage:projectile.poisonDamage/8,impactId:projectile.impactId!,firstStep:Math.max(0,dt-impactOffset)};
+    }
     return false;
   }
   if (hits) {

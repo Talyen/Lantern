@@ -46,10 +46,19 @@ const minorShapes = [
   'M11 39C7 17 20 7 38 6c-1 18-11 31-27 33z M11 39l19-22 M20 28l-1-10 M20 28h11',
   'M11 42 7 26l3-16h5l2 13 3-19h5l-1 20 7-15h5l-6 26-9 7z M10 32h17',
 ];
+const masteryShapes = [
+  minorShapes[0],minorShapes[1],minorShapes[2],minorShapes[3],
+  'M24 5v29 M18 26l6 8 6-8 M7 41l10-5 M41 41l-10-5',
+  'M10 39 29 7 M20 40 39 8 M25 8h5v8 M34 9h5v8 M6 33l9 6 M16 34l9 6',
+  'M10 7h22 M13 7c0 12 15 12 15 19S13 33 13 42 M28 7c0 12-15 12-15 19s15 7 15 16 M10 42h22 M35 17l7 7-7 7',
+  'M8 7h16v34H8z M8 14h7 M8 22h10 M8 30h7 M30 11h11 M30 36h11 M35 11v25 M32 16h6 M32 30h6',
+  'M17 5C12 17 6 23 6 31a11 11 0 0 0 22 0c0-8-6-14-11-26 M33 15c-4 10-7 14-7 20a8 8 0 0 0 16 0c0-6-5-12-9-20',
+  'M7 11 38 37 M7 24l28 17 M13 5l29 24',
+];
 export function skillNodeIcon(skill: Skill, node: SkillNode): string {
   if (node.ability) return abilityIcon(node.ability);
   if (node.kind === 'minor') {
-    return '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="' + minorShapes[node.index] +
+    return '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="' + (node.implemented ? skill==='bow' && node.index===4 ? 'M12 5v25 M8 24l4 6 4-6 M25 10v25 M21 29l4 6 4-6 M38 5v25 M34 24l4 6 4-6 M7 42h34' : skill==='bow' && node.index===9 ? 'M24 4v8 M24 36v8 M4 24h8 M36 24h8 M24 15a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z M18 30 31 17' : masteryShapes[node.index] : minorShapes[node.index]) +
       '"/><svg x="32" y="33" width="14" height="14" viewBox="0 0 48 48">' + skillIcon(skill) + '</svg></svg>';
   }
   const motifs = [

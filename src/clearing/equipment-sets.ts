@@ -1,5 +1,6 @@
+import { Object3D } from 'three';
 import { loadEquipmentMotions, type CombatMotions } from '../animation/combat-animations';
-import { basicAbility, type WeaponSet } from '../gameplay/abilities';
+import { basicAbility, abilities, abilityIds, type WeaponSet } from '../gameplay/abilities';
 import type { ActorTiming } from '../gameplay/encounter';
 import { weaponFamily, type Loadout } from '../gameplay/equipment';
 import { itemLoadout, type InventoryItem } from '../gameplay/inventory';
@@ -25,7 +26,8 @@ export class EquipmentSets {
         if (weaponFamily(loadout.main) === 'bow') await this.prepareArrow();
         const equipment = await this.equipment.stage(loadout);
         candidates.push(equipment);
-        const motions = await loadEquipmentMotions(this.loader, 'player', loadout);
+        const rig=this.actor.mixer?.getRoot();
+        const motions=await loadEquipmentMotions(this.loader,'player',loadout,rig instanceof Object3D ? rig : undefined);
         return { equipment, motions, loadout };
       };
       next = [await prepare(0), await prepare(1)];
@@ -57,12 +59,13 @@ export class EquipmentSets {
     for (const prepared of this.sets ?? []) {
       const basic = basicAbility(weaponFamily(prepared.loadout.main));
       if (basic) timings[basic] = { attack: prepared.motions.clips.attack.duration, contacts: prepared.motions.contacts };
-      for (const [id, role] of [['sweep', 'sweep'], ['piercing-shot', 'pierce'], ['crushing-blow', 'crush']] as const) {
-        const clip = prepared.motions.clips[role], contacts = prepared.motions.skillContacts[role];
-        if (clip && contacts) timings[id] = { attack: clip.duration, contacts };
+      for (const id of abilityIds) {
+        const definition=abilities[id];
+        if (definition.family!==weaponFamily(prepared.loadout.main)) continue;
+        const role=definition.motion;
+        const clip=prepared.motions.clips[role], contacts=role==='attack' ? prepared.motions.contacts : prepared.motions.skillContacts[role];
+        if (clip && (contacts || id==='berserking')) timings[id]={attack:clip.duration,contacts:contacts ?? []};
       }
-      const cry = prepared.motions.clips.battleCry;
-      if (cry) timings.berserking = { attack: cry.duration, contacts: [] };
     }
     this.timings = timings;
   }

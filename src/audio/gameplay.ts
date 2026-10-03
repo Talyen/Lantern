@@ -16,6 +16,7 @@ export class GameplayAudio {
   constructor(readonly audio: GameAudio) {}
   encounter(events: EncounterEvent[], state: Encounter): void {
     for (const event of events) {
+      if (event.type==='impact' && event.periodic) continue;
       if (event.type === 'action') {
         const actor = event.actor === 'player' ? state.player : state.enemies[event.actor];
         if (event.action === 'battleCry') this.audio.play('battleCry', actor);
@@ -25,8 +26,9 @@ export class GameplayAudio {
         else if (event.action === 'attack') {
           if (event.weapon === 'staff') this.audio.play('magicCharge', actor, {key:`charge-${event.actor}`});
           else if (event.actor !== 'player' && state.enemies[event.actor].rig !== 'skeleton') this.audio.play('raiderWindup', actor, {key:`windup-${event.actor}`});
-          else if (event.actor === 'player' && (event.weapon === 'axe' || event.weapon === 'sword')) this.audio.play(event.weapon === 'axe' ? 'axeSwing' : 'swordSwing', actor);
+          else if (event.actor === 'player' && !['thrust','riposte','executioner','onslaught'].includes(state.playerAction?.ability ?? '') && (event.weapon === 'axe' || event.weapon === 'sword')) this.audio.play(event.weapon === 'axe' ? 'axeSwing' : 'swordSwing', actor);
         } else {
+          if (event.ability && ['thrust','riposte','executioner','onslaught'].includes(event.ability)) this.audio.play('swordSwing',actor);
           this.audio.stop(`charge-${event.actor}`);
           if (event.weapon === 'bow') this.audio.play('bowRelease', actor);
           else if (event.weapon === 'staff') this.audio.play('magicRelease', actor);
@@ -48,6 +50,7 @@ export class GameplayAudio {
   adventure(events: AdventureEvent[]): void {
     const mapping = {chestOpen:'chestOpen',returnCast:'returnCast',portalOpen:'portalOpen',portalClose:'portalClose',fireDiscovered:'fireDiscovered',healing:'healing',potionUse:'healing'} as const;
     for (const event of events) {
+      if (event.type==='abilityLearned') continue;
       if (event.type === 'healthRecovered') continue;
       if (event.type === 'lootDrop' || event.type === 'lootLand' || event.type === 'lootPickup') {
         const cue: SoundCue = event.item === 'scroll' ? event.type === 'lootPickup' ? 'scrollPickup' : 'scrollDrop'

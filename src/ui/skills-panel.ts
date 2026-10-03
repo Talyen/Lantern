@@ -34,8 +34,8 @@ export class SkillsPanel {
   private categorySelection: Partial<Record<SkillCategory, Skill>> = {};
   private displayedLevel = -1;
   constructor(private readonly ctx: Context) {
-    const family = weaponFamily(ctx.character().loadout.main);
-    this.skill = family === 'axe' ? 'axeCombat' : family ?? 'sword';
+    const family=weaponFamily(ctx.character().loadout.main);
+    this.skill=family==='axe' ? 'axeCombat' : family ?? 'sword';
     this.panel.className = 'skills-sheet';
     const header = document.createElement('header');
     header.innerHTML = '<h2 id="skills-title">Skills</h2><button type="button" aria-label="Close Skills">×</button>';
@@ -94,12 +94,14 @@ export class SkillsPanel {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.classList.add('skills-connections'); svg.setAttribute('viewBox', '0 0 1000 300'); svg.setAttribute('preserveAspectRatio', 'none'); svg.setAttribute('aria-hidden', 'true');
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    let line = 'M50 150H950';
-    for (let gap = 0; gap < 5; gap++) line += ' M' + (140 + gap * 180) + ' 66V234';
+    const mastery=this.skill==='sword' || this.skill==='bow';
+    this.tree.classList.toggle('mastery',mastery);
+    let line = mastery ? 'M50 90H950 M50 225H950' : 'M50 150H950';
+    for (let gap = 0; !mastery && gap < 5; gap++) line += ' M' + (140 + gap * 180) + ' 66V234';
     path.setAttribute('d', line); svg.append(path); this.tree.append(svg);
     const nodes = nodesForSkill(this.skill);
-    nodes.major.forEach((node, index) => this.addNode(node, 5 + index * 18, 50));
-    nodes.minor.forEach((node, index) => this.addNode(node, 14 + Math.floor(index / 2) * 18, index % 2 === 0 ? 22 : 78));
+    nodes.major.forEach((node, index) => this.addNode(node, 5 + index * 18, mastery ? 30 : 50));
+    nodes.minor.forEach((node, index) => this.addNode(node, mastery ? 5+index*10 : 14+Math.floor(index/2)*18, mastery ? 75 : index%2===0 ? 22 : 78));
     this.roots.replaceChildren();
     const skills = skillDefinitions.filter(skill => skill.category === this.category);
     this.roots.style.setProperty('--skill-count', String(skills.length));
@@ -108,7 +110,7 @@ export class SkillsPanel {
       button.innerHTML = '<span>' + skillIcon(skill.id) + '</span><span class="skills-root-name"></span>';
       button.querySelector('.skills-root-name')!.textContent = skill.name;
       button.setAttribute('aria-pressed', String(skill.id === this.skill));
-      button.setAttribute('aria-label', skill.name + ', level ' + skillLevel(this.ctx.character().xp[skill.id]));
+      button.setAttribute('aria-label', skill.name + ', level ' + skillLevel(this.ctx.character().xp[skill.id],skill.id));
       button.onclick = () => { this.skill = skill.id; this.render(); this.roots.querySelector<HTMLButtonElement>('[aria-pressed="true"]')!.focus(); };
       this.roots.append(button);
     }
@@ -119,24 +121,26 @@ export class SkillsPanel {
     button.type = 'button'; button.className = 'skills-node ' + (node.kind === 'minor' ? 'minor' : 'major');
     button.dataset.node = node.id; button.dataset.kind = node.kind;
     button.style.left = x + '%'; button.style.top = y + '%';
-    const unlocked = !node.ability || abilityUnlocked(node.ability, this.ctx.character().xp);
-    button.classList.toggle('locked', !unlocked);
+    const learned=node.implemented && (node.ability ? abilityUnlocked(node.ability,this.ctx.character().xp) : skillLevel(this.ctx.character().xp[this.skill],this.skill)>=node.level);
     button.innerHTML = '<span class="skills-node-art">' + skillNodeIcon(this.skill, node) + '</span>' +
-      (node.ability && unlocked ? '' : '<span class="skills-lock" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M5 7V5a3 3 0 0 1 6 0v2M3 7h10v7H3zM8 10v2"/></svg></span>');
-    button.classList.toggle('planned', !node.ability);
+      (learned ? '' : '<span class="skills-lock" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M5 7V5a3 3 0 0 1 6 0v2M3 7h10v7H3zM8 10v2"/></svg></span>');
+    button.classList.toggle('planned', !learned);
+    button.dataset.learned=String(learned);
     if (node.kind !== 'minor') {
       const label = document.createElement('span'); label.className = 'skills-node-label';
-      label.textContent = node.ability ? abilities[node.ability].name + (node.ability === 'berserking' ? ' · Lv ' + node.level : '') : node.role; button.append(label);
+      label.textContent = node.ability ? abilities[node.ability].name : node.role; button.append(label);
     }
-    const info = () => node.ability ? [node.role, ...this.ctx.abilityInfo(node.ability).split(' · ').slice(1), node.ability === 'berserking' ? unlocked ? 'Unlocked at Axe level 2' : 'Requires Axe level 2 · 100 XP' : 'Available from the start'] :
-      [node.role, 'Proposed level ' + node.level, node.kind === 'minor' ? 'Bonus not yet defined' : 'Not yet available'];
+    const info = () => node.implemented ? [node.role,
+      ...(node.ability ? [abilities[node.ability].description,...this.ctx.abilityInfo(node.ability).split(' · ').slice(1)] : [node.description ?? '']),
+      node.level===1 ? 'Available from the start' : (learned ? 'Learned at level ' : 'Requires level ')+node.level] :
+      [node.role,'Proposed level '+node.level,node.kind==='minor' ? 'Bonus not yet defined' : 'Not yet available'];
     button.setAttribute('aria-label', node.name + ', ' + info().join(', '));
     button.onmouseenter = button.onfocus = () => this.showTooltip(button, node.name, info());
     button.onmouseleave = () => { if (document.activeElement !== button) this.hideTooltip(); };
     button.onblur = () => this.hideTooltip();
     button.onclick = () => this.showTooltip(button, node.name, info());
     button.onpointerdown = event => {
-      if (event.button === 0 && node.ability && abilityUnlocked(node.ability, this.ctx.character().xp) && this.ctx.canEdit()) { this.hideTooltip(); this.ctx.beginDrag(node.ability, event); }
+      if (event.button === 0 && learned && node.ability && this.ctx.canEdit()) { this.hideTooltip(); this.ctx.beginDrag(node.ability, event); }
     };
     this.tree.append(button);
   }
@@ -155,7 +159,7 @@ export class SkillsPanel {
     if (!this.ctx.canEdit()) { this.showNotice('Assignments unavailable in combat.'); return; }
     this.hideTooltip(); this.closePicker(false); this.pickerTarget = target;
     const heading = document.createElement('h3'); heading.textContent = 'Choose ability'; this.picker.replaceChildren(heading);
-    for (const id of abilityIds.filter(id => abilityUnlocked(id, this.ctx.character().xp))) {
+    for (const id of abilityIds.filter(id=>abilityUnlocked(id,this.ctx.character().xp))) {
       const button = document.createElement('button'); button.type = 'button'; button.dataset.ability = id;
       button.innerHTML = '<span>' + abilityIcon(id) + '</span><span></span>'; button.lastElementChild!.textContent = abilities[id].name;
       button.title = this.ctx.abilityInfo(id);
@@ -182,9 +186,9 @@ export class SkillsPanel {
   prepare(): void { this.panel.hidden = false; this.showNotice(''); this.render(); }
   focusSelected(): void { this.roots.querySelector<HTMLButtonElement>('[aria-pressed="true"]')!.focus(); }
   update(): void {
-    const level = skillLevel(this.ctx.character().xp[this.skill]);
+    const level = skillLevel(this.ctx.character().xp[this.skill],this.skill);
     if (level === this.displayedLevel) return;
-    if (this.displayedLevel >= 0) { this.render(); return; }
+    if (this.displayedLevel>=0) {this.render(); return;}
     this.displayedLevel = level; this.heading.querySelector('.skills-level')!.textContent = 'Level ' + level;
     this.track.replaceChildren(); this.track.setAttribute('aria-label', 'Level ' + level + '; milestones 10, 20, 30, 40, 50');
     for (const milestone of [10,20,30,40,50]) {

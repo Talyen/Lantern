@@ -8,7 +8,7 @@ import type { EncounterLayout, Spawn, EnemyRig } from './area';
 export type EnemyId = string;
 export type ActorId = 'player' | EnemyId;
 export type EnemyKind = 'raider' | 'caster';
-export type Motion = 'idle' | 'run' | 'attack' | 'hit' | 'death' | 'dodge' | 'block' | 'chop' | 'sweep' | 'pierce' | 'mine' | 'crush' | 'battleCry';
+export type Motion = 'idle' | 'run' | 'attack' | 'hit' | 'death' | 'dodge' | 'block' | 'chop' | 'sweep' | 'pierce' | 'mine' | 'thrust' | 'riposte' | 'riposte-stance' | 'executioner' | 'onslaught' | 'arrow-rain' | 'deadeye' | 'crush' | 'battleCry';
 export type Phase = 'loading' | 'playing' | 'won' | 'lost';
 export type ActorState = {
   x: number;
@@ -30,8 +30,8 @@ export type EnemyState = ActorState & {
   returning: boolean;
   cooldown: number;
   lowestHp: number;
-  /** Future protected attacks explicitly opt into a heavy-interruption window. */
   interruption?: 'protected' | 'heavy-window';
+  poison?: {remaining:number; nextTick:number; damage:number; impactId:number; firstStep?:number};
 };
 export const playerMaxHealth = baseStats.maxHealth, enemyMaxHealth = 200, playerMaxMana = baseStats.maxMana;
 export const enemyAttackDamage = 20;
@@ -52,6 +52,8 @@ export type Projectile = {
   pierced?: ActorId[];
   impactId?: number;
   ability?: AbilityId | null;
+  poisonDamage?: number;
+  sharedHits?: ActorId[];
 };
 export const casterAttackRange = 6, casterBoltSpeed = 8;
 export type PendingInput = {
@@ -72,6 +74,12 @@ export type PendingInput = {
 });
 export type PlayerAction = {
   impactId?: number;
+  committed?: boolean;
+  mana?: number;
+  cooldown?: number;
+  baseDamage?: number;
+  aim?: AimPoint;
+  target?: EnemyId;
   duration: number;
   contacts: readonly number[];
   damage: number;
@@ -83,6 +91,13 @@ export type PlayerAction = {
 };
 export type Encounter = {
   phase: Phase;
+  frameElapsed?: number;
+  frameManaStart?: number;
+  proficiency: Partial<SkillXP>;
+  ultimateCooldown: number;
+  berserkingRemaining: number;
+  riposte?: {remaining:number; action:PlayerAction; frameOffset?:number};
+  rains: {id:number; x:number; y:number; z:number; age:number; damage:number; pulse:number; rate:number; firstStep?:number}[];
   layout: EncounterLayout;
   player: ActorState;
   enemyIds: EnemyId[];
@@ -103,9 +118,6 @@ export type Encounter = {
   weaponSets: [Loadout, Loadout];
   activeSet: WeaponSet;
   abilityCooldowns: Partial<Record<AbilityId, number>>;
-  ultimateCooldown: number;
-  berserkingRemaining: number;
-  proficiency: Partial<SkillXP>;
   potionCooldown: number;
   playerAction: PlayerAction | null;
   // Within-frame dodge onset lets contacts retain pre-unlock damage/immunity.
@@ -130,12 +142,13 @@ export type ActorTiming = {
 };
 export type Timings = Record<ActorId, ActorTiming>;
 export type Movement = {
+  attackGround?(from: ActorState, point: AimPoint): (AimPoint & {y:number}) | null;
   move(id: ActorId, actor: ActorState, dx: number, dz: number, dt: number): void;
   direction(from: ActorState, to: ActorState, dt: number): {
     x: number;
     z: number;
   };
-  lineOfSight(from: ActorState, to: ActorState): boolean;
+  lineOfSight(from: Pick<ActorState,'x' | 'y' | 'z'>, to: Pick<ActorState,'x' | 'y' | 'z'>): boolean;
   segmentHit?(from: {
     x: number;
     y: number;
@@ -147,6 +160,7 @@ export type Movement = {
   }): number | null;
 };
 export type AimPoint = {
+  y?: number;
   x: number;
   z: number;
 };
@@ -172,6 +186,7 @@ export type EncounterEvent = {
   actor: ActorId;
   action: 'attack' | 'contact' | 'dodge' | 'land' | 'battleCry' | 'berserking';
   weapon: Weapon | null;
+  ability?: AbilityId;
 } | {
   type: 'impact';
   origin?: { actor: ActorId; ability: AbilityId | null; id: number };
@@ -181,6 +196,7 @@ export type EncounterEvent = {
   weapon: Weapon | null;
   blocked: boolean;
   lethal: boolean;
+  periodic?: boolean;
 } | {
   type: 'projectileImpact';
   kind: 'arrow' | 'bolt';
@@ -192,6 +208,14 @@ export type EncounterEvent = {
   type: 'proficiency';
   family: 'axe' | 'sword' | 'bow';
   amount: number;
+} | {
+  type: 'abilityCommitted';
+  ability: AbilityId;
+  id: number;
+} | {
+  type: 'abilityCancelled';
+  ability: AbilityId | null;
+
 } | {
   type: 'label';
   value: 'MOVE TO BEGIN' | 'DEFEAT THE RAIDER' | 'RAIDER ATTACKING' | 'DEFEAT THE CASTER' | 'CASTER ATTACKING';

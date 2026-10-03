@@ -125,7 +125,7 @@ export function stepEnemy(state: Encounter, id: EnemyId, dt: number, timing: Tim
       const contactDx = player.x - enemy.x, contactDz = player.z - enemy.z, reach = Math.hypot(contactDx, contactDz);
       const facing = reach > 0 ? (Math.sin(enemy.yaw) * contactDx + Math.cos(enemy.yaw) * contactDz) / reach : 1;
       if (facing >= .5 && Math.hypot(player.x - enemy.x, player.z - enemy.z) <= 1.8 && (!movementWorld || movementWorld.lineOfSight(enemy, player)) && Math.abs(player.y - enemy.y) < .8)
-        hit(state, 'player', timing, events, weaponFamily(enemy.loadout.main) ?? undefined, { x: enemy.x - player.x, z: enemy.z - player.z }, dt - attackElapsed + Math.max(0, timing[id].contacts[enemy.contactIndex - 1] - (enemy.attackTime - attackElapsed)));
+        hit(state, 'player', timing, events, weaponFamily(enemy.loadout.main) ?? undefined, { x: enemy.x - player.x, z: enemy.z - player.z, melee:id }, dt - attackElapsed + Math.max(0, timing[id].contacts[enemy.contactIndex - 1] - (enemy.attackTime - attackElapsed)));
       if (state.phase !== 'playing')
         return;
     }

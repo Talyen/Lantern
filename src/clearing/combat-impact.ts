@@ -9,10 +9,10 @@ export class CombatImpact {
   clear(): void { this.stop = this.shake = 0; this.seen.length = 0; }
   present(events: readonly EncounterEvent[]): void {
     for (const event of events) {
-      if (event.type !== 'impact' || event.blocked || event.actor === 'player' || event.origin?.actor !== 'player') continue;
+      if (event.type !== 'impact' || event.periodic || event.blocked || event.actor === 'player' || event.origin?.actor !== 'player') continue;
       const { id, ability } = event.origin;
       if (this.seen.includes(id)) continue;
-      const skill = ability === 'sweep' || ability === 'piercing-shot' || ability === 'crushing-blow';
+      const skill = ability === 'crushing-blow' || ability === 'sweep' || ability === 'piercing-shot' || ability === 'multishot' || ability === 'executioner' || ability === 'onslaught' || ability === 'riposte' || ability === 'deadeye';
       if (!skill && event.weapon !== 'axe' && event.weapon !== 'sword') continue;
       this.seen.push(id); if (this.seen.length > 64) this.seen.shift();
       this.stop = Math.min(.07, Math.max(this.stop, skill ? .055 : .035));
