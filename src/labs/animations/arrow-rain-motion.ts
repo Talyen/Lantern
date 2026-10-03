@@ -57,7 +57,10 @@ export function skywardShot(source: THREE.Object3D, shot: THREE.AnimationClip, d
       const look = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -THREE.MathUtils.degToRad(14) * weight);
       for (const bone of bones.slice(6)) worldRotation(bone, look.clone().multiply(rotation(bone)));
       times.push(time);
-      for (const bone of bones) bone.quaternion.toArray(authored.get(bone.name)!, authored.get(bone.name)!.length);
+      for (const bone of bones) {
+        const values = authored.get(bone.name)!;
+        bone.quaternion.toArray(values, values.length);
+      }
       for (const record of tracks) record.values.push(...record.interpolant.evaluate(sourceTime));
     }
     const output = tracks.filter(({ track }) => !names.some(name => track.name === `${name}.quaternion`)).map(({ track, values }) => {
