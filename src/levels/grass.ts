@@ -5,10 +5,24 @@ import type { AreaDefinition } from './types.ts';
 
 /** Authored carpet extents in metres. Grass is cosmetic and never changes navigation. */
 export type GrassPatch = { id: string; center: [number, number]; radii: [number, number]; yaw: number; density: number };
-export type GrassBlade = { x: number; z: number; height: number; width: number; yaw: number; shade: number; phase: number };
+export type GrassBlade = { x: number; z: number; height: number; width: number; yaw: number; shade: number; phase: number; lean: [number, number]; taper: number };
 export const grassBudget = 40_000;
 export const grassCellSize = 4;
 const smooth = (a: number, b: number, x: number) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+
+/** Smooth seeded growth fields group neighbouring blades without visible rows or colour speckles. */
+function grassField(seed: number, x: number, z: number, salt: number): number {
+  const ix = Math.floor(x), iz = Math.floor(z), fx = smooth(0, 1, x - ix), fz = smooth(0, 1, z - iz);
+  const sample = (px: number, pz: number) => {
+    let h = (seed ^ Math.imul(px, 0x45d9f3b) ^ Math.imul(pz, 0x27d4eb2d) ^ salt) >>> 0;
+    h = Math.imul(h ^ (h >>> 16), 0x45d9f3b); h = Math.imul(h ^ (h >>> 16), 0x45d9f3b);
+    return ((h ^ (h >>> 16)) >>> 0) / 4294967295;
+  };
+  const a = sample(ix, iz) * (1 - fx) + sample(ix + 1, iz) * fx;
+  const b = sample(ix, iz + 1) * (1 - fx) + sample(ix + 1, iz + 1) * fx;
+  return a * (1 - fz) + b * fz;
+}
+const grassGrowth = (seed: number, x: number, z: number) => grassField(seed, x * 1.7, z * 1.7, 0x31ab);
 
 export function grassCoverage(area: AreaDefinition, patches: GrassPatch[], x: number, z: number): number {
   if (boundaryDistance(area.layout.boundary, [x, z]) < .2 || inReserved(area, [x, z], .35)) return 0;
@@ -32,10 +46,12 @@ export function grassCoverage(area: AreaDefinition, patches: GrassPatch[], x: nu
     const edge = Math.sin(x * 1.13 + z * .71) * .06 + Math.sin(z * 1.81 - x * .37) * .035;
     coverage = Math.max(coverage, (1 - smooth(.72, 1, radius + edge)) * patch.density);
   }
-  return coverage * groundClearance;
+  // Keep a short continuous base, with fuller tufts and intervening soil. The
+  // same field feeds the ground mask, so sparse growth never becomes a green stamp.
+  return coverage * groundClearance * (.38 + .62 * smooth(.15, .8, grassGrowth(area.seed, x, z)));
 }
 
-/** Jittered, evenly spaced roots make continuous carpets without overlapping clump centers. */
+/** Seeded roots and smooth growth fields form connected, irregular woodland tufts. */
 export function generateGrass(area: AreaDefinition, patches: GrassPatch[]): GrassBlade[] {
   if (!patches.length) return [];
   let state = (area.seed ^ 0x6a09e667) >>> 0;
@@ -51,8 +67,15 @@ export function generateGrass(area: AreaDefinition, patches: GrassPatch[]): Gras
   for (let z = minZ; z < maxZ; z += step) for (let x = minX; x < maxX; x += step) {
     const px = x + random() * step, pz = z + random() * step, chance = random();
     if (chance > grassCoverage(coverageArea, patches, px, pz) / density) continue;
-    const broad = (Math.sin(px * .38 + pz * .24) + Math.sin(pz * .47 - px * .13)) * .125 + .5;
-    const blade = { x: px, z: pz, height: .1 + random() * .1, width: .018 + random() * .014, yaw: random() * Math.PI * 2, shade: broad * .8 + random() * .2, phase: random() * Math.PI * 2 };
+    const growth = grassGrowth(area.seed, px, pz);
+    const broad = grassField(area.seed, px * .24, pz * .24, 0x7f42);
+    const heading = grassField(area.seed, px * 1.3, pz * 1.3, 0x9b17) * Math.PI * 4;
+    const yaw = heading + (random() - .5) * 2.2;
+    const height = .085 + growth * .11 + random() * .04 + smooth(.7, .9, growth) * .08;
+    const blade: GrassBlade = { x: px, z: pz, height, width: .018 + random() * .012,
+      yaw, shade: smooth(.2, .8, broad) * .9 + random() * .06,
+      phase: grassField(area.seed, px * 1.3, pz * 1.3, 0x6c23) * Math.PI * 2,
+      lean: [(random() - .5) * .35, .18 + growth * .35 + random() * .2], taper: .65 + random() * .65 };
     // Reservoir sampling keeps the hard budget uniform over the entire carpet.
     accepted++;
     if (result.length < grassBudget) result.push(blade);

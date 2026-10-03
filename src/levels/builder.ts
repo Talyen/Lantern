@@ -98,7 +98,7 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
         if (grass?.coverage) {
           m.map = grass.coverage.texture;
           const coverage = texture(m.map, positionWorld.xz.sub(vec2(...grass.coverage.min)).div(vec2(...grass.coverage.span))).r;
-          const grassSoil = { color: '#4b4e32', strength: .28 };
+          const grassSoil = { color: '#454833', strength: .18 };
           lightingProcedural.push({ grassSoil });
           m.colorNode = mix(m.colorNode, vec3(...new THREE.Color(grassSoil.color).toArray()), coverage.mul(grassSoil.strength));
         }
