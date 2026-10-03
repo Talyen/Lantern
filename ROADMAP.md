@@ -214,6 +214,8 @@ SSR, local captures, snow, storms, dynamic weather/wetting/drying, visible sky/c
 
 ## UI design and polish
 
+The Skills interface now follows the adopted six-step horizontal layout: category tabs, a complete active-category skill row, a level ruler marked 10/20/30/40/50, two Basics/two Skills/two Ultimates and ten passive positions for combat/magic, with generic Major/Minor positions for gathering/crafting. All 28 owner-selected tracks have saved XP records; existing Woodcutting/Mining/Axe progress and current actions remain functional. Other XP sources, future actions and passive effects remain planned; displayed future milestone thresholds are provisional. See [Skills design and scope](Docs/ui/concepts/skills-horizontal/BRIEF.md).
+
 The owner selected warm, crafted fantasy, restrained ornament and desktop keyboard/mouse first. The [UI design system](Docs/UI_DESIGN.md), [decisions](Docs/ui/DESIGN_DECISIONS.md) and [screen catalog](Docs/ui/SCREEN_CATALOG.md) own the evolving direction. Inventory/stash implementation was explicitly authorized after organizational/sketch/interaction studies; other screens still require their design work and guiding questions.
 
 - [x] Establish repository direction, decision records, foundation proposals and an original ImageGen exploration workflow.

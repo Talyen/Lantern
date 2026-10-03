@@ -1,5 +1,7 @@
 # Skills node redesign brief
 
+**Superseded:** use [the adopted horizontal brief](../skills-horizontal/BRIEF.md). The upward direction, scrolling roots, XP display and profession Basic/Skill/Ultimate proposal below are historical.
+
 ## Scope and status
 
 Active concept round requested October 2, 2026. Supersedes [first-round assignment/layout design](../skills/BRIEF.md), preserves its 28-track roster and progression-first goal. Player goal: understand upward skill growth, inspect action/passive unlocks, and assign available actions using the actual gameplay bar.

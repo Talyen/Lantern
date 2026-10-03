@@ -11,7 +11,7 @@ import {
   type LootItem,
 } from './inventory';
 import { buybackLimit, type BuybackEntry } from './economy';
-import { progression } from './skills';
+import { progression, skillIds } from './skills';
 
 export const characterSaveKey = 'lantern.character.v1';
 export const characterBackupKey = `${characterSaveKey}.backup`;
@@ -24,7 +24,7 @@ function counter(n: unknown): n is number {
 /** Decode into an unpublished candidate; a failed migration never changes gameplay state. */
 export function decodeCharacter(raw: string): CharacterSave {
   const value = parseJson(raw);
-  if (!isRecord(value) || typeof value.version !== 'number' || ![1, 2, 3, 4, 5, 6, 7].includes(value.version)
+  if (!isRecord(value) || typeof value.version !== 'number' || ![1, 2, 3, 4, 5, 6, 7, 8].includes(value.version)
     || !Array.isArray(value.campfires) || !value.campfires.every((id: unknown): id is string => typeof id === 'string'))
     throw new Error('Invalid character save');
 
@@ -44,6 +44,12 @@ export function decodeCharacter(raw: string): CharacterSave {
       sequence = Math.max(sequence, Number(entry.id.match(/^item-(\d+)$/)?.[1] ?? 0));
   }
   if (value.version >= 7) restoreEconomy(value, result);
+  if (value.version >= 8) {
+    for (const id of skillIds) {
+      if (!counter(xp[id])) throw new Error('Invalid skill progress');
+      result.xp[id] = xp[id];
+    }
+  }
   result.campfires = [...new Set<string>(['homestead/camp', ...value.campfires])];
   if (!hasCombat) addLegacyPotions(result.items, newId);
   return result;
@@ -54,7 +60,7 @@ function restoreInventory(value: SavedFields, xp: SavedFields, hasHome: boolean,
     || !Array.isArray(value.campClaims) || !value.campClaims.every(isItemId))
     throw new Error('Invalid inventory save');
   const result = character(value.items);
-  result.xp = { woodcutting: xp.woodcutting, axeCombat: xp.axeCombat, mining: 0 };
+  Object.assign(result.xp, { woodcutting: xp.woodcutting, axeCombat: xp.axeCombat });
   result.campClaims = [...new Set(value.campClaims)];
   if (hasHome) restoreHomestead(value, xp, result);
   if (hasCombat) restoreCombat(value, result);
@@ -118,7 +124,7 @@ function migrateLegacyInventory(value: SavedFields, xp: SavedFields, newId: () =
   }
   const result = character(items);
   if (value.version === 2) {
-    result.xp = legacyXp;
+    Object.assign(result.xp, legacyXp);
     if (claimed) result.campClaims = ['sword', 'shield', 'bow', 'staff'];
   }
   return result;

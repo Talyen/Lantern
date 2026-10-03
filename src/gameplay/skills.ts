@@ -1,6 +1,28 @@
 /** Shared progression tuning. Levels are derived from XP, never independently saved. */
 export type GatheringSkill = 'woodcutting' | 'mining';
-export type Skill = GatheringSkill | 'axeCombat';
+export const skillCategories = ['Combat', 'Magic', 'Gathering', 'Crafting'] as const;
+export type SkillCategory = typeof skillCategories[number];
+export const skillDefinitions = [
+  {id:'sword',name:'Sword',category:'Combat'}, {id:'axeCombat',name:'Axe',category:'Combat'},
+  {id:'mace',name:'Mace',category:'Combat'}, {id:'dagger',name:'Dagger',category:'Combat'},
+  {id:'spear',name:'Spear',category:'Combat'}, {id:'greatsword',name:'Greatsword',category:'Combat'},
+  {id:'greathammer',name:'Greathammer',category:'Combat'}, {id:'bow',name:'Bow',category:'Combat'},
+  {id:'crossbow',name:'Crossbow',category:'Combat'}, {id:'staff',name:'Staff',category:'Combat'},
+  {id:'wand',name:'Wand',category:'Combat'}, {id:'shield',name:'Shield',category:'Combat'},
+  {id:'defense',name:'Defense',category:'Combat'}, {id:'evasion',name:'Evasion',category:'Combat'},
+  {id:'burn',name:'Burn',category:'Magic'}, {id:'freeze',name:'Freeze',category:'Magic'},
+  {id:'nature',name:'Nature',category:'Magic'}, {id:'healing',name:'Healing',category:'Magic'},
+  {id:'woodcutting',name:'Woodcutting',category:'Gathering'}, {id:'mining',name:'Mining',category:'Gathering'},
+  {id:'herbalism',name:'Herbalism',category:'Gathering'}, {id:'smithing',name:'Smithing',category:'Crafting'},
+  {id:'leatherworking',name:'Leatherworking',category:'Crafting'}, {id:'tailoring',name:'Tailoring',category:'Crafting'},
+  {id:'woodworking',name:'Woodworking',category:'Crafting'}, {id:'alchemy',name:'Alchemy',category:'Crafting'},
+  {id:'cooking',name:'Cooking',category:'Crafting'}, {id:'jewelcrafting',name:'Jewelcrafting',category:'Crafting'},
+] as const;
+export type Skill = typeof skillDefinitions[number]['id'];
+export type SkillXP = Record<Skill, number>;
+export const skillIds = skillDefinitions.map(skill => skill.id);
+export const initialSkillXP = (): SkillXP => Object.fromEntries(skillIds.map(id => [id, 0])) as SkillXP;
+export const earnsSkillXP = (id: Skill): boolean => id === 'axeCombat' || id === 'woodcutting' || id === 'mining';
 export const progression = { xpStep: 100, yieldGrowth: .25, gatheringXp: 10, restedBonus: .10, restedSeconds: 30 * 60, restedRadius: 3, checkpointSeconds: 5 };
 export const gathering = { reach: 1.8, workingReach: .85, facingCone: Math.PI / 6, threatRadius: 6, contacts: 3, renewalSeconds: 120, baseYield: 1, resourceLevel: 1, mineralDepletedScale: .42 };
 export const shelterRecipe = { wood: 12, stone: 6, iron: 3 } as const;

@@ -87,9 +87,11 @@ HUD design should protect the central combat space and make urgent state legible
 
 ## Shared component contracts
 
+[ui-tokens.css](../src/ui/ui-tokens.css) owns the shared semantic colors used by Inventory and Skills; each screen retains its authored layout and material gradients.
+
 ### Skills node direction
 
-The owner selected an Inventory-sized Skills sheet with larger Basic/Skill/Ultimate ability nodes and smaller passive-bonus nodes for every track. Each node has its own icon and hover/focus information; locked art retains identity beneath a small badge. Passives describe bonuses and are never action-bar assignments. Assignment uses the actual bottom gameplay bar outside the sheet: drag an available action to it, or activate an empty slot to open an available-ability picker. No in-panel Assigned Abilities section. [Upward-tree concepts](ui/concepts/skills-nodes/README.md) compare bottom roots and named navigation; this is design direction, not implemented runtime.
+The owner selected an Inventory-sized Skills sheet with category tabs above and every skill in the active category visible in a bottom icon row. [The adopted six-step horizontal tree](ui/concepts/skills-horizontal/README.md) has two Basics, two Skills, two Ultimates and two smaller passive nodes between every pair of majors; Gathering/Crafting instead use generic Major/Minor placeholders. Each node has its own icon and hover/focus information; planned art retains identity beneath a small badge. A level ruler above the skill row marks 10/20/30/40/50 without an XP bar. Assignment uses the real gameplay bar outside the sheet: drag an existing action to it or activate an empty slot for its picker. No in-panel Assigned Abilities section. [SkillsPanel](../src/ui/skills-panel.ts) and [skills.css](../src/ui/skills.css) own the screen; current actions stay available and future nodes/thresholds remain planned.
 
 Build these as small DOM/CSS patterns in the existing `src/ui/` boundaries, driven by current gameplay definitions. Introduce a shared primitive only when there is a concrete consumer; use Inventory and Options to prove reuse. A framework, Storybook installation or new UI dependency is not a prerequisite.
 

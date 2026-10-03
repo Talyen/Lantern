@@ -74,7 +74,13 @@ The owner requested original ImageGen mockups and variants. [First-round studies
 
 Owner selected an Inventory-sized Skills sheet, with larger ability nodes (Basics, Skills, Ultimates) and smaller passive-bonus nodes for every skill, a unique icon for each node, and hover information. The owner removed Assigned Abilities: drag available ability nodes to the actual bottom gameplay action bar, or click an empty slot to choose an available action. Passives are bonuses, not bar assignments. Keyboard focus/activation provides equivalent information and picker access.
 
-The owner proposed roots along the bottom with linear trees growing upward. [The active gallery](concepts/skills-nodes/README.md) compares focused and parallel bottom-root trees with grouped-list navigation. Final layout/category/root order remains open. Representative passive content is illustrative; no new rewards, progression amounts or unlock prerequisites are adopted. The action bar stays outside the sheet; no duplicate in-panel strip.
+The owner initially proposed upward roots; [that gallery](concepts/skills-nodes/README.md) is superseded by the selected horizontal design below. Representative passive content is illustrative; no new effects are adopted. The action bar stays outside the sheet; no duplicate in-panel strip.
+
+## Skills horizontal design and implementation — October 2, 2026
+
+Owner selected [the six-step left-to-right grouping](concepts/skills-horizontal/README.md) with two smaller passives between adjacent majors and authorized implementation. Category tabs are above; every skill in the active category fits simultaneously below. Combat/Magic show two Basics, two Skills and two Ultimates; Gathering/Crafting use generic Major/Minor placeholders. A level ruler marks 10/20/30/40/50 above the roots; no XP bar.
+
+Owner chose existing actions plus planned nodes, requested proposed thresholds and generic profession labels. Six future targets are provisionally 1/10/20/30/40/50 with intermediate pairs 3/6, 13/16, 23/26, 33/36, 43/46. Existing actions remain immediately available; these prospective targets do not gate them or activate undefined effects. Revision 8 records all 28 XP tracks without changing current XP sources. [The brief](concepts/skills-horizontal/BRIEF.md) records owners and acceptance.
 
 ## Decision entry format
 

@@ -2,10 +2,11 @@ import { initialBar, type ActionBar, type WeaponSet } from './abilities';
 import { isItemId, weaponFamily, type ItemId, type Loadout } from './equipment';
 import { countItem, itemLoadout, type InventoryItem } from './inventory';
 import type { BuybackEntry } from './economy';
+import { initialSkillXP, type SkillXP } from './skills';
 
 /** Live character state; save decoding and browser storage have separate owners. */
 export type CharacterSave = {
-  version: 7;
+  version: 8;
   gold: number;
   buyback: BuybackEntry[];
   activeSet: WeaponSet;
@@ -15,7 +16,7 @@ export type CharacterSave = {
   shelterRestored: boolean;
   restedSeconds: number;
   campfires: string[];
-  xp: { woodcutting: number; mining: number; axeCombat: number };
+  xp: SkillXP;
   campClaims: ItemId[];
   readonly scrolls: number;
   readonly potions: number;
@@ -31,7 +32,7 @@ export function character(
   ],
 ): CharacterSave {
   const value: CharacterSave = {
-    version: 7,
+    version: 8,
     gold: 0,
     buyback: [],
     activeSet: 0,
@@ -41,7 +42,7 @@ export function character(
     shelterRestored: false,
     restedSeconds: 0,
     campfires: ['homestead/camp'],
-    xp: { woodcutting: 0, mining: 0, axeCombat: 0 },
+    xp: initialSkillXP(),
     campClaims: [],
     get scrolls() {
       return countItem(value.items.filter(entry => entry.slot !== 'overflow'), 'scroll');

@@ -1,5 +1,7 @@
 # Skills — upward nodes and external action-bar assignment
 
+**Superseded:** owner selected [the horizontal six-step layout](../skills-horizontal/README.md), a complete active-category skill row, a level ruler without XP bars and generic profession nodes. These upward studies remain historical provenance.
+
 October 2, 2026. This is the active concept round, superseding [the first round](../skills/README.md). Original built-in ImageGen output only; no runtime, save or XP gameplay changes. See the [brief](BRIEF.md), [design system](../../../UI_DESIGN.md) and [decisions](../../DESIGN_DECISIONS.md).
 
 ## Owner-selected changes

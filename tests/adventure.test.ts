@@ -1,6 +1,7 @@
 import { rollGold, type GoldSource } from '../src/gameplay/economy';
 import { isRecord, parseJson } from '../src/data/json';
 import { expect, test, vi } from 'vitest';
+import { skillIds } from '../src/gameplay/skills';
 import { characterBackupKey, decodeCharacter } from '../src/gameplay/character-save';
 import { Adventure, characterSaveKey } from '../src/gameplay/adventure';
 import { applyEquipment, createEncounter, enemyMaxHealth } from '../src/gameplay/encounter';
@@ -144,7 +145,7 @@ test('the chest scatters rewards once per session and only collected gear is per
 test('legacy characters migrate equipped copies, resources and claimed rewards without loss', () => {
   const storage = memory(); storage.setItem(characterSaveKey, JSON.stringify({ version: 2, scrolls: 7, campfires: ['clearing/camp'], equipment: ['axe', 'sword', 'shield', 'bow', 'staff'], loadout: { main: 'bow', off: null }, wood: 12000, xp: { woodcutting: 20, axeCombat: 30 }, campEquipmentClaimed: true }));
   const state = new Adventure(storage, () => 1), encounter = createEncounter('playing');
-  expect([state.character.version, state.character.scrolls, state.character.loadout.main]).toEqual([7, 7, 'bow']);
+  expect([state.character.version, state.character.scrolls, state.character.loadout.main]).toEqual([8, 7, 'bow']);
   expect(state.character.equipment).toEqual(['bow', 'axe', 'sword', 'shield', 'staff']);
   expect(state.character.wood).toBe(12000); expect(state.character.items.some(i => i.slot === 'overflow')).toBe(true);
   expect(validItems(state.character.items)).toBe(true);
@@ -330,7 +331,7 @@ test('revision 3 migration preserves a full bag and grants starter potions only 
   const storage=memory(),items:InventoryItem[]=Array.from({length:96},(_,i)=>({id:`full-${i}`,item:'wood',quantity:99,slot:'bag',x:i%12,y:Math.floor(i/12)}));
   items.push({id:'item-20',item:'axe',quantity:1,slot:'main',x:0,y:0});
   storage.setItem(characterSaveKey,JSON.stringify({version:3,items,campfires:['homestead/camp'],xp:{woodcutting:30,axeCombat:40},campClaims:['sword']}));
-  const migrated=new Adventure(storage);expect(migrated.character.version).toBe(7);expect(migrated.character.items.filter(i=>i.item!=='potion')).toEqual(items);
+  const migrated=new Adventure(storage);expect(migrated.character.version).toBe(8);expect(migrated.character.items.filter(i=>i.item!=='potion')).toEqual(items);
   expect(migrated.character.items.find(i=>i.item==='potion')).toMatchObject({slot:'overflow',quantity:3});
   migrated.setActionBar(['sweep','piercing-shot',null,null,'axe-basic','shield-basic']);migrated.setWeaponSet(1);
   const restored=new Adventure(storage);expect(restored.character).toEqual(migrated.character);expect(restored.character.items.filter(i=>i.item==='potion')).toHaveLength(1);
@@ -379,7 +380,7 @@ test('revision 4 Homestead progress migrates with combat controls and starter po
   const items:InventoryItem[]=[{id:'item-42',item:'sword',quantity:1,slot:'main',x:0,y:0},{id:'item-43',item:'scroll',quantity:5,slot:'bag',x:0,y:0}];
   const stash:InventoryItem[]=[{id:'item-900',item:'iron',quantity:99,slot:'bag',x:0,y:0}];
   storage.setItem(characterSaveKey,JSON.stringify({version:4,items,stash,shelterRestored:true,restedSeconds:123,campfires:['homestead/camp'],xp:{woodcutting:327.5,mining:47.5,axeCombat:60},campClaims:['sword']}));
-  const migrated=new Adventure(storage);expect(migrated.character.version).toBe(7);expect(migrated.character.stash).toEqual(stash);expect(migrated.character.shelterRestored).toBe(true);expect(migrated.character.restedSeconds).toBe(123);expect(migrated.character.xp.mining).toBe(47.5);expect(migrated.character.actionBar[4]).toBe('sword-basic');expect(migrated.character.potions).toBe(3);
+  const migrated=new Adventure(storage);expect(migrated.character.version).toBe(8);expect(migrated.character.stash).toEqual(stash);expect(migrated.character.shelterRestored).toBe(true);expect(migrated.character.restedSeconds).toBe(123);expect(migrated.character.xp.mining).toBe(47.5);expect(migrated.character.actionBar[4]).toBe('sword-basic');expect(migrated.character.potions).toBe(3);
   const restored=new Adventure(storage);expect(restored.character).toEqual(migrated.character);expect(restored.character.potions).toBe(3);expect(new Set([...restored.character.items,...restored.character.stash].map(i=>i.id)).size).toBe(restored.character.items.length+restored.character.stash.length);
 });
 
@@ -530,7 +531,7 @@ test('shared equipment stays across swaps, accepts only its slots, and full-bag 
 test('revision 5 migrates losslessly and current saves retain shared slots, stash and all discovery claims', () => {
   const storage=memory(),adventure=new Adventure(storage);
   const old={...adventure.character,version:5,campClaims:['sword','shield'],shelterRestored:true,restedSeconds:123,stash:[{id:'stored',item:'iron',quantity:7,slot:'bag',x:0,y:0}],xp:{woodcutting:31,mining:22,axeCombat:17}};
-  const migrated=decodeCharacter(JSON.stringify(old));expect(migrated.version).toBe(7);expect(migrated.items).toEqual(old.items);expect(migrated.stash).toEqual(old.stash);expect(migrated.campClaims).toEqual(old.campClaims);
+  const migrated=decodeCharacter(JSON.stringify(old));expect(migrated.version).toBe(8);expect(migrated.items).toEqual(old.items);expect(migrated.stash).toEqual(old.stash);expect(migrated.campClaims).toEqual(old.campClaims);
   expect(migrated.items.some(item=>item.slot==='helmet')).toBe(false);
   migrated.items.push({id:'helm',item:'guard-helm',quantity:1,slot:'helmet',x:0,y:0});migrated.campClaims.push('guard-helm','yew-longbow');
   expect(decodeCharacter(JSON.stringify(migrated))).toEqual(migrated);
@@ -649,7 +650,7 @@ test('buyback retains only the last ten, migrates revision 6 without gifts and r
   const duplicate={...state.character,items:[{id:ids[10],item:'sword',quantity:1,slot:'bag',x:0,y:0}]};
   expect(()=>decodeCharacter(JSON.stringify(duplicate))).toThrow('Duplicate buyback identity');
   const legacy={...state.character,version:6,gold:undefined,buyback:undefined};
-  const migrated=decodeCharacter(JSON.stringify(legacy));expect(migrated.version).toBe(7);expect(migrated.gold).toBe(0);expect(migrated.buyback).toEqual([]);
+  const migrated=decodeCharacter(JSON.stringify(legacy));expect(migrated.version).toBe(8);expect(migrated.gold).toBe(0);expect(migrated.buyback).toEqual([]);
   expect(migrated.items).toEqual(legacy.items); expect(migrated.campClaims).toEqual(legacy.campClaims);
   state.closeSave();restored.closeSave();
 });
@@ -712,4 +713,30 @@ test('named skeletons use authored humanoid gold rewards once through return tra
   expect(adventure.session().drops.filter(drop=>drop.item==='gold').map(drop=>drop.quantity)).toEqual([3]);
   adventure.enter(encounter,home);adventure.enter(encounter,area);adventure.step(encounter,area,.01);
   expect(adventure.session().drops.filter(drop=>drop.item==='gold')).toHaveLength(1);adventure.closeSave();
+});
+
+
+test('revision 7 skill migration preserves the full character and seeds new tracks at zero', () => {
+  const adventure = new Adventure(memory());
+  const old = {...adventure.character, version:7, gold:45, shelterRestored:true, restedSeconds:123,
+    stash:[{id:'stored-iron',item:'iron',quantity:7,slot:'bag',x:0,y:0}],
+    buyback:[{id:'sold-shield',item:'shield',price:3}], campClaims:['sword'],
+    xp:{woodcutting:327.5,mining:47.5,axeCombat:60}};
+  const migrated = decodeCharacter(JSON.stringify(old));
+  expect({...migrated, version:7, xp:old.xp}).toEqual(old);
+  expect(migrated.xp).toMatchObject(old.xp);
+  expect(skillIds.filter(id => !['woodcutting','mining','axeCombat'].includes(id)).every(id => migrated.xp[id] === 0)).toBe(true);
+  expect(decodeCharacter(JSON.stringify(migrated))).toEqual(migrated);
+  adventure.closeSave();
+});
+
+test('all saved skill tracks round-trip and invalid planned progress cannot replace a character', () => {
+  const adventure = new Adventure(memory()), value = adventure.character;
+  skillIds.forEach((id,index) => { value.xp[id] = index * 10.5; });
+  const raw = JSON.stringify(value);
+  expect(decodeCharacter(raw).xp).toEqual(value.xp);
+  expect(()=>decodeCharacter(JSON.stringify({...value,xp:{...value.xp,healing:-1}}))).toThrow('Invalid skill progress');
+  expect(()=>decodeCharacter(JSON.stringify({...value,xp:{...value.xp,herbalism:undefined}}))).toThrow('Invalid skill progress');
+  expect(JSON.stringify(value)).toBe(raw);
+  adventure.closeSave();
 });
