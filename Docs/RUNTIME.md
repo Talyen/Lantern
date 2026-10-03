@@ -93,7 +93,7 @@ Production builds stage explicitly selected Synty library entries plus dependenc
 
 ## Change method
 
-Read the affected owner and consumers first. Preserve existing work; introduce dependencies or abstractions only for concrete consumers. Update this guide when ownership changes. Keep decisions beside their owner rather than only in an implementation plan. Extend the cheap simulation tests only for established behavior that merits ongoing protection.
+Read the affected owner and consumers first. Preserve existing work; introduce dependencies or abstractions only for concrete consumers. Update this guide when ownership changes. Keep decisions beside their owner rather than only in an implementation plan. New or materially rewritten tests follow the [test admission and review policy](DEVELOPMENT_REFERENCE.md#testing-during-the-prototype-phase).
 
 ## HUD and player controls
 

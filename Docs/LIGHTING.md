@@ -65,7 +65,7 @@ Maintain a small reference set: a normal gameplay view containing Golden sunligh
 
 Review the Paladin and Goblin under matched camera, pose, exposure and graphics settings. Require readable faces/material detail, grounded shadows, preserved highlights and useful warm/cool separation. For ordinary lighting content changes, inspect one representative view and affected movement under normal settings. Zoom extremes, narrow windows, travel, failed preparation, repeated visits and prepared/live comparisons are targeted checks for changed loading/cache/bake behavior or a specific visual concern. Keep licensed-art captures private under `.local/`.
 
-Finish with `npm run check` after closing the owned rendering session. Validate playable assets when their preparation changed. Extend existing shared lighting regressions only for important established behavior; do not add per-area tests or a screenshot matrix by default.
+Finish with `npm run check` after closing the owned rendering session. Validate playable assets when their preparation changed. New or materially rewritten lighting tests follow the [test admission and review policy](DEVELOPMENT_REFERENCE.md#testing-during-the-prototype-phase); do not add per-area tests or a screenshot matrix by default.
 
 ## Player lantern
 

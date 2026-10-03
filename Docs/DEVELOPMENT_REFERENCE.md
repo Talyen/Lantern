@@ -149,11 +149,11 @@ Private assets, worktrees, generated outputs and build evidence are excluded. Su
 
 CI runs all three lint languages and their policy fixtures, unit/workflow suites, build/inventory validation and HTTP smoke on Linux; a small hosted macOS job runs workflow/resource tests including APFS coverage. Triggers remain pull requests, main pushes and manual dispatch. Local integration uses the light gate and may precede CI. Pushes require a user request; local finishing does not push or wait for remote CI. Future automated E2E is CI-first; there is currently no maintained browser E2E suite. Native WebGPU and licensed-art requirements must be resolved before adding one.
 
-Keep automated tests focused on established gameplay, save/inventory safety, resource ownership and asynchronous failure behavior. Use small deterministic fixtures instead of full authored scenery or stress matrices; `levels:check` validates the current area files. Avoid assertions that merely repeat decorative tuning tables. Workflow integration tests run in CI, including macOS coverage. A focused local test may investigate a concrete failure or validate consequential resource-ownership changes; full local suites require a user request. Test-only changes use the light gate, with no gameplay preview.
+New and materially rewritten automated tests follow the [test admission and review policy](#testing-during-the-prototype-phase); a subsystem name alone does not justify protection. `levels:check` validates the current area files. Workflow integration tests run in CI, including macOS coverage. A focused local test may investigate a concrete failure or validate consequential resource-ownership changes; full local suites require a user request. Test-only changes use the light gate, with no gameplay preview.
 
 `check --base <sha>` validates committed candidate whitespace and collects changes relative to the integration baseline. It records inputs, timings and stage logs in ignored `.local/checks/`, records the light/full mode and executed stages, reuses successful checks only for matching inputs and mode, and rejects a source/asset change during validation. Neither mode downloads, exports, bakes, benchmarks or launches browser-review matrices.
 
-Default acceptance is one preview session and one relevant interaction at normal settings. No new test is required unless it protects an important established behavior. Broaden local functional inspection only for an observed failure, consequential save migration or renderer initialization/dependency change; record the reason briefly. Audits and release readiness do not automatically authorize local full suites or performance testing. Build/resource checks do not prove visual quality or platform performance. Finish reports the completed behavior, sanity check and material limits.
+Default acceptance is one preview session and one relevant interaction at normal settings. Test additions and material rewrites must meet the [admission policy](#testing-during-the-prototype-phase). Broaden local functional inspection only for an observed failure, consequential save migration or renderer initialization/dependency change; record the reason briefly. Audits and release readiness do not automatically authorize local full suites or performance testing. Build/resource checks do not prove visual quality or platform performance. Finish reports the completed behavior, sanity check and material limits.
 
 ## Script conventions
 
@@ -169,15 +169,44 @@ Review status, complete candidate paths and relevant diffs before staging. Origi
 
 ## Testing during the prototype phase
 
+Default to no new automated tests. Add or materially expand a test only when it protects a consequential behavior against a concrete, plausible failure and provides lasting confidence beyond existing checks. Low- and medium-value tests are normally out of scope unless explicitly requested. A bug fix does not automatically require a regression test. This policy applies to new and materially rewritten unit, integration and UI/E2E tests.
+
 - Aim for roughly 80% of effort on feature design, implementation and refinement. Sanity checks should take a small share of ordinary work; observed failures still need repair.
 - Player-facing work normally needs one representative preview session, one relevant route and normal settings. Screenshots are optional. Improve an obvious visible weakness in the same session rather than collecting a review matrix.
 - Documentation needs links and diff inspection, no browser. Internal tooling needs fast checks and one relevant observable outcome. Asset changes need inspection of the affected output and its required references.
-- Do not add tests by default. Extend an existing test only for an important established behavior that warrants lasting protection. Avoid speculative edge cases, coverage targets, elaborate fixtures, implementation assertions and new gameplay test infrastructure.
 - Run relevant checks once after the final edit. Repeat only after relevant changes or observed failures. Unrelated integration changes do not automatically invalidate visual acceptance.
 - Broad gameplay flows, alternate moods/zooms/platforms, full catalogs, benchmarks and contact sheets are optional targeted tools. Expand local functional inspection only for a concrete failure, consequential save migration or renderer/dependency initialization change; briefly state why. Full local suites require a user request. Audits and release readiness do not automatically authorize benchmarks.
 - `npm run check` is the lean default. `npm run check:full` retains the full production gate. Neither automatically downloads, exports, bakes lighting, benchmarks, or runs browser matrices.
 - Automated Electron uses hidden non-focusable `desktop:check` and CDP. Resource leases allow one check job, one heavy operation and one agent GPU inspection. Explicit local unit runs use one Vitest worker; CI may use two. Leave the user's play session alone.
 - Revisit this policy when Lantern moves beyond the prototype phase or gains public release requirements.
+
+### Test admission
+
+Unless explicitly requested otherwise, a test addition or material rewrite must meet all four conditions:
+
+- **Consequential failure:** prevents lost or duplicated progress/items, blocked core gameplay, unusable controls, startup failure, or damage to private assets/concurrent work.
+- **Concrete risk:** addresses a reproduced failure or an identifiable failure path in new critical behavior. "This might break someday" is insufficient.
+- **Distinct protection:** adds confidence beyond types, validators, existing tests and focused inspection.
+- **Durable evidence:** uses deterministic setup and meaningful outcome assertions, with maintenance cost proportionate to the behavior protected.
+
+Judge value by the failure prevented, not the subsystem name. A save-related test or a reproduced minor bug does not automatically qualify. New critical behavior can qualify without a prior regression when its consequential failure path is concrete.
+
+| Value | Examples | Default |
+| --- | --- | --- |
+| High | Save recovery preserves progress; failed equipment preparation leaves inventory intact and permits retry; transfers cannot duplicate items; resource cleanup preserves another task | Keep or add the smallest useful test when all four conditions hold |
+| Medium | Another ordinary menu happy path already protected below the UI; exhaustive settings permutations; additional equivalent input variants | Skip unless explicitly requested |
+| Low | Copied tuning constants, CSS classes, decorative text, component structure, mocked call sequences without consequential outcomes | Skip unless explicitly requested |
+
+### Choose the layer and review the value
+
+- Prefer the cheapest layer that detects the actual failure. Use small deterministic unit or boundary fixtures for gameplay rules, persistence and ownership rather than full authored scenery or stress matrices.
+- Add UI/E2E tests only when consequential risk lives in real event wiring, focus/input, lifecycle or integration that lower layers cannot establish. Assert the completed player outcome. Do not duplicate a lower-layer assertion through a browser merely to increase coverage.
+- Keep visual refinement in the existing gameplay-scale preview workflow. Screenshots, layouts, every control, viewport and screen state do not routinely become automated assertions. Screen/state inventories describe design responsibilities, not automated test matrices.
+- Extend existing fixtures when appropriate; a small new test is allowed when clearer. Do not bundle unrelated scenarios into a large test merely to reduce test count. Do not introduce coverage targets, test-count quotas or new test infrastructure as routine acceptance.
+- When adding or materially expanding tests, include one short rationale in working notes and handoff: **failure prevented, why existing coverage is insufficient, and why this layer**. Illustrative rationale for a previously uncovered failure: "Protect saved gear after failed preparation; existing inventory tests do not exercise asynchronous preparation/retry; a controller boundary test covers rollback without a browser." No justification form is needed when adding none; a material rewrite's review should explain the valuable protection retained.
+- Review materially changed tests for unnecessary assertions and duplicates. Consolidate only when distinct valuable protection remains. Do not remove tests simply because they fail or require maintenance. This policy does not authorize a blanket purge of the existing suite; observed failures still need investigation and repair.
+
+These are documentation and review rules, not a new automated admission gate. Existing CI, static checks, resource limits and focused manual acceptance remain in force. There is no maintained browser E2E suite; this policy guides future justified additions without requiring one.
 
 ## Review and handoff
 

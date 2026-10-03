@@ -1,6 +1,6 @@
 # UI screen and component coverage
 
-The [design system](../UI_DESIGN.md) owns visual/interaction rules; [the workflow](WORKFLOW.md) owns how to advance a row. This is a coverage inventory, not a requirement to preserve prototype UI. The owner requested first-principles design and a prolonged design-only phase with guiding questions. Baseline: source inspected October 2, 2026; refresh data owners before future implementation because concurrent tasks can add systems.
+The [design system](../UI_DESIGN.md) owns visual/interaction rules; [the workflow](WORKFLOW.md) owns how to advance a row. This inventory describes screen/state design responsibilities, not automated test matrices or a requirement to preserve prototype UI. Test additions and material rewrites follow the [test admission policy](../DEVELOPMENT_REFERENCE.md#testing-during-the-prototype-phase). The owner requested first-principles design and a prolonged design-only phase with guiding questions. Baseline: source inspected October 2, 2026; refresh data owners before future implementation because concurrent tasks can add systems.
 
 Status meanings: **Existing** = current prototype behavior; **Concept** = generated visual study only; **Specified** = resolved brief/layout/states; **Implemented** = integrated presentation; **Inspected** = relevant functional/visual review recorded. A concept does not imply runtime migration.
 

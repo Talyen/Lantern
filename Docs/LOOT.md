@@ -74,7 +74,7 @@ Choose the relevant portion of these player flows when implementing, following [
 4. **Cancel and fail an approach:** cancel with movement, attack, dodge, menus, death, or travel; replace the target with another drop. An unreachable item or full inventory gives brief feedback and preserves the loot without repeated automatic notifications.
 5. **Travel, death, and restart:** leave drops behind, travel away, die and return, and find the same remaining loot. Restart refreshes ground loot while saved collected progress survives under the completed persistence system.
 
-Review crowded rewards and camera movement under the current gameplay lighting and normal zoom; expand to other zooms or scenery only for a concrete readability concern. Inspect Gothic readability, stable label placement, small-object recognition, and combat visibility; revise the weakest visible part before acceptance. Retain only a few high-value automated outcomes by extending existing tests where useful. Finish implementation with the normal handoff gate and report unverified gameplay or visual behavior.
+Review crowded rewards and camera movement under the current gameplay lighting and normal zoom; expand to other zooms or scenery only for a concrete readability concern. Inspect Gothic readability, stable label placement, small-object recognition, and combat visibility; revise the weakest visible part before acceptance. New and materially rewritten tests must meet the [test admission and review policy](DEVELOPMENT_REFERENCE.md#testing-during-the-prototype-phase); loot changes do not automatically require tests. Finish implementation with the normal handoff gate and report unverified gameplay or visual behavior.
 
 ## Health Potions and two equipped sets
 

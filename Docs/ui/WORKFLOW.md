@@ -54,7 +54,7 @@ Complete ordinary, hovered, focused, carried, unavailable and pending/error beha
 
 After player-facing gameplay edits, use one owned normal-settings preview through `npm run agent:dev -- --browser`. Inspect at gameplay scale and exercise one short relevant interaction. Leave the user's session alone. If using browser automation, follow the installed browser skill; automated Electron remains hidden/non-focusable with CDP.
 
-Pick the acceptance target that answers this task: e.g. select/compare/equip an item, transfer one stack, assign one Skill or change one setting. Inspect the relevant responsive/input case when changing that behavior. The screen's design targets are a coverage record across migrations, not instructions to run every size/state/platform on every task. Wider inspection requires a concrete uncertainty or failure. Never schedule full suites or performance measurements as routine design acceptance.
+Pick the acceptance target that answers this task: e.g. select/compare/equip an item, transfer one stack, assign one Skill or change one setting. Inspect the relevant responsive/input case when changing that behavior. The screen's design targets and state inventories describe design responsibilities across migrations, not automated test matrices or instructions to run every size/state/platform on every task. New and materially rewritten unit or UI/E2E tests follow the [test admission and review policy](../DEVELOPMENT_REFERENCE.md#testing-during-the-prototype-phase). Wider inspection requires a concrete uncertainty or failure. Never schedule full suites or performance measurements as routine design acceptance.
 
 Evaluate:
 

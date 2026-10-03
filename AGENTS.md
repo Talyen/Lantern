@@ -43,7 +43,9 @@ Start with [the daily workflow](Docs/DEVELOPMENT.md) and [task routing](Docs/ARC
 
 ## Validation and handoff
 
-Use `npm run check`; `agent:finish` runs the change-aware sanity gate on its integration candidate. Full suites/builds/HTTP smoke remain CI-first; requested local full validation uses `npm run check:full -- --allow-local`. Follow [prototype acceptance policy](Docs/DEVELOPMENT_REFERENCE.md#testing-during-the-prototype-phase): do not add tests by default or repeatedly run unchanged checks. Prepared-art work validates affected output/references.
+Use `npm run check`; `agent:finish` runs the change-aware sanity gate on its integration candidate. Full suites/builds/HTTP smoke remain CI-first; requested local full validation uses `npm run check:full -- --allow-local`. Do not repeatedly run unchanged checks. Prepared-art work validates affected output/references.
+
+Default to no new automated tests. Add or materially expand a test only when it protects a consequential behavior against a concrete, plausible failure and provides lasting confidence beyond existing checks. Low- and medium-value tests are normally out of scope unless explicitly requested. A bug fix does not automatically require a regression test. Follow the [test admission and review policy](Docs/DEVELOPMENT_REFERENCE.md#testing-during-the-prototype-phase) for unit and UI/E2E tests, including a short rationale when adding or materially expanding tests.
 
 After gameplay edits, exercise one short relevant interaction in one owned normal-settings preview; [smoke references](Docs/SMOKE_REFERENCES.md) are a menu, not a checklist. Documentation needs links/diff review; tooling needs one observable outcome. Broaden inspection only for a concrete failure, consequential save migration or renderer/dependency initialization change. Leave the user's play session alone; automated Electron uses hidden non-focusable `desktop:check` and CDP.
 
