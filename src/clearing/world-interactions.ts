@@ -88,6 +88,7 @@ export class WorldInteractions {
     const targets = this.available;
     targets.length = 0;
     for (const target of this.candidates) {
+      if (target.type === 'fire' && !adventure.fireSafe(this.area, target.fire)) continue;
       if (target.type === 'resource' && harvesting.isDepleted(this.area.id, target.resource.id)) continue;
       if (target.type === 'chest' && adventure.chest(this.area, target.chest).opened) continue;
       if (target.type === 'shelter' && adventure.character.shelterRestored || target.type === 'stash' && !adventure.character.shelterRestored) continue;
@@ -117,7 +118,6 @@ export class WorldInteractions {
 export function interactionError(target: WorldInteraction, area: AreaDefinition, adventure: Adventure, encounter: Encounter): string {
   if (adventure.castRemaining > 0) return 'Scroll of Return is casting';
   if (target.type === 'resource' && !gatheringSafe(encounter, area.kind)) return 'Enemies nearby';
-  if (target.type === 'fire' && !adventure.fireSafe(area, target.fire, encounter)) return 'Enemies nearby';
   return '';
 }
 

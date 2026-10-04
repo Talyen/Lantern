@@ -32,6 +32,7 @@ export class InteractionActions {
     const { adventure, encounter, context } = this;
     if (context.paused() || encounter.player.hp <= 0 || encounter.player.lock > 0 || encounter.dodgeRemaining > 0) return;
     const area = context.area();
+    if (target.type === 'fire' && !adventure.fireSafe(area, target.fire, encounter)) return;
     const error = interactionError(target, area, adventure, encounter);
     if (error) { adventure.message(error); return; }
     switch (target.type) {
