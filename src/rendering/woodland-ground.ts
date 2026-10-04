@@ -35,12 +35,15 @@ export function woodlandPatchWeight(patch: Pick<GroundPatch, 'center' | 'radius'
 export function woodlandMaterial(load: (url: string, data: boolean) => THREE.Texture, patches: GroundPatch[], recipe: WoodlandGroundRecipe = woodlandGroundRecipe, paths: GroundPath[] = [], bankWetness?: Node<'float'>) {
   let wet: Node<'float'> = bankWetness ?? float(0);
   let litter: Node<'float'> = float(0), rocky: Node<'float'> = float(0), worn: Node<'float'> = float(0);
+  // Materialize each reduction step: a densely authored ground layer otherwise
+  // emits one deeply nested max()/min() expression that Safari cannot parse.
+  // Keep the existing operation order and every authored patch/path weight.
   for (const patch of patches) {
     const weight = woodlandPatchWeight(patch);
-    if (patch.wetness) wet = wet.max(weight.mul(patch.wetness));
-    if (patch.layer === 'litter') litter = litter.max(weight);
-    else if (patch.layer === 'rocky-soil') rocky = rocky.max(weight);
-    else worn = worn.max(weight);
+    if (patch.wetness) wet = wet.max(weight.mul(patch.wetness)).toVar();
+    if (patch.layer === 'litter') litter = litter.max(weight).toVar();
+    else if (patch.layer === 'rocky-soil') rocky = rocky.max(weight).toVar();
+    else worn = worn.max(weight).toVar();
   }
   for (const path of paths) {
     const point = positionWorld.xz;
@@ -48,10 +51,10 @@ export function woodlandMaterial(load: (url: string, data: boolean) => THREE.Tex
     for (let i = 1; i < path.points.length; i++) {
       const a = vec2(...path.points[i - 1]), delta = vec2(path.points[i][0] - path.points[i - 1][0], path.points[i][1] - path.points[i - 1][1]);
       const t = dot(point.sub(a), delta).div(dot(delta, delta)).clamp(0, 1);
-      distance = distance.min(point.sub(a.add(delta.mul(t))).length());
+      distance = distance.min(point.sub(a.add(delta.mul(t))).length()).toVar();
     }
     const edge = mx_noise_float(point.mul(.7)).mul(.1).add(mx_noise_float(point.mul(3.5)).mul(.025));
-    worn = worn.max(smoothstep(path.width * .36, path.width * .66, distance.add(edge)).oneMinus().mul(path.strength));
+    worn = worn.max(smoothstep(path.width * .36, path.width * .66, distance.add(edge)).oneMinus().mul(path.strength)).toVar();
   }
   litter = litter.mul(worn.oneMinus()); rocky = rocky.mul(worn.oneMinus());
   const layer = (kind: GroundLayer, coverage: typeof litter) => {
