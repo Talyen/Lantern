@@ -78,10 +78,11 @@ const stages = await Promise.all([0, 1].map(async index => {
   return { index, mount, renderer, lighting, scene, camera: laneCamera, pipeline, focus, generation: 0, motionGeneration: 0, character: undefined as Character | undefined, model: undefined as THREE.Group | undefined, mixer: undefined as THREE.AnimationMixer | undefined, action: undefined as THREE.AnimationAction | undefined, error: '', clips: new Map<Motion, THREE.AnimationClip>(), release: () => {} };
 }));
 const controls = new OrbitControls(camera, document.querySelector<HTMLElement>('.character-stages'));
-controls.target.set(0, 0.9, 0); controls.enablePan = false; controls.minDistance = 2.8; controls.maxDistance = 9; controls.maxPolarAngle = Math.PI * 0.9;
-function setView(view: string): void {
-  const distance = 5.2;
-  const offset = view === 'front' ? new THREE.Vector3(0, 0.3, distance) : view === 'side' ? new THREE.Vector3(distance, 0.3, 0) : view === 'back' ? new THREE.Vector3(0, 0.3, -distance) : new THREE.Vector3(3.3, 4.7, 3.3);
+controls.target.set(0, 0.9, 0); controls.enablePan = false; controls.minDistance = 0.35; controls.maxDistance = 9; controls.maxPolarAngle = Math.PI * 0.9;
+function setView(view: string, distance = 5.2, height = 0.9): void {
+  controls.target.set(0, height, 0);
+  const scale = distance / 5.2;
+  const offset = view === 'front' ? new THREE.Vector3(0, 0.3 * scale, distance) : view === 'side' ? new THREE.Vector3(distance, 0.3 * scale, 0) : view === 'back' ? new THREE.Vector3(0, 0.3 * scale, -distance) : new THREE.Vector3(3.3, 4.7, 3.3).multiplyScalar(scale);
   camera.position.copy(controls.target).add(offset); controls.update(); stages.forEach(stage => stage.pipeline.resetHistory());
 }
 setView('iso');
@@ -196,6 +197,7 @@ const bridge = {
   catalog: () => catalog,
   diagnostics: () => stages.map(stage => ({ id: stage.character?.id, error: stage.error, motion: motion.value, animated: !!stage.action, ...stage.pipeline.diagnostics() })),
   select,
+  frame: setView,
   async capture(id: string, role = 'static', seconds = 0): Promise<string> {
     capturing = true; playing = false; pause.textContent = 'Play'; motion.value = role; setView('iso');
     await select(0, id);
