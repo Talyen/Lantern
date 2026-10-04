@@ -1,6 +1,6 @@
 import { archiveUnreadable } from '../data/preferences';
 import { character, type CharacterSave } from './character';
-import { characterSaveKey, characterBackupKey, decodeCharacter } from './character-save';
+import { characterSaveKey, characterBackupKey, decodeCharacter, copyCharacter } from './character-save';
 import { isRecord, parseJson } from '../data/json';
 import { RetryTimer } from '../data/retry';
 
@@ -10,8 +10,8 @@ export const slotKey = (slot: SlotId) => `lantern.adventure.${slot}.v1`;
 export const migrationKey = 'lantern.adventures.legacy-migrated.v1';
 type Storage = Pick<globalThis.Storage, 'getItem' | 'setItem' | 'removeItem'>;
 type Identity = { version: 1; id: string; name: string; deleted: boolean; legacy?: true };
-type Record = { version: 1; id: string; name: string; character: CharacterSave };
-type Slot = { state: 'unknown' | 'empty' | 'occupied'; identity?: Identity; record?: Record; dirty: boolean };
+type AdventureRecord = { version: 1; id: string; name: string; character: CharacterSave };
+type Slot = { state: 'unknown' | 'empty' | 'occupied'; identity?: Identity; record?: AdventureRecord; dirty: boolean };
 export type AdventureSlot = { slot: SlotId; state: Slot['state']; name: string; checkpoint?: string };
 export type SavedAdventure = { slot: SlotId; id: string; name: string; character: CharacterSave };
 
@@ -26,16 +26,16 @@ function decodeIdentity(raw: string): Identity {
     throw new Error('Invalid adventure identity');
   return value as Identity;
 }
-function decodeRecord(raw: string): Record {
+function decodeRecord(raw: string): AdventureRecord {
   const value = parseJson(raw);
   if (!isRecord(value) || value.version !== 1 || typeof value.id !== 'string' || !value.id
     || typeof value.name !== 'string' || !validAdventureName(value.name)) throw new Error('Invalid adventure');
-  return { version: 1, id: value.id, name: value.name, character: decodeCharacter(JSON.stringify(value.character)) };
+  return { version: 1, id: value.id, name: value.name, character: copyCharacter(value.character) };
 }
 
 /** Application lifetime owns snapshots/retries; gameplay never knows browser storage or slot keys. */
 export class AdventureStore {
-  private slots = new Map<SlotId, Slot>(slotIds.map(id => [id, { state: 'unknown', dirty: false }]));
+  private slots = Object.fromEntries(slotIds.map(id => [id, { state: 'unknown', dirty: false }])) as Record<SlotId, Slot>;
   private readonly retry = new RetryTimer();
   private readonly listeners = new Set<() => void>();
   private legacyResolved = false;
@@ -49,21 +49,22 @@ export class AdventureStore {
   private changed(): void { for (const listener of this.listeners) listener(); }
 
   initialize(): void {
-    for (const slot of slotIds) if (!this.slots.get(slot)!.dirty) this.readSlot(slot);
+    if (this.closed) return;
+    for (const slot of slotIds) if (!this.slots[slot].dirty) this.readSlot(slot);
     if (!this.legacyResolved) this.migrate();
-    if (this.legacyProtected && this.slots.get(1)!.state === 'empty') this.slots.set(1, { state: 'occupied', dirty: false });
+    if (this.legacyProtected && this.slots[1].state === 'empty') this.slots[1] = { state: 'occupied', dirty: false };
     this.flush();
     this.changed();
   }
   private readSlot(slot: SlotId): void {
-    const current = this.slots.get(slot)!;
+    const current = this.slots[slot];
     try {
       const storage = this.storage(), key = slotKey(slot);
       const identityRaw = storage.getItem(`${key}.identity`);
       const identity = identityRaw === null ? undefined : decodeIdentity(identityRaw);
-      if (identity?.deleted) { this.slots.set(slot, { state: 'empty', identity, dirty: false }); return; }
+      if (identity?.deleted) { this.slots[slot] = { state: 'empty', identity, dirty: false }; return; }
       const primary = storage.getItem(key), backup = storage.getItem(`${key}.backup`);
-      const candidate = (raw: string | null): Record | undefined => {
+      const candidate = (raw: string | null): AdventureRecord | undefined => {
         if (raw === null) return;
         try {
           const value = decodeRecord(raw);
@@ -74,20 +75,20 @@ export class AdventureStore {
       const known = current.record && (!identity || identity.id === current.record.id) ? current.record : undefined;
       const record = candidate(primary) ?? known ?? candidate(backup);
       if (record) {
-        this.slots.set(slot, { state: 'occupied', record,
+        this.slots[slot] = { state: 'occupied', record,
           identity: identity ?? { version: 1, id: record.id, name: record.name, deleted: false },
-          dirty: primary !== JSON.stringify(record) || !identity });
-      } else this.slots.set(slot, { state: primary === null && backup === null && !identity ? 'empty' : 'occupied', identity, dirty: false });
+          dirty: primary !== JSON.stringify(record) || !identity };
+      } else this.slots[slot] = { state: primary === null && backup === null && !identity ? 'empty' : 'occupied', identity, dirty: false };
     } catch (error) {
       // An unreadable identity is authoritative: never guess a previous incarnation from its backup.
       this.error = String(error);
-      this.slots.set(slot, { ...current, state: current.record ? 'occupied' : 'unknown' });
+      this.slots[slot] = { ...current, state: current.record ? 'occupied' : 'unknown' };
     }
   }
   private migrate(): void {
     try {
       const storage = this.storage();
-      const first = this.slots.get(1)!;
+      const first = this.slots[1];
       if (storage.getItem(migrationKey) === 'true') { this.legacyResolved = true; return; }
       // An identity can survive a failure before either migrated snapshot exists.
       // Only an explicitly migrated identity may retry from the retained legacy save.
@@ -103,47 +104,47 @@ export class AdventureStore {
         try { saved = decodeCharacter(raw); break; } catch { /* Keep legacy copies intact. */ }
       }
       this.legacyResolved = true;
-      if (!saved) { this.legacyProtected = true; this.slots.set(1, { state: 'occupied', dirty: false }); return; }
+      if (!saved) { this.legacyProtected = true; this.slots[1] = { state: 'occupied', dirty: false }; return; }
       const identity: Identity = first.identity ?? { version: 1, id: this.newId(), name: 'Adventure 1', deleted: false, legacy: true };
-      this.slots.set(1, { state: 'occupied', identity, record: { version: 1, id: identity.id, name: identity.name, character: saved }, dirty: true });
+      this.slots[1] = { state: 'occupied', identity, record: { version: 1, id: identity.id, name: identity.name, character: saved }, dirty: true };
       this.migrationPending = true;
     } catch (error) { this.error = String(error); }
   }
   views(): AdventureSlot[] {
     return slotIds.map(slot => {
-      const value = this.slots.get(slot)!;
+      const value = this.slots[slot];
       return { slot, state: !this.legacyResolved && value.state === 'empty' ? 'unknown' : value.state,
         name: value.record?.name ?? value.identity?.name ?? `Adventure ${slot}`, checkpoint: value.record?.character.outing.checkpoint };
     });
   }
   load(slot: SlotId): SavedAdventure | null {
-    const value = this.slots.get(slot)!;
+    const value = this.slots[slot];
     if (!value.dirty) this.initialize();
-    const record = this.slots.get(slot)!.record;
-    return record ? { slot, id: record.id, name: record.name, character: decodeCharacter(JSON.stringify(record.character)) } : null;
+    const record = this.slots[slot].record;
+    return record ? { slot, id: record.id, name: record.name, character: copyCharacter(record.character) } : null;
   }
   create(slot: SlotId, name: string): SavedAdventure | null {
     if (!validAdventureName(name) || this.closed) return null;
     this.initialize();
-    if (!this.legacyResolved || this.slots.get(slot)!.state !== 'empty') return null;
+    if (!this.legacyResolved || this.slots[slot].state !== 'empty') return null;
     const identity: Identity = { version: 1, id: this.newId(), name, deleted: false };
-    this.slots.set(slot, { state: 'occupied', identity, record: { version: 1, id: identity.id, name, character: character() }, dirty: true });
+    this.slots[slot] = { state: 'occupied', identity, record: { version: 1, id: identity.id, name, character: character() }, dirty: true };
     this.flush(); this.changed();
     return this.load(slot);
   }
   save(slot: SlotId, id: string, value: CharacterSave): void {
-    const current = this.slots.get(slot)!;
+    const current = this.slots[slot];
     if (this.closed || current.record?.id !== id) return;
-    current.record.character = decodeCharacter(JSON.stringify(value));
+    current.record.character = copyCharacter(value);
     current.dirty = true;
     if (!this.retry.scheduled) this.flush();
   }
   delete(slot: SlotId): void {
     if (this.closed) return;
-    const current = this.slots.get(slot)!;
+    const current = this.slots[slot];
     if (current.state === 'empty') return;
     const identity: Identity = { version: 1, id: current.identity?.id ?? this.newId(), name: current.record?.name ?? current.identity?.name ?? `Adventure ${slot}`, deleted: true };
-    this.slots.set(slot, { state: 'empty', identity, dirty: true });
+    this.slots[slot] = { state: 'empty', identity, dirty: true };
     if (slot === 1) { this.legacyResolved = true; this.legacyProtected = false; }
     this.flush(); this.changed();
   }
@@ -157,7 +158,7 @@ export class AdventureStore {
       storage.removeItem(key); storage.removeItem(`${key}.backup`);
     } else {
       const next = JSON.stringify(value.record), primary = storage.getItem(key), backup = storage.getItem(`${key}.backup`);
-      let previous: Record | undefined;
+      let previous: AdventureRecord | undefined;
       if (primary !== null) {
         try { previous = decodeRecord(primary); } catch { archiveUnreadable(storage, key, primary); }
       }
@@ -172,21 +173,24 @@ export class AdventureStore {
     }
     value.dirty = false;
   }
+  private needsRead(): boolean {
+    return !this.legacyResolved || Object.values(this.slots).some(slot => slot.state === 'unknown');
+  }
   flush(): void {
     let failed = false;
     for (const slot of slotIds) {
-      const value = this.slots.get(slot)!;
+      const value = this.slots[slot];
       if (!value.dirty) continue;
       try { this.writeSlot(slot, value); } catch (error) { this.error = String(error); failed = true; }
     }
-    if (this.migrationPending && !this.slots.get(1)!.dirty) {
+    if (this.migrationPending && !this.slots[1].dirty) {
       try { this.storage().setItem(migrationKey, 'true'); this.migrationPending = false; }
       catch (error) { this.error = String(error); failed = true; }
     }
-    if (failed || !this.legacyResolved || [...this.slots.values()].some(slot => slot.state === 'unknown')) {
-      if (!this.closed) this.retry.schedule(() => { if (!this.legacyResolved || [...this.slots.values()].some(slot => slot.state === 'unknown')) this.initialize(); else { this.flush(); this.changed(); } });
+    if (failed || this.needsRead()) {
+      if (!this.closed) this.retry.schedule(() => { if (this.needsRead()) this.initialize(); else { this.flush(); this.changed(); } });
     } else { this.retry.reset(); this.error = ''; }
   }
-  close(): void { this.closed = true; this.retry.cancel(); this.flush(); }
-  diagnostics() { return { pending: [...this.slots.values()].some(slot => slot.dirty) || this.migrationPending, error: this.error }; }
+  close(): void { if (this.closed) return; this.closed = true; this.retry.cancel(); this.flush(); }
+  diagnostics() { return { pending: Object.values(this.slots).some(slot => slot.dirty) || this.migrationPending, error: this.error }; }
 }

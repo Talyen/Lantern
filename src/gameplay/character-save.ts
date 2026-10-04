@@ -24,7 +24,13 @@ function counter(n: unknown): n is number {
 
 /** Decode into an unpublished candidate; a failed migration never changes gameplay state. */
 export function decodeCharacter(raw: string): CharacterSave {
-  const value = parseJson(raw);
+  return restoreCharacter(parseJson(raw));
+}
+/** Validate and detach in-memory snapshots without a JSON serialization round trip. */
+export function copyCharacter(value: unknown): CharacterSave {
+  return restoreCharacter(structuredClone(value));
+}
+function restoreCharacter(value: unknown): CharacterSave {
   if (!isRecord(value) || typeof value.version !== 'number' || ![1, 2, 3, 4, 5, 6, 7, 8, 9].includes(value.version)
     || !Array.isArray(value.campfires) || !value.campfires.every((id: unknown): id is string => typeof id === 'string'))
     throw new Error('Invalid character save');

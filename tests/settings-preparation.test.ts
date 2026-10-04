@@ -20,3 +20,17 @@ test('rapid graphics changes serialize, discard superseded preparations and reta
     expect(releases).toEqual([1, 5]); expect(commits).toEqual([3]);
   } finally { queue.dispose(); vi.useRealTimers(); }
 });
+
+// A failed cleanup must not retry disposal or leave readiness waiting forever.
+test('failed commit releases once, reports cleanup failure and permits a later request', async () => {
+  const errors: unknown[] = [], commits: number[] = [];
+  const dispose = vi.fn(() => { throw new Error('release failed'); });
+  const queue = new SettingsPreparation(async (value: number) => ({
+    commit: () => { if (value === 1) throw new Error('commit failed'); commits.push(value); }, dispose,
+  }), error => errors.push(error));
+  try {
+    queue.request(1); await queue.ready();
+    expect(dispose).toHaveBeenCalledOnce(); expect(errors).toHaveLength(1);
+    queue.request(2); await queue.ready(); expect(commits).toEqual([2]);
+  } finally { queue.dispose(); }
+});

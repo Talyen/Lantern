@@ -8,6 +8,9 @@ test('conflicting inputs and missing movement directions cannot replace usable p
   const missing=defaultBindings();missing.moveUp=[null,null];expect(validBindings(missing)).toBe(false);
   const corrupt=new InputPreferences({getItem:key=>key===bindingKey ? JSON.stringify(missing) : null,setItem:()=>{}});
   expect(corrupt.value).toEqual(defaultBindings());expect(corrupt.diagnostics().error).toMatch('Invalid bindings');
+  const retired = Object.assign(defaultBindings(), { zoom: ['key:KeyZ', null] });
+  expect(preferences.save(retired)).toBe(true); expect(preferences.value).not.toHaveProperty('zoom');
+  retired.moveUp[0] = null; expect(preferences.value.moveUp[0]).toBe('key:KeyW');
 });
 
 // Admission: fallback keys must survive validation, save/restore and action dispatch, not only string conversion.
@@ -42,5 +45,6 @@ test('keybinding changes apply immediately and retry storage silently without ke
     failing=false;await vi.advanceTimersByTimeAsync(1000);expect(JSON.parse(saved)).toEqual(latest);expect(inputFor(new InputPreferences({getItem:()=>saved,setItem:()=>{}}).value,'key:KeyU')).toBe('slot0');
     expect(inputFor(preferences.value,'mouse:3')).toBe('moveUp');expect(inputFor(preferences.value,'key:KeyI')).toBe('moveUp');expect(preferences.diagnostics().pending).toBe(false);
     preferences.close();expect(vi.getTimerCount()).toBe(0);
+    expect(preferences.save(draft)).toBe(false); expect(vi.getTimerCount()).toBe(0);
   } finally {vi.useRealTimers();}
 });

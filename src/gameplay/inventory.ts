@@ -12,6 +12,12 @@ export { validItems, validStash } from './inventory-validation';
 
 export const countItem = (items: readonly InventoryItem[], item: LootItem) =>
   items.reduce((sum, entry) => sum + (entry.item === item ? entry.quantity : 0), 0);
+/** Movement, removal and transfers share the same whole-quantity boundary. */
+function selectedQuantity(items: InventoryItem[], id: string, quantity: number, message = 'Item is no longer available.'): InventoryItem {
+  const entry = items.find(item => item.id === id);
+  if (!entry || !Number.isSafeInteger(quantity) || quantity < 1 || quantity > entry.quantity) throw new Error(message);
+  return entry;
+}
 /** Spend Bag materials on an unpublished candidate and return any unmet quantity. */
 export function consumeMaterial(items: InventoryItem[], item: LootItem, quantity: number): number {
   for (const entry of items) {
@@ -79,10 +85,7 @@ export function moveItem(
   quantity: number,
   makeId: () => string,
 ): InventoryItem[] {
-  const next = structuredClone(items),
-    entry = next.find((i) => i.id === id);
-  if (!entry || !Number.isInteger(quantity) || quantity < 1 || quantity > entry.quantity)
-    throw new Error('Item is no longer available.');
+  const next = structuredClone(items), entry = selectedQuantity(next, id, quantity);
   const set = entry.weaponSet ?? 0;
   const target = next.find((i) => i.slot === 'bag' && i.id !== id && i.x === x && i.y === y);
   if (target?.item === entry.item && lootDefinitions[entry.item].stackable) {
@@ -150,10 +153,7 @@ export function removeQuantity(
   id: string,
   quantity: number,
 ): InventoryItem[] {
-  const next = structuredClone(items),
-    entry = next.find((i) => i.id === id);
-  if (!entry || !Number.isSafeInteger(quantity) || quantity < 1 || quantity > entry.quantity)
-    throw new Error('Item is no longer available.');
+  const next = structuredClone(items), entry = selectedQuantity(next, id, quantity);
   const main = entry.slot === 'main',
     set = entry.weaponSet ?? 0;
   entry.quantity -= quantity;
@@ -198,44 +198,23 @@ export function transferItem(
   makeId: () => string,
   point?: { x: number; y: number },
 ): { source: InventoryItem[]; destination: InventoryItem[] } {
-  const nextSource = structuredClone(source),
-    nextDestination = structuredClone(destination),
-    entry = nextSource.find((i) => i.id === id);
-  if (
-    !entry ||
-    !['bag', 'overflow'].includes(entry.slot) ||
-    !Number.isSafeInteger(quantity) ||
-    quantity < 1 ||
-    quantity > entry.quantity
-  )
-    throw new Error('Move equipped gear into the bag first.');
+  const { source: nextSource, destination: nextDestination } = structuredClone({ source, destination });
+  const entry = selectedQuantity(nextSource, id, quantity, 'Move equipped gear into the bag first.');
+  if (entry.slot !== 'bag' && entry.slot !== 'overflow') throw new Error('Move equipped gear into the bag first.');
+  const stackable = lootDefinitions[entry.item].stackable;
   let amount: number;
   if (point) {
-    const stack = nextDestination.find(
-      (i) => i.slot === 'bag' && i.x === point.x && i.y === point.y,
-    );
-    if (stack && stack.item === entry.item && lootDefinitions[entry.item].stackable) {
+    const stack = nextDestination.find(item => item.slot === 'bag' && item.x === point.x && item.y === point.y);
+    if (stack?.item === entry.item && stackable) {
       amount = fillStack(stack, quantity);
     } else {
-      if (!fits(nextDestination, entry.item, point.x, point.y))
-        throw new Error('Item does not fit.');
-      amount = Math.min(quantity, lootDefinitions[entry.item].stackable ? stackLimit : 1);
-      nextDestination.push({
-        ...entry,
-        id: amount === entry.quantity ? entry.id : makeId(),
-        quantity: amount,
-        slot: 'bag',
-        ...point,
-      });
+      if (!fits(nextDestination, entry.item, point.x, point.y)) throw new Error('Item does not fit.');
+      amount = Math.min(quantity, stackable ? stackLimit : 1);
+      const moved = { ...entry, id: amount === entry.quantity ? entry.id : makeId(), quantity: amount };
+      returnToBag(nextDestination, moved, point);
+      nextDestination.push(moved);
     }
-  } else
-    amount = receive(
-      nextDestination,
-      entry.item,
-      quantity,
-      makeId,
-      lootDefinitions[entry.item].stackable ? undefined : entry.id,
-    );
+  } else amount = receive(nextDestination, entry.item, quantity, makeId, stackable ? undefined : entry.id);
   if (!amount) throw new Error('No space available.');
   entry.quantity -= amount;
   return { source: nextSource.filter((i) => i.quantity > 0), destination: nextDestination };

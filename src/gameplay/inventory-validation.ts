@@ -5,26 +5,16 @@ import { itemLoadout } from './inventory-equipment';
 import { fits } from './inventory-placement';
 
 /** Validate each untrusted entry before checking relationships between entries. */
-function validItem(value: unknown): value is InventoryItem {
-  if (!isRecord(value)) return false;
-  const entry = value;
+function validItem(entry: unknown): entry is InventoryItem {
+  if (!isRecord(entry)) return false;
   if (typeof entry.id !== 'string' || !entry.id) return false;
   const item = lootIds.find((id) => id === entry.item);
   if (!item) return false;
   const slot = entry.slot;
   if (slot !== 'bag' && !isEquipmentSlot(slot) && slot !== 'overflow') return false;
-  const quantityLimit = lootDefinitions[item].stackable
-    ? slot === 'overflow'
-      ? Number.MAX_SAFE_INTEGER
-      : stackLimit
-    : 1;
-  if (
-    typeof entry.quantity !== 'number' ||
-    !Number.isSafeInteger(entry.quantity) ||
-    entry.quantity < 1 ||
-    entry.quantity > quantityLimit
-  )
-    return false;
+  const quantityLimit = !lootDefinitions[item].stackable ? 1 : slot === 'overflow' ? Number.MAX_SAFE_INTEGER : stackLimit;
+  if (typeof entry.quantity !== 'number' || !Number.isSafeInteger(entry.quantity)
+    || entry.quantity < 1 || entry.quantity > quantityLimit) return false;
   if (!Number.isInteger(entry.x) || !Number.isInteger(entry.y)) return false;
   if (isEquipmentSlot(slot)) {
     if (!isItemId(item) || !slotAccepts(item, slot)) return false;
@@ -52,12 +42,7 @@ export function validItems(value: unknown): value is InventoryItem[] {
   }
   // Every entry, including sparse-array holes, has been checked above.
   const items = value as InventoryItem[];
-  if (
-    items.some(
-      (entry) => entry.slot === 'bag' && !fits(items, entry.item, entry.x, entry.y, entry.id),
-    )
-  )
-    return false;
+  if (items.some(entry => entry.slot === 'bag' && !fits(items, entry.item, entry.x, entry.y, entry.id))) return false;
   return ([0, 1] as const).every((set) => {
     const loadout = itemLoadout(items, set);
     return !loadout.off || supportsShield(loadout.main);

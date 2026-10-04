@@ -20,6 +20,7 @@ export async function prepareAreaCandidate(
     prepared = await lighting(area);
     return { area, movement, lighting: prepared, dispose,
       accept: (eligible: () => boolean, beforeCommit: () => void) => {
+        if (!owned) return false;
         try {
           if (!eligible()) { dispose(); return false; }
           beforeCommit();

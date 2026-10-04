@@ -15,9 +15,12 @@ test('four slots keep complete character and outing state independent through fr
     saved.character.outing.cooldowns.ultimateCooldown = slot;
     saved.character.outing.portal = { area: 'clearing', departure: { position: [slot, 2], yaw: slot } };
     store.save(slot, saved.id, saved.character);
+    saved.character.gold = 0; saved.character.items.length = 0; saved.character.outing.portal.departure.position[0] = 0;
     expect(store.create(slot, 'Replacement')).toBeNull();
   }
   store.close();
+  const reads = vi.spyOn(storage, 'getItem'); store.initialize(); store.load(1); store.close();
+  expect(reads).not.toHaveBeenCalled(); reads.mockRestore();
   const restored = new AdventureStore(storage); restored.initialize();
   for (const slot of [1, 2, 3, 4] as const) {
     const saved = restored.load(slot)!;
@@ -27,6 +30,8 @@ test('four slots keep complete character and outing state independent through fr
     expect(saved.character.outing.elapsed).toBe(slot * 100);
     expect(saved.character.outing.cooldowns.ultimateCooldown).toBe(slot);
     expect(saved.character.outing.portal?.departure.position).toEqual([slot, 2]);
+    expect(saved.character.items).toHaveLength(3);
+    saved.character.gold = 0; expect(restored.load(slot)!.character.gold).toBe(slot * 20);
   }
   restored.close();
 });

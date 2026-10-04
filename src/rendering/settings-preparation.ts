@@ -1,51 +1,48 @@
+type PreparedSettings = { commit(): void; dispose(): void };
+
 /** Serialize expensive preparations; only the latest settled request may commit. */
 export class SettingsPreparation<T> {
   private revision = 0;
   private pending: { value: T; revision: number } | null = null;
   private timer: ReturnType<typeof setTimeout> | undefined;
-  private running = false;
+  private running: Promise<void> | undefined;
   private disposed = false;
-  private waiters: (() => void)[] = [];
-  constructor(private prepare: (value: T) => Promise<{ commit(): void; dispose(): void }>, private failed: (error: unknown) => void) {}
-  get busy(): boolean { return this.running; }
+  constructor(private prepare: (value: T) => Promise<PreparedSettings>, private failed: (error: unknown) => void) {}
+  get busy(): boolean { return this.running !== undefined; }
   request(value: T, delay = 150): void {
     if (this.disposed) return;
     this.pending = { value, revision: ++this.revision };
     clearTimeout(this.timer);
-    this.timer = setTimeout(() => { this.timer = undefined; void this.pump().catch(this.failed); }, delay);
+    this.timer = setTimeout(() => { this.timer = undefined; this.start(); }, delay);
   }
-  flush(): void { clearTimeout(this.timer); this.timer = undefined; void this.pump().catch(this.failed); }
+  private start(): void {
+    if (this.running || !this.pending || this.timer !== undefined || this.disposed) return;
+    this.running = this.pump().catch(this.failed).finally(() => { this.running = undefined; this.start(); });
+  }
+  flush(): void { clearTimeout(this.timer); this.timer = undefined; this.start(); }
   async ready(): Promise<void> {
-    this.flush();
-    if (this.running || this.pending) await new Promise<void>(resolve => this.waiters.push(resolve));
+    do {
+      this.flush();
+      if (this.running) await this.running;
+    } while (this.running || this.pending);
   }
   private async pump(): Promise<void> {
-    if (this.running || this.timer !== undefined || this.disposed) return;
-    this.running = true;
-    try {
-      while (this.pending && this.timer === undefined && !this.disposed) {
-        const request = this.pending;
-        this.pending = null;
-        let candidate: Awaited<ReturnType<SettingsPreparation<T>['prepare']>> | undefined;
-        const discard = () => { const retired = candidate; candidate = undefined; retired?.dispose(); };
+    while (this.pending && this.timer === undefined && !this.disposed) {
+      const request = this.pending;
+      this.pending = null;
+      let candidate: PreparedSettings | undefined, committed = false;
+      try {
         try {
           candidate = await this.prepare(request.value);
-          if (!this.disposed && request.revision === this.revision) candidate.commit();
-          else discard();
-        } catch (error) {
-          discard();
-          if (!this.disposed && request.revision === this.revision) this.failed(error);
-        }
+          if (!this.disposed && request.revision === this.revision) { candidate.commit(); committed = true; }
+        } finally { if (!committed) candidate?.dispose(); }
+      } catch (error) {
+        if (!this.disposed && request.revision === this.revision) this.failed(error);
       }
-    } finally {
-      this.running = false;
-      if (!this.pending) this.waiters.splice(0).forEach(resolve => resolve());
     }
   }
-
   dispose(): void {
     this.disposed = true; this.revision++; this.pending = null;
     clearTimeout(this.timer); this.timer = undefined;
-    if (!this.running) this.waiters.splice(0).forEach(resolve => resolve());
   }
 }

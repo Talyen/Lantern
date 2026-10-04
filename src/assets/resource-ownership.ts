@@ -55,10 +55,13 @@ export function disposeSceneResources(root: THREE.Object3D): void {
 export function sceneResourceBytes(root: THREE.Object3D): number {
   let bytes = 0;
   const { geometries, textures } = sceneResources(root);
+  const buffers = new Set<ArrayBufferLike>();
   for (const geometry of geometries) {
-    if (geometry.index) bytes += geometry.index.array.byteLength;
-    for (const value of Object.values(geometry.attributes)) { const attribute = value; bytes += attribute instanceof THREE.InterleavedBufferAttribute ? attribute.data.array.byteLength : attribute.array.byteLength; }
+    const attributes = [...Object.values(geometry.attributes), ...Object.values(geometry.morphAttributes).flat()];
+    if (geometry.index) attributes.push(geometry.index);
+    for (const attribute of attributes) buffers.add((attribute instanceof THREE.InterleavedBufferAttribute ? attribute.data.array : attribute.array).buffer);
   }
+  for (const buffer of buffers) bytes += buffer.byteLength;
   for (const texture of textures) {
     if (texture instanceof THREE.CompressedTexture) bytes += texture.mipmaps.reduce((sum, mip) => sum + mip.data.byteLength, 0);
     else if (texture.image) { const image = texture.image as { width: number; height: number }; bytes += image.width * image.height * 4 * (texture.generateMipmaps ? 4 / 3 : 1); }

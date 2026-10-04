@@ -1,6 +1,6 @@
 import { RetryTimer } from '../data/retry';
 import { parseJson } from '../data/json';
-import { defaultBindings, inputActions, validBindings, type Bindings } from './binding-model';
+import { defaultBindings, copyBindings, validBindings, type Bindings } from './binding-model';
 
 export const bindingKey = 'lantern.bindings.v1';
 type BindingStorage = Pick<Storage, 'getItem' | 'setItem'>;
@@ -10,6 +10,7 @@ export class InputPreferences {
   value = defaultBindings();
   private error = '';
   private pending = false;
+  private closed = false;
   private readonly retry = new RetryTimer();
 
   constructor(private readonly source?: BindingStorage | (() => BindingStorage)) {
@@ -20,7 +21,7 @@ export class InputPreferences {
       const saved = parseJson(raw);
       if (!validBindings(saved)) throw new Error('Invalid bindings');
       // Project onto current actions so retired zoom bindings never return at runtime.
-      this.value = Object.fromEntries(inputActions.map(action => [action, saved[action]])) as Bindings;
+      this.value = copyBindings(saved);
     } catch (error) {
       this.error = String(error);
     }
@@ -31,14 +32,14 @@ export class InputPreferences {
   }
 
   save(value: Bindings): boolean {
-    if (!validBindings(value)) return false;
-    this.value = structuredClone(value);
+    if (this.closed || !validBindings(value)) return false;
+    this.value = copyBindings(value);
     this.pending = true;
     if (!this.retry.scheduled) this.flush();
     return true;
   }
 
-  private flush(closing = false): void {
+  private flush(): void {
     if (!this.pending) return;
     try {
       this.storage()?.setItem(bindingKey, JSON.stringify(this.value));
@@ -47,15 +48,17 @@ export class InputPreferences {
       this.retry.reset();
     } catch (error) {
       this.error = String(error);
-      if (!closing) {
+      if (!this.closed) {
         this.retry.schedule(() => this.flush());
       }
     }
   }
 
   close(): void {
+    if (this.closed) return;
+    this.closed = true;
     this.retry.cancel();
-    this.flush(true);
+    this.flush();
   }
 
   diagnostics() { return { pending: this.pending, error: this.error }; }

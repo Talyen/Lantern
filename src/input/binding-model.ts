@@ -37,6 +37,10 @@ export const inputGroups = [...new Set(inputActions.map(action => definitions[ac
 export function defaultBindings(): Bindings {
   return Object.fromEntries(inputActions.map(action => [action, [...definitions[action].bindings]])) as Bindings;
 }
+/** Current actions only, with independent pairs for drafts and persisted snapshots. */
+export function copyBindings(value: Bindings): Bindings {
+  return Object.fromEntries(inputActions.map(action => [action, [...value[action]]])) as Bindings;
+}
 
 export function isMovementAction(action: InputAction): boolean {
   return definitions[action].group === 'Movement';

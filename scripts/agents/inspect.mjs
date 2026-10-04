@@ -15,10 +15,13 @@ function get(value, keys) {
   }
   return value;
 }
-function entries(value, section) {
-  if (Array.isArray(value)) return value.map((item, index) => ({ id: String(item?.id ?? index), path: `${section}.${index}`, value: item }));
-  if (value !== null && typeof value === 'object') return Object.entries(value).map(([id, item]) => ({ id, path: `${section}.${id}`, value: item }));
-  return [{ id: section, path: section, value }];
+// Yield records so a bounded page does not materialize the entire catalog twice.
+function* entries(value, section) {
+  if (Array.isArray(value)) {
+    for (const [index, item] of value.entries()) yield { id: String(item?.id ?? index), path: `${section}.${index}`, value: item };
+  } else if (value !== null && typeof value === 'object') {
+    for (const [id, item] of Object.entries(value)) yield { id, path: `${section}.${id}`, value: item };
+  } else yield { id: section, path: section, value };
 }
 
 export function inspectRecords(data, source, args = {}) {
@@ -34,12 +37,15 @@ export function inspectRecords(data, source, args = {}) {
   if (value === undefined) throw new UsageError(`Unknown section ${section}. Top-level sections: ${Object.keys(data).join(', ')}.`);
   const fields = args['--fields']?.split(',').map(field => ({ name: field.trim(), keys: parts(field.trim()) }));
   const query = args['--query']?.toLowerCase();
-  const matches = entries(value, section).filter(item =>
-    (!args['--id'] || item.id === args['--id']) && (!query || `${item.id} ${JSON.stringify(item.value)}`.toLowerCase().includes(query)));
-  const records = matches.map(record => ({ ...record, value: fields
-    ? Object.fromEntries(fields.map(field => [field.name, get(record.value, field.keys)]).filter(([, value]) => value !== undefined))
-    : record.value }));
-  const page = recordPage(records, { '--limit': '10', ...args }, 'A record exceeds the 12,000-character content budget. Use --fields to select smaller fields, or inspect a nested section.');
+  function* records() {
+    for (const record of entries(value, section)) {
+      if (args['--id'] && record.id !== args['--id'] || query && !`${record.id} ${JSON.stringify(record.value)}`.toLowerCase().includes(query)) continue;
+      yield { ...record, value: fields
+        ? Object.fromEntries(fields.map(field => [field.name, get(record.value, field.keys)]).filter(([, value]) => value !== undefined))
+        : record.value };
+    }
+  }
+  const page = recordPage(records(), { '--limit': '10', ...args }, 'A record exceeds the 12,000-character content budget. Use --fields to select smaller fields, or inspect a nested section.');
   return { source, section, ...page, remaining: page.omitted };
 }
 

@@ -26,11 +26,6 @@ export function recipeMaterials(state:SmithingState,recipe:SmithingRecipe) {
     return {item,cost,bag,stash,held:bag+stash};
   });
 }
-function recipeFor(state:SmithingState,item:ItemId):SmithingRecipe {
-  const recipe=learnedRecipes(state.xp.smithing).find(recipe=>recipe.item===item);
-  if (!recipe) throw new Error('Recipe is not learned.');
-  return recipe;
-}
 function checked(state:SmithingState):SmithingState {
   if (!Number.isFinite(state.xp.smithing) || state.xp.smithing<0 || state.xp.smithing>Number.MAX_SAFE_INTEGER) throw new Error('Smithing progress is full.');
   if (!validItems(state.items) || !validStash(state.stash,state.items)) throw new Error('Items do not fit.');
@@ -38,16 +33,18 @@ function checked(state:SmithingState):SmithingState {
 }
 /** Candidates include placement and XP; callers publish exactly once after the forge completes. */
 export function forged(state:SmithingState,item:ItemId,newId:()=>string):SmithingState {
-  const recipe=recipeFor(state,item);
+  const recipe = learnedRecipes(state.xp.smithing).find(recipe => recipe.item === item);
+  if (!recipe) throw new Error('Recipe is not learned.');
   for (const material of recipeMaterials(state,recipe))
     if (material.held<material.cost) throw new Error('Need '+(material.cost-material.held)+' more '+(material.item==='iron' ? 'Iron' : 'Wood')+'.');
-  const items=structuredClone(state.items),stash=structuredClone(state.stash);
+  const next = { ...state, items: structuredClone(state.items), stash: structuredClone(state.stash),
+    xp: { ...state.xp, smithing: state.xp.smithing + smithingXp(state, recipe.xp) } };
   for (const [material,cost] of Object.entries(recipe.materials) as [SmithingMaterial,number][]) {
-    const remaining=consumeMaterial(items,material,cost);
-    if (remaining && consumeMaterial(stash,material,remaining)) throw new Error('Materials are no longer available.');
+    const remaining=consumeMaterial(next.items,material,cost);
+    if (remaining && consumeMaterial(next.stash,material,remaining)) throw new Error('Materials are no longer available.');
   }
-  const next={...state,items:items.filter(entry=>entry.quantity>0),stash:stash.filter(entry=>entry.quantity>0),
-    xp:{...state.xp,smithing:state.xp.smithing+smithingXp(state,recipe.xp)}};
+  next.items = next.items.filter(entry => entry.quantity > 0);
+  next.stash = next.stash.filter(entry => entry.quantity > 0);
   if (receive(next.items,item,1,newId)!==1) throw new Error('Not enough room in Bag.');
   return checked(next);
 }
@@ -77,8 +74,8 @@ export function reclaimed(state:SmithingState,id:string,container:SmithingContai
   const selected = reclaimEntries(state, container).find(entry => entry.id === id && canReclaim(entry));
   if (!selected) throw new Error('Select unequipped metal gear.');
   const returns=salvageReturns(selected.item)!;
-  const next={...state,items:structuredClone(state.items),stash:structuredClone(state.stash),
-    xp:{...state.xp,smithing:state.xp.smithing+smithingXp(state,smithing.reclaimXp)}};
+  const next = { ...state, items: structuredClone(state.items), stash: structuredClone(state.stash),
+    xp: { ...state.xp, smithing: state.xp.smithing + smithingXp(state, smithing.reclaimXp) } };
   if (container==='bag') next.items=next.items.filter(entry=>entry.id!==id);
   else next.stash=next.stash.filter(entry=>entry.id!==id);
   const target=container==='bag' ? next.items : next.stash;

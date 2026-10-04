@@ -36,17 +36,12 @@ export class CharacterPersistence {
     const storage = this.storage(),
       raw = storage.getItem(characterSaveKey);
     const primary = this.decode(raw);
-    if (primary) {
-      this.loaded = true;
-      return { value: primary, existing: true };
-    }
-    const backupRaw = storage.getItem(characterBackupKey),
-      backup = this.decode(backupRaw);
-    // Preserve every unreadable copy before a replacement is permitted.
-    if (raw !== null) archiveUnreadable(storage, characterSaveKey, raw);
+    // A valid primary needs no backup read; a broken primary must be archived before repair.
+    const backupRaw = primary ? null : storage.getItem(characterBackupKey), backup = this.decode(backupRaw);
+    if (!primary && raw !== null) archiveUnreadable(storage, characterSaveKey, raw);
     if (backupRaw !== null && !backup) archiveUnreadable(storage, characterBackupKey, backupRaw);
     this.loaded = true;
-    return { value: backup ?? character(), existing: !!backup };
+    return { value: primary ?? backup ?? character(), existing: !!(primary ?? backup) };
   }
   load(): CharacterSave | null {
     if (!this.source || this.loaded || this.pending !== null) return null;

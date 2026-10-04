@@ -1,5 +1,5 @@
 import { expect, test, vi } from 'vitest';
-import { BoxGeometry, Group, Mesh, MeshBasicMaterial } from 'three';
+import { BoxGeometry, BufferAttribute, BufferGeometry, InterleavedBuffer, InterleavedBufferAttribute, Group, Mesh, MeshBasicMaterial } from 'three';
 import { SceneCache } from '../src/assets/scene-cache';
 
 // Protect native shared art during overlapping shutdowns and in-flight area preparation.
@@ -22,4 +22,16 @@ test('concurrent scene shutdowns wait for loading and release shared art exactly
   first.release(); first.release(); second.release(); await cache.dispose();
   expect(load).toHaveBeenCalledOnce();
   for (const release of releases) expect(release).toHaveBeenCalledOnce();
+});
+
+// Cache eviction must measure shared vertex storage once and include morph storage.
+test('scene budgets count shared interleaved storage once, including morph targets', async () => {
+  const { sceneResourceBytes } = await import('../src/assets/resource-ownership');
+  const data = new InterleavedBuffer(new Float32Array(18), 6), geometry = new BufferGeometry();
+  geometry.setAttribute('position', new InterleavedBufferAttribute(data, 3, 0));
+  geometry.setAttribute('normal', new InterleavedBufferAttribute(data, 3, 3));
+  geometry.morphAttributes.position = [new BufferAttribute(new Float32Array(9), 3)];
+  const material = new MeshBasicMaterial(), root = new Group().add(new Mesh(geometry, material), new Mesh(geometry, material));
+  try { expect(sceneResourceBytes(root)).toBe((18 + 9) * 4); }
+  finally { geometry.dispose(); material.dispose(); }
 });
