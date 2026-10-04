@@ -40,3 +40,4 @@
 @media(prefers-reduced-motion:reduce){.front-button{transition:none}.front-button:active:enabled{transform:none}}
 
 .front-dialog .front-name-error{margin:12px 0 0;text-align:left;font-size:14px;color:var(--ui-error)}
+#adventure-load-error{margin:0 0 20px;color:var(--ui-error);font-size:14px}

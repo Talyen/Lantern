@@ -92,8 +92,8 @@ export async function loadEquipmentMotions(loader: GLTFLoader, who: RigId, loado
     if (clips[role]) motions.skillContacts[role] = contactsFor(role, true);
   if (clips.riposte) clips['riposte-stance']=riposteStance(clips.riposte,motions.skillContacts.riposte![0]);
   if (who==='player' && clips.pierce && clips.pierceDraw) {
-    const source=sourceRig ?? (await loader.loadAsync(characters.player.model)).scene;
-    clips['arrow-rain']=skywardShot(source,clips.pierce,clips.pierceDraw.duration,motions.skillContacts.pierce![0]-clips.pierceDraw.duration);
+    if (!sourceRig) throw new Error('Derived Bow motions require the prepared player rig.');
+    clips['arrow-rain']=skywardShot(sourceRig,clips.pierce,clips.pierceDraw.duration,motions.skillContacts.pierce![0]-clips.pierceDraw.duration);
     clips.deadeye=heldShot(clips.pierce,clips.pierceDraw.duration,motions.skillContacts.pierce![0],1.05,1.4);
     motions.skillContacts['arrow-rain']=[.93]; motions.skillContacts.deadeye=[1.05];
   }

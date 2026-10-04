@@ -13,7 +13,7 @@ npm run dev
 
 Lantern requires native WebGPU with hardware acceleration on a supported browser/OS/GPU. Unsupported systems receive a startup error. Gameplay, authoring and animation comparison share one visual pipeline; FSR Temporal is the sole reconstruction method, with fixed 1× output density and independent resolution, shadow and particle quality controls.
 
-Open Vite's printed local URL. New characters begin at Homestead; returning characters resume at their last safe campfire with full health and their saved outing intact. In development, `/?area=clearing` starts at the clearing's authored midpoint for focused inspection.
+Open Vite's printed local URL. New characters begin at Homestead; returning characters resume at their last safe campfire with full health and their saved outing intact. For a disposable development fixture, `/?author=levels&area=clearing` starts at the clearing's authored midpoint; use Play in the authoring controls to enable movement.
 
 | Control | Action |
 | --- | --- |
@@ -30,7 +30,7 @@ Assign abilities in Skills. Hold the input assigned to Shield Basic to block wit
 
 Follow the woodland path to Forest Clearing's goblin camp and its separate staff-wielding caster. Chests open independently of nearby enemies; the camp chest scatters two return scrolls, two Health Potions and unclaimed equipment. Pick up equipment by clicking its object or name label, then equip it in Inventory; gold, Wood, Stone, Iron, Health Potions and scrolls collect automatically nearby after landing. The [equipment guide](Docs/EQUIPMENT.md#guaranteed-discoveries-and-persistence) lists guaranteed discoveries.
 
-Discover campfires on foot, then travel between safe fires, or cast a Scroll of Return to open a round-trip portal home. Safe campfires heal 3% maximum health per second within 3 m; enemies within 10 m of the fire or pursuing/returning anywhere in the area block healing and travel. Base player health is 100; ordinary enemies have 200 health and deal 20 direct damage before armor/blocking. Weapon and proficiency bonuses follow the [combat values](Docs/EQUIPMENT.md#combat-values). Defeat offers Return Home with collected items retained.
+Discover campfires on foot, then travel from a safe fire to any discovered destination, or cast a Scroll of Return to open a round-trip portal home. Safe campfires heal 3% maximum health per second within 3 m; enemies within 10 m of the fire or pursuing/returning anywhere in the area block healing and interaction at that fire. Destination enemies do not block travel. Base player health is 100; ordinary enemies have 200 health and deal 20 direct damage before armor/blocking. Weapon and proficiency bonuses follow the [combat values](Docs/EQUIPMENT.md#combat-values). Defeat offers Return Home with collected items retained.
 
 Inventory, equipment, wallet/buyback, all skill XP, collected equipment claims, discovered fires, shelter restoration, stash and remaining Rested time save locally. Relaunching also preserves enemy health/defeat, chests, ground drops, resource progress, renewal deadlines, portal pairs and committed cooldowns. Individual sources renew after 45 active-play minutes when safely out of view; closed-app time does not advance renewal or Rested. Options pauses play and contains Graphics, Sound, Combat Text and access to Keybindings. Rock inspection and the world-resetting Restart command belong to development level authoring. See [save recovery](Docs/RUNTIME.md#save-recovery) and [level design](Docs/LEVEL_DESIGN.md#fast-iteration).
 

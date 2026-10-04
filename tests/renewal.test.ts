@@ -45,7 +45,7 @@ test('individual enemy deadlines defer safely and renew only their own life and 
   expect(adventure.session().drops.map(drop => drop.id)).toEqual([independent.id, ...casterLoot]);
   encounter.enemies.enemy.hp = 0;
   adventure.step(encounter, areas.clearing, 0);
-  expect(adventure.session().drops.filter(drop => drop.source?.id === 'enemy').map(drop => drop.item)).toEqual(['scroll', 'gold']);
+  expect(adventure.session().drops.filter(drop => drop.source?.id === 'enemy').map(drop => drop.item)).toEqual(['scroll', 'gold', 'axe']);
 });
 
 test('chests open with living enemies, renew independently and never repeat collected equipment claims', () => {
@@ -112,11 +112,11 @@ test('a save between lethal XP and loot generation resumes the reward exactly on
   const next = createEncounter('playing'); restored.enter(next, areas.clearing);
   next.player.x = 30; next.player.z = 30;
   restored.step(next, areas.clearing, 0);
-  expect(restored.session().drops.filter(drop => drop.source?.id === 'enemy').map(drop => drop.item)).toEqual(['scroll', 'gold']);
+  expect(restored.session().drops.filter(drop => drop.source?.id === 'enemy').map(drop => drop.item)).toEqual(['scroll', 'gold', 'axe']);
   restored.closeSave();
   const again = new Adventure(storage, () => 0); again.configureAreas(areas); again.enter(next, areas.clearing);
   again.step(next, areas.clearing, 0);
-  expect(again.session().drops.filter(drop => drop.source?.id === 'enemy').map(drop => drop.item)).toEqual(['scroll', 'gold']);
+  expect(again.session().drops.filter(drop => drop.source?.id === 'enemy').map(drop => drop.item)).toEqual(['scroll', 'gold', 'axe']);
   expect(again.character.xp.axeCombat).toBe(10);
 });
 

@@ -1,6 +1,6 @@
 # Combat and equipment
 
-Lantern uses fixed authored equipment. [The catalog](../src/gameplay/equipment.ts) owns item identities, slots, bag footprints and bonuses; [combat stats](../src/gameplay/combat-stats.ts) derives effective properties from equipped items. Inventory and stash copies have persistent instance IDs. There are no generated properties, rarity tiers, equipment proficiency gates, critical hits or elemental resistances.
+Lantern uses fixed authored equipment. [The catalog](../src/gameplay/equipment.ts) owns item identities, slots, bag footprints and bonuses; [combat stats](../src/gameplay/combat-stats.ts) derives effective properties from equipped items. Inventory and stash copies have persistent instance IDs. There are no generated properties, rarity tiers, equipment proficiency gates or critical hits. [Smithing](SMITHING.md#talents) grants the Heat Seasoned Burn Resistance talent.
 
 Bow and Yew Longbow share the calibrated left-hand grip. Their authored YZ plane contains the shooting direction, with the curve ahead of the string; the generic one-handed grip previously turned the bows sideways. The correction applies to gameplay and both animation labs, without changing model pivots or motion keyframes.
 

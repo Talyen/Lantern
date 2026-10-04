@@ -35,7 +35,7 @@ const options = new Options({
 });
 const front = new FrontEnd({
   slots: () => store.views(),
-  continue: slot => { if (!busy) { const record = store.load(slot); if (record) void start(record).catch((error: unknown) => recordFailure('adventure-loading', error)); else front.showPlay(); } },
+  continue: slot => { if (!busy) { const record = store.load(slot); if (record) void start(record).catch((error: unknown) => recordFailure('adventure-loading', error)); else front.showLoadError(); } },
   create: (slot, name) => { if (!busy) { const record = store.create(slot, name); if (record) void start(record).catch((error: unknown) => recordFailure('adventure-loading', error)); else front.showPlay(); } },
   delete: slot => store.delete(slot), options: () => options.open(), sound: () => audio.play('uiClick'),
 });

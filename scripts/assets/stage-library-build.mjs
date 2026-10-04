@@ -7,9 +7,11 @@ import { gameplayAssets, inventory, rejectArchives } from '../lib/assets.mjs';
 await cli(async () => {
   const args = parseArgs(process.argv.slice(2));
   if (args['--help']) { console.log('Usage: node scripts/assets/stage-library-build.mjs'); return; }
-  await requireShippingApprovals(root);
   const stage = resolve(root, '.local/build-public'), source = resolve(root, 'public');
   const { selection, selected, paths } = await gameplayAssets(source);
+  // Source-only CI exports no private art and cannot certify its appearance.
+  // Any staged private content still requires the complete shipping review.
+  if (paths.size) await requireShippingApprovals(root);
   const files = await inventory(source, ['vendor']);
   files.push(...await Promise.all([...paths].map(async path => ({ path: relative(source, path), bytes: (await stat(path)).size }))));
   rejectArchives(files);

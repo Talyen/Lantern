@@ -97,7 +97,7 @@ async function initialize(): Promise<void> {
   status.textContent = 'Preparing characters and ability art…';
   const playerSource = await loader.loadAsync(characters.player.model); sources.push(playerSource.scene); sceneTextures(playerSource.scene);
   player = await actor(playerSource.scene, playerSource.animations, origin, yaw, 'player');
-  const bow = await loadEquipmentMotions(loader, 'player', { main: 'bow', off: null });
+  const bow = await loadEquipmentMotions(loader, 'player', { main: 'bow', off: null }, player.model);
   player.actions.set('arrow-rain', action(player.mixer,bow.clips['arrow-rain']!));
   const bowIdle = action(player.mixer, bow.clips.idle);
   const sword=await loadEquipmentMotions(loader,'player',{main:'sword',off:null},player.model);

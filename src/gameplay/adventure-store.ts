@@ -8,7 +8,7 @@ export type SlotId = typeof slotIds[number];
 export const slotKey = (slot: SlotId) => `lantern.adventure.${slot}.v1`;
 export const migrationKey = 'lantern.adventures.legacy-migrated.v1';
 type Storage = Pick<globalThis.Storage, 'getItem' | 'setItem' | 'removeItem'>;
-type Identity = { version: 1; id: string; name: string; deleted: boolean };
+type Identity = { version: 1; id: string; name: string; deleted: boolean; legacy?: true };
 type Record = { version: 1; id: string; name: string; character: CharacterSave };
 type Slot = { state: 'unknown' | 'empty' | 'occupied'; identity?: Identity; record?: Record; dirty: boolean };
 export type AdventureSlot = { slot: SlotId; state: Slot['state']; name: string; checkpoint?: string };
@@ -20,7 +20,8 @@ export function validAdventureName(name: string): boolean {
 function decodeIdentity(raw: string): Identity {
   const value = parseJson(raw);
   if (!isRecord(value) || value.version !== 1 || typeof value.id !== 'string' || !value.id
-    || typeof value.name !== 'string' || !validAdventureName(value.name) || typeof value.deleted !== 'boolean')
+    || typeof value.name !== 'string' || !validAdventureName(value.name) || typeof value.deleted !== 'boolean'
+    || value.legacy !== undefined && value.legacy !== true)
     throw new Error('Invalid adventure identity');
   return value as Identity;
 }
@@ -87,10 +88,13 @@ export class AdventureStore {
       const storage = this.storage();
       const first = this.slots.get(1)!;
       if (storage.getItem(migrationKey) === 'true') { this.legacyResolved = true; return; }
-      if (first.identity) { this.legacyResolved = true; this.migrationPending = !!first.record; return; }
+      // An identity can survive a failure before either migrated snapshot exists.
+      // Only an explicitly migrated identity may retry from the retained legacy save.
+      const interrupted = first.identity?.legacy && !first.identity.deleted && !first.record;
+      if (first.identity && !interrupted) { this.legacyResolved = true; this.migrationPending = !!first.record; return; }
       if (first.state === 'unknown') return;
       const primary = storage.getItem(characterSaveKey), backup = storage.getItem(characterBackupKey);
-      if (first.state === 'occupied') { this.legacyResolved = true; return; }
+      if (first.state === 'occupied' && !interrupted) { this.legacyResolved = true; return; }
       if (primary === null && backup === null) { this.legacyResolved = true; return; }
       let saved: CharacterSave | undefined;
       for (const raw of [primary, backup]) {
@@ -99,7 +103,7 @@ export class AdventureStore {
       }
       this.legacyResolved = true;
       if (!saved) { this.legacyProtected = true; this.slots.set(1, { state: 'occupied', dirty: false }); return; }
-      const identity: Identity = { version: 1, id: this.newId(), name: 'Adventure 1', deleted: false };
+      const identity: Identity = first.identity ?? { version: 1, id: this.newId(), name: 'Adventure 1', deleted: false, legacy: true };
       this.slots.set(1, { state: 'occupied', identity, record: { version: 1, id: identity.id, name: identity.name, character: saved }, dirty: true });
       this.migrationPending = true;
     } catch (error) { this.error = String(error); }

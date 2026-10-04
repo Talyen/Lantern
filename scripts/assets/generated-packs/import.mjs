@@ -7,6 +7,7 @@ import { homedir } from 'node:os';
 import { basename, dirname, resolve } from 'node:path';
 import { cli, isMain, parseArgs, root, UsageError } from '../../lib/cli.mjs';
 import { preserveSources, sourceEntry } from '../../lib/asset-sources.mjs';
+import { context } from '../../agents/state.mjs';
 import { prepareModel, inspectModel } from './validate.mjs';
 import { packs, defaultPacks, entriesFor, demoExpected, packWarnings } from './definitions.mjs';
 
@@ -18,7 +19,7 @@ async function preservedArchive(id) {
   const suffix = `animation-packs/generated-packs/${id}/${packs[id].archive}`;
   const paths = [resolve(sourceRoot, id, packs[id].archive)];
   // Completed-task cleanup retains source archives beside main, rather than exposing them.
-  const archives = resolve(root, '.local/agent-archives');
+  const archives = resolve((await context()).main, '.local/agent-archives');
   const tasks = await readdir(archives).catch(error => { if (error.code === 'ENOENT') return []; throw error; });
   paths.push(...tasks.sort().reverse().map(task => resolve(archives, task, suffix)));
   for (const path of paths) {

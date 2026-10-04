@@ -89,6 +89,31 @@ test('pending snapshots survive switching and automatic retry writes the latest 
   } finally { store.close(); vi.useRealTimers(); }
 });
 
+// Admission: an identity-first interruption can strand intact legacy progress across app lifetimes.
+test('legacy migration recovers after only its identity was written without adopting legacy progress into a new slot', () => {
+  const storage = memory(), legacy = character(); legacy.gold = 71;
+  storage.data.set(characterSaveKey, JSON.stringify(legacy));
+  const write = storage.setItem.bind(storage);
+  storage.setItem = (key, value) => { if (key === `${slotKey(1)}.backup`) throw Error('Interrupted before snapshots'); write(key, value); };
+  const first = new AdventureStore(storage); first.initialize();
+  const identity = first.load(1)!.id;
+  expect(storage.getItem(`${slotKey(1)}.identity`)).toContain(JSON.stringify(identity));
+  expect(storage.getItem(slotKey(1))).toBeNull();
+  expect(storage.getItem(`${slotKey(1)}.backup`)).toBeNull();
+  expect(storage.getItem(migrationKey)).toBeNull(); first.close();
+  storage.setItem = write;
+  const restored = new AdventureStore(storage); restored.initialize();
+  expect(restored.load(1)?.id).toBe(identity);
+  expect(restored.load(1)?.character.gold).toBe(71);
+  expect(storage.getItem(migrationKey)).toBe('true'); restored.close();
+
+  storage.data.delete(migrationKey);
+  storage.data.set(`${slotKey(1)}.identity`, JSON.stringify({ version: 1, id: 'new', name: 'New', deleted: false }));
+  storage.data.delete(slotKey(1)); storage.data.delete(`${slotKey(1)}.backup`);
+  const unrelated = new AdventureStore(storage); unrelated.initialize();
+  expect(unrelated.load(1)).toBeNull(); unrelated.close();
+});
+
 test('validated backup repairs preserve unreadable data and never replace it when archiving fails', () => {
   const storage = memory(), first = new AdventureStore(storage);
   const saved = first.create(1, 'Recover')!; saved.character.gold = 22; first.save(1, saved.id, saved.character); first.close();

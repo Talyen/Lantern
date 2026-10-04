@@ -237,7 +237,7 @@ async function selectClip(lane: Lane): Promise<void> {
   try {
     const motion = (await loadMotionClip(loader, clip)).clone();
     if (lane.loadout.main==='staff' && !clip.audit && !['hit','death','dodge','chop','mine'].includes(clip.category)) {
-      const preparedMotions=await loadEquipmentMotions(loader,lane.rig,lane.rig==='player' ? lane.loadout : {main:'axe',off:null});
+      const preparedMotions=await loadEquipmentMotions(loader,lane.rig,lane.rig==='player' ? lane.loadout : {main:'axe',off:null},lane.source);
       if (lane.rig==='player') holdStaffArm(motion,preparedMotions.clips.idle);
     }
     if (generation !== lane.generation || disposed) return;

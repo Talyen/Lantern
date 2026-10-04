@@ -19,6 +19,7 @@ export class FrontEnd {
   private campfire: HTMLElement;
   private primary: HTMLButtonElement;
   private deleteButton: HTMLButtonElement;
+  private loadError: HTMLElement;
   private naming: HTMLDialogElement;
   private deletion: HTMLDialogElement;
   private name: HTMLInputElement;
@@ -37,6 +38,7 @@ export class FrontEnd {
         <header><h1 id="play-heading">Play</h1><button id="play-back" class="front-button" type="button">Back</button></header>
         <div class="front-rule" aria-hidden="true"></div><div class="play-columns"><div class="adventure-slots" role="listbox" aria-label="Adventures"></div>
           <section class="adventure-detail" aria-labelledby="adventure-name"><h2 id="adventure-name"></h2><div class="adventure-campfire"><span>Campfire</span><p></p></div>
+            <p id="adventure-load-error" role="alert" hidden></p>
             <button id="adventure-primary" class="front-button front-primary" type="button"></button><button id="adventure-delete" class="front-button" type="button">Delete</button>
           </section></div></section>
       <dialog class="front-dialog front-frame" id="new-adventure-dialog" aria-labelledby="new-adventure-heading">
@@ -52,6 +54,7 @@ export class FrontEnd {
     this.title = element('.title-composition'); this.play = element('.play-composition');
     this.detailName = element('#adventure-name'); this.campfire = element('.adventure-campfire');
     this.primary = element('#adventure-primary'); this.deleteButton = element('#adventure-delete');
+    this.loadError = element('#adventure-load-error');
     this.naming = element('#new-adventure-dialog'); this.deletion = element('#delete-adventure-dialog');
     this.name = element('#adventure-name-input'); this.begin = element('#new-adventure-dialog [type=submit]');
     for (const slot of slotIds) {
@@ -102,7 +105,13 @@ export class FrontEnd {
     this.refresh();
   }
   private current(): AdventureSlot { return this.ctx.slots().find(value => value.slot === this.selected)!; }
-  private select(slot: SlotId): void { this.selected = slot; savePreference(selectedKey, slot); this.refresh(); }
+  private select(slot: SlotId): void { this.loadError.hidden = true; this.selected = slot; savePreference(selectedKey, slot); this.refresh(); }
+  showLoadError(): void {
+    this.showPlay();
+    this.loadError.textContent = 'Saved progress could not be read. Try Continue again. Your saved files have been kept.';
+    this.loadError.hidden = false;
+    this.primary.focus();
+  }
   refresh(): void {
     const slots = this.ctx.slots();
     this.rows.forEach((row, index) => {
@@ -121,7 +130,7 @@ export class FrontEnd {
     }
   }
   showTitle(): void { this.screen = 'title'; this.root.hidden = false; this.title.hidden = false; this.play.hidden = true; this.focus(); }
-  showPlay(): void { this.screen = 'play'; this.root.hidden = false; this.title.hidden = true; this.play.hidden = false; this.refresh(); this.focus(); }
+  showPlay(): void { this.screen = 'play'; this.loadError.hidden = true; this.root.hidden = false; this.title.hidden = true; this.play.hidden = false; this.refresh(); this.focus(); }
   hide(): void { this.root.hidden = true; }
   focus(): void { if (!this.root.hidden) (this.screen === 'title' ? this.root.querySelector<HTMLButtonElement>('#title-play')! : this.rows[this.selected - 1]).focus(); }
   focusOptions(): void { if (!this.root.hidden) this.root.querySelector<HTMLButtonElement>('#title-options')!.focus(); }
