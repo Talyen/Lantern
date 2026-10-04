@@ -32,8 +32,8 @@ export function woodlandPatchWeight(patch: Pick<GroundPatch, 'center' | 'radius'
   return smoothstep(.35, 1, distance).oneMinus().mul(patch.strength);
 }
 /** One coherent projection per layer preserves individual painted features instead of double-image crossfades. */
-export function woodlandMaterial(load: (url: string, data: boolean) => THREE.Texture, patches: GroundPatch[], recipe: WoodlandGroundRecipe = woodlandGroundRecipe, paths: GroundPath[] = []) {
-  let wet: Node<'float'> = float(0);
+export function woodlandMaterial(load: (url: string, data: boolean) => THREE.Texture, patches: GroundPatch[], recipe: WoodlandGroundRecipe = woodlandGroundRecipe, paths: GroundPath[] = [], bankWetness?: Node<'float'>) {
+  let wet: Node<'float'> = bankWetness ?? float(0);
   let litter: Node<'float'> = float(0), rocky: Node<'float'> = float(0), worn: Node<'float'> = float(0);
   for (const patch of patches) {
     const weight = woodlandPatchWeight(patch);

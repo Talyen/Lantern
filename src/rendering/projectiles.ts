@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { Fn, color, mix, positionLocal, positionPrevious, sin, uniform, uv, vec3 } from 'three/tsl';
 import { MeshBasicNodeMaterial } from 'three/webgpu';
 import { assetLibrary, type AssetInstance } from '../assets/asset-library';
 import { disposeSceneInstances } from '../assets/resource-ownership';
@@ -18,14 +19,32 @@ export class ProjectileVisuals {
   private boltGeometry = new THREE.SphereGeometry(.045, 8, 6);
   private boltMaterial = new MeshBasicNodeMaterial({color:'#ffd29a'});
   private enemyBoltMaterial = new MeshBasicNodeMaterial({color:'#91e4ef'});
-  constructor(parent: THREE.Object3D) { this.root.userData.transient = true; parent.add(this.root); }
+  private ribbonClock = uniform(0);
+  private previousRibbonClock = uniform(0);
+  private ribbonGeometry = new THREE.PlaneGeometry(.27, 1.05, 1, 8);
+  private ribbonMaterial = new MeshBasicNodeMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide });
+  constructor(parent: THREE.Object3D) {
+    this.root.userData.transient = true; parent.add(this.root);
+    this.ribbonGeometry.rotateX(-Math.PI / 2); this.ribbonGeometry.translate(0, 0, -.53);
+    const positions = this.ribbonGeometry.getAttribute('position');
+    for (let i = 0; i < positions.count; i++) positions.setX(i, positions.getX(i) * Math.max(.08, 1 + positions.getZ(i) / 1.05));
+    this.ribbonMaterial.colorNode = mix(color('#3c8eaa'), color('#c2f0e8'), uv().y.oneMinus());
+    this.ribbonMaterial.opacityNode = uv().y.oneMinus().mul(.68);
+    const ribbonPosition = (clock: typeof this.ribbonClock) => positionLocal.add(vec3(sin(positionLocal.z.mul(11).add(clock.mul(13))).mul(.045).mul(uv().y), 0, 0));
+    this.ribbonMaterial.positionNode = Fn(() => {
+      positionPrevious.assign(ribbonPosition(this.previousRibbonClock));
+      return ribbonPosition(this.ribbonClock);
+    })();
+  }
   prepareArrow(): Promise<void> {
     return this.loading ??= assetLibrary.loadAsset(arrowAsset).then(instance => {
       if (this.disposed) { instance.release(); return; }
       this.arrows = instance; instance.object.scale.setScalar(.7); instance.object.updateMatrixWorld(true);
     }).catch((error: unknown) => { this.loading = undefined; throw error; });
   }
-  sync(projectiles: Projectile[]): void {
+  sync(projectiles: Projectile[], dt = 0): void {
+    this.previousRibbonClock.value = this.ribbonClock.value;
+    this.ribbonClock.value += dt;
     this.liveIds.clear();
     for (const projectile of projectiles) this.liveIds.add(projectile.id);
     for (const [id, object] of this.objects) if (!this.liveIds.has(id)) { disposeSceneInstances(object); object.removeFromParent(); this.objects.delete(id); }
@@ -35,14 +54,18 @@ export class ProjectileVisuals {
         object = projectile.kind === 'arrow' ? this.arrows?.object.clone(true) : new THREE.Mesh(this.boltGeometry,projectile.owner !== 'player' ? this.enemyBoltMaterial : this.boltMaterial);
         if (!object) continue;
         if (projectile.ability==='poison-arrow') {const tip=new THREE.Mesh(this.poisonGeometry,this.poisonMaterial); tip.position.z=.38; object.add(tip);}
-        if (projectile.kind === 'bolt') object.scale.set(projectile.owner !== 'player' ? 2 : 1, projectile.owner !== 'player' ? 2 : 1, projectile.owner !== 'player' ? 5 : 2.5);
+        if (projectile.kind === 'bolt' && projectile.owner !== 'player') {
+          const head = object; object = new THREE.Group(); object.add(head);
+          head.scale.set(2, 2, 5);
+          const ribbon = new THREE.Mesh(this.ribbonGeometry, this.ribbonMaterial); object.add(ribbon);
+        } else if (projectile.kind === 'bolt') object.scale.set(projectile.owner !== 'player' ? 2 : 1, projectile.owner !== 'player' ? 2 : 1, projectile.owner !== 'player' ? 5 : 2.5);
         this.root.add(object); this.objects.set(projectile.id,object);
       }
       object.position.set(projectile.x,projectile.y,projectile.z); object.rotation.y=Math.atan2(projectile.dx,projectile.dz);
     }
   }
-  clear(): void { disposeSceneInstances(this.root); this.root.clear(); this.objects.clear(); this.liveIds.clear(); }
-  dispose(): void { this.disposed=true; this.clear(); this.root.removeFromParent(); this.arrows?.release(); this.poisonGeometry.dispose(); this.poisonMaterial.dispose(); this.boltGeometry.dispose(); this.boltMaterial.dispose(); this.enemyBoltMaterial.dispose(); }
+  clear(): void { disposeSceneInstances(this.root); this.root.clear(); this.objects.clear(); this.liveIds.clear(); this.ribbonClock.value = this.previousRibbonClock.value = 0; }
+  dispose(): void { this.disposed=true; this.clear(); this.root.removeFromParent(); this.arrows?.release(); this.poisonGeometry.dispose(); this.poisonMaterial.dispose(); this.boltGeometry.dispose(); this.boltMaterial.dispose(); this.enemyBoltMaterial.dispose(); this.ribbonGeometry.dispose(); this.ribbonMaterial.dispose(); }
 }
 
 /** A small hand charge and release flash read the cast clock without awarding or firing anything. */

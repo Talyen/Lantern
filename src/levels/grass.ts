@@ -1,3 +1,4 @@
+import { waterAt } from './water.ts';
 import { boundaryDistance } from '../gameplay/area.ts';
 import { inReserved } from './decoration.ts';
 import { groundPathDistance } from './ground-paths';
@@ -81,7 +82,8 @@ export function generateGrass(area: AreaDefinition, patches: GrassPatch[]): Gras
     if (result.length < grassBudget) result.push(blade);
     else { const replacement = Math.floor(random() * accepted); if (replacement < grassBudget) result[replacement] = blade; }
   }
-  return result;
+  // Preserve seeded placements outside water; only remove intersecting roots.
+  return area.effects.water.length ? result.filter(blade => !waterAt(area.effects.water, blade.x, blade.z)) : result;
 }
 
 /** A small, static coverage mask lets soil and blades share exactly the same authored edges. */
@@ -92,6 +94,9 @@ export function grassMask(area: AreaDefinition, patches: GrassPatch[], resolutio
   const density = Math.max(1, ...patches.map(p => p.density)), data = new Uint8Array(resolution * resolution);
   // Match blade generation: unrelated scenery cannot clear the coverage mask.
   const coverageArea = { ...area, props: area.props.filter(p => p.primitive?.paths?.length || p.primitive?.patches?.some(patch => patch.strength >= .25 && patch.layer !== 'litter')) };
-  for (let z = 0; z < resolution; z++) for (let x = 0; x < resolution; x++) data[z * resolution + x] = Math.round(grassCoverage(coverageArea, patches, min[0] + (x + .5) / resolution * span[0], min[1] + (z + .5) / resolution * span[1]) / density * 255);
+  for (let z = 0; z < resolution; z++) for (let x = 0; x < resolution; x++) {
+    const px = min[0] + (x + .5) / resolution * span[0], pz = min[1] + (z + .5) / resolution * span[1];
+    data[z * resolution + x] = waterAt(area.effects.water, px, pz) ? 0 : Math.round(grassCoverage(coverageArea, patches, px, pz) / density * 255);
+  }
   return { data, min, span, resolution };
 }

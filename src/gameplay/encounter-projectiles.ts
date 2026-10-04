@@ -12,8 +12,8 @@ export function projectileLaunchClear(projectile: Projectile, actor: { x: number
   const origin = { x: actor.x, y: projectile.y, z: actor.z };
   const wall = movementWorld?.segmentHit?.(origin, projectile) ?? null;
   if (wall === null) return true;
-  events.push({ type: 'projectileImpact', kind: projectile.kind, position: {
-    x: origin.x + (projectile.x - origin.x) * wall,
+  events.push({ type: 'projectileImpact', owner: projectile.owner, kind: projectile.kind, position: {
+    x: origin.x + (projectile.x - origin.x) * wall, y: projectile.y,
     z: origin.z + (projectile.z - origin.z) * wall,
   } });
   return false;
@@ -71,7 +71,7 @@ export function advanceProjectile(state: Encounter, projectile: Projectile, dt: 
     }
   }
   if (wall !== null) {
-    events.push({ type: 'projectileImpact', kind: projectile.kind, position: { x: projectile.x + (to.x - projectile.x) * wall, z: projectile.z + (to.z - projectile.z) * wall } });
+    events.push({ type: 'projectileImpact', owner: projectile.owner, kind: projectile.kind, position: { x: projectile.x + (to.x - projectile.x) * wall, y: projectile.y, z: projectile.z + (to.z - projectile.z) * wall } });
     return false;
   }
   projectile.x = to.x;

@@ -5,6 +5,7 @@ import type { GrassPatch } from './grass';
 import type { LightingRecipe } from './lighting';
 import type { LocalLightRole } from './local-lighting';
 import type { Traversal } from '../gameplay/movement';
+import type { WaterDefinition } from './water';
 import type { PortalDefinition } from '../rendering/portal';
 import type { EncounterLayout, Gate, Point, Spawn } from '../gameplay/area.ts';
 export type EnvironmentLighting = { sky: string; horizon: string; ground: string; sunColor: string; sunIntensity: number; intensity: number; rotation: number };
@@ -35,7 +36,7 @@ export type AreaDefinition = {
   scatter: { id: string; count: number; radius: [number, number]; primitive: Primitive; harvest?: Placement['harvest']; excludedIds: string[] }[];
   grass?: GrassPatch[];
   reserved: Region[]; gates: Gate[]; lighting: LightingRecipe;
-  effects: { weather?: { kind: 'rain'; shelters?: {center: Point; radius: number}[] }; portals?: PortalDefinition[]; water: { id: string; position: Point; width: number; length: number; flow: number; yaw?: number; shallow?: boolean }[]; fires: { id: string; position: Point; asset: AssetRef; height: number; emitterHeight?: number; intensity?: number; role?: LocalLightRole; color?: string; distance?: number; shadow?: boolean }[] };
+  effects: { weather?: { kind: 'rain'; shelters?: {center: Point; radius: number}[] }; portals?: PortalDefinition[]; water: WaterDefinition[]; fires: { id: string; position: Point; asset: AssetRef; height: number; emitterHeight?: number; intensity?: number; role?: LocalLightRole; color?: string; distance?: number; shadow?: boolean }[] };
   views: { id: string; target: [number, number, number] }[];
   inspection?: { position: Point };
 };

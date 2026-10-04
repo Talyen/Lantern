@@ -3,15 +3,29 @@ import { MeshStandardNodeMaterial } from 'three/webgpu';
 import { attribute, cos, cross, float, Fn, mix, modelWorldMatrix, modelWorldMatrixInverse, normalLocal, positionLocal, positionPrevious, sin, uniform, vec3, vec4 } from 'three/tsl';
 import { generateGrass, grassMask, grassCellSize, type GrassBlade, type GrassPatch } from '../levels/grass';
 import type { AreaDefinition } from '../levels/types';
+import { waterBankWetness } from '../levels/water';
 import type { Vegetation } from './vegetation';
 
 /** Shared across carpet cells; advanced by the area's existing paused effects clock. */
 export function createGrass(area: AreaDefinition, patches: GrassPatch[], vegetation: Vegetation) {
   const root = new THREE.Group(); root.name = 'grass-carpets'; root.userData.transient = true;
-  const mask = patches.length ? grassMask(area, patches) : null;
-  const coverageTexture = mask ? new THREE.DataTexture(mask.data, mask.resolution, mask.resolution, THREE.RedFormat) : null;
+  const wetBanks = area.effects.water.length > 0;
+  const mask = patches.length || wetBanks ? grassMask(area, patches) : null;
+  // Preserve grass coverage byte-for-byte in red; green adds wet banks without
+  // another sampled-texture binding on the already-full ground material.
+  let coverageData = mask?.data;
+  if (mask && wetBanks) {
+    coverageData = new Uint8Array(mask.data.length * 2);
+    for (let z = 0; z < mask.resolution; z++) for (let x = 0; x < mask.resolution; x++) {
+      const i = z * mask.resolution + x;
+      coverageData[i * 2] = mask.data[i];
+      coverageData[i * 2 + 1] = Math.round(waterBankWetness(area.effects.water,
+        mask.min[0] + (x + .5) / mask.resolution * mask.span[0], mask.min[1] + (z + .5) / mask.resolution * mask.span[1]) * 255);
+    }
+  }
+  const coverageTexture = mask && coverageData ? new THREE.DataTexture(coverageData, mask.resolution, mask.resolution, wetBanks ? THREE.RGFormat : THREE.RedFormat) : null;
   if (coverageTexture) { coverageTexture.minFilter = coverageTexture.magFilter = THREE.LinearFilter; coverageTexture.needsUpdate = true; }
-  const coverage = mask && coverageTexture ? { texture: coverageTexture, min: mask.min, span: mask.span } : null;
+  const coverage = mask && coverageTexture ? { texture: coverageTexture, min: mask.min, span: mask.span, wetBanks } : null;
   const clock = uniform(0), previousClock = uniform(0), wind = uniform(new THREE.Vector3(.08, 0, .035)), previousWind = uniform(new THREE.Vector3(.08, 0, .035));
   const bladeT = attribute('bladeT', 'float'), origin = attribute('grassOrigin', 'vec3'), world = attribute('grassWorld', 'vec2'), shape = attribute('grassShape', 'vec3'), blade = attribute('grassBlade', 'vec2');
   const bend = attribute('grassBend', 'vec3');

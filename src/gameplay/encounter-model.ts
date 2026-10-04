@@ -199,9 +199,11 @@ export type EncounterEvent = {
   periodic?: boolean;
 } | {
   type: 'projectileImpact';
+  owner?: ActorId;
   kind: 'arrow' | 'bolt';
   position: {
     x: number;
+    y?: number;
     z: number;
   };
 } | {

@@ -82,6 +82,10 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
       return [{ center: [p.position[0], p.position[2]], radius: family === 'pine' ? 2.7 : family === 'rock' ? 1.8 : 1.3,
         color: family === 'rock' ? '#777568' : '#71533c', strength: family === 'pine' ? .78 : .6, layer: family === 'rock' ? 'rocky-soil' : 'litter' }];
     });
+    const coverageField = grass.coverage ? texture(grass.coverage.texture,
+      positionWorld.xz.sub(vec2(...grass.coverage.min)).div(vec2(...grass.coverage.span))) : undefined;
+    if (grass.coverage?.wetBanks) lightingProcedural.push({ waterBanks: area.effects.water });
+    const bankWetness = grass.coverage?.wetBanks ? coverageField!.g : undefined;
     const material = (p: Primitive) => {
       lightingProcedural.push(p);
       const m = new MeshStandardNodeMaterial({ color: p.color, roughness: 1, side: p.doubleSided ? THREE.DoubleSide : THREE.FrontSide });
@@ -98,11 +102,11 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
         const recipe = woodlandGroundRecipeFor(area.id);
         const paths = p.paths ?? [];
         lightingProcedural.push({ woodlandMaterial: recipe, patches, ...(paths.length ? { paths } : {}) });
-        const surface = woodlandMaterial(groundMap, patches, recipe, paths);
+        const surface = woodlandMaterial(groundMap, patches, recipe, paths, bankWetness);
         m.colorNode = surface.color; m.normalNode = surface.normal; m.roughnessNode = surface.roughness; m.aoNode = surface.cavity;
         if (grass?.coverage) {
           m.map = grass.coverage.texture;
-          const coverage = texture(m.map, positionWorld.xz.sub(vec2(...grass.coverage.min)).div(vec2(...grass.coverage.span))).r;
+          const coverage = coverageField!.r;
           const grassSoil = { color: '#454833', strength: .18 };
           lightingProcedural.push({ grassSoil });
           m.colorNode = mix(m.colorNode, vec3(...new THREE.Color(grassSoil.color).toArray()), coverage.mul(grassSoil.strength));

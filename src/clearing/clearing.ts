@@ -421,7 +421,7 @@ function updateGame(dt: number): void {
   } else present(stepEncounter(encounter, dt, commands, combat.timings(), movementWorld));
   if (!paused() && encounter.phase !== 'loading' && adventure.currentArea) adventure.step(encounter, currentArea, dt);
   if (!isPaused && encounter.player.hp > 0) gathering.advance(dt);
-  projectileVisuals.sync(encounter.projectiles);
+  projectileVisuals.sync(encounter.projectiles, isPaused ? 0 : dt);
   enemyActors.sync(encounter, isPaused ? 0 : dt, currentArea.kind !== 'safe');
   if(!paused() && input.pointer()){resolveAim();hoveredInteraction=pickInteraction();}else hoveredInteraction=null;
   interactionHighlight.select(hoveredInteraction && !interactionError(hoveredInteraction) ? hoveredInteraction.object : null);interactionHighlight.update((camera.top-camera.bottom)/camera.zoom/Math.max(1,mount.clientHeight)*1.5);
@@ -454,6 +454,8 @@ function renderFrame(dt: number): boolean {
     const state = id === 'player' ? encounter.player : encounter.enemies[id];
     updateActor(actor, state, gameDt, paused(), id==='player' && encounter.blocking);
     gameplayAudio.locomotion(id,state,actor.gait,actor.current,paused());
+    if (id === 'player') graphics?.effects.fluids.locomotion(state.x, state.y, state.z, state.yaw, actor.gait,
+      actor.current === 'run' && state.hp > 0, paused() || transitioning, gameDt);
   }
   abilityEffects?.sync(encounter,player.root,cameraOwner.camera);
   if (!paused()) { active?.portals.forEach(p => p.update(gameDt)); adventureVisuals?.update(gameDt); }

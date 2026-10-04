@@ -111,6 +111,20 @@ export function validateAreas(input: Record<string, AreaDefinition>): string[] {
       for (const water of area.effects.water) {
         id(water.id);
         if (!finite(water.position,2) || !finite([water.width,water.length,water.flow,water.yaw ?? 0]) || water.width<=0 || water.length<=0 || water.flow<0 || water.shallow !== undefined && typeof water.shallow !== 'boolean') fail('invalid water surface');
+        if (water.preset !== undefined && !['stream', 'pond', 'puddle'].includes(water.preset)) fail('invalid water preset');
+        if (water.boundary !== undefined) {
+          if (!Array.isArray(water.boundary) || water.boundary.length < 3 || water.boundary.length > 32 || water.boundary.some(p => !finite(p, 2) || p.some(v => Math.abs(v) > 1))) fail('invalid normalized water boundary');
+          else {
+            let signedArea = 0;
+            for (let i = 0; i < water.boundary.length; i++) {
+              const a = water.boundary[i], b = water.boundary[(i + 1) % water.boundary.length];
+              if (Math.hypot(a[0] - b[0], a[1] - b[1]) < .001) fail('duplicate water boundary vertex');
+              signedArea += a[0] * b[1] - b[0] * a[1];
+            }
+            if (Math.abs(signedArea) < .001) fail('water boundary has no area');
+          }
+        }
+        if (water.currents !== undefined && (!Array.isArray(water.currents) || !water.currents.length || water.currents.length > 32 || water.currents.some(c => !finite(c.position, 2) || !finite(c.direction, 2) || [...c.position, ...c.direction].some(v => Math.abs(v) > 1)))) fail('invalid water currents');
       }
       if (area.effects.weather) {
         if (area.effects.weather.kind !== 'rain') fail('unknown area weather');

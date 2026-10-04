@@ -8,7 +8,8 @@ import { Fn, positionPrevious, positionLocal, uniform, vec3, sin, float, max, po
 import { copyStandardNodeMaterial } from '../assets/environment-surfaces';
 import { RainField } from './rain';
 import type { AreaDefinition } from '../levels/types';
-import { createWaterWaves } from './water-waves';
+import { createWaterSurface, waterNormalTexture, type WaterOptions } from './water';
+import { FluidEffects } from './fluids';
 
 import { particlePresets, type QualityLevel } from './quality-presets';
 export type ParticleKind = 'fire' | 'smoke' | 'sparks' | 'hit' | 'rain' | 'snow' | 'dust' | 'debris' | 'chips';
@@ -19,8 +20,7 @@ interface Pool {
   positionRange: UploadRange; colorRange: UploadRange;
   life: Float32Array; live: Uint16Array; colors: Float32Array; cursor: number; capacity: number; active: number; limit: number;
 }
-interface WaterOptions { width?: number; length?: number; flow?: number; shorelineMask?: THREE.Texture; yaw?: number; shallow?: boolean; }
-interface Water { mesh: THREE.Mesh<THREE.PlaneGeometry>; waves: ReturnType<typeof createWaterWaves>; options: WaterOptions; normal: THREE.Texture; shoreline: THREE.Texture; }
+type Water = ReturnType<typeof createWaterSurface>;
 interface Foliage { mesh: THREE.Mesh; original: THREE.Material | THREE.Material[]; depth?: THREE.Material; distance?: THREE.Material; }
 const colors: Record<ParticleKind, THREE.Color> = { fire: new THREE.Color(2.8, 0.65, 0.08), smoke: new THREE.Color('#626d75'), sparks: new THREE.Color(3, 1.1, 0.2), hit: new THREE.Color(2.3, 1.2, 0.3), rain: new THREE.Color('#aec5d4'), snow: new THREE.Color('#dbe6ee'), dust: new THREE.Color('#a79879'), debris: new THREE.Color('#846342'), chips: new THREE.Color('#aaa08a') };
 const sizes: Record<ParticleKind, number> = { fire: 0.22, smoke: 0.45, sparks: 0.035, hit: 0.075, rain: 0.04, snow: 0.065, dust: 0.025, debris: .065, chips: .045 };
@@ -66,7 +66,9 @@ export class CoreEffects {
   private texture: THREE.CanvasTexture;
   private weather: ParticleKind | null = null;
   private weatherEffects = true;
-  private readonly rain = new RainField();
+  readonly fluids = new FluidEffects();
+  private readonly rain = new RainField((x, z) => this.fluids.rainContact(x, z));
+  private readonly waterNormal = waterNormalTexture();
   resetComparisonPools(): void {
     if (!fsrComparison) throw new Error('Pool reset requires an authoring comparison.');
     for (const pool of this.pools.values()) pool.cursor = 0;
@@ -77,8 +79,8 @@ export class CoreEffects {
     for (const pool of this.pools.values()) for (let i = 0; i < pool.positions.length; i++) hash = Math.imul(hash ^ Math.round(pool.positions[i] * 100000), 16777619);
     return { time: this.time, particleHash: hash >>> 0, foliageMeshes: this.foliage.length };
   }
-  setWeatherEffects(enabled: boolean): void { this.weatherEffects=enabled; if(!enabled)this.rain.clear(); }
-  configureWeather(area: AreaDefinition): void { this.weather=area.effects.weather?.kind ?? null; this.rain.configure(area); }
+  setWeatherEffects(enabled: boolean): void { this.weatherEffects=enabled; if(!enabled){this.rain.clear();this.fluids.clearWeather();} }
+  configureWeather(area: AreaDefinition): void { this.weather=area.effects.weather?.kind ?? null; this.rain.configure(area); this.fluids.configure(area.effects.water); }
   weatherView(camera: THREE.Camera, position: THREE.Vector3): void { this.rain.view(camera,position); }
   private weatherCarry = 0;
   private scratch = new THREE.Vector3();
@@ -86,7 +88,7 @@ export class CoreEffects {
   private gameplayDelta: number | undefined;
   setGameplayDelta(dt: number): void { this.gameplayDelta = dt; }
   constructor(particleTextures: Partial<Record<ParticleKind, THREE.Texture>> = {}) {
-    this.root.name = 'Lantern core effects'; this.root.add(this.rain.root);
+    this.root.name = 'Lantern core effects'; this.root.add(this.rain.root, this.fluids.root);
     const canvas = document.createElement('canvas'); canvas.width = canvas.height = 32;
     const ctx = canvas.getContext('2d')!; const gradient = ctx.createRadialGradient(16, 16, 1, 16, 16, 16);
     gradient.addColorStop(0, '#ffffff'); gradient.addColorStop(0.45, '#ffffffb0'); gradient.addColorStop(1, '#ffffff00');
@@ -105,7 +107,7 @@ export class CoreEffects {
     }
   }
   setQuality(quality: QualityLevel): void {
-    this.quality = quality;
+    this.quality = quality; this.fluids.setQuality(quality);
     for (const pool of this.pools.values()) {
       pool.limit = Math.max(1, Math.floor(pool.capacity * particlePresets[quality].capacity));
       pool.object.geometry.setDrawRange(0, pool.limit);
@@ -151,29 +153,10 @@ export class CoreEffects {
     p.velocities[k + 1] = kind === 'rain' ? -7 : kind === 'snow' ? -0.8 : kind === 'fire' ? 0.7 : kind === 'smoke' ? 0.4 : kind === 'dust' ? (Math.random() - 0.5) * 0.06 : Math.random() * 2;
   }
   addWater(parent: THREE.Object3D, x: number, z: number, options: WaterOptions = {}): THREE.Mesh {
-    const width = options.width ?? 4, length = options.length ?? 2;
-    const columns = 33, rows = 25;
-    const geometry = new THREE.PlaneGeometry(width, length, columns - 1, rows - 1); geometry.rotateX(-Math.PI / 2);
-    const waves = createWaterWaves(geometry.getAttribute('position'), columns, rows);
-    const canvas = document.createElement('canvas'); canvas.width = canvas.height = 64; const ctx = canvas.getContext('2d')!;
-    const image = ctx.createImageData(64, 64);
-    for (let y = 0; y < 64; y++) for (let x = 0; x < 64; x++) { const i = (y * 64 + x) * 4;
-      image.data[i] = 128 + Math.sin(x * Math.PI / 8) * 18; image.data[i + 1] = 128 + Math.cos(y * Math.PI / 8) * 18; image.data[i + 2] = 250; image.data[i + 3] = 255; }
-    ctx.putImageData(image, 0, 0); const normal = new THREE.CanvasTexture(canvas); normal.wrapS = normal.wrapT = THREE.RepeatWrapping; normal.repeat.set(3, 3);
-    const shoreline = document.createElement('canvas'); shoreline.width = shoreline.height = 256;
-    const shore = shoreline.getContext('2d')!; const pixels = shore.createImageData(256, 256);
-    for (let y = 0; y < 256; y++) for (let x = 0; x < 256; x++) {
-      const u = x / 255 * 2 - 1, v = y / 255 * 2 - 1;
-      const radius = options.flow && options.flow > 0.05 ? Math.max(Math.abs(v + Math.sin(u * 4) * .16)/(1+.10*Math.sin(u*9)), Math.abs(u)*.96) : Math.hypot(u,v);
-      const rim = Math.max(0, 1 - Math.abs(radius - 0.94) * 22); const i = (y * 256 + x) * 4;
-      pixels.data[i] = 112 + rim * 24; pixels.data[i + 1] = 125 + rim * 22; pixels.data[i + 2] = 105 + rim * 16;
-      pixels.data[i + 3] = Math.round(Math.max(0, Math.min(1, (1 - radius) * 35)) * 255);
-    }
-    shore.putImageData(pixels, 0, 0); const shoreTexture = new THREE.CanvasTexture(shoreline); shoreTexture.colorSpace = THREE.SRGBColorSpace;
-    const material = new MeshStandardNodeMaterial({ map: options.shorelineMask ?? shoreTexture, alphaTest: 0.1, color: options.shallow ? '#77765a' : '#435b52', transparent: true, opacity: options.shallow ? .75 : .9, roughness: 0.4, metalness: 0, normalMap: normal, normalScale: new THREE.Vector2(0.3, 0.3), side: THREE.DoubleSide });
-    const mesh = new THREE.Mesh(geometry, material); mesh.position.set(x, 0.04, z); mesh.rotation.y=options.yaw ?? 0; mesh.receiveShadow = true; mesh.name = 'water'; parent.add(mesh);
-    this.waters.push({ mesh, waves, options, normal, shoreline: shoreTexture }); return mesh;
+    const water = createWaterSurface(parent, x, z, options, this.waterNormal, this.clock, this.previousClock);
+    this.waters.push(water); return water.mesh;
   }
+
   addGrass(carpet: GrassCarpets): void { this.grass.push(carpet); carpet.update(this.time, this.wind.value); }
   addVegetation(vegetation: Vegetation): void { this.vegetation = vegetation; }
   setVegetationActors(actors: readonly VegetationActor[]): void { this.vegetation?.stage(actors); }
@@ -212,7 +195,8 @@ export class CoreEffects {
     if (this.disposed) return;
     this.root.visible = this.enabled;
     const actionDt = this.gameplayDelta ?? dt; this.gameplayDelta = undefined;
-    if (fsrComparison?.foliageMotion) { this.previousClock.value = this.clock.value; this.previousWind.value.copy(this.wind.value); }
+    this.previousClock.value = this.clock.value;
+    if (fsrComparison?.foliageMotion) this.previousWind.value.copy(this.wind.value);
     if (this.paused || !this.enabled) { this.vegetation?.advance(0, this.time, this.wind.value); for (const carpet of this.grass) carpet.update(this.time, this.wind.value); return; }
     dt = Math.min(dt, 0.05);
     this.time += dt; this.clock.value = this.time;
@@ -226,6 +210,7 @@ export class CoreEffects {
       this.scratch.copy(emitter.position); emitter.space.localToWorld(this.scratch);
       while (emitter.carry >= 1) { emitter.carry--; this.spawn(emitter.kind, this.scratch.x, this.scratch.y, this.scratch.z); }
     }
+    this.fluids.update(actionDt);
     this.rain.update(dt,this.weatherEffects && this.weather==='rain',particlePresets[this.quality].weather,this.wind.value);
     if (this.weather === 'snow' && this.weatherEffects) {
       this.weatherCarry += dt * particlePresets[this.quality].weather;
@@ -253,26 +238,22 @@ export class CoreEffects {
       uploadRange(p.object.geometry.getAttribute('color') as THREE.BufferAttribute, p.colorRange, first, last);
       p.object.visible = p.active > 0;
     }
-    for (const water of this.waters) {
-      if (!this.visible(water.mesh)) continue;
-      water.normal.offset.set(this.time * (water.options.flow ?? 0.035), this.time * 0.018);
-      water.waves.update(this.time, water.mesh.geometry.getAttribute('position'), water.mesh.geometry.getAttribute('normal'));
-    }
   }
-  clear(): void { for (const p of this.pools.values()) { p.active = 0; p.object.visible = false; p.life.fill(0); p.positions.fill(1e6); uploadRange(p.object.geometry.getAttribute('position') as THREE.BufferAttribute, p.positionRange, 0, p.capacity - 1); } }
+  clear(): void { this.fluids.clear(); for (const p of this.pools.values()) { p.active = 0; p.object.visible = false; p.life.fill(0); p.positions.fill(1e6); uploadRange(p.object.geometry.getAttribute('position') as THREE.BufferAttribute, p.positionRange, 0, p.capacity - 1); } }
+
   clearArea(): void {
     this.vegetation?.reset(); this.vegetation = undefined;
-    this.rain.configure(undefined); this.weather=null;
+    this.rain.configure(undefined); this.fluids.configure([]); this.weather=null;
     for (const f of this.foliage) { f.mesh.material = f.original; f.mesh.customDepthMaterial = f.depth; f.mesh.customDistanceMaterial = f.distance; }
     for (const materials of this.foliageMaterials.values()) for (const material of materials.values()) material.dispose();
     this.foliageMaterials.clear();
-    for (const w of this.waters) { w.mesh.removeFromParent(); w.mesh.traverse((o) => { if (isMesh(o)) { o.geometry.dispose(); (o.material as THREE.Material).dispose(); } }); w.normal.dispose(); w.shoreline.dispose(); }
+    for (const water of this.waters) water.dispose();
     this.emitters.length = 0; this.foliage.length = 0; this.foliageMeshes.clear(); this.grass.length = 0; this.waters.length = 0; this.time = 0; this.clock.value = 0; this.previousClock.value = 0; this.clear();
   }
   dispose(): void {
-    if (this.disposed) return; this.disposed = true; this.rain.dispose(); this.root.removeFromParent();
+    if (this.disposed) return; this.disposed = true; this.rain.dispose(); this.fluids.dispose(); this.root.removeFromParent();
     this.clearArea();
     for (const p of this.pools.values()) { p.object.geometry.dispose(); (p.object.material as THREE.Material).dispose(); }
-    this.texture.dispose(); this.emitters.length = 0; this.foliage.length = 0;
+    this.texture.dispose(); this.waterNormal.dispose(); this.emitters.length = 0; this.foliage.length = 0;
   }
 }

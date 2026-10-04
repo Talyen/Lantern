@@ -87,7 +87,7 @@ export class ClearingDiagnostics {
   }
 
   snapshot() {
-    const { audio, personalLantern, surfaceMode, currentArea, revision, renderedRevision, contentHash, options, updateMs, renderedFrames, encounter, playerEquipment, preferences, adventure, hoveredInteraction, approach, gathering, active, harvesting, enemyActors, actors, movementWorld, camera, controls, mount, renderer } = this.context;
+    const { audio, personalLantern, surfaceMode, currentArea, revision, renderedRevision, contentHash, options, updateMs, renderedFrames, encounter, playerEquipment, preferences, adventure, hoveredInteraction, approach, gathering, active, harvesting, graphics, enemyActors, actors, movementWorld, camera, controls, mount, renderer } = this.context;
     return {
       audio: audio.diagnostics(), lantern: personalLantern?.diagnostics(), surfaces: surfaceMode,
       ...this.status(), revision, renderedRevision,
@@ -96,6 +96,7 @@ export class ClearingDiagnostics {
       controls: { bindings: preferences.value, actionBar: adventure.character.actionBar },
       interaction: { hover: hoveredInteraction?.key ?? null, approach: approach.worldKey },
       harvest: { chopping: gathering.choppingId, trees: active?.resources.map(tree => ({ ...tree, ...harvesting.state(currentArea.id, tree.id) })) },
+      fluids: graphics?.effects.fluids.snapshot(),
       vegetation: active?.vegetation.diagnostics(), treeFalls: active?.treeFelling.diagnostics(),
       adventure: {
         persistence: adventure.saveDiagnostics(), character: adventure.character, portal: adventure.portal, castRemaining: adventure.castRemaining,

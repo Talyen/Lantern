@@ -47,12 +47,22 @@ export class EncounterPresentation {
           if (event.periodic) break;
           const effects = this.context.effects(), position = this.actors[event.actor].root.position;
           const skill = event.origin?.ability && abilities[event.origin.ability].tier!=='basic';
+          const source = event.origin?.actor === 'player' ? this.encounter.player : event.origin ? this.encounter.enemies[event.origin.actor] : undefined;
+          const target = event.actor === 'player' ? this.encounter.player : this.encounter.enemies[event.actor];
+          if (!event.blocked && event.damage > 0 && event.actor !== 'player' && this.encounter.enemies[event.actor].rig !== 'skeleton' && event.weapon && ['axe', 'sword', 'bow'].includes(event.weapon)) {
+            const dx = source ? target.x - source.x : Math.sin(target.yaw), dz = source ? target.z - source.z : Math.cos(target.yaw), length = Math.hypot(dx, dz) || 1;
+            effects?.fluids.blood(event.position.x, event.position.y, event.position.z, dx / length, dz / length, !!skill || event.lethal);
+          }
+          if (event.weapon === 'staff' && event.actor === 'player' && !event.blocked && event.damage > 0) effects?.fluids.magic(event.position.x, event.position.y + .85, event.position.z);
           effects?.burst(event.blocked ? 'sparks' : 'hit', position, event.blocked ? 7 : skill ? 16 : event.weapon === 'axe' ? 11 : 8);
           break;
         }
         // These events are presented by GameplayAudio and the HUD below.
         case 'action': if (event.action==='berserking') this.context.effects()?.burst('sparks',this.actors.player.root.position,12); break;
-        case 'abilityCommitted': case 'abilityCancelled': case 'projectileImpact': case 'label': case 'outcome': break;
+        case 'projectileImpact':
+          if (event.kind === 'bolt' && event.owner && event.owner !== 'player') this.context.effects()?.fluids.magic(event.position.x, event.position.y ?? .85, event.position.z);
+          break;
+        case 'abilityCommitted': case 'abilityCancelled': case 'label': case 'outcome': break;
       }
     }
     this.audio.encounter(events, this.encounter);
