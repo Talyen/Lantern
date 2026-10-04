@@ -7,6 +7,6 @@ export function vegetationProfile(placement: Placement): VegetationProfile | und
   const ref = placement.asset;
   if (!ref) return;
   const id = 'libraryId' in ref ? ref.libraryId : ref.url;
-  const asset = manifest.assets.find(asset => asset.id === id || asset.url === id || asset.sourceUrl === id);
+  const asset = manifest.assets.find(asset => asset.id === id || asset.url === id || 'sourceUrl' in asset && asset.sourceUrl === id);
   return asset?.kind === 'bush' ? 'shrub' : asset?.kind === 'fern' ? 'soft' : undefined;
 }
