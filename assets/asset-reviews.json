@@ -18,6 +18,33 @@
       "fingerprint": "a6c8a419aaae3433d2486948edc29a01f15fa1f4dd5efb616764f60f88765769",
       "notes": "Owner explicitly selected the existing converted Anvil and Forge for Smithing. Successfully displayed and inspected at gameplay scale in the owned normal-settings Homestead preview; private evidence retained by smithing-starter.",
       "updatedAt": "2026-10-04T04:32:17.880Z"
+    },
+    "viking-realm:model:sm-wep-arrow-01@original": {
+      "familyId": "viking-realm:model:sm-wep-arrow-01",
+      "url": "/vendor/synty/library/models/viking-realm/ea283d75b515b9afce4c.glb",
+      "name": "Arrow 01",
+      "state": "approved",
+      "fingerprint": "b73687c9b84bd6c492504d4d5030e066980fffab5544f84a7d7e91c2d3e95f92",
+      "notes": "",
+      "updatedAt": "2026-10-03T19:30:22.170Z"
+    },
+    "generic:model:sm-gen-wep-axe-01@original": {
+      "familyId": "generic:model:sm-gen-wep-axe-01",
+      "url": "/vendor/synty/library/models/generic/282b232ccc0564d09e73.glb",
+      "name": "Axe 01",
+      "state": "approved",
+      "fingerprint": "cb9a1d256afd1259c187bd66ab0be6b6c2313d8e8d5357411cff5e48920cf452",
+      "notes": "",
+      "updatedAt": "2026-10-03T19:30:33.190Z"
+    },
+    "goblin-war-camp:model:weapons-sm-wep-axe-02@original": {
+      "familyId": "goblin-war-camp:model:weapons-sm-wep-axe-02",
+      "url": "/vendor/synty/library/models/goblin-war-camp/468fe9b1ed2aef1f600d.glb",
+      "name": "Axe 02",
+      "state": "approved",
+      "fingerprint": "f58eb3e2af061ac799bf5c6c4bc23d10421b50acb948df695d39b91f6a34f882",
+      "notes": "",
+      "updatedAt": "2026-10-03T19:32:21.697Z"
     }
   },
   "familyDenials": {},
