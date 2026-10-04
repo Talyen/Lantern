@@ -67,7 +67,7 @@ export class CoreEffects {
   private weather: ParticleKind | null = null;
   private weatherEffects = true;
   readonly fluids = new FluidEffects();
-  private readonly rain = new RainField((x, z) => this.fluids.rainContact(x, z));
+  private readonly rain = new RainField((x, z, height) => this.fluids.rainContact(x, z, height));
   private readonly waterNormal = waterNormalTexture();
   resetComparisonPools(): void {
     if (!fsrComparison) throw new Error('Pool reset requires an authoring comparison.');

@@ -224,3 +224,7 @@ Local handoff runs change-aware static checks: types, rendering policy, document
 ## Material adapter acceptance
 
 An owned authoring preview supports `npm run materials:probe` and `npm run materials:check`. The former borrows its GPU lease and runs a bounded synthetic correctness probe through the shipping Native pipeline; it is not a benchmark. Run it after material-adapter, recipe, probe-fixture or pinned dependency changes, before `agent:finish` closes the preview. Local change-aware checks validate that its passing evidence matches the current source files. Asset-free/CI checks report native hardware acceptance as outstanding, while running structural material checks. See [material calibration](ART_DIRECTION.md#material-calibration-and-durable-checks) for the visual comparison and recipe adoption workflow.
+
+## Untracked main files during local integration
+
+Admission and promotion preserve unrelated untracked files on main, including user concept art. Main tracked edits remain a blocker. Before promoting, the candidate's complete tracked tree is checked against every untracked path, including parent/file conflicts and case/Unicode-normalized collisions. Git's fast-forward merge remains the final conflict guard. Private task checkouts still require a clean index/worktree; no user files are moved, staged or removed to clear admission.

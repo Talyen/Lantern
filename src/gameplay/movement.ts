@@ -6,7 +6,7 @@ import type { ActorId, ActorState, Movement, AimPoint } from './encounter';
 
 export type Surface = { positions: number[]; indices: number[] };
 export type Obstacle = { id: string; position: [number, number, number]; size: [number, number, number]; yaw: number; tree?: boolean; depletedScale?: number };
-export type Traversal = { obstacles: Obstacle[]; surfaces?: Surface[] };
+export type Traversal = { obstacles: Obstacle[]; surfaces?: Surface[]; ground?: Surface };
 const radius = .3, halfHeight = .55, centerHeight = radius + halfHeight + .02;
 let initialization: Promise<void> | undefined;
 
@@ -38,6 +38,11 @@ export class MovementWorld implements Movement {
   private readonly desiredMovement = { x: 0, y: 0, z: 0 };
   private nav!: NavMesh;
   private readonly baseSurfaces: Surface[];
+  private minGroundY = 0;
+  private maxGroundY = 0;
+  private customGround = false;
+  private groundColliders = new Set<number>();
+  private readonly isGround = (collider: RAPIER.Collider) => this.groundColliders.has(collider.handle);
   private readonly obstacles = new Map<string, { definition: Obstacle; current: Obstacle; collider: RAPIER.Collider; felled: boolean }>();
   private navigationWorker?: Worker;
   private navigationRevision = 0;
@@ -54,10 +59,14 @@ export class MovementWorld implements Movement {
     const started = performance.now();
     this.controller.enableAutostep(.3, .15, false); this.controller.enableSnapToGround(.3);
     this.controller.setMaxSlopeClimbAngle(Math.PI / 4); this.controller.setMinSlopeSlideAngle(Math.PI / 4);
-    this.baseSurfaces = [ground(boundary), ...(traversal.surfaces ?? [])];
+    this.baseSurfaces = [traversal.ground ?? ground(boundary), ...(traversal.surfaces ?? [])];
+    this.customGround = !!traversal.ground;
+    if (traversal.ground) for (let i = 1; i < traversal.ground.positions.length; i += 3) {
+      this.minGroundY = Math.min(this.minGroundY, traversal.ground.positions[i]); this.maxGroundY = Math.max(this.maxGroundY, traversal.ground.positions[i]);
+    }
     for (const surface of this.baseSurfaces) {
       const collider = this.world.createCollider(RAPIER.ColliderDesc.trimesh(new Float32Array(surface.positions), new Uint32Array(surface.indices)));
-      this.solid.add(collider.handle);
+      this.solid.add(collider.handle); this.groundColliders.add(collider.handle);
     }
     for (const obstacle of traversal.obstacles) {
       const collider = this.world.createCollider(RAPIER.ColliderDesc.cuboid(...obstacle.size.map(v => v / 2) as [number, number, number]).setTranslation(...obstacle.position).setRotation({ x: 0, y: Math.sin(obstacle.yaw / 2), z: 0, w: Math.cos(obstacle.yaw / 2) }));
@@ -124,7 +133,14 @@ export class MovementWorld implements Movement {
   move(id: ActorId, actor: ActorState, dx: number, dz: number, dt: number): void {
     if (this.disposed) return;
     let collider = this.actors.get(id);
-    if (!collider) { collider = this.world.createCollider(RAPIER.ColliderDesc.capsule(halfHeight, radius).setSensor(true)); this.actors.set(id, collider); }
+    if (!collider) {
+      if (this.customGround) {
+        const ray = this.setQueryRay(actor.x, Math.max(actor.y, this.maxGroundY) + 2, actor.z, 0, -1, 0);
+        const hit = this.world.castRay(ray, 2 + this.maxGroundY - this.minGroundY + Math.abs(actor.y), true, undefined, undefined, undefined, undefined, this.isGround);
+        if (hit) actor.y = ray.origin.y - hit.timeOfImpact;
+      }
+      collider = this.world.createCollider(RAPIER.ColliderDesc.capsule(halfHeight, radius).setSensor(true)); this.actors.set(id, collider);
+    }
     const position = this.actorPosition, movement = this.desiredMovement;
     position.x = actor.x; position.y = actor.y + centerHeight; position.z = actor.z;
     movement.x = dx; movement.y = -Math.max(.03, 9.81 * dt * dt); movement.z = dz;
@@ -132,7 +148,7 @@ export class MovementWorld implements Movement {
     this.controller.computeColliderMovement(collider, movement, undefined, undefined, this.isSolid);
     const delta = this.controller.computedMovement();
     [actor.x, actor.z] = constrain(this.boundary, [actor.x + delta.x, actor.z + delta.z]);
-    actor.y = Math.max(0, actor.y + delta.y);
+    actor.y = Math.max(this.minGroundY, actor.y + delta.y);
   }
   direction(from: ActorState, to: ActorState, dt: number): { x: number; z: number } {
     if (this.navigationPending) {
@@ -212,7 +228,7 @@ export class MovementWorld implements Movement {
       const ray = this.setQueryRay(point[0], player.y + 12, point[1], 0, -1, 0);
       const hit = this.world.castRay(ray, 30, true, undefined, undefined, undefined, undefined, this.isSolid);
       if (!hit || this.blockingObstacles.has(hit.collider.handle)) continue;
-      const height = Math.max(0, player.y + 12 - hit.timeOfImpact);
+      const height = Math.max(this.minGroundY, player.y + 12 - hit.timeOfImpact);
       if (this.pickupPath(player, point, height)) return { position: point, height };
     }
     // The actor's collision-resolved ground is the safe final placement.

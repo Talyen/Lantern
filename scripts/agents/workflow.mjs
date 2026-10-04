@@ -14,7 +14,7 @@ export async function recover(ctx) {
   if (!journal) return;
   const head = await git(['rev-parse', 'HEAD'], ctx.main);
   if (![journal.base, journal.candidate].includes(head)) throw new Error('Promotion interrupted and main changed unexpectedly. Preserve the journal and repair the integration before proceeding.');
-  if (head === journal.base) await clean(ctx.main);
+  if (head === journal.base) await clean(ctx.main, journal.candidate);
   const vendor = join(ctx.main, 'public/vendor');
   if (journal.assets) {
     // Filesystem renames can precede the journal update: existence makes recovery idempotent.
@@ -62,7 +62,7 @@ async function admitTask(ctx, id) {
     if (task?.status === 'cleaned') throw new Error('This task is archived; choose a new task slug.');
     if (task && task.status !== 'preparing') return { task };
     if (!task) {
-      await clean(ctx.main);
+      await clean(ctx.main, await git(['rev-parse', 'HEAD'], ctx.main));
       const capacity = await taskCapacity(ctx);
       if (capacity.used >= capacity.limit) return { limit: capacity.limit };
       await reserveSpace(ctx.main);
@@ -188,7 +188,7 @@ export async function finishTask(ctx, task, { paths = [], message = `feat: ${tas
         if (await git(['rev-parse', 'HEAD'], ctx.main) !== base || assetIdentity(await assetIndex(join(ctx.main, 'public/vendor'))) !== task.mainAssetIdentity) return false;
         if (await git(['rev-parse', 'HEAD'], task.path) !== candidate || assetIdentity(await assetIndex(join(task.path, 'public/vendor'))) !== assets) throw new Error('Candidate changed after validation; retry finish.');
         await clean(task.path);
-        await clean(ctx.main);
+        await clean(ctx.main, candidate);
         task.candidate = candidate;
         await writeJSON(join(ctx.store, 'promotion.json'), { task: task.id, base, candidate, transaction, nextVendor, oldVendor, assets: task.assetChanges.length > 0, assetIdentity: assets });
         await recover(ctx); return true;

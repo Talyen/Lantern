@@ -2679,6 +2679,7 @@
         "yaw": -0.7853981633974483,
         "shallow": true,
         "preset": "stream",
+        "shorelineWidth": 0.32,
         "channel": {
           "bankWidth": 0.75,
           "sections": [

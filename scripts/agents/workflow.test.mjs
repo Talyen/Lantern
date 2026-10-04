@@ -435,3 +435,32 @@ test('later resource probes cannot overtake a queued GPU waiter', { timeout: 150
     await lease?.release(); await rm(directory, { recursive: true, force: true });
   }
 });
+
+// Admission rationale: protects user art/private work against loss during local integration,
+// with the exact unrelated-untracked and incoming-collision paths seen by the workflow.
+test('promotion preserves unrelated untracked art', async () => {
+  const ctx = await fixture();
+  try {
+    const task = await startTask(ctx, 'untracked-art');
+    await edit(task, 'feature.txt', 'reviewed change\n');
+    await writeFile(join(ctx.main, 'Concept Art.png'), 'user art bytes');
+    const done = await finishTask(ctx, task, { paths: ['feature.txt'], message: 'feature' });
+    assert.equal(done.status, 'integrated');
+    assert.equal(await readFile(join(ctx.main, 'Concept Art.png'), 'utf8'), 'user art bytes');
+    assert.equal(await readFile(join(ctx.main, 'feature.txt'), 'utf8'), 'reviewed change\n');
+  } finally { await ctx.dispose(); }
+});
+
+test('promotion rejects colliding untracked art and tracked user edits', async () => {
+  const ctx = await fixture();
+  try {
+    const task = await startTask(ctx, 'art-collision');
+    await edit(task, 'Concept Art.png', 'incoming bytes');
+    await writeFile(join(ctx.main, 'Concept Art.png'), 'user art bytes');
+    await assert.rejects(finishTask(ctx, task, { paths: ['Concept Art.png'], message: 'incoming' }), /Checkout has uncommitted changes/);
+    assert.equal(await readFile(join(ctx.main, 'Concept Art.png'), 'utf8'), 'user art bytes');
+    await writeFile(join(ctx.main, 'shared.txt'), 'user tracked work');
+    await assert.rejects(startTask(ctx, 'tracked-edit', { wait: false }), /Checkout has uncommitted changes/);
+    assert.equal(await readFile(join(ctx.main, 'shared.txt'), 'utf8'), 'user tracked work');
+  } finally { await ctx.dispose(); }
+});

@@ -55,9 +55,20 @@ export async function currentTask(ctx) {
   if (!task) throw new Error('Run agent:start from main, then use its returned worktree directory.');
   return task;
 }
-export async function clean(cwd) {
-  if (await git(['status', '--porcelain'], cwd)) throw new Error(`Checkout has uncommitted changes: ${cwd}. Preserve them; commit only reviewed task paths.`);
+export async function clean(cwd, candidate) {
+  const entries = (await git(['status', '--porcelain', '-z', '--untracked-files=all'], cwd)).split('\0').filter(Boolean);
+  if (!entries.length) return;
+  const reject = () => { throw new Error(`Checkout has uncommitted changes: ${cwd}. Preserve them; commit only reviewed task paths.`); };
+  // Task checkouts remain strict. Main may retain unrelated user art, but every
+  // incoming tracked path (including parent/file conflicts) is checked first.
+  if (!candidate || entries.some(entry => !entry.startsWith('?? '))) reject();
+  const incoming = (await git(['ls-tree', '-r', '--name-only', '-z', candidate], cwd)).split('\0').filter(Boolean);
+  for (const entry of entries) {
+    const path = entry.slice(3).normalize('NFC').toLowerCase();
+    if (incoming.some(source => { const file = source.normalize('NFC').toLowerCase(); return file === path || file.startsWith(path + '/') || path.startsWith(file + '/'); })) reject();
+  }
 }
+
 export async function freeSpace(path) {
   const value = await statfs(path, { bigint: true });
   return Number(value.bavail * value.bsize);

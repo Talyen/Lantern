@@ -454,8 +454,8 @@ function renderFrame(dt: number): boolean {
     const state = id === 'player' ? encounter.player : encounter.enemies[id];
     updateActor(actor, state, gameDt, paused(), id==='player' && encounter.blocking);
     gameplayAudio.locomotion(id,state,actor.gait,actor.current,paused());
-    if (id === 'player') graphics?.effects.fluids.locomotion(state.x, state.y, state.z, state.yaw, actor.gait,
-      actor.current === 'run' && state.hp > 0, paused() || transitioning, gameDt);
+    graphics?.effects.fluids.locomotion(state.x, state.y, state.z, state.yaw, actor.gait,
+      actor.current === 'run' && state.hp > 0 && actor.root.visible, paused() || transitioning, gameDt, id);
   }
   abilityEffects?.sync(encounter,player.root,cameraOwner.camera);
   if (!paused()) { active?.portals.forEach(p => p.update(gameDt)); adventureVisuals?.update(gameDt); }

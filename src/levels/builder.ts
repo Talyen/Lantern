@@ -1,4 +1,4 @@
-import { streamTerrain } from '../rendering/stream-terrain';
+import { waterTerrain } from './water-terrain';
 import { createMerchant } from '../rendering/merchant';
 
 import { lightingOnly, includeCutawayShadows } from '../rendering/cutaway';
@@ -124,7 +124,7 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
       }
       else if (p.kind === 'box') {
         const terrain = area.props.find(prop => prop.terrain && prop.primitive === p);
-        g = terrain && streamTerrain(terrain, area.effects.water) || new THREE.BoxGeometry(s[0], s[1], s[2]);
+        g = terrain && waterTerrain(terrain, area.effects.water) || new THREE.BoxGeometry(s[0], s[1], s[2]);
       }
       else if (p.kind === 'cylinder') g = new THREE.CylinderGeometry(s[0], s[1], s[2], s[3] ?? 32);
       else if (p.kind === 'tent') {

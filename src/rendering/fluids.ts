@@ -1,10 +1,10 @@
 import * as THREE from 'three';
 import { MeshBasicNodeMaterial } from 'three/webgpu';
 import { attribute, sin, smoothstep, uv } from 'three/tsl';
-import { waterAt, waterDistance, waterHeight, type WaterDefinition } from '../levels/water';
+import { waterAt, waterDistance, waterLevel, type WaterDefinition } from '../levels/water';
 import { particlePresets, type QualityLevel } from './quality-presets';
 
-type Slot = { x: number; y: number; z: number; vx: number; vy: number; vz: number; age: number; life: number; size: number; yaw: number; weather: boolean };
+type Slot = { x: number; y: number; z: number; vx: number; vy: number; vz: number; age: number; life: number; size: number; yaw: number; floor: number; weather: boolean };
 
 /** Fixed slots, one instanced draw per shape, with compact visible instances. */
 class FluidPool {
@@ -36,13 +36,13 @@ class FluidPool {
     this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     for (let i = 0; i < capacity; i++) this.mesh.setColorAt(i, new THREE.Color());
     this.mesh.instanceColor!.setUsage(THREE.DynamicDrawUsage);
-    this.slots = Array.from({ length: capacity }, () => ({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, age: 0, life: 0, size: 0, yaw: 0, weather: false }));
+    this.slots = Array.from({ length: capacity }, () => ({ x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, age: 0, life: 0, size: 0, yaw: 0, floor: 0, weather: false }));
     this.colors = this.slots.map(() => new THREE.Color());
   }
-  emit(x: number, y: number, z: number, size: number, life: number, tint: THREE.Color, vx = 0, vy = 0, vz = 0, weather = false): void {
+  emit(x: number, y: number, z: number, size: number, life: number, tint: THREE.Color, vx = 0, vy = 0, vz = 0, weather = false, floor = 0): void {
     this.pending = true;
     const index = this.cursor++ % this.slots.length, slot = this.slots[index];
-    Object.assign(slot, { x, y, z, size, life, age: 0, vx, vy, vz, yaw: Math.random() * Math.PI * 2, weather });
+    Object.assign(slot, { x, y, z, size, life, age: 0, vx, vy, vz, floor, yaw: Math.random() * Math.PI * 2, weather });
     // Color stays with its slot while visible instances are compacted.
     this.colors[index].copy(tint);
   }
@@ -59,7 +59,7 @@ class FluidPool {
       const t = s.age / s.life;
       if (this.kind === 'drop') {
         s.vy -= dt * 6; s.x += s.vx * dt; s.y += s.vy * dt; s.z += s.vz * dt;
-        if (s.y <= .025) { s.life = 0; continue; }
+        if (s.y <= s.floor) { s.life = 0; continue; }
       }
       const transform = this.transform;
       transform.position.set(s.x, s.y, s.z);
@@ -84,8 +84,7 @@ export class FluidEffects {
   private stains = new FluidPool('stain', 16);
   private waters: readonly WaterDefinition[] = [];
   private emission = 1;
-  private last: { x: number; z: number; phase: number } | undefined;
-  private wakeCarry = 0;
+  private last = new Map<string, { x: number; z: number; phase: number; wakeCarry: number }>();
   private waterColor = new THREE.Color('#9eafb0');
   private bloodColor = new THREE.Color('#8e2728');
   private magicColor = new THREE.Color('#8bd8db');
@@ -96,12 +95,12 @@ export class FluidEffects {
   configure(waters: readonly WaterDefinition[]): void { this.clear(); this.waters = waters; }
   setQuality(quality: QualityLevel): void { this.emission = particlePresets[quality].emission; }
   clearWeather(): void { this.drops.clear(true); this.rings.clear(true); this.update(0); }
-  rainContact(x: number, z: number): void {
+  rainContact(x: number, z: number, groundHeight = 0): void {
     const water = waterAt(this.waters, x, z);
-    this.ripple(x, z, water ? .32 : .09, true);
-    if (Math.random() < .3 * this.emission) this.drops.emit(x, water ? waterHeight + .025 : .025, z, .016, .23, this.waterColor, 0, .65, 0, true);
+    this.ripple(x, z, water ? .32 : .09, true, groundHeight);
+    if (Math.random() < .3 * this.emission) this.drops.emit(x, water ? waterLevel(water) + .025 : groundHeight + .025, z, .016, .23, this.waterColor, 0, .65, 0, true, water ? waterLevel(water) : groundHeight);
   }
-  private ripple(x: number, z: number, radius: number, weather = false): void {
+  private ripple(x: number, z: number, radius: number, weather = false, groundHeight = 0): void {
     const water = waterAt(this.waters, x, z);
     if (water) {
       const dx = x - water.position[0], dz = z - water.position[1], yaw = water.yaw ?? 0;
@@ -109,23 +108,24 @@ export class FluidEffects {
       radius = Math.min(radius, distance * Math.min(water.width, water.length) / 2);
     }
     if (radius < .025) return;
-    this.rings.emit(x, water ? waterHeight + .02 : .019, z, radius, weather ? .48 : .75, this.waterColor, 0, 0, 0, weather);
+    this.rings.emit(x, water ? waterLevel(water) + .02 : groundHeight + .019, z, radius, weather ? .48 : .75, this.waterColor, 0, 0, 0, weather);
   }
-  locomotion(x: number, y: number, z: number, yaw: number, gait: number, running: boolean, paused: boolean, dt: number): void {
-    const phase = Math.floor(gait * 2), previous = this.last;
-    this.last ??= { x, z, phase };
-    const dx = x - (previous?.x ?? x), dz = z - (previous?.z ?? z), distance = Math.hypot(dx, dz), oldPhase = previous?.phase;
-    this.last.x = x; this.last.z = z; this.last.phase = phase;
-    if (!previous || paused || !running || dt <= 0 || distance < .001 || distance > 1 || Math.abs(y) > .08 || !waterAt(this.waters, x, z)) { this.wakeCarry = 0; return; }
+  locomotion(x: number, y: number, z: number, yaw: number, gait: number, running: boolean, paused: boolean, dt: number, actorId = 'player'): void {
+    const phase = Math.floor(gait * 2), previous = this.last.get(actorId);
+    const current = previous ?? { x, z, phase, wakeCarry: 0 }; this.last.set(actorId, current);
+    const dx = x - current.x, dz = z - current.z, distance = Math.hypot(dx, dz), oldPhase = current.phase;
+    current.x = x; current.z = z; current.phase = phase;
+    const water = waterAt(this.waters, x, z);
+    if (!previous || paused || !running || dt <= 0 || distance < .001 || distance > 1 || (!water || y > waterLevel(water) + .03)) { current.wakeCarry = 0; return; }
     if (phase !== oldPhase) {
       const side = phase === 0 ? -.12 : .12, fx = x + Math.cos(yaw) * side, fz = z - Math.sin(yaw) * side;
       if (waterAt(this.waters, fx, fz)) {
         this.ripple(fx, fz, .38);
-        this.splash(fx, waterHeight + .03, fz, this.waterColor, dx / distance, dz / distance, 4, .024);
+        this.splash(fx, waterLevel(water) + .03, fz, this.waterColor, dx / distance, dz / distance, 4, .024);
       }
     }
-    this.wakeCarry += distance * 1.3 * this.emission;
-    if (this.wakeCarry >= 1) { this.wakeCarry %= 1; this.ripple(x - dx / distance * .15, z - dz / distance * .15, .28); }
+    current.wakeCarry += distance * 1.3 * this.emission;
+    if (current.wakeCarry >= 1) { current.wakeCarry %= 1; this.ripple(x - dx / distance * .15, z - dz / distance * .15, .28); }
   }
   private splash(x: number, y: number, z: number, tint: THREE.Color, dx: number, dz: number, count: number, size: number): void {
     for (let i = 0; i < count; i++) {
@@ -133,7 +133,8 @@ export class FluidEffects {
       const radial = dx === 0 && dz === 0, angle = i / count * Math.PI * 2;
       const vx = radial ? Math.cos(angle) * speed * .65 : dx * speed + dz * spread;
       const vz = radial ? Math.sin(angle) * speed * .65 : dz * speed - dx * spread;
-      this.drops.emit(x, y, z, size * (.8 + Math.random() * .4), .48, tint, vx, .7 + Math.random() * .8, vz);
+      const water = waterAt(this.waters, x, z), floor = water ? waterLevel(water) : Math.min(0, y - .85);
+      this.drops.emit(x, y, z, size * (.8 + Math.random() * .4), .48, tint, vx, .7 + Math.random() * .8, vz, false, floor);
     }
   }
   blood(x: number, y: number, z: number, dx: number, dz: number, strong: boolean): void {
@@ -143,6 +144,6 @@ export class FluidEffects {
   magic(x: number, y: number, z: number): void { this.splash(x, y, z, this.magicColor, 0, 0, 7, .038); }
   update(dt: number): void { this.drops.update(dt); this.rings.update(dt); this.stains.update(dt); }
   snapshot() { return { droplets: this.drops.mesh.count, ripples: this.rings.mesh.count, stains: this.stains.mesh.count }; }
-  clear(): void { this.drops.clear(); this.rings.clear(); this.stains.clear(); this.last = undefined; this.wakeCarry = 0; }
+  clear(): void { this.drops.clear(); this.rings.clear(); this.stains.clear(); this.last.clear(); }
   dispose(): void { this.clear(); this.drops.dispose(); this.rings.dispose(); this.stains.dispose(); this.root.removeFromParent(); }
 }

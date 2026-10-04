@@ -1,5 +1,5 @@
-import { ACESFilmicToneMapping, RedFormat, CustomBlending, OneFactor, OneMinusSrcAlphaFactor, DataUtils, RenderPipeline, BlendMode, NormalBlending, Color, Vector2, Vector3, type Node, type OrthographicCamera, type PerspectiveCamera, type Scene, type WebGPURenderer, type TextureNode, type QuadMesh, type Texture } from 'three/webgpu';
-import { Fn, context, dot, float, mix, mrt, normalView, orthographicDepthToViewZ, perspectiveDepthToViewZ, output, pass, rtt, screenUV, smoothstep, toneMapping, uniform, uv, vec2, vec3, vec4, velocity } from 'three/tsl';
+import { ACESFilmicToneMapping, RedFormat, CustomBlending, OneFactor, OneMinusSrcAlphaFactor, DataUtils, RenderPipeline, BlendMode, NormalBlending, Color, Vector2, Vector3, Vector4, Matrix4, Plane, type Node, type OrthographicCamera, type PerspectiveCamera, type Scene, type WebGPURenderer, type TextureNode, type QuadMesh, type Texture } from 'three/webgpu';
+import { Fn, context, dot, float, mix, mrt, normalView, orthographicDepthToViewZ, perspectiveDepthToViewZ, output, pass, rtt, screenUV, smoothstep, toneMapping, uniform, uv, vec2, vec3, vec4, velocity, positionWorld, select } from 'three/tsl';
 import { ao } from 'three/addons/tsl/display/GTAONode.js';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { dof } from 'three/addons/tsl/display/DepthOfFieldNode.js';
@@ -8,6 +8,7 @@ import { fsrComparison, comparisonPreset } from '../labs/fsr/settings';
 import { fsrTemporal } from './fsr-temporal';
 import { upscaleRatio, type GraphicsSettings } from './graphics-settings';
 import { SettingsPreparation } from './settings-preparation';
+import { waterPlanes } from './water-registry';
 import { outlinedColor, outlineStrength } from './outlines';
 
 type FSRNode = ReturnType<typeof fsrTemporal>;
@@ -48,6 +49,15 @@ class PipelineGraph {
   private prepared = false;
   private generation = 0;
   private preparation: Promise<void> = Promise.resolve();
+  private reflections = new Map<number, { camera: OrthographicCamera | PerspectiveCamera; pass: ReturnType<typeof pass>; projection: ReturnType<typeof uniform<'mat4'>> }>();
+  private reflectionRevision = -1;
+  private reflectionTarget = new Vector3();
+  private reflectionUp = new Vector3();
+  private reflectionPlane = new Plane();
+  private reflectionCorner = new Vector4();
+  private reflectionClip = new Vector4();
+  private reflectionNormal = new Vector3(0, 1, 0);
+  private reflectionInverse = new Matrix4();
 
   constructor(private renderer: WebGPURenderer, private scene: Scene, private camera: OrthographicCamera | PerspectiveCamera, private target: Vector3) {
     this.post = new RenderPipeline(renderer);
@@ -64,7 +74,8 @@ class PipelineGraph {
     this.scale = 1 / upscaleRatio(settings.upscaleQuality);
     const scenePass = pass(this.scene, this.camera, { samples: 0 });
     scenePass.setResolutionScale(this.scale);
-    const surfaceContext = { materialMipBias: this.materialMipBias, textureDepth: settings.textureDepth };
+    const surfaceContext = { materialMipBias: this.materialMipBias, textureDepth: settings.textureDepth,
+      waterReflection: (height: number, distortion: Node<'vec2'>) => this.waterReflection(height, distortion) };
     scenePass.contextNode = context(surfaceContext);
     const sceneMRT = settings.outlines ? mrt({ output, velocity, outline: vec4(outlineStrength(), 0, 0, output.a) }) : mrt({ output, velocity });
     if (settings.outlines) {
@@ -165,6 +176,42 @@ class PipelineGraph {
     this.post.needsUpdate = true;
     this.update(settings, saturation);
     this.preparation = this.prepare(this.post, ++this.generation);
+  }
+
+  /** One opaque scene reflection per water elevation, owned by this same graph. */
+  private waterReflection(height: number, distortion: Node<'vec2'>): Node<'vec4'> {
+    let reflection = this.reflections.get(height);
+    if (!reflection) {
+      const camera = this.camera.clone();
+      const reflected = pass(this.scene, camera, { samples: 0 }); reflected.transparent = false; reflected.setResolutionScale(this.scale * .5);
+      reflected.contextNode = context({ materialMipBias: this.materialMipBias, textureDepth: false });
+      reflection = { camera, pass: reflected, projection: uniform(new Matrix4()) };
+      this.reflections.set(height, reflection); this.resources.push(reflected);
+      this.updateReflection(height, reflection);
+    }
+    const projected = reflection.projection.mul(vec4(positionWorld, 1));
+    const coord = vec2(projected.x.div(projected.w).mul(.5).add(.5), projected.y.div(projected.w).mul(-.5).add(.5)).add(distortion);
+    const inside = coord.x.greaterThan(0).and(coord.x.lessThan(1)).and(coord.y.greaterThan(0)).and(coord.y.lessThan(1));
+    const occupied = reflection.pass.getTextureNode('depth').sample(coord).r.lessThan(.99999);
+    return vec4(reflection.pass.getTextureNode('output').sample(coord).rgb, select(inside.and(occupied), float(1), float(0)));
+  }
+  private updateReflection(height: number, reflection: { camera: OrthographicCamera | PerspectiveCamera; pass: ReturnType<typeof pass>; projection: ReturnType<typeof uniform<'mat4'>> }): void {
+    const camera = reflection.camera;
+    this.camera.updateMatrixWorld(); this.camera.getWorldDirection(this.reflectionTarget); this.reflectionTarget.add(this.camera.position);
+    this.reflectionTarget.y = 2 * height - this.reflectionTarget.y;
+    camera.position.copy(this.camera.position); camera.position.y = 2 * height - camera.position.y;
+    this.reflectionUp.set(0, 1, 0).applyQuaternion(this.camera.quaternion); this.reflectionUp.y *= -1;
+    camera.up.copy(this.reflectionUp); camera.lookAt(this.reflectionTarget);
+    camera.near = this.camera.near; camera.far = this.camera.far; camera.updateMatrixWorld();
+    camera.projectionMatrix.copy(this.camera.projectionMatrix);
+    this.reflectionPlane.set(this.reflectionNormal, -height).applyMatrix4(camera.matrixWorldInverse);
+    const clip = this.reflectionClip.set(this.reflectionPlane.normal.x, this.reflectionPlane.normal.y, this.reflectionPlane.normal.z, this.reflectionPlane.constant);
+    this.reflectionCorner.set(Math.sign(clip.x), Math.sign(clip.y), 1, 1).applyMatrix4(this.reflectionInverse.copy(camera.projectionMatrix).invert());
+    clip.multiplyScalar(1 / clip.dot(this.reflectionCorner));
+    const p = camera.projectionMatrix.elements; p[2] = clip.x; p[6] = clip.y; p[10] = clip.z; p[14] = clip.w;
+    camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
+    reflection.projection.value.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+    reflection.pass.setResolutionScale(this.scale * .5);
   }
 
   matches(settings: GraphicsSettings): boolean { return this.graphKey === graphSignature(settings); }
@@ -272,6 +319,14 @@ class PipelineGraph {
   render(): void {
     if (!this.prepared) return;
     this.camera.updateMatrixWorld();
+    const planes = waterPlanes(this.scene);
+    if (this.reflectionRevision !== planes.revision) {
+      this.reflectionRevision = planes.revision;
+      for (const [height, reflection] of this.reflections) if (!planes.planes.has(height)) {
+        this.releaseBindings([reflection.pass]); reflection.pass.dispose(); this.resources = this.resources.filter(node => node !== reflection.pass); this.reflections.delete(height);
+      }
+    }
+    for (const [height, reflection] of this.reflections) this.updateReflection(height, reflection);
     this.focusPoint.copy(this.target).applyMatrix4(this.camera.matrixWorldInverse);
     this.focus.value = -this.focusPoint.z;
     const toneMappingMode = this.renderer.toneMapping;
@@ -291,13 +346,9 @@ class PipelineGraph {
     }
   }
 
-  private release(): void {
-    this.prepared = false; this.generation++;
-    this.camera.clearViewOffset(); velocity.setProjectionMatrix(null);
-    // r186 PassNode.dispose releases targets but leaves scene render objects
-    // keyed by those target contexts. Release just this graph's native bindings.
+  private releaseBindings(resources: Node[]): void {
     const attachments = new Set<Texture>();
-    for (const resource of this.resources) {
+    for (const resource of resources) {
       const target = Reflect.get(resource, 'renderTarget') as { textures?: Texture[] } | undefined;
       target?.textures?.forEach(texture => attachments.add(texture));
     }
@@ -305,7 +356,14 @@ class PipelineGraph {
     if (objects) for (const object of [...objects._renderObjects]) {
       if (object.context.textures?.some(texture => attachments.has(texture))) object.dispose();
     }
-    this.resources.forEach((node) => node.dispose()); this.resources = []; this.sceneResources = [];
+  }
+  private release(): void {
+    this.prepared = false; this.generation++;
+    this.camera.clearViewOffset(); velocity.setProjectionMatrix(null);
+    // r186 PassNode.dispose releases targets but leaves scene render objects
+    // keyed by those target contexts. Release just this graph's native bindings.
+    this.releaseBindings(this.resources);
+    this.resources.forEach((node) => node.dispose()); this.reflections.clear(); this.resources = []; this.sceneResources = [];
     this.fsr = null; this.reactiveTexture = null; this.scenePass = null; this.successfulFrames = 0;
     this.post.dispose(); this.post = new RenderPipeline(this.renderer);
   }

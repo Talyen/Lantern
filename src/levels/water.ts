@@ -5,14 +5,17 @@ export type StreamChannel = { sections: { x: number; z: number; width: number; d
 /** Boundary and current coordinates are normalized local X/Z, in [-1, 1]. */
 export type WaterDefinition = {
   id: string; position: Point; width: number; length: number; flow: number;
+  height?: number; depth?: number; shorelineWidth?: number;
+  surface?: { shallowColor?: string; deepColor?: string; roughness?: number; normalStrength?: number; reflectionStrength?: number; reflection?: 'scene' | 'environment' };
   yaw?: number; shallow?: boolean; preset?: 'stream' | 'pond' | 'puddle';
   boundary?: Point[];
   currents?: { position: Point; direction: Point }[];
   channel?: StreamChannel;
   obstacles?: { position: Point; radius: number }[];
 };
-export type WaterShape = Pick<WaterDefinition, 'width' | 'length' | 'flow' | 'boundary' | 'preset' | 'channel' | 'obstacles'>;
+export type WaterShape = Pick<WaterDefinition, 'width' | 'length' | 'flow' | 'boundary' | 'preset' | 'channel' | 'obstacles' | 'depth' | 'shorelineWidth'>;
 export const waterHeight = .04;
+export const waterLevel = (water: Pick<WaterDefinition, 'height' | 'preset'>) => water.height ?? (water.preset === 'puddle' ? .015 : waterHeight);
 
 /** Positive inside. Rendering bakes this same function into its edge texture. */
 export function waterDistance(shape: WaterShape, x: number, z: number): number {
@@ -46,7 +49,7 @@ function waterBoundaryDistance(shape: WaterShape, x: number, z: number): number 
   return inside ? nearest : -nearest;
 }
 export function waterCoverage(shape: WaterShape, x: number, z: number): number {
-  return Math.max(0, Math.min(1, waterDistance(shape, x, z) * Math.min(shape.width, shape.length) / .16));
+  return Math.max(0, Math.min(1, waterDistance(shape, x, z) * Math.min(shape.width, shape.length) / (2 * (shape.shorelineWidth ?? .14))));
 }
 export function waterAt(waters: readonly WaterDefinition[], x: number, z: number): WaterDefinition | undefined {
   return waters.find(water => {
@@ -104,7 +107,7 @@ export function streamSection(channel: StreamChannel, x: number) {
 
 /** The rendered bed and water absorption use the same cross-section depth. */
 export function waterDepth(water: WaterShape, x: number, z: number): number {
-  if (!water.channel) return Math.max(0, waterDistance(water, x, z)) * .15;
+  if (!water.channel) return Math.max(0, waterDistance(water, x, z)) * (water.depth ?? (water.preset === 'puddle' ? .05 : .15));
   const section = streamSection(water.channel, x * water.width / 2);
   const side = Math.abs(z * water.length / 2 - section.z) / (section.width / 2);
   const t = Math.max(0, Math.min(1, (1 - side) / .75));

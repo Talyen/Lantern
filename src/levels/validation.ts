@@ -104,13 +104,19 @@ export function validateAreas(input: Record<string, AreaDefinition>): string[] {
         collisionIds.add(obstacle.id);
         if (!finite(obstacle.position, 3) || !finite(obstacle.size, 3) || obstacle.size.some(v => v <= 0) || !Number.isFinite(obstacle.yaw)) fail('invalid collision proxy');
       }
-      for (const surface of area.traversal?.surfaces ?? []) {
+      for (const surface of [...(area.traversal?.surfaces ?? []), ...(area.traversal?.ground ? [area.traversal.ground] : [])]) {
         owner = `${key}/walkable-surface`;
         if (!finite(surface.positions) || surface.positions.length % 3 || !Array.isArray(surface.indices) || surface.indices.length % 3 || surface.indices.some(i => !Number.isInteger(i) || i < 0 || i >= surface.positions.length / 3)) fail('invalid surface triangles');
       }
       for (const water of area.effects.water) {
         id(water.id);
         if (!finite(water.position,2) || !finite([water.width,water.length,water.flow,water.yaw ?? 0]) || water.width<=0 || water.length<=0 || water.flow<0 || water.shallow !== undefined && typeof water.shallow !== 'boolean') fail('invalid water surface');
+        if (water.height !== undefined && !Number.isFinite(water.height) || water.depth !== undefined && (!Number.isFinite(water.depth) || water.depth <= 0) || water.shorelineWidth !== undefined && (!Number.isFinite(water.shorelineWidth) || water.shorelineWidth <= 0)) fail('invalid water level/depth/shoreline');
+        if (water.surface) {
+          for (const tint of [water.surface.shallowColor, water.surface.deepColor]) if (tint !== undefined && !/^#[0-9a-f]{6}$/i.test(tint)) fail('invalid water color');
+          if ([water.surface.roughness, water.surface.normalStrength, water.surface.reflectionStrength].some(v => v !== undefined && (!Number.isFinite(v) || v < 0 || v > 2))) fail('invalid water surface response');
+          if (water.surface.reflection !== undefined && !['scene', 'environment'].includes(water.surface.reflection)) fail('invalid water reflection mode');
+        }
         if (water.preset !== undefined && !['stream', 'pond', 'puddle'].includes(water.preset)) fail('invalid water preset');
         if (water.boundary !== undefined) {
           if (!Array.isArray(water.boundary) || water.boundary.length < 3 || water.boundary.length > 32 || water.boundary.some(p => !finite(p, 2) || p.some(v => Math.abs(v) > 1))) fail('invalid normalized water boundary');
