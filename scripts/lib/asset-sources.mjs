@@ -28,7 +28,7 @@ export async function sourceArchiveReader(archive, prefix) {
   return { names, async read(name) {
     sourceEntry(name);
     if (!entries.has(name)) throw new Error(`Missing archive entry: ${name}`);
-    const pattern = (prefix + name).replace(/[\\*?\[\]]/g, '\\$&');
+    const pattern = (prefix + name).replace(/[\\*?[\]]/g, '\\$&');
     return (await execute('unzip', ['-p', archive, pattern], { encoding: 'buffer', maxBuffer: 32 * 1024 * 1024 })).stdout;
   } };
 }
