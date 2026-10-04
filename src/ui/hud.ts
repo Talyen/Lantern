@@ -123,7 +123,7 @@ export function createHud(onRetry: () => void) {
     adventure: (events: AdventureEvent[]) => combatText.adventure(events),
     applyCombatText: (settings: CombatTextSettings) => combatText.apply(settings),
     clearCombatText: () => combatText.clear(),
-    dispose: () => combatText.dispose(),
+    dispose: () => { retry.removeEventListener('click', onRetry); combatText.dispose(); },
     environmentLoaded(count: number) { status.textContent = count === 3 ? '' : 'Missing environment art.'; },
     characterUnavailable() { status.textContent = 'Character art unavailable. Run npm run assets:export-character to prepare playable art.'; },
     setAssetStatus: (message: string) => { status.textContent = message; },

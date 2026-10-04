@@ -2,7 +2,11 @@ import { loadingScreen } from './ui/loading';
 import { initializeDiagnostics, recordFailure } from './diagnostics/report';
 initializeDiagnostics();
 const lab = import.meta.env.DEV && ['characters', 'weapons', 'animations', 'assets', 'fsr'].includes(new URLSearchParams(location.search).get('lab') ?? '');
-if (lab) loadingScreen.dismiss();
+if (lab) {
+  loadingScreen.dismiss();
+  document.getElementById('app')!.hidden = false;
+  document.getElementById('shared-menus')!.hidden = true;
+}
 try {
   // Only the opt-in authoring comparison page uses a seeded world/effects stream.
   if (import.meta.env.DEV) {
@@ -21,7 +25,7 @@ try {
     if (new URLSearchParams(location.search).get('study') === 'ultimates') await import('./labs/animations/ultimate-lab');
     else await import('./labs/animations/animation-lab');
   } else {
-    await import('./clearing/clearing');
+    await import('./application');
   }
 } catch (error) {
   recordFailure('startup', error);

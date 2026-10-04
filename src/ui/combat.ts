@@ -16,6 +16,8 @@ type Drag={id:AbilityId;slot?:number;x:number;y:number;active:boolean;pointer:nu
 type SlotElements={button:HTMLButtonElement;icon:HTMLElement;cooldown:HTMLElement;key:HTMLElement;caption:HTMLElement};
 type UtilityElements={button:HTMLButtonElement;count:Element;key:Element};
 export class CombatUI {
+  private readonly lifecycle = new AbortController();
+  dispose(): void { this.lifecycle.abort(); this.clearHold(); this.dialog.close(); this.dialog.remove(); this.bar.remove(); }
   readonly bar=document.createElement('nav');
   private dialog=document.createElement('dialog');
   private skills: SkillsPanel;
@@ -117,9 +119,9 @@ export class CombatUI {
       if(this.skills.pickerOpen){this.skills.closePicker();if(this.pickerOnly)this.close();}
     };
     this.dialog.addEventListener('scroll',dismissOverlays,true);
-    window.addEventListener('resize',dismissOverlays);
+    window.addEventListener('resize',dismissOverlays, { signal: this.lifecycle.signal });
     this.ghost.className='ability-ghost';this.dialog.append(this.ghost);document.getElementById('app')!.append(this.dialog);
-    window.addEventListener('pointermove',event=>{if(!this.drag || event.pointerId!==this.drag.pointer)return;if(Math.hypot(event.clientX-this.drag.x,event.clientY-this.drag.y)>5)this.drag.active=true;if(!this.drag.active)return;this.skills.hideTooltip();this.ghost.innerHTML=abilityIcon(this.drag.id);this.ghost.hidden=false;this.ghost.style.left=`${event.clientX}px`;this.ghost.style.top=`${event.clientY}px`;this.buttons.forEach(button=>{const rect=button.getBoundingClientRect();button.classList.toggle('drop-target',event.clientX>=rect.left && event.clientX<=rect.right && event.clientY>=rect.top && event.clientY<=rect.bottom);});});
+    window.addEventListener('pointermove',event=>{if(!this.drag || event.pointerId!==this.drag.pointer)return;if(Math.hypot(event.clientX-this.drag.x,event.clientY-this.drag.y)>5)this.drag.active=true;if(!this.drag.active)return;this.skills.hideTooltip();this.ghost.innerHTML=abilityIcon(this.drag.id);this.ghost.hidden=false;this.ghost.style.left=`${event.clientX}px`;this.ghost.style.top=`${event.clientY}px`;this.buttons.forEach(button=>{const rect=button.getBoundingClientRect();button.classList.toggle('drop-target',event.clientX>=rect.left && event.clientX<=rect.right && event.clientY>=rect.top && event.clientY<=rect.bottom);});}, { signal: this.lifecycle.signal });
     window.addEventListener('pointerup',event=>{
       if(event.button!==0)return;
       if(event.pointerId===this.heldPointer){this.held=null;this.heldPointer=null;}
@@ -129,9 +131,9 @@ export class CombatUI {
       if(target && this.bar.contains(target)){const slot=Number(target.dataset.slot);if(drag.slot!==undefined)bar[drag.slot]=bar[slot];bar[slot]=drag.id;}
       else if(drag.slot!==undefined)bar[drag.slot]=null;
       if(target && this.bar.contains(target) || drag.slot!==undefined){this.ctx.assign(bar);this.update();}
-    });
-    window.addEventListener('keyup',event=>{if(event.key===this.heldKey){event.preventDefault();this.held=null;this.heldKey=null;this.ctx.focus();}});
-    window.addEventListener('pointercancel',event=>{if(event.pointerId===this.heldPointer || event.pointerId===this.drag?.pointer)this.clearHold();});window.addEventListener('blur',()=>this.clearHold());this.ghost.hidden=true;this.update();
+    }, { signal: this.lifecycle.signal });
+    window.addEventListener('keyup',event=>{if(event.key===this.heldKey){event.preventDefault();this.held=null;this.heldKey=null;this.ctx.focus();}}, { signal: this.lifecycle.signal });
+    window.addEventListener('pointercancel',event=>{if(event.pointerId===this.heldPointer || event.pointerId===this.drag?.pointer)this.clearHold();}, { signal: this.lifecycle.signal });window.addEventListener('blur',()=>this.clearHold(), { signal: this.lifecycle.signal });this.ghost.hidden=true;this.update();
   }
   get paused():boolean{return this.dialog.open;}
   get blocking():boolean{return this.held==='shield-basic';}

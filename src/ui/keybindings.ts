@@ -20,7 +20,7 @@ export class KeybindingsMenu {
   private content = document.createElement('div');
   private status = document.createElement('div');
   private apply = document.createElement('button');
-  constructor(private preferences: InputPreferences, private bar: () => ActionBar, private clear: () => void, private focus: () => void) {
+  constructor(private preferences: InputPreferences, private bar: () => ActionBar, private clear: () => void, private focus: () => void, mount = document.getElementById('app')!) {
     this.dialog.id = 'keybindings-dialog';
     this.dialog.className = 'combat-menu';
     this.dialog.setAttribute('aria-labelledby', 'keybindings-title');
@@ -44,7 +44,7 @@ export class KeybindingsMenu {
     this.apply.onclick = () => this.save();
     footer.append(reset, cancel, this.apply);
     this.dialog.append(this.content, this.status, footer);
-    document.getElementById('app')!.append(this.dialog);
+    mount.append(this.dialog);
     this.dialog.querySelector<HTMLButtonElement>('[data-close]')!.onclick = () => this.close();
     bindMenuDismissal(this.dialog, () => this.close());
     window.addEventListener('keydown', event => {

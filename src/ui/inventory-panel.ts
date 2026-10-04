@@ -38,6 +38,8 @@ const slots: { id: EquipmentSlot; name: string; glyph: InventoryItem['item']; wi
 
 /** Real inventory operations; no selected-item state or presentation-owned save data. */
 export class InventoryPanel {
+  private readonly lifecycle = new AbortController();
+  dispose(): void { this.lifecycle.abort(); this.cancelDrag(); this.hideTooltip(); this.dialog.close(); }
   readonly dialog = document.getElementById('inventory-dialog') as HTMLDialogElement;
   private character: CharacterSave | null = null;
   private key = '';
@@ -137,11 +139,11 @@ export class InventoryPanel {
         }
       }
     });
-    window.addEventListener('pointermove', event => this.pointerMove(event));
-    window.addEventListener('pointerup', event => { if (event.button === 0 && this.drag && !this.drag.carried && this.drag.pointer === event.pointerId) void this.release(event.clientX, event.clientY).catch(this.failed); });
-    window.addEventListener('pointercancel', event => { if (this.drag?.carried || this.drag?.pointer === event.pointerId) this.cancelDrag(); });
-    window.addEventListener('blur', () => this.cancelDrag());
-    window.addEventListener('resize', () => { this.cancelDrag(); this.hideTooltip(); });
+    window.addEventListener('pointermove', event => this.pointerMove(event), { signal: this.lifecycle.signal });
+    window.addEventListener('pointerup', event => { if (event.button === 0 && this.drag && !this.drag.carried && this.drag.pointer === event.pointerId) void this.release(event.clientX, event.clientY).catch(this.failed); }, { signal: this.lifecycle.signal });
+    window.addEventListener('pointercancel', event => { if (this.drag?.carried || this.drag?.pointer === event.pointerId) this.cancelDrag(); }, { signal: this.lifecycle.signal });
+    window.addEventListener('blur', () => this.cancelDrag(), { signal: this.lifecycle.signal });
+    window.addEventListener('resize', () => { this.cancelDrag(); this.hideTooltip(); }, { signal: this.lifecycle.signal });
   }
 
   get open(): boolean { return this.dialog.open; }

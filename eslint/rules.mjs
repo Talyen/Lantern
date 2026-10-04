@@ -1,7 +1,7 @@
 import { relative, resolve } from 'node:path';
 
 const storageOwners = new Set([
-  'src/clearing/clearing.ts',
+  'src/application.ts',
   'src/rendering/graphics-settings.ts',
   'src/data/preferences.ts',
 ]);

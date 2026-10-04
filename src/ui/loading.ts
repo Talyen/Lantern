@@ -3,7 +3,7 @@ import './ui-tokens.css';
 import './loading.css';
 
 export type LoadingOperation = number;
-type Recovery = { retry(): void; back(): void };
+type Recovery = { retry(): void; back(): void; kind?: 'adventure' | 'travel' };
 
 /** Presentation only: readiness and travel eligibility belong to the coordinator. */
 class LoadingScreen {
@@ -27,15 +27,19 @@ class LoadingScreen {
   get blocking(): boolean { return this.pending; }
   get current(): LoadingOperation { return this.operation; }
 
-  begin(destination: string): LoadingOperation {
+  private inert(value: boolean): void {
+    for (const root of [this.app, document.getElementById('front-end'), document.getElementById('shared-menus')]) if (root) root.inert = value;
+  }
+
+  begin(destination: string, immediate = false): LoadingOperation {
     this.recoverySettled?.();
     this.recoverySettled = undefined;
     const token = ++this.operation;
     clearTimeout(this.timer);
     this.pending = true;
-    this.app.inert = true;
+    this.inert(true);
     this.root.hidden = false;
-    this.root.dataset.state = 'waiting';
+    this.root.dataset.state = immediate ? 'loading' : 'waiting';
     delete this.root.dataset.revealing;
     this.actions.replaceChildren();
     this.title.textContent = destination;
@@ -49,6 +53,10 @@ class LoadingScreen {
     return token;
   }
 
+  preparing(token: LoadingOperation, text: string): void {
+    if (token === this.operation && this.pending) this.status.textContent = text;
+  }
+
   async ready(token: LoadingOperation): Promise<boolean> {
     if (token !== this.operation) return false;
     clearTimeout(this.timer);
@@ -57,7 +65,7 @@ class LoadingScreen {
     if (!this.reduced.matches) await new Promise(resolve => setTimeout(resolve, 180));
     if (token !== this.operation) return false;
     this.root.hidden = true;
-    this.app.inert = false;
+    this.inert(false);
     this.pending = false;
     return true;
   }
@@ -68,7 +76,7 @@ class LoadingScreen {
     ++this.operation;
     clearTimeout(this.timer);
     this.root.hidden = true;
-    this.app.inert = false;
+    this.inert(false);
     this.pending = false;
   }
 
@@ -90,15 +98,15 @@ class LoadingScreen {
     this.root.hidden = false;
     this.root.style.opacity = '1';
     this.pending = true;
-    this.app.inert = true;
+    this.inert(true);
     this.root.dataset.state = 'error';
-    this.title.textContent = recovery ? 'Unable to travel' : 'Unable to load Lantern';
+    this.title.textContent = recovery ? recovery.kind === 'adventure' ? 'Unable to begin adventure' : 'Unable to travel' : 'Unable to load Lantern';
     const detail = String(error);
     this.status.textContent = /WebGPU|FSR|shader|graphics/i.test(detail)
       ? 'Graphics preparation failed. Use a browser with native WebGPU and hardware acceleration enabled, update your graphics driver, then reload.'
       : /character|art|model|404|fetch/i.test(detail)
         ? 'Required game art could not be loaded. Check that the game files are installed and accessible, then try again.'
-        : recovery ? 'The destination could not be prepared. Try again or return to your current area.'
+        : recovery ? recovery.kind === 'adventure' ? 'The adventure could not be prepared. Try again or return to Play.' : 'The destination could not be prepared. Try again or return to your current area.'
           : 'The game could not be prepared. Reload to try again. If it keeps failing, export a diagnostic report.';
     this.status.setAttribute('role', 'alert');
     this.actions.replaceChildren();

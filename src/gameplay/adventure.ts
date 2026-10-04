@@ -90,8 +90,9 @@ export class Adventure {
   private sequence = 3;
   newId = (): string => `item-${++this.sequence}`;
   private readonly persistence: CharacterPersistence;
-  constructor(storage?: StorageSource, private random = Math.random) {
+  constructor(storage?: StorageSource, private random = Math.random, private readonly sessionSave?: { character: CharacterSave; save(value: CharacterSave): void; diagnostics(): { pending: boolean; error: string } }) {
     this.persistence = new CharacterPersistence(storage);
+    if (sessionSave) { this.adoptCharacter(sessionSave.character); return; }
     const loaded = this.persistence.load();
     if (loaded) {
       this.adoptCharacter(loaded);
@@ -116,6 +117,7 @@ export class Adventure {
   }
 
   async prepareSave(): Promise<void> {
+    if (this.sessionSave) return;
     const loaded = await this.persistence.initialize();
     if (loaded) this.adoptCharacter(loaded);
     this.save();
@@ -168,9 +170,10 @@ export class Adventure {
     this.character.outing = { elapsed: this.elapsed, checkpoint: previous.checkpoint, portal: structuredClone(this.portal), areas,
       cooldowns: e ? { abilityCooldowns: { ...e.abilityCooldowns }, ultimateCooldown: e.ultimateCooldown, potionCooldown: e.potionCooldown, dodgeCooldown: e.dodgeCooldown, attackCooldown: e.attackCooldown } : previous.cooldowns };
   }
-  save(): void { this.snapshot(); this.persistence.request(this.character); }
+  capture(): CharacterSave { this.snapshot(); return this.character; }
+  save(): void { this.snapshot(); if (this.sessionSave) this.sessionSave.save(this.character); else this.persistence.request(this.character); }
   closeSave(): void { this.snapshot(); this.persistence.close(this.character); }
-  saveDiagnostics() { return this.persistence.diagnostics(); }
+  saveDiagnostics() { return this.sessionSave ? { loaded: true, failures: 0, blockedByExisting: false, ...this.sessionSave.diagnostics() } : this.persistence.diagnostics(); }
   setActionBar(bar: ActionBar): void {
     if (!validBar(bar) || bar.some(id=>id && !abilityUnlocked(id,this.character.xp))) throw new Error('Invalid action bar');
     this.character.actionBar = [...bar];

@@ -9,6 +9,7 @@ import { bindMenuDismissal } from './menu';
 const labels: Record<NumericSetting, string> = { sharpness: 'Sharpening',
   exposure: 'Exposure', warmth: 'Firelight', fog: 'Atmosphere', bloom: 'Bloom', ao: 'Ambient occlusion' };
 type OptionsContext = {
+  returnToTitle(): void;
   apply: (settings: GraphicsSettings) => void;
   combatText: (settings: CombatTextSettings) => void;
   flushSettings: () => void;
@@ -24,8 +25,12 @@ export class Options {
   settings = readSettings();
   audioSettings = readAudioSettings();
   private combatTextSettings = readCombatTextSettings();
+  private returnButton = document.createElement('button');
   private dialog = document.getElementById('options-dialog') as HTMLDialogElement;
   constructor(private ctx: OptionsContext) {
+    this.returnButton.type = 'button'; this.returnButton.textContent = 'Return to Title'; this.returnButton.id = 'options-title-return'; this.returnButton.hidden = true;
+    this.returnButton.onclick = () => this.ctx.returnToTitle();
+    this.dialog.querySelector('.options-footer')!.append(this.returnButton);
     this.buildControls(); this.buildAudio(); this.buildCombatText(); this.apply();
     this.dialog.querySelector('.options-footer')!.prepend(diagnosticExportButton());
     const bindings=document.createElement('button'); bindings.type='button'; bindings.textContent='Keybindings'; bindings.id='options-keybindings'; bindings.onclick=()=>{this.close();this.ctx.keybindings();};this.dialog.querySelector('#options-close')!.before(bindings);
@@ -118,6 +123,8 @@ export class Options {
   }
   private input<T extends HTMLElement>(name: string): T { return document.getElementById(`option-${name}`) as T; }
   private save(changedKey?: keyof GraphicsSettings): void { saveSettings(this.settings, changedKey); }
+  setPlaying(value: boolean): void { this.returnButton.hidden = !value; this.updateResolution(); }
+  get combatText() { return { ...this.combatTextSettings }; }
   open(): void { if (document.querySelector('dialog[open]')) return; this.ctx.clearInput(); this.dialog.showModal(); this.ctx.audio.play('menuOpen'); }
   close(): void { if (!this.dialog.open) return; this.ctx.audio.play('menuClose'); this.dialog.close(); this.ctx.flushSettings(); this.ctx.clearInput(); this.ctx.focus(); }
 

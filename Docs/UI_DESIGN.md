@@ -160,3 +160,7 @@ Original production chrome and dimensional item/ability sprites live under `asse
 ## Adopted loading presentation
 
 [Loading](ui/concepts/loading/README.md) uses one stationary original iron/brass lantern, subtle contained flame variation, warm charcoal background and live ivory title/status. Startup is immediate; travel shows the composition only after 400ms, otherwise using the shared fade. No percentages or artificial holding duration. [Controller](../src/ui/loading.ts) and [styles](../src/ui/loading.css) consume shared semantic colors; loading text and recovery controls remain DOM elements. Reduced motion removes decorative motion and fades.
+
+## Adopted Title and Play
+
+The owner selected [Option A with Play labels](ui/concepts/title-play/README.md): centered original lantern, Lantern heading and stacked Play/Options controls; a framed four-row slot list with selected details beside it. [Front-end](../src/ui/front-end.ts) and [styles](../src/ui/front-end.css) own layout, live text, CSS frames and keyboard focus; original concept boards are references only. Naming and deletion share a compact opaque modal, with Cancel initially focused for deletion. [Save recovery](RUNTIME.md#save-recovery) owns silent recovery, independent outings and Return to Title.

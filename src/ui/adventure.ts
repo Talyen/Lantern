@@ -31,6 +31,7 @@ export class AdventureMenus {
       finally { this.repairing = false; this.refreshRepair(); }
     };
   }
+  dispose(): void { this.panel.dispose(); this.travel.close(); this.repair.close(); }
   get paused(): boolean { return this.panel.open || this.repair.open || this.travel.open; }
   close(): void {
     if (this.repairing) return;
