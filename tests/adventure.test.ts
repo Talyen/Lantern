@@ -101,12 +101,12 @@ test('character saves retain scrolls, discoveries and the open return portal', (
   const failed = new Adventure({ getItem: () => null, setItem: () => { throw Error('full'); } }); failed.save(); expect(failed.saveDiagnostics().pending).toBe(true); failed.closeSave();
 });
 
-test('campfires heal only when safe but travel ignores source and destination enemies', () => {
+test('campfire interaction and healing require a safe source but destination enemies do not block travel', () => {
   const state = new Adventure(memory(), () => 1), encounter = createEncounter('playing');
   state.enter(encounter, field, field.campfires![0].arrival);
   const fire = field.campfires![0], homeFire = home.campfires![0]; encounter.player.hp = 50;
   state.step(encounter, field, 1); expect(encounter.player.hp).toBe(50);
-  expect(state.canTravel(encounter, field, fire, home, homeFire)).toBe(true);
+  expect(state.canTravel(encounter, field, fire, home, homeFire)).toBe(false);
   encounter.enemies.enemy.x = fire.position[0] + 11; encounter.enemies.enemy.z = fire.position[1]; encounter.enemies.enemy.engaged = true;
   expect(state.fireSafe(field, fire, encounter)).toBe(false);
   encounter.enemies.enemy.engaged = false; encounter.enemies.enemy.returning = true;

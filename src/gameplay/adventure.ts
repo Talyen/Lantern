@@ -444,7 +444,7 @@ export class Adventure {
 
   canTravel(encounter: Encounter, sourceArea: AreaDefinition, source: Campfire, targetArea: AreaDefinition, target: Campfire): boolean {
     return this.currentArea === sourceArea.id && encounter.player.hp > 0 && this.castRemaining === 0
-      && near([encounter.player.x, encounter.player.z], source.position, 3)
+      && near([encounter.player.x, encounter.player.z], source.position, 3) && this.fireSafe(sourceArea, source, encounter)
       && this.character.campfires.includes(fireKey(targetArea.id, target.id));
   }
 
