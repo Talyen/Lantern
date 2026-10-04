@@ -24,7 +24,7 @@ export const skillIds = skillDefinitions.map(skill => skill.id);
 export const initialSkillXP = (): SkillXP => Object.fromEntries(skillIds.map(id => [id, 0])) as SkillXP;
 export const earnsSkillXP = (id: Skill): boolean => id === 'sword' || id === 'bow' || id === 'axeCombat' || id === 'woodcutting' || id === 'mining';
 export const progression = { xpStep: 100, yieldGrowth: .25, gatheringXp: 10, restedBonus: .10, restedSeconds: 30 * 60, restedRadius: 3, checkpointSeconds: 5 };
-export const gathering = { reach: 1.8, workingReach: .85, facingCone: Math.PI / 6, threatRadius: 6, contacts: 3, renewalSeconds: 120, baseYield: 1, resourceLevel: 1, mineralDepletedScale: .42 };
+export const gathering = { reach: 1.8, workingReach: .85, facingCone: Math.PI / 6, threatRadius: 6, contacts: 3, baseYield: 1, resourceLevel: 1, mineralDepletedScale: .42 };
 export const shelterRecipe = { wood: 12, stone: 6, iron: 3 } as const;
 const weaponAnchors = [[1,0],[2,100],[3,250],[4,500],[5,1000],[15,5000],[50,24000]] as const;
 const weaponTrack = (skill?: Skill) => skill === 'sword' || skill === 'bow';

@@ -1,3 +1,4 @@
+import { RenewalVisibility } from './renewal-visibility';
 import { AbilityEffects } from '../rendering/ability-effects';
 import { abilities } from '../gameplay/abilities';
 import { bindingLabel } from '../input/bindings';
@@ -48,7 +49,6 @@ import { GameAudio } from '../audio/audio';
 import { GameplayAudio } from '../audio/gameplay';
 import { GatheringTools } from '../rendering/gathering-tools';
 import { progression } from '../gameplay/skills';
-import { Harvesting } from '../gameplay/harvesting';
 import { GatheringController } from './gathering';
 import { FrameLoop } from './frame-loop';
 import { EquipmentSets } from './equipment-sets';
@@ -115,6 +115,11 @@ let areaErrors: string[] = [], updateMs = 0, contentHash = '', characterMissing 
 const travel = new GateTravel();
 const adventure = new Adventure(() => localStorage);
 await adventure.prepareSave();
+adventure.configureAreas(definitions);
+const resumed = adventure.resume(definitions);
+const explicitArea = import.meta.env.DEV && renderQuery.has('area');
+if (!explicitArea) currentArea = resumed.area;
+committedLighting = resolveLightingFor(currentArea);
 let adventureVisuals: AdventureVisuals | undefined;
 let abilityEffects: AbilityEffects | undefined;
 const waitFrames = (count = 16) => frameLoop.waitFrames(count);
@@ -136,7 +141,10 @@ const playerEquipment = new Equipment(player.root);
 const enemyActors = new EnemyActors(scene, loader, actors);
 const gatheringTools = new GatheringTools(player.root,playerEquipment);
 const projectileVisuals = new ProjectileVisuals(scene);
-const harvesting = new Harvesting();
+const harvesting = adventure.harvesting;
+const renewalVisibility = new RenewalVisibility();
+adventure.canRenew = (source, position, height, radius, arriving) => !!active && (arriving || !transitioning && !frozen && !inspecting)
+  && renewalVisibility.eligible(camera, encounter, source, position, height, radius, arriving);
 const interactionHighlight=new InteractionHighlight(scene);
 const equipmentSets = new EquipmentSets(player, playerEquipment, loader, () => projectileVisuals.prepareArrow());
 const preferences=new InputPreferences(() => localStorage);
@@ -234,6 +242,7 @@ const presentation = new EncounterPresentation(encounter, actors, gameplayAudio,
 });
 function present(events: EncounterEvent[]): void {
   presentation.present(events);
+  if (events.some(event => event.type === 'abilityCommitted')) adventure.save();
   if (!frozen && !inspecting && !transitioning) impact.present(events);
   if (events.some(event => event.type === 'outcome' && !event.won)) { impact.clear(); pendingUtility=null; }
 }
@@ -356,6 +365,15 @@ function syncAdventure(): void {
   adventureVisuals?.sync(adventure.session(currentArea.id).drops, adventure.portalPosition(currentArea), lootLabels.hovered, adventure.portalHeight(currentArea));
   for (const chest of currentArea.chests ?? []) active?.setChestOpened(chest.id, adventure.chest(currentArea, chest).opened);
   const adventureEvents = adventure.takeEvents();
+  for (const event of adventureEvents) if (event.type === 'enemyRenewed') {
+    const actor = actors[event.id], state = encounter.enemies[event.id];
+    if (actor && state) {
+      actor.mixer?.stopAllAction(); actor.current = null; actor.previous = null; actor.velocity.set(0, 0);
+      actor.root.position.set(state.x, state.y + .04, state.z); actor.root.rotation.y = state.yaw;
+      play(actor, 'idle');
+    }
+    hud.dismissResult();
+  }
   const learned=adventureEvents.filter(event=>event.type==='abilityLearned');
   if (learned.length) adventure.message(learned.map(event=>{
     const binding=event.slot===null ? null : preferences.value[actionSlotInputs[event.slot]].find(Boolean);
@@ -502,6 +520,14 @@ const runtimeDiagnostics = new ClearingDiagnostics({
   get renderedFrames() { return renderedFrames; },
 });
 const diagnostics = () => runtimeDiagnostics.snapshot();
+if (import.meta.env.DEV) Object.assign(window, { lanternRenewal: {
+  diagnostics,
+  snapshot: () => { adventure.save(); return structuredClone(adventure.character.outing); },
+  advance: (seconds: number) => {
+    if (!Number.isFinite(seconds) || seconds < 0) throw new Error('Invalid clock advance');
+    adventure.advanceRenewal(encounter, currentArea, seconds); gathering.advance(0); syncAdventure(); invalidateFrame();
+  },
+} });
 
 try {
   const character = await loader.loadAsync(characters.player.model);
@@ -509,7 +535,7 @@ try {
   attachCharacter(player, character.scene, character.animations, characters.player.height);
   await inventory.initialize();
   await gatheringTools.prepare();
-  reset();
+  resetPresentation();
 } catch (error) {
   characterMissing = true;
   recordFailure('character', error);
@@ -538,7 +564,7 @@ try {
   resize();
   await graphics.initialize();
   frameLoop.start();
-  if (!await changeArea({ kind: 'travel', area: currentArea.id })) throw new Error('Initial area could not be prepared.');
+  if (!await changeArea({ kind: 'travel', area: currentArea.id, spawn: explicitArea ? undefined : resumed.spawn })) throw new Error('Initial area could not be prepared.');
   if (import.meta.env.DEV && renderQuery.get('author') === 'levels') {
     const { attachAuthoring } = await import('../levels/authoring');
     const authoring = attachAuthoring({ invalidate: invalidateFrame, scene, camera, renderer, definitions: () => definitions, area: () => currentArea, encounter,
@@ -700,8 +726,9 @@ async function changeArea(change: AreaChange): Promise<boolean> {
     candidate.activate(graphics!.effects);
 
     const arrival = next.gates.find(gate => gate.id === arrivalId);
-    gathering.register(candidate, candidateMovement);
+    renewalVisibility.register(candidate, actors);
     adventure.enter(encounter, next, spawn ?? arrival?.arrival ?? next.layout.player, recover);
+    gathering.register(candidate, candidateMovement);
     adventureVisuals = new AdventureVisuals(candidate.root);
     adventure.placeGround = (origin, index) => movementWorld!.lootGround(origin, index, encounter.player);
     adventure.canCollectGround = drop => movementWorld!.pickupReachable(encounter.player, drop.position, drop.height, 1.65);
@@ -762,7 +789,7 @@ if (import.meta.hot) import.meta.hot.accept('../levels/registry', module => {
   const updated = module.areas as typeof areas;
   const errors = validateDefinitions(updated);
   if (errors.length) { generation++; transitioning = false; if (active) loadingScreen.dismiss(); areaErrors = errors; return; }
-  definitions = updated; void changeArea({ kind: 'refresh' }).catch((error: unknown) => console.error('Unable to refresh area definitions.', error));
+  definitions = updated; adventure.configureAreas(definitions); void changeArea({ kind: 'refresh' }).catch((error: unknown) => console.error('Unable to refresh area definitions.', error));
 });
 
 if (import.meta.hot) import.meta.hot.on('vite:error', payload => { generation++; transitioning = false; if (active) loadingScreen.dismiss(); areaErrors = [payload.err.message]; });

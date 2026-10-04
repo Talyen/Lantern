@@ -25,7 +25,7 @@ export type Region = { id: string; center: Point; radius: number; role: 'combat'
 export type LightingGrade = { shadows: string; highlights: string; strength: number };
 export type AreaLighting = { background: string; fogNear: number; fogFar: number; ambient: { sky: string; ground: string; intensity: number }; sun: { color: string; intensity: number; position: [number, number, number]; shadowExtent: number }; environment?: EnvironmentLighting; probes?: ProbeLighting; saturation?: number; grade?: LightingGrade };
 export type Shop = { id: string; prop: string; position: Point; merchant: { model: string; position: Point; yaw: number; height: number } };
-export type Chest = RewardMetadata & { id: string; prop: string; position: Point; scrolls: number; potions?: number; equipment?: ItemId[]; guard?: EnemyId | null; guards?: EnemyId[] };
+export type Chest = RewardMetadata & { id: string; prop: string; position: Point; scrolls: number; potions?: number; equipment?: ItemId[] };
 export type Campfire = { id: string; name: string; position: Point; arrival: Spawn; heals?: boolean };
 export type AreaDefinition = {
   version: 1; id: string; name: string; ambience?: 'woodland' | 'quiet'; level?: number; shop?: Shop; legacy?: boolean; terminal?: boolean; chests?: Chest[]; enemyEquipment?: Partial<Record<EnemyId,ItemId[]>>; kind?: 'safe' | 'encounter'; campfires?: Campfire[]; portalArrival?: Spawn;

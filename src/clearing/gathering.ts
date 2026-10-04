@@ -1,6 +1,5 @@
 import type { Adventure } from '../gameplay/adventure';
-import type { Point } from '../gameplay/area';
-import { type ActorId, type Encounter } from '../gameplay/encounter';
+import { type Encounter } from '../gameplay/encounter';
 import { gatheringSafe, type Harvesting } from '../gameplay/harvesting';
 import type { MovementWorld } from '../gameplay/movement';
 import { gathering } from '../gameplay/skills';
@@ -21,19 +20,11 @@ type GatheringContext = {
   effects?(): CoreEffects | undefined;
 };
 type Swing = { resource: ResourceDefinition; time: number; contacted: boolean };
-type Occupant = { areaId: string; position: Point };
-
 /** Coordinates gathering motions and contacts without changing equipped items. */
 export class GatheringController {
   private selected: ResourceDefinition | null = null;
   private swing: Swing | null = null;
-  private readonly occupantRecords: Record<ActorId, Occupant> = {
-    player: { areaId: '', position: [0, 0] },
-    enemy: { areaId: '', position: [0, 0] },
-    caster: { areaId: '', position: [0, 0] },
-  };
   private readonly contactPosition = new Vector3();
-  private readonly occupants: Occupant[] = [];
 
   constructor(
     private readonly encounter: Encounter,
@@ -105,24 +96,11 @@ export class GatheringController {
 
   advance(dt: number): void {
     const area = this.context.area();
-    const { player, enemies } = this.encounter;
+    const { player } = this.encounter;
     // Combat advances before gathering contacts; a newly pursuing enemy must
     // cancel this swing before it can award another resource.
     if (this.selected && !gatheringSafe(this.encounter, area.kind)) this.cancel();
-    const occupants = this.occupants;
-    occupants.length = 0;
-    occupants.push(...this.adventure.inactiveEnemyOccupants());
-    const playerOccupant = this.occupantRecords.player;
-    playerOccupant.areaId = area.id; playerOccupant.position[0] = player.x; playerOccupant.position[1] = player.z;
-    occupants.push(playerOccupant);
-    if (area.kind !== 'safe') for (const id of this.encounter.enemyIds) {
-      const enemy = enemies[id];
-      if (enemy.hp <= 0) continue;
-      const occupant = this.occupantRecords[id] ??= { areaId: '', position: [0, 0] };
-      occupant.areaId = area.id; occupant.position[0] = enemy.x; occupant.position[1] = enemy.z;
-      occupants.push(occupant);
-    }
-    for (const change of this.harvesting.advance(dt, occupants)) {
+    for (const change of this.adventure.takeResourceChanges()) {
       if (change.areaId !== area.id) continue;
       this.context.instance()?.setResourceState(change.id, false);
       this.context.navigation()?.setTreeFelled(change.id, false);
@@ -149,7 +127,7 @@ export class GatheringController {
       this.contactPosition.set(position.x,resource.position[1]-.5,position.z);
       this.context.effects?.()?.burst(resource.kind === 'tree' ? 'debris' : 'chips',this.contactPosition,resource.kind==='tree' ? 7 : 5);
       this.adventure.grantHarvest(reward.item, reward.quantity, reward.skill, reward.xpPerUnit,
-        [position.x, position.z]);
+        [position.x, position.z], { kind: 'resource', id: resource.id });
       this.context.instance()?.treeHit(resource.id);
       if (reward.felled) {
         if (resource.kind === 'tree') this.context.instance()?.fellTree(resource.id, [player.x, player.z]);

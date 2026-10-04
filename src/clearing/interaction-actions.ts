@@ -62,6 +62,7 @@ export class InteractionActions {
             this.audio.play('portalPass');
             if (adventure.portal === link) {
               adventure.portal = null;
+              adventure.save();
               context.syncAdventure();
               this.audio.play('portalClose');
             }

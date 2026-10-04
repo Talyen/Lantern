@@ -1,5 +1,5 @@
 import type * as THREE from 'three';
-import { chestUnlocked, homeArea, type Adventure } from '../gameplay/adventure';
+import { homeArea, type Adventure } from '../gameplay/adventure';
 import type { Point } from '../gameplay/area';
 import type { Encounter } from '../gameplay/encounter';
 import { gatheringSafe, type Harvesting } from '../gameplay/harvesting';
@@ -114,7 +114,6 @@ export function interactionError(target: WorldInteraction, area: AreaDefinition,
   if (adventure.castRemaining > 0) return 'Scroll of Return is casting';
   if (target.type === 'resource' && !gatheringSafe(encounter, area.kind)) return 'Enemies nearby';
   if (target.type === 'fire' && !adventure.fireSafe(area, target.fire, encounter)) return 'Enemies nearby';
-  if (target.type === 'chest' && !chestUnlocked(encounter, target.chest)) return 'Defeat the guard';
   return '';
 }
 

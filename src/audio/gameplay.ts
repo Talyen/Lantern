@@ -50,7 +50,7 @@ export class GameplayAudio {
   adventure(events: AdventureEvent[]): void {
     const mapping = {chestOpen:'chestOpen',returnCast:'returnCast',portalOpen:'portalOpen',portalClose:'portalClose',fireDiscovered:'fireDiscovered',healing:'healing',potionUse:'healing'} as const;
     for (const event of events) {
-      if (event.type==='abilityLearned') continue;
+      if (event.type==='abilityLearned' || event.type==='enemyRenewed') continue;
       if (event.type === 'healthRecovered') continue;
       if (event.type === 'lootDrop' || event.type === 'lootLand' || event.type === 'lootPickup') {
         const cue: SoundCue = event.item === 'scroll' ? event.type === 'lootPickup' ? 'scrollPickup' : 'scrollDrop'

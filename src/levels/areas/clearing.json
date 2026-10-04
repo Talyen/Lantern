@@ -2547,7 +2547,6 @@
         -7.0711
       ],
       "scrolls": 2,
-      "guard": "enemy",
       "potions": 2,
       "equipment": [
         "sword",
@@ -2567,7 +2566,6 @@
         5.2
       ],
       "scrolls": 0,
-      "guard": null,
       "equipment": [
         "quilted-coat",
         "trail-boots",
@@ -2582,7 +2580,6 @@
         4
       ],
       "scrolls": 0,
-      "guard": null,
       "equipment": [
         "iron-signet",
         "hearth-ring"

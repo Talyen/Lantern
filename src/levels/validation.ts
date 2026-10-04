@@ -122,9 +122,6 @@ export function validateAreas(input: Record<string, AreaDefinition>): string[] {
       }
       for (const chest of area.chests ?? []) {
         reward(chest);
-        if (chest.guard !== undefined && chest.guards !== undefined) fail('choose guard or guards, not both');
-        const guards = chest.guards ?? (chest.guard ? [chest.guard] : []);
-        if (!Array.isArray(guards) || new Set(guards).size !== guards.length || guards.some(guard => !(enemies ? enemies.some(enemy => enemy.id === guard) : ['enemy','caster'].includes(guard) && !!area.layout[guard as 'enemy' | 'caster']))) fail('chest guards must name placed enemies');
         id(chest.id);
         if (!finite(chest.position, 2) || boundaryDistance(boundary, chest.position) < 0 || !Number.isInteger(chest.scrolls) || chest.scrolls < 0) fail('invalid chest position/reward');
         if (chest.potions !== undefined && (!Number.isSafeInteger(chest.potions) || chest.potions < 0)) fail('invalid potion reward');

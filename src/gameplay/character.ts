@@ -1,3 +1,4 @@
+import { freshOuting, type OutingSave } from './outing';
 import { initialBar, type ActionBar, type WeaponSet } from './abilities';
 import { isItemId, weaponFamily, type ItemId, type Loadout } from './equipment';
 import { countItem, itemLoadout, type InventoryItem } from './inventory';
@@ -6,7 +7,8 @@ import { initialSkillXP, type SkillXP } from './skills';
 
 /** Live character state; save decoding and browser storage have separate owners. */
 export type CharacterSave = {
-  version: 8;
+  version: 9;
+  outing: OutingSave;
   gold: number;
   buyback: BuybackEntry[];
   activeSet: WeaponSet;
@@ -32,7 +34,8 @@ export function character(
   ],
 ): CharacterSave {
   const value: CharacterSave = {
-    version: 8,
+    version: 9,
+    outing: freshOuting(),
     gold: 0,
     buyback: [],
     activeSet: 0,

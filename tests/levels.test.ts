@@ -93,9 +93,9 @@ test('depleted resources survive registration and renew only when unoccupied', (
   harvesting.register('clearing', [tree]);
   expect(harvesting.contact('clearing', tree.id, point)).toBeUndefined();
   expect(harvesting.advance(0)).toEqual([]);
-  expect(harvesting.advance(119)).toEqual([]);
+  expect(harvesting.advance(2699)).toEqual([]);
   expect(harvesting.advance(1, [{ areaId: 'clearing', position: [0, 0] }])).toEqual([]);
-  expect(harvesting.advance(.05, [{ areaId: 'homestead', position: [0, 0] }])).toEqual([{ areaId: 'clearing', id: tree.id, felled: false }]);
+  expect(harvesting.advance(.5, [{ areaId: 'homestead', position: [0, 0] }])).toEqual([{ areaId: 'clearing', id: tree.id, felled: false }]);
   expect(harvesting.contact('clearing', tree.id, point)?.felled).toBe(false);
   harvesting.contact('clearing', tree.id, point);
   harvesting.contact('clearing', tree.id, point);

@@ -1,3 +1,4 @@
+import { renewalSeconds, type SavedResource } from './outing';
 import type { TreeDefinition } from '../levels/trees';
 import { resourceItem, resourceSkill, type ResourceDefinition } from '../levels/resources';
 import type { Point } from './area';
@@ -16,7 +17,7 @@ export function gatheringSafe(encounter: Encounter, kind: AreaDefinition['kind']
   });
 }
 
-/** Session-only depletion clock. Character resources and XP belong to Adventure. */
+/** Active-play depletion clock. Character resources and XP belong to Adventure. */
 export class Harvesting {
   private elapsed = 0;
   private nextRegrowthAt = Infinity;
@@ -41,6 +42,17 @@ export class Harvesting {
       if (node.regrowAt !== undefined) this.nextRegrowthAt = Math.min(this.nextRegrowthAt, node.regrowAt);
     }
   }
+  restore(elapsed: number, saved: Record<string, Record<string, SavedResource>>): void {
+    this.elapsed = elapsed;
+    for (const [areaId, resources] of Object.entries(saved)) for (const [id, state] of Object.entries(resources)) {
+      const node = this.areas.get(areaId)?.get(id);
+      if (node) { node.hits = Math.min(state.hits, node.definition.contacts); node.regrowAt = state.regrowAt; }
+    }
+    this.nextRegrowthAt = elapsed;
+  }
+  snapshot(areaId: string): Record<string, SavedResource> {
+    return Object.fromEntries([...(this.areas.get(areaId)?.entries() ?? [])].map(([id, node]) => [id, { hits: node.hits, regrowAt: node.regrowAt }]));
+  }
   state(areaId: string, id: string): TreeState | undefined {
     const node = this.areas.get(areaId)?.get(id);
     return node && { hits: node.hits, felled: node.regrowAt !== undefined };
@@ -64,20 +76,20 @@ export class Harvesting {
     const node = this.areas.get(areaId)?.get(id);
     if (!node || node.regrowAt !== undefined || this.distance(node.definition, point) > gathering.reach) return;
     if (++node.hits >= node.definition.contacts) {
-      node.regrowAt = this.elapsed + gathering.renewalSeconds;
+      node.regrowAt = this.elapsed + renewalSeconds;
       this.nextRegrowthAt = Math.min(this.nextRegrowthAt, node.regrowAt);
     }
     return { item: resourceItem(node.definition.kind), quantity: harvestQuantity(skillLevel(xp),node.definition.level,node.definition.baseYield), skill: resourceSkill(node.definition.kind), xpPerUnit: progression.gatheringXp * node.definition.level, felled: node.regrowAt !== undefined };
   }
-  advance(dt: number, occupants: { areaId: string; position: Point; radius?: number }[] = []): TreeChange[] {
+  advance(dt: number, occupants: { areaId: string; position: Point; radius?: number }[] = [], eligible: (areaId: string, node: ResourceDefinition) => boolean = () => true): TreeChange[] {
     this.elapsed += Math.max(0, dt);
     const changes: TreeChange[] = [];
     if (this.elapsed < this.nextRegrowthAt) return changes;
     this.nextRegrowthAt = Infinity;
     for (const [areaId, nodes] of this.areas) for (const [id, node] of nodes) {
       if (node.regrowAt === undefined) continue;
-      if (node.regrowAt > this.elapsed || occupants.some(actor => actor.areaId === areaId && this.distance(node.definition, actor.position) < (actor.radius ?? .3) + .05)) {
-        this.nextRegrowthAt = Math.min(this.nextRegrowthAt, node.regrowAt); continue;
+      if (node.regrowAt > this.elapsed || !eligible(areaId, node.definition) || occupants.some(actor => actor.areaId === areaId && this.distance(node.definition, actor.position) < (actor.radius ?? .3) + .05)) {
+        this.nextRegrowthAt = Math.min(this.nextRegrowthAt, Math.max(this.elapsed + .5, node.regrowAt)); continue;
       }
       node.hits = 0; node.regrowAt = undefined; changes.push({ areaId, id, felled: false });
     }

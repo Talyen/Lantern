@@ -1845,11 +1845,6 @@
       ],
       "scrolls": 2,
       "potions": 2,
-      "guards": [
-        "hall-warrior-1",
-        "hall-warrior-2",
-        "bone-caster"
-      ],
       "gold": false
     }
   ]

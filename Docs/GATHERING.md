@@ -10,7 +10,7 @@ A living enemy within 6 m, or any pursuing enemy in the active area, prevents ga
 
 Three valid contacts deplete initial level-1 nodes. Each contact drops Wood, Stone or Iron through the shared [loot system](LOOT.md). Resources collect after landing; partial collection leaves the ground remainder intact. Gathering XP belongs only to successfully collected harvested quantities. Dropping or storing an already collected resource never grants XP again.
 
-Tree collision is removed on felling; mineral outcrops retain a low depleted core. Session depletion survives travel and death. Both renew after 120 active gameplay seconds, deferring occupied locations. Restart refreshes resources; time-away renewal remains future work. Depletion and renewal do not prepare lighting.
+Tree collision is removed on felling; mineral outcrops retain a low depleted core. Partial harvest progress and depletion survive travel, death and restart. Each depleted resource renews after 45 minutes of active play anywhere. Renewal waits until its intact bounds and leftover source rewards are off-screen with a safety margin, at least 12 m from the player and clear of actors; unseen destination renewal also protects the arrival. Old uncollected harvest rewards disappear when their resource renews. Paused, loading, background and closed-app time do not advance the clock. Depletion and renewal do not prepare lighting.
 
 A newly completed tree harvest starts a cosmetic fall: the stump appears and the tree becomes unavailable immediately, while its existing model topples and fades away over roughly 1.1 gameplay seconds. The existing crack/fall cues play once, with a small debris burst at visual ground contact. Motion pauses with gameplay and hit-stop; cancelling gathering after the final contact does not undo depletion or the fall. Falling trees cannot damage actors, block movement or relocate rewards.
 
@@ -36,6 +36,6 @@ Entering the repaired shelter's 3 m radius automatically refreshes Rested to 30 
 
 ## Persistence and acceptance
 
-Character save revision 5 retains the existing key and migrates revisions 1–4, preserving item IDs, overflow recovery entries, equipment, XP, discoveries and chest claims. It adds Stone/Iron items, Mining XP, stash contents, restoration and remaining Rested time. Ground-drop XP provenance and resource depletion remain session state.
+Character save revision 5 retains the existing key and migrates revisions 1–4, preserving item IDs, overflow recovery entries, equipment, XP, discoveries and chest claims. It adds Stone/Iron items, Mining XP, stash contents, restoration and remaining Rested time. Revision 9 also saves ground-drop XP provenance, partial harvest progress, depletion and renewal deadlines in the outing snapshot.
 
 Use one [managed preview](DEVELOPMENT.md#working-alongside-other-agents): gather with a Bow equipped, exercise direct-click approach, cancel and encounter a threat, repair the shelter, transfer a stack and restart. Inspect the shelter silhouette and tool contacts at gameplay scale. Existing tests protect partial collection/provenance, recipe consumption, transfers, migration and Rested timing.

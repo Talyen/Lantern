@@ -1,3 +1,6 @@
+import { resourceDefinitions, type ResourceDefinition } from '../levels/resources';
+import { Harvesting, type TreeChange } from './harvesting';
+import { renewalSeconds, renewalDistance, sameSource, type RewardSource, type SavedEnemy, type SavedChest, type OutingSave } from './outing';
 import { enterAreaEncounter } from './area-encounter';
 import { chestRewards, enemyRewards } from './adventure-rewards';
 import {
@@ -28,13 +31,13 @@ type AreaSession = {
   encounter?: Encounter;
   drops: GroundDrop[];
   dropRolled: Partial<Record<EnemyId, boolean>>;
-  chests: Record<string, { opened: boolean; remaining: number }>;
+  chests: Record<string, SavedChest>;
+  enemies: Record<string, SavedEnemy>;
 };
-export const chestUnlocked = (encounter: Encounter, chest: Chest) => chest.guard === null
-  || (chest.guards ?? [chest.guard ?? 'enemy']).every(id => !!encounter.enemies[id] && encounter.enemies[id].hp <= 0);
 const fireKey = (area: string, fire: string) => `${area}/${fire}`;
 
 export type AdventureEvent =
+  | { type: 'enemyRenewed'; id: string }
   | {
     type: 'chestOpen' | 'returnCast' | 'portalOpen' | 'portalClose' | 'fireDiscovered' | 'healing' | 'potionUse';
     position?: { x: number; z: number };
@@ -60,6 +63,17 @@ export class Adventure {
     return events;
   }
 
+  readonly harvesting = new Harvesting();
+  private definitions: Record<string, AreaDefinition> = {};
+  private templates = new Map<string, Encounter>();
+  private liveEncounter?: Encounter;
+  private elapsed = 0;
+  private nextRenewalAt = Infinity;
+  private resourceChanges: TreeChange[] = [];
+  /** Presentation supplies conservative restored bounds; inactive areas need no camera query. */
+  canRenew: (source: RewardSource, position: Point, height: number, radius: number, arriving: boolean) => boolean = (_source, point, _height, radius, arriving) =>
+    arriving && !!this.liveEncounter && Math.hypot(point[0] - this.liveEncounter.player.x, point[1] - this.liveEncounter.player.z) >= renewalDistance + radius;
+  takeResourceChanges(): TreeChange[] { const changes = this.resourceChanges; this.resourceChanges = []; return changes; }
   character = character();
   portal: PortalLink | null = null;
   castRemaining = 0;
@@ -73,8 +87,6 @@ export class Adventure {
   placeGround: (origin: Point, index: number) => { position: Point; height: number } = origin => ({ position: [...origin], height: 0 });
   canCollectGround: (drop: GroundDrop) => boolean = () => true;
   private sessions = new Map<string, AreaSession>();
-  private inactiveOccupants: { areaId: string; position: Point }[] = [];
-  inactiveEnemyOccupants(): readonly { areaId: string; position: Point }[] { return this.inactiveOccupants; }
   private sequence = 3;
   newId = (): string => `item-${++this.sequence}`;
   private readonly persistence: CharacterPersistence;
@@ -89,6 +101,15 @@ export class Adventure {
 
   private adoptCharacter(value: CharacterSave): void {
     this.character = value;
+    this.elapsed = value.outing.elapsed;
+    this.portal = value.outing.portal;
+    this.sessions.clear();
+    for (const [id, area] of Object.entries(value.outing.areas)) {
+      this.sessions.set(id, { enemies: structuredClone(area.enemies), chests: structuredClone(area.chests), drops: structuredClone(area.drops), dropRolled: Object.fromEntries(Object.entries(area.enemies).filter(([, enemy]) => enemy.rewarded).map(([id]) => [id, true])) });
+      for (const drop of area.drops) for (const id of [drop.id, drop.instanceId])
+        this.sequence = Math.max(this.sequence, Number(id?.match(/^item-(\d+)$/)?.[1] ?? 0));
+    }
+    this.nextRenewalAt = this.elapsed;
     for (const entry of [...value.items, ...value.stash, ...value.buyback]) {
       this.sequence = Math.max(this.sequence, Number(entry.id.match(/^item-(\d+)$/)?.[1] ?? 0));
     }
@@ -100,8 +121,55 @@ export class Adventure {
     this.save();
   }
 
-  save(): void { this.persistence.request(this.character); }
-  closeSave(): void { this.persistence.close(this.character); }
+  configureAreas(definitions: Record<string, AreaDefinition>): void {
+    this.definitions = definitions;
+    this.templates.clear();
+    for (const area of Object.values(definitions)) {
+      this.templates.set(area.id, createEncounter('playing', area.layout));
+      this.harvesting.register(area.id, resourceDefinitions(area));
+      const session = this.sessions.get(area.id);
+      if (session) {
+        const valid = this.templates.get(area.id)!;
+        session.enemies = Object.fromEntries(Object.entries(session.enemies).filter(([id]) => !!valid.enemies[id]?.home));
+        session.chests = Object.fromEntries(Object.entries(session.chests).filter(([id]) => area.chests?.some(chest => chest.id === id)));
+      }
+    }
+    for (const id of this.sessions.keys()) if (!definitions[id]) this.sessions.delete(id);
+    this.harvesting.restore(this.elapsed, Object.fromEntries(Object.entries(this.character.outing.areas).map(([id, area]) => [id, area.resources])));
+    if (this.portal && !definitions[this.portal.area]) this.portal = null;
+  }
+
+  resume(areas: Record<string, AreaDefinition>): { area: AreaDefinition; spawn: ReturnSpawn } {
+    const key = this.character.outing.checkpoint;
+    const area = Object.values(areas).find(area => area.campfires?.some(fire => fireKey(area.id, fire.id) === key));
+    const fire = area?.campfires?.find(fire => fireKey(area.id, fire.id) === key);
+    if (area && fire && this.character.campfires.includes(key) && this.fireSafe(area, fire)) return { area, spawn: fire.arrival };
+    const home = areas[homeArea];
+    this.character.outing.checkpoint = fireKey(homeArea, home.campfires![0].id);
+    return { area: home, spawn: home.campfires![0].arrival };
+  }
+
+  private snapshot(): void {
+    const previous = this.character.outing;
+    const areas: OutingSave['areas'] = {};
+    for (const area of Object.values(this.definitions)) this.session(area.id);
+    for (const [id, session] of this.sessions) {
+      const encounter = id === this.currentArea ? this.liveEncounter : session.encounter;
+      if (encounter) for (const enemyId of encounter.enemyIds) {
+        const enemy = encounter.enemies[enemyId];
+        if (!enemy.home) continue;
+        const old = session.enemies[enemyId];
+        session.enemies[enemyId] = { hp: Math.max(0, enemy.hp), lowestHp: enemy.lowestHp, rewarded: !!session.dropRolled[enemyId],
+          renewAt: enemy.hp <= 0 ? old?.renewAt ?? this.elapsed + renewalSeconds : undefined };
+      }
+      areas[id] = { enemies: structuredClone(session.enemies), chests: structuredClone(session.chests), drops: structuredClone(session.drops), resources: this.definitions[id] ? this.harvesting.snapshot(id) : previous.areas[id]?.resources ?? {} };
+    }
+    const e = this.liveEncounter;
+    this.character.outing = { elapsed: this.elapsed, checkpoint: previous.checkpoint, portal: structuredClone(this.portal), areas,
+      cooldowns: e ? { abilityCooldowns: { ...e.abilityCooldowns }, ultimateCooldown: e.ultimateCooldown, potionCooldown: e.potionCooldown, dodgeCooldown: e.dodgeCooldown, attackCooldown: e.attackCooldown } : previous.cooldowns };
+  }
+  save(): void { this.snapshot(); this.persistence.request(this.character); }
+  closeSave(): void { this.snapshot(); this.persistence.close(this.character); }
   saveDiagnostics() { return this.persistence.diagnostics(); }
   setActionBar(bar: ActionBar): void {
     if (!validBar(bar) || bar.some(id=>id && !abilityUnlocked(id,this.character.xp))) throw new Error('Invalid action bar');
@@ -138,7 +206,9 @@ export class Adventure {
   /** Restart refreshes the outing while retaining permanent character progress. */
   restart(): void {
     this.sessions.clear();
-    this.inactiveOccupants = [];
+    this.harvesting.reset();
+    this.elapsed = 0;
+    this.nextRenewalAt = Infinity;
     this.portal = null;
     this.castRemaining = 0;
     this.cancelPickup();
@@ -220,8 +290,9 @@ export class Adventure {
     this.save();
   }
 
-  grantHarvest(item: 'wood' | 'stone' | 'iron', quantity: number, skill: GatheringSkill, xpPerUnit: number, position: Point): void {
-    this.spawnDrop(item, quantity, position, { harvestXp: { skill, perUnit: xpPerUnit } });
+  grantHarvest(item: 'wood' | 'stone' | 'iron', quantity: number, skill: GatheringSkill, xpPerUnit: number, position: Point, source?: RewardSource): void {
+    this.spawnDrop(item, quantity, position, { harvestXp: { skill, perUnit: xpPerUnit }, source });
+    this.save();
   }
 
   awardXp(skill: Skill, amount: number): void {
@@ -280,7 +351,7 @@ export class Adventure {
   session(id = this.currentArea!): AreaSession {
     let session = this.sessions.get(id);
     if (!session) {
-      session = { drops: [], dropRolled: {}, chests: {} };
+      session = { drops: [], dropRolled: {}, chests: {}, enemies: {} };
       this.sessions.set(id, session);
     }
 
@@ -289,24 +360,33 @@ export class Adventure {
 
   /** Call only after destination resources are ready; failed loads cannot change these states. */
   enter(encounter: Encounter, area: AreaDefinition, arrival: ReturnSpawn = area.layout.player, recover = false): void {
+    const firstEntry = this.currentArea === null;
     const health = this.currentArea ? encounter.player.hp : null;
     if (this.currentArea) this.session().encounter = structuredClone(encounter);
     this.currentArea = area.id;
-    // Inactive snapshots remain fixed until re-entry; cache their living occupants for renewal.
-    this.inactiveOccupants = [...this.sessions].flatMap(([areaId, session]) =>
-      areaId === this.currentArea || !session.encounter ? [] : session.encounter.enemyIds.flatMap(id => {
-        const enemy = session.encounter!.enemies[id];
-        return enemy.home && enemy.hp > 0 ? [{ areaId, position: [enemy.x, enemy.z] as Point }] : [];
-      }));
+    this.liveEncounter = encounter;
+    if (!this.templates.has(area.id)) this.templates.set(area.id, createEncounter('playing', area.layout));
+    const retained = this.session();
+    if (!retained.encounter && Object.keys(retained.enemies).length) {
+      retained.encounter = createEncounter('playing', area.layout);
+      for (const [id, saved] of Object.entries(retained.enemies)) {
+        const enemy = retained.encounter.enemies[id];
+        if (enemy?.home) { enemy.hp = saved.hp; enemy.lowestHp = saved.lowestHp; }
+      }
+    }
     enterAreaEncounter(encounter, area, {
       previous: this.session().encounter, character: this.character, arrival, recover, health,
     });
+    if (firstEntry) Object.assign(encounter, structuredClone(this.character.outing.cooldowns));
     this.castRemaining = 0;
     this.cancelPickup();
     this.healing = false;
     this.atShelter = false;
     this.events = [];
     if (recover) this.portal = null;
+    this.nextRenewalAt = this.elapsed;
+    this.renew(encounter, area, 0, true);
+    this.save();
   }
 
   discover(area: AreaDefinition, point: Point): void {
@@ -322,7 +402,12 @@ export class Adventure {
 
   fireSafe(area: AreaDefinition, fire: Campfire, active?: Encounter): boolean {
     if (area.kind === 'safe') return true;
-    const encounter = active ?? this.session(area.id).encounter ?? createEncounter('playing', area.layout);
+    const session = this.session(area.id);
+    const live = active ?? (this.currentArea === area.id ? this.liveEncounter : undefined);
+    const encounter = live ?? session.encounter ?? createEncounter('playing', area.layout);
+    if (!live && !session.encounter) for (const [id, saved] of Object.entries(session.enemies)) {
+      if (encounter.enemies[id]) encounter.enemies[id].hp = saved.hp;
+    }
     return encounter.enemyIds.every(id => {
       const enemy = encounter.enemies[id];
       return enemy.hp <= 0 || (!enemy.engaged && !enemy.returning && !near([enemy.x, enemy.z], fire.position, 10));
@@ -335,20 +420,23 @@ export class Adventure {
       && this.character.campfires.includes(fireKey(targetArea.id, target.id)) && this.fireSafe(targetArea, target);
   }
 
-  chest(area: AreaDefinition, chest: Chest): { opened: boolean; remaining: number } {
+  chest(area: AreaDefinition, chest: Chest): SavedChest {
     return this.session(area.id).chests[chest.id] ??= { opened: false, remaining: chest.scrolls };
   }
 
   openChest(encounter: Encounter, area: AreaDefinition, chest: Chest): boolean {
-    if (this.currentArea !== area.id || encounter.player.hp <= 0 || !chestUnlocked(encounter, chest)
+    if (this.currentArea !== area.id || encounter.player.hp <= 0
       || this.castRemaining > 0 || !near([encounter.player.x, encounter.player.z], chest.position, 1.8)) return false;
     const state = this.chest(area, chest);
     if (state.opened) return false;
     this.events.push({ type: 'chestOpen', position: { x: chest.position[0], z: chest.position[1] } });
     for (const reward of chestRewards(chest, state.remaining, area.level, this.character.campClaims, this.random))
-      this.spawnDrop(reward.item, reward.quantity, chest.position, reward.options);
+      this.spawnDrop(reward.item, reward.quantity, chest.position, { ...reward.options, source: { kind: 'chest', id: chest.id } });
     state.opened = true;
     state.remaining = 0;
+    state.renewAt = this.elapsed + renewalSeconds;
+    this.nextRenewalAt = Math.min(this.nextRenewalAt, state.renewAt);
+    this.save();
     return true;
   }
 
@@ -367,23 +455,94 @@ export class Adventure {
     return true;
   }
 
+  /** Development fixtures advance renewal alone; production steps always use gameplay dt. */
+  advanceRenewal(encounter: Encounter, area: AreaDefinition, seconds: number): void {
+    if (!Number.isFinite(seconds) || seconds < 0) throw new Error('Invalid clock advance');
+    this.elapsed += seconds;
+    this.renew(encounter, area, seconds);
+    this.save();
+  }
+
+  private sourceSafe(areaId: string, source: RewardSource, position: Point, height = 0, radius = 1, arriving = false): boolean {
+    if (areaId !== this.currentArea) return true;
+    const eligible = (point: Point, y: number, r: number) => this.canRenew(source, point, y, r, arriving);
+    if (!eligible(position, height, radius)) return false;
+    return this.session(areaId).drops.filter(drop => sameSource(drop.source, source))
+      .every(drop => eligible(drop.position, drop.height, .5));
+  }
+  private clearSource(areaId: string, source: RewardSource): void {
+    const session = this.session(areaId);
+    const removed = session.drops.filter(drop => sameSource(drop.source, source));
+    session.drops = session.drops.filter(drop => !sameSource(drop.source, source));
+    if (removed.some(drop => drop.id === this.pickupTarget)) this.cancelPickup();
+  }
+  private renew(encounter: Encounter, area: AreaDefinition, dt: number, arriving = false): void {
+    const occupants = [{ areaId: area.id, position: [encounter.player.x, encounter.player.z] as Point },
+      ...encounter.enemyIds.filter(id => encounter.enemies[id].hp > 0).map(id => ({ areaId: area.id, position: [encounter.enemies[id].x, encounter.enemies[id].z] as Point }))];
+    const resources = this.harvesting.advance(dt, occupants, (id, node: ResourceDefinition) => {
+      // Inactive resources wait for entry, so restoration cannot alter an arrival around the player.
+      return id === area.id && this.sourceSafe(id, { kind: 'resource', id: node.id }, [node.position[0], node.position[2]], node.position[1], node.radius, arriving);
+    });
+    for (const change of resources) this.clearSource(change.areaId, { kind: 'resource', id: change.id });
+    this.resourceChanges.push(...resources);
+    let changed = resources.length > 0;
+    if (this.elapsed >= this.nextRenewalAt) {
+      this.nextRenewalAt = Infinity;
+      const session = this.session(area.id), template = this.templates.get(area.id)!;
+      for (const [id, saved] of Object.entries(session.enemies)) {
+        if (saved.renewAt === undefined) continue;
+        const spawn = template.enemies[id];
+        if (!spawn?.home) continue;
+        if (saved.renewAt <= this.elapsed && this.sourceSafe(area.id, { kind: 'enemy', id }, [spawn.x, spawn.z], spawn.y, 1, arriving)
+          && !occupants.some(actor => Math.hypot(actor.position[0] - spawn.x, actor.position[1] - spawn.z) < 1)) {
+          encounter.enemies[id] = structuredClone(spawn);
+          session.enemies[id] = { hp: spawn.hp, lowestHp: spawn.lowestHp, rewarded: false };
+          session.dropRolled[id] = false;
+          this.clearSource(area.id, { kind: 'enemy', id });
+          encounter.phase = 'playing';
+          changed = true;
+          this.events.push({ type: 'enemyRenewed', id });
+        } else this.nextRenewalAt = Math.min(this.nextRenewalAt, Math.max(this.elapsed + .5, saved.renewAt));
+      }
+      for (const chest of area.chests ?? []) {
+        const state = session.chests[chest.id];
+        if (state?.renewAt === undefined) continue;
+        if (state.renewAt <= this.elapsed && this.sourceSafe(area.id, { kind: 'chest', id: chest.id }, chest.position, 0, 1, arriving)
+          && !occupants.some(actor => Math.hypot(actor.position[0] - chest.position[0], actor.position[1] - chest.position[1]) < 1)) {
+          this.clearSource(area.id, { kind: 'chest', id: chest.id });
+          session.chests[chest.id] = { opened: false, remaining: chest.scrolls };
+          changed = true;
+        } else this.nextRenewalAt = Math.min(this.nextRenewalAt, Math.max(this.elapsed + .5, state.renewAt));
+      }
+    }
+    if (changed) this.save();
+  }
+
   step(encounter: Encounter, area: AreaDefinition, dt: number): void {
     // Death takes precedence over landing, rewards and cast completion.
     if (encounter.player.hp <= 0) {
+      const changed = !!this.portal || this.castRemaining > 0;
       if (this.portal) this.events.push({ type: 'portalClose' });
       this.castRemaining = 0;
       this.portal = null;
       this.cancelPickup();
       this.healing = false;
+      if (changed) this.save();
       return;
     }
 
+    this.elapsed += Math.max(0, dt);
+    this.renew(encounter, area, dt);
     this.noticeTime = Math.max(0, this.noticeTime - dt);
     if (!this.noticeTime) this.notice = '';
     const point: Point = [encounter.player.x, encounter.player.z];
 
     this.updateRested(area, point, dt);
     this.discover(area, point);
+    for (const fire of area.campfires ?? []) if (near(point, fire.position, 3) && this.fireSafe(area, fire, encounter)) {
+      const key = fireKey(area.id, fire.id);
+      if (this.character.outing.checkpoint !== key) { this.character.outing.checkpoint = key; this.save(); }
+    }
     this.updateHealing(encounter, area, point, dt);
     const session = this.session();
     this.rollEnemyDrops(encounter, area, session);
@@ -404,7 +563,7 @@ export class Adventure {
     this.checkpoint += dt;
     if (this.checkpoint >= progression.checkpointSeconds) {
       this.checkpoint = 0;
-      if (this.character.shelterRestored) this.save();
+      this.save();
     }
   }
 
@@ -431,9 +590,12 @@ export class Adventure {
       const enemy = encounter.enemies[id];
       if (!(enemy.home && enemy.hp <= 0 && !session.dropRolled[id])) continue;
       session.dropRolled[id] = true;
+      session.enemies[id] = { hp: 0, lowestHp: enemy.lowestHp, rewarded: true, renewAt: session.enemies[id]?.renewAt ?? this.elapsed + renewalSeconds };
+      this.nextRenewalAt = Math.min(this.nextRenewalAt, session.enemies[id].renewAt!);
       const point: Point = [enemy.x, enemy.z];
       for (const reward of enemyRewards(area, id, this.character.campClaims, this.random))
-        this.spawnDrop(reward.item, reward.quantity, point, reward.options);
+        this.spawnDrop(reward.item, reward.quantity, point, { ...reward.options, source: { kind: 'enemy', id } });
+      this.save();
     }
   }
 

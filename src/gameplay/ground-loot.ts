@@ -1,3 +1,4 @@
+import type { RewardSource } from './outing';
 import { near, type Point } from './area';
 import type { ItemId } from './equipment';
 import type { CharacterSave } from './character';
@@ -15,13 +16,14 @@ export type GroundDrop = {
   origin: Point;
   height: number;
   age: number;
+  source?: RewardSource;
   claim?: ItemId;
   instanceId?: string;
   blocked?: boolean;
   harvestXp?: { skill: GatheringSkill; perUnit: number };
 };
 
-export type DropOptions = Partial<Pick<GroundDrop, 'claim' | 'instanceId' | 'blocked' | 'harvestXp'>>;
+export type DropOptions = Partial<Pick<GroundDrop, 'source' | 'claim' | 'instanceId' | 'blocked' | 'harvestXp'>>;
 export type LootEvent = {
   type: 'lootDrop' | 'lootLand' | 'lootPickup';
   item: GroundItem;

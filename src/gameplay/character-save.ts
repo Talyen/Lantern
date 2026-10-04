@@ -1,3 +1,4 @@
+import { decodeOuting } from './outing';
 import { isRecord, parseJson } from '../data/json';
 import { validBar, abilityUnlocked } from './abilities';
 import { character, type CharacterSave } from './character';
@@ -24,7 +25,7 @@ function counter(n: unknown): n is number {
 /** Decode into an unpublished candidate; a failed migration never changes gameplay state. */
 export function decodeCharacter(raw: string): CharacterSave {
   const value = parseJson(raw);
-  if (!isRecord(value) || typeof value.version !== 'number' || ![1, 2, 3, 4, 5, 6, 7, 8].includes(value.version)
+  if (!isRecord(value) || typeof value.version !== 'number' || ![1, 2, 3, 4, 5, 6, 7, 8, 9].includes(value.version)
     || !Array.isArray(value.campfires) || !value.campfires.every((id: unknown): id is string => typeof id === 'string'))
     throw new Error('Invalid character save');
 
@@ -48,6 +49,16 @@ export function decodeCharacter(raw: string): CharacterSave {
     for (const id of skillIds) {
       if (!counter(xp[id])) throw new Error('Invalid skill progress');
       result.xp[id] = xp[id];
+    }
+  }
+  if (value.version >= 9) {
+    result.outing = decodeOuting(value.outing);
+    const ids = new Set([...result.items, ...result.stash, ...result.buyback].map(entry => entry.id));
+    for (const area of Object.values(result.outing.areas)) for (const drop of area.drops) {
+      for (const id of new Set([drop.id, drop.instanceId].filter((id): id is string => id !== undefined))) {
+        if (ids.has(id)) throw new Error('Duplicate saved item');
+        ids.add(id);
+      }
     }
   }
   result.campfires = [...new Set<string>(['homestead/camp', ...value.campfires])];
