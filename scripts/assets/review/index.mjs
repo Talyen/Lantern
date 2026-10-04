@@ -163,6 +163,8 @@ export async function fingerprint(index, row, inputs = { readGlb, hashFile, read
     for (const dep of row.dependencies) await visit(dep);
     const hash = createHash('sha256').update(row.id).update(String(row.height ?? 'authored'));
     for (const path of [...paths].sort()) hash.update(path.slice(index.cwd.length)).update(await inputs.hashFile(path));
+    const recipes = JSON.parse(await inputs.readFile(resolve(index.cwd, 'assets/material-recipes.json')));
+    hash.update(JSON.stringify(recipes.dryHighlights));
     if (row.url.startsWith('/vendor/synty/environment/')) hash.update(await inputs.readFile(resolve(index.cwd, 'assets/material-recipes.json')));
     return hash.digest('hex');
   } catch (error) {

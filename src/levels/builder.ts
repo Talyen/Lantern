@@ -5,6 +5,7 @@ import { lightingOnly, includeCutawayShadows } from '../rendering/cutaway';
 import { SceneCache } from '../assets/scene-cache';
 import { disposeSceneInstances, isMesh } from '../assets/resource-ownership';
 import { MeshStandardNodeMaterial, type Node } from 'three/webgpu';
+import { createSurfaceMaterial } from '../rendering/surface-detail';
 import { texture, mix, vec2, vec3, positionWorld, color, sin, smoothstep } from 'three/tsl';
 import environmentManifest from '../../assets/textures/environment/manifest.json';
 import * as THREE from 'three';
@@ -89,7 +90,7 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
     const bankWetness = grass.coverage?.wetBanks ? coverageField!.g : undefined;
     const material = (p: Primitive) => {
       lightingProcedural.push(p);
-      const m = new MeshStandardNodeMaterial({ color: p.color, roughness: 1, side: p.doubleSided ? THREE.DoubleSide : THREE.FrontSide });
+      const m = createSurfaceMaterial({ color: p.color, roughness: 1, side: p.doubleSided ? THREE.DoubleSide : THREE.FrontSide });
       ownedMaterial.add(m);
       if (p.surface === 'stone') {
         const study = area.id === 'clearing';
@@ -188,8 +189,8 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
         // Keep tree roots intact through batching, independently of foliage/surface variants.
         model.userData.harvestTree = p.id; model.traverse(o => animated.add(o));
         const stumpGeometry = new THREE.CylinderGeometry(tree.radius * .91, tree.radius * 1.12, .25, 9);
-        const bark = new MeshStandardNodeMaterial({ color: '#514031', roughness: .95 });
-        const cut = new MeshStandardNodeMaterial({ color: '#94744d', roughness: 1 });
+        const bark = createSurfaceMaterial({ color: '#514031', roughness: .95 });
+        const cut = createSurfaceMaterial({ color: '#94744d', roughness: 1 });
         ownedGeometry.add(stumpGeometry); ownedMaterial.add(bark); ownedMaterial.add(cut);
         const stump = new THREE.Mesh(stumpGeometry, [bark, cut, bark]);
         stump.name = `${p.id}:stump`; stump.position.set(p.position[0], p.position[1] + .125, p.position[2]); stump.rotation.y = p.yaw;

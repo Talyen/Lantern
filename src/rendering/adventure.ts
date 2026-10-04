@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { MeshBasicNodeMaterial, MeshStandardNodeMaterial } from 'three/webgpu';
+import { MeshBasicNodeMaterial } from 'three/webgpu';
+import { createSurfaceMaterial } from './surface-detail';
 import { Portal } from './portal';
 import type { Point } from '../gameplay/area';
 import { dropLandingSeconds, type GroundDrop } from '../gameplay/ground-loot';
@@ -24,22 +25,22 @@ export class AdventureVisuals {
   private geometry = new THREE.CylinderGeometry(.07, .07, .36, 8);
   private box = new THREE.BoxGeometry(1, 1, 1);
   private arc = new THREE.TorusGeometry(.3, .025, 5, 16, Math.PI);
-  private paper = new MeshStandardNodeMaterial({ color: '#eadbb4', roughness: .9 });
-  private ribbon = new MeshStandardNodeMaterial({ color: '#a75830', roughness: .7 });
-  private bark = new MeshStandardNodeMaterial({ color: '#866446', roughness: 1 });
-  private potionGlass = new MeshStandardNodeMaterial({color:'#8e3930',roughness:.35});
-  private metal = new MeshStandardNodeMaterial({ color: '#b5aca0', roughness: .6, metalness: .4 });
+  private paper = createSurfaceMaterial({ color: '#eadbb4', roughness: .9 });
+  private ribbon = createSurfaceMaterial({ color: '#a75830', roughness: .7 });
+  private bark = createSurfaceMaterial({ color: '#866446', roughness: 1 });
+  private potionGlass = createSurfaceMaterial({color:'#8e3930',roughness:.35});
+  private metal = createSurfaceMaterial({ color: '#b5aca0', roughness: .6, metalness: .4 });
   private coin = new THREE.CylinderGeometry(.075, .075, .025, 9);
-  private gold = new MeshStandardNodeMaterial({color:'#b49a5b',roughness:.6,metalness:.65});
+  private gold = createSurfaceMaterial({color:'#b49a5b',roughness:.6,metalness:.65});
   private oreGeometry = new THREE.DodecahedronGeometry(1,0);
-  private stone = new MeshStandardNodeMaterial({color:'#898478',roughness:1});
-  private iron = new MeshStandardNodeMaterial({color:'#756356',roughness:.8,metalness:.2});
+  private stone = createSurfaceMaterial({color:'#898478',roughness:1});
+  private iron = createSurfaceMaterial({color:'#756356',roughness:.8,metalness:.2});
   private markerGeometry = new THREE.RingGeometry(.24, .29, 24);
   private markerMaterial = new MeshBasicNodeMaterial({ color: '#bda474', transparent: true, opacity: .5, side: THREE.DoubleSide });
   private highlight = new THREE.Mesh(this.markerGeometry, this.markerMaterial);
   private ring = new THREE.TorusGeometry(.13,.026,6,16);
   private cap = new THREE.SphereGeometry(.22,10,5,0,Math.PI*2,0,Math.PI/2);
-  private cloth = new MeshStandardNodeMaterial({color:'#786657',roughness:1});
+  private cloth = createSurfaceMaterial({color:'#786657',roughness:1});
   private disposed = false;
   constructor(private parent: THREE.Object3D) { this.highlight.rotation.x = -Math.PI / 2; this.highlight.visible = false; parent.add(this.highlight); }
   sync(drops: GroundDrop[], portal: Point | null, hovered: string | null, portalHeight = 0): void {

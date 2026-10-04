@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { MeshStandardNodeMaterial } from 'three/webgpu';
+import { createSurfaceMaterial } from './surface-detail';
 import { attribute, cos, cross, float, Fn, mix, modelWorldMatrix, modelWorldMatrixInverse, normalLocal, positionLocal, positionPrevious, sin, uniform, vec3, vec4 } from 'three/tsl';
 import { generateGrass, grassMask, grassCellSize, type GrassBlade, type GrassPatch } from '../levels/grass';
 import type { AreaDefinition } from '../levels/types';
@@ -33,7 +33,7 @@ export function createGrass(area: AreaDefinition, patches: GrassPatch[], vegetat
   const wave = (time: typeof clock) => sin(world.x.mul(.55).add(world.y.mul(.32)).sub(time.mul(.8))).mul(.65)
     .add(sin(world.y.mul(.91).sub(world.x.mul(.23)).sub(time.mul(.4))).mul(.25))
     .add(sin(time.mul(1.1).add(shape.y)).mul(.1));
-  const material = new MeshStandardNodeMaterial({ roughness: .95, side: THREE.DoubleSide, vertexColors: false });
+  const material = createSurfaceMaterial({ roughness: .95, side: THREE.DoubleSide, vertexColors: false });
   // Explicit geometry-owned attributes avoid r186's pass-local instance-matrix
   // buffers and let every area replacement release the complete carpet allocation.
   material.positionNode = Fn(() => {

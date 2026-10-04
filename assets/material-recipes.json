@@ -1,5 +1,6 @@
 {
   "version": 1,
+  "dryHighlights": { "roughnessStart": 0.45, "roughnessEnd": 0.85, "specularIntensity": 0.35 },
   "families": {
     "stone": { "heightMetres": 0.055, "normalStrength": 1, "parallax": true },
     "bark": { "heightMetres": 0.032, "normalStrength": 1, "parallax": true },

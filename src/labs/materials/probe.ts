@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { MeshStandardNodeMaterial, type WebGPURenderer } from 'three/webgpu';
+import { MeshStandardNodeMaterial, MeshPhysicalNodeMaterial, type WebGPURenderer } from 'three/webgpu';
 import { color, dFdx, dFdy, Fn, normalMap, texture, uv, vec2 } from 'three/tsl';
 import { createRenderer } from '../../rendering/renderer';
 import { WebGPUPipeline } from '../../rendering/webgpu-pipeline';
@@ -10,8 +10,8 @@ import { resetMaterialCalibration } from '../../rendering/material-calibration';
 
 type Sampler = { maxAnisotropy?: number; magFilter?: string; minFilter?: string; mipmapFilter?: string };
 type Device = { createSampler(descriptor: Sampler): unknown; queue: { onSubmittedWorkDone(): Promise<void> } };
-type Case = 'legacy' | 'mapped' | 'reference' | 'tangents' | 'back' | 'back-reference' | 'transform' | 'transform-reference' | 'depth' | 'depth-off' | 'masked' | 'masked-off';
-const cases: Case[] = ['legacy', 'mapped', 'reference', 'tangents', 'back', 'back-reference', 'transform', 'transform-reference', 'depth', 'depth-off', 'masked', 'masked-off'];
+type Case = 'legacy' | 'mapped' | 'reference' | 'tangents' | 'back' | 'back-reference' | 'transform' | 'transform-reference' | 'depth' | 'depth-off' | 'masked' | 'masked-off' | 'highlight-dry' | 'highlight-dry-reference' | 'highlight-metal' | 'highlight-metal-reference' | 'highlight-smooth' | 'highlight-smooth-reference';
+const cases: Case[] = ['legacy', 'mapped', 'reference', 'tangents', 'back', 'back-reference', 'transform', 'transform-reference', 'depth', 'depth-off', 'masked', 'masked-off', 'highlight-dry', 'highlight-dry-reference', 'highlight-metal', 'highlight-metal-reference', 'highlight-smooth', 'highlight-smooth-reference'];
 
 function pixels(renderer: WebGPURenderer) {
   const canvas = document.createElement('canvas'); canvas.width = canvas.height = 128;
@@ -43,9 +43,10 @@ export async function runMaterialProbe() {
       camera.position.set(kind.startsWith('depth') || kind.startsWith('masked') ? 1.5 : 0, 0, 5); camera.lookAt(0, 0, 0);
       const look = lightingPreset.lighting;
       const sun = new THREE.DirectionalLight(look.sun.color, look.sun.intensity); sun.position.fromArray(look.sun.position); scene.add(sun, new THREE.HemisphereLight(look.ambient.sky, look.ambient.ground, look.ambient.intensity));
-      const geometry = new THREE.PlaneGeometry(4, 4); geometry.setAttribute('uv2', geometry.getAttribute('uv').clone());
+      const highlight = kind.startsWith('highlight-');
+      const geometry = highlight ? new THREE.SphereGeometry(1.5, 32, 16) : new THREE.PlaneGeometry(4, 4); geometry.setAttribute('uv2', geometry.getAttribute('uv').clone());
       const reference = kind === 'reference' || kind === 'back-reference' || kind === 'tangents' || kind === 'transform-reference';
-      if (!reference) geometry.getAttribute('uv').array.fill(.5);
+      if (!reference && !highlight) geometry.getAttribute('uv').array.fill(.5);
       if (kind === 'tangents') geometry.computeTangents();
       if (kind.startsWith('back')) geometry.rotateY(Math.PI);
       const bytes = new Uint8Array(64 * 64 * 4), colors = new Uint8Array(bytes.length), fields = new Uint8Array(bytes.length);
@@ -60,7 +61,12 @@ export async function runMaterialProbe() {
       albedo.colorSpace = THREE.SRGBColorSpace;
       const transform = kind.startsWith('transform'), depth = kind.startsWith('depth') || kind.startsWith('masked');
       if (transform) { albedo.repeat.set(2, 1); albedo.offset.set(.13, .07); albedo.rotation = .5; }
-      const material = new MeshStandardNodeMaterial({ color: '#888888', roughness: 1, normalMap: transform || depth ? null : normal, map: transform || depth ? albedo : null, roughnessMap: depth ? data : null, side: kind.startsWith('back') ? THREE.DoubleSide : THREE.FrontSide });
+      const source = new MeshStandardNodeMaterial({ color: '#888888', roughness: highlight ? kind.includes('smooth') ? .25 : .9 : 1,
+        metalness: kind.includes('highlight-metal') ? 1 : 0,
+        normalMap: highlight || transform || depth ? null : normal, map: !highlight && (transform || depth) ? albedo : null,
+        roughnessMap: depth ? data : null, side: kind.startsWith('back') ? THREE.DoubleSide : THREE.FrontSide });
+      const material = highlight && kind.endsWith('reference') ? source : new MeshPhysicalNodeMaterial().copy(source);
+      if (material !== source) source.dispose();
       prepareSurfaceMaterial(material, depth ? data : undefined, depth ? .12 : 0, 3);
       if (kind === 'legacy' || kind === 'reference' || kind === 'back-reference') material.normalNode = Fn(builder => {
         const scale = surfaceBias(builder).exp2();
@@ -84,6 +90,9 @@ export async function runMaterialProbe() {
       parallaxActive: difference(images.depth.rgba, images['depth-off'].rgba).mean > .25,
       atlasMask: difference(images.masked.rgba, images['masked-off'].rgba).maximum <= 2,
       anisotropy: samplers.some(s => s.maxAnisotropy === 16 && s.magFilter === 'linear' && s.minFilter === 'linear' && s.mipmapFilter === 'linear'),
+      dryHighlightsRestrained: difference(images['highlight-dry'].rgba, images['highlight-dry-reference'].rgba).mean > .1,
+      metallicHighlightsPreserved: difference(images['highlight-metal'].rgba, images['highlight-metal-reference'].rgba).maximum <= 1,
+      smoothHighlightsPreserved: difference(images['highlight-smooth'].rgba, images['highlight-smooth-reference'].rgba).maximum <= 1,
     };
     return { passed: Object.values(checks).every(Boolean), checks, images: Object.fromEntries(Object.entries(images).map(([name, image]) => [name, image.png])) };
   } finally { device.createSampler = original; await renderer.dispose(); mount.remove(); }

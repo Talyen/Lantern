@@ -1,8 +1,8 @@
 import { ownTexture, sceneTextures, isMesh } from './resource-ownership';
 import * as THREE from 'three';
-import { MeshStandardNodeMaterial } from 'three/webgpu';
+import { MeshStandardNodeMaterial, MeshPhysicalNodeMaterial } from 'three/webgpu';
 import manifest from '../../assets/textures/environment/manifest.json';
-import { prepareSurfaceMaterial } from '../rendering/surface-detail';
+import { prepareSurfaceMaterial, prepareSurfaceHighlights } from '../rendering/surface-detail';
 import type { AssetRef } from '../levels/types';
 import { validateMaterial } from './material-validation';
 import { materialRecipes, type MaterialFamily } from '../rendering/material-recipes';
@@ -22,7 +22,9 @@ export function environmentOutlineEligible(ref: AssetRef): boolean {
   return !!asset && ['backpack', 'barrel', 'bedroll', 'chest', 'crate', 'lantern', 'log', 'rock', 'tent'].includes(asset.kind);
 }
 export function copyStandardNodeMaterial(source: THREE.MeshStandardMaterial | MeshStandardNodeMaterial): MeshStandardNodeMaterial {
-  return new MeshStandardNodeMaterial().copy(source);
+  const material = new MeshPhysicalNodeMaterial().copy(source);
+  prepareSurfaceHighlights(material);
+  return material;
 }
 /** The area cache owns material textures, including optional relief sidecars. */
 export async function prepareEnvironmentMaterials(root: THREE.Object3D, sourceUrl?: string): Promise<void> {

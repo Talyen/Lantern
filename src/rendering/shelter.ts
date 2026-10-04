@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { MeshStandardNodeMaterial } from 'three/webgpu';
+import { createSurfaceMaterial } from './surface-detail';
 import { positionLocal, mx_noise_float, mix, color, vec3 } from 'three/tsl';
 import { markOutline } from './outlines';
 import type { AreaDefinition } from '../levels/types';
@@ -9,7 +9,7 @@ export function createShelter(definition: NonNullable<AreaDefinition['shelter']>
   const root = new THREE.Group(); root.name = 'shelter'; root.position.set(definition.position[0],0,definition.position[1]); root.rotation.y=definition.yaw;
   const geometries: THREE.BufferGeometry[] = [], materials: THREE.Material[] = [];
   const material = (base: string, worn: string) => {
-    const m = new MeshStandardNodeMaterial({roughness:1,side:THREE.DoubleSide});
+    const m = createSurfaceMaterial({roughness:1,side:THREE.DoubleSide});
     m.colorNode=mix(color(base),color(worn),mx_noise_float(positionLocal.mul(vec3(3,7,3))).mul(.14).add(.22)); materials.push(m); return m;
   };
   const timber=material('#514031','#9a8162'), canvas=material('#75634e','#a79575'), stone=material('#655f52','#958b79');

@@ -1,7 +1,7 @@
 import { isMesh } from '../assets/resource-ownership';
 import * as THREE from 'three';
-import { Fn, If, Loop, float, vec2, vec3, color, uniform, uv, texture, dFdx, dFdy, positionView, positionViewDirection, normalViewGeometry, cross, dot, normalMap, negateOnBackSide } from 'three/tsl';
-import { MeshStandardNodeMaterial, type Node, type NodeBuilder } from 'three/webgpu';
+import { Fn, If, Loop, float, vec2, vec3, color, uniform, uv, texture, dFdx, dFdy, positionView, positionViewDirection, normalViewGeometry, cross, dot, normalMap, negateOnBackSide, roughness, materialSpecularIntensity, mix, smoothstep } from 'three/tsl';
+import { MeshStandardNodeMaterial, MeshPhysicalNodeMaterial, type Node, type NodeBuilder } from 'three/webgpu';
 import { calibrationGain } from './material-calibration';
 import { materialRecipes, type MaterialFamily } from './material-recipes';
 import { validateMaterial } from '../assets/material-validation';
@@ -9,6 +9,18 @@ import { validateMaterial } from '../assets/material-validation';
 type SurfaceContext = { materialMipBias?: Node<'float'>; textureDepth?: boolean };
 // The pinned r186 builder exposes this method; its declarations omit it.
 type SurfaceBuilder = NodeBuilder & { isFlatShading(): boolean };
+/** Use the shaded roughness, including maps/wetness, rather than an asset-wide gloss override.
+ * Physical materials retain the metallic branch and authored smooth-surface response. */
+export function prepareSurfaceHighlights(material: MeshPhysicalNodeMaterial): void {
+  const response = materialRecipes.dryHighlights;
+  material.specularIntensityNode = materialSpecularIntensity.mul(mix(1, response.specularIntensity,
+    smoothstep(response.roughnessStart, response.roughnessEnd, roughness)));
+}
+export function createSurfaceMaterial(parameters?: ConstructorParameters<typeof MeshPhysicalNodeMaterial>[0]): MeshPhysicalNodeMaterial {
+  const material = new MeshPhysicalNodeMaterial(parameters);
+  prepareSurfaceHighlights(material);
+  return material;
+}
 /** Material textures only: depth, data buffers and reconstruction samplers keep their own policy. */
 export function filterMaterialTexture(map: THREE.Texture): THREE.Texture {
   if (!map.isRenderTargetTexture && !(map instanceof THREE.DepthTexture) && (map.generateMipmaps || map.mipmaps.length > 1)) {
@@ -96,6 +108,7 @@ export function reliefSample(map: THREE.Texture, base: Node<'vec2'>, displaced: 
   })();
 }
 export function prepareSurfaceMaterial(material: MeshStandardNodeMaterial, data?: THREE.Texture, depth = 0, format: 1 | 2 | 3 = 2): void {
+  if (material instanceof MeshPhysicalNodeMaterial) prepareSurfaceHighlights(material);
   for (const key of ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'emissiveMap', 'alphaMap'] as const) if (material[key]) filterMaterialTexture(material[key]);
   const descriptor = material.userData.lanternSurface as { family?: MaterialFamily } | undefined;
   const family = descriptor?.family;
@@ -140,7 +153,7 @@ export function prepareStandardMaterials(root: THREE.Object3D): void {
     const convert = (source: THREE.Material) => {
       if (!(source instanceof THREE.MeshStandardMaterial)) return source;
       let material = converted.get(source);
-      if (!material) { material = new MeshStandardNodeMaterial().copy(source); prepareSurfaceMaterial(material); converted.set(source, material); }
+      if (!material) { material = new MeshPhysicalNodeMaterial().copy(source); prepareSurfaceMaterial(material); converted.set(source, material); }
       return material;
     };
     object.material = Array.isArray(object.material) ? object.material.map(convert) : convert(object.material);
