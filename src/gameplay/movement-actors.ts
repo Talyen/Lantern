@@ -46,9 +46,9 @@ export class ActorMovement {
   }
   private body(id: ActorId, state: ActorState): Body {
     let body = this.bodies.get(id);
+    if (!body || body.state !== state) this.groundSpawn(state);
     if (body && body.state !== state) { this.releaseDodge(id); body.state = state; }
     if (!body) {
-      this.groundSpawn(state);
       const collider = this.world.createCollider(RAPIER.ColliderDesc.capsule(actorHalfHeight, actorRadius).setSensor(true));
       body = { state, collider, dodging: false }; this.bodies.set(id, body); this.handles.set(collider.handle, body);
     }

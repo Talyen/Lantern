@@ -46,6 +46,26 @@ test('restored overlapping actors can leave without pushing an attacking enemy',
   } finally { world.dispose(); }
 });
 
+// Renewal replaces an enemy pose while retaining its collision ID. Without
+// fresh grounding on uneven terrain, that life can spawn below its floor.
+test('renewed actor poses ground before collision and attack queries', async () => {
+  const world = await MovementWorld.create(boundary, { obstacles: [], ground: {
+    positions: [-8,1,-8, 8,1,-8, 8,1,4, -8,1,4, -8,0,4, 8,0,4, 8,0,8, -8,0,8],
+    indices: [0,2,1, 0,3,2, 4,6,5, 4,7,6],
+  } });
+  try {
+    const previous = actor(0, 0);
+    world.syncActors([{ id: 'enemy', state: previous }]);
+    expect(previous.y).toBeCloseTo(1, 3);
+    previous.hp = 0; world.syncActors([{ id: 'enemy', state: previous }]);
+    const renewed = actor(0, 0);
+    world.syncActors([{ id: 'enemy', state: renewed }]);
+    expect(renewed.y).toBeCloseTo(1, 3);
+    world.move('enemy', renewed, .1, 0, .05);
+    expect(Math.abs(renewed.y - 1)).toBeLessThan(.01);
+  } finally { world.dispose(); }
+});
+
 test('dodge crosses a body but shortens to a clear reserved landing without gaining distance', async () => {
   const world = await MovementWorld.create(boundary);
   try {
