@@ -1,9 +1,11 @@
 import { DoubleSide, FrontSide } from 'three';
 import { yUpBounds } from './validate.mjs';
 import { environmentEntries, environmentDemoExpected } from './environment-packs.mjs';
+import { weaponPacks, weaponEntries } from './weapon-packs.mjs';
 
 /** Delivery-specific schemas stay beside their explicit import recipe. */
 export const packs = {
+  ...weaponPacks,
   'autumn-atlas': { archive: 'Autumn_Atlas_Botanical_Expansion_Compact.zip', prefix: 'Autumn_Atlas_Botanical_Expansion/', count: 24, compact: true,
     demos: ['glb/demo_amber_glade.glb'], triangleTotal: 86902 },
   hearthsteel: { archive: 'Hearthsteel_Traditional_11_Weapons_Compact.zip', prefix: 'Hearthsteel_Armory/', count: 11, compact: true, triangleTotal: 37098 },
@@ -31,6 +33,7 @@ const dimensions = ([min, max]) => max.map((value, axis) => value - min[axis]);
 const json = (files, path) => JSON.parse(files.get(path));
 
 export function entriesFor(id, files) {
+  if (packs[id].weapon) return weaponEntries(id, files);
   const manifest = json(files, 'manifest.json');
   if (packs[id].environment) return environmentEntries(id, files, packs[id].count);
   if (id === 'autumn-atlas') {
@@ -91,6 +94,7 @@ export function demoExpected(id, file, files) {
   return {};
 }
 export function packWarnings(id) {
+  if (packs[id].weapon) return ['Static grip-centred equipment; author rig-specific hand orientation, secondary grip and any bow/reload animation before equipping.'];
   if (id === 'stillwater-deepstone') return ['Static visual geometry only; water is an optional opaque preview surface. Author production water, collision, navigation and interactions when placing.'];
   if (id === 'hearthsteel') return ['Static grip-centred prop; author rig-specific hand rotation, secondary grip and any bow/reload animation before equipping.'];
   if (id === 'autumn-atlas') return ['Static visual geometry only; author collision, navigation, wind and interactions when placing.'];

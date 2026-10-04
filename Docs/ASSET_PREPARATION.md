@@ -181,3 +181,30 @@ npm run assets:import-generated -- --pack sootward-village,blackthorn-interiors,
 ```
 
 This preparation establishes library availability; appearance approval remains a separate review in the Asset Lab.
+
+## Gothic weapon variants
+
+Ten owner-supplied packs add 60 original static equipment variants to the shared library. Import them explicitly in an owned task:
+
+```sh
+npm run assets:import-generated -- --pack ashenforge-axe,ashenforge-mace,ashenforge-greathammer,gothic-bow,gothic-crossbow,gothic-staff,gothic-wand,gothic-sword,gothic-greatsword,sepulchral-shields
+```
+
+| Pack | Download archive | Variants |
+| --- | --- | --- |
+| `ashenforge-axe` | `Ashenforge_Gothic_Axe_6_Variants.zip` | 6 axes |
+| `ashenforge-mace` | `Ashenforge_Gothic_Mace_6_Variants.zip` | 6 maces |
+| `ashenforge-greathammer` | `Ashenforge_Gothic_Greathammer_6_Variants.zip` | 6 greathammers |
+| `gothic-bow` | `Gothic_Bow_Variants.zip` | 6 bows |
+| `gothic-crossbow` | `Gothic_Crossbow_Variants.zip` | 6 crossbows |
+| `gothic-staff` | `Gothic_Earthbound_Staff_Variants.zip` | 6 staffs |
+| `gothic-wand` | `Gothic_Earthbound_Wand_Variants.zip` | 6 wands |
+| `gothic-sword` | `Gothic_Sword_Six_Variants.zip` | 6 swords |
+| `gothic-greatsword` | `Gothic_Greatsword_Six_Variants.zip` | 6 greatswords |
+| `sepulchral-shields` | `Sepulchral_Armory_Gothic_Shields.zip` | 6 shields |
+
+The [weapon adapters](../scripts/assets/generated-packs/weapon-packs.mjs) retain source IDs as `<pack>:model:<hyphenated-source-id>`, with prepared GLBs under ignored `public/vendor/synty/library/models/<pack>/`. They appear automatically as unreviewed **Equipment** in [Asset Review](ASSET_REVIEW.md). Import adds no scene placements, gameplay equipment or build selections.
+
+Pinned three.js decodes every model and checks declared triangle/primitive counts, finite attributes, unit normals, metre-scale Y-up bounds, identity grip roots and shared node-material compatibility. Authored geometry, materials and scale are preserved. String `extras.pivot` descriptions are renamed to `placement_pivot_description` because three.js reserves `pivot` for numeric offsets; the source GLBs remain unchanged. Catalog metadata retains the primary grip at the origin and supplied secondary-hand targets: greathammers use Y = 0.45 m and greatswords use Y = -0.20 m. Rig-specific attachment orientation, hand poses and bow/reload animation remain later gameplay authoring work.
+
+The importer verifies all supplied SHA-256 receipts for bows, crossbows, swords, greatswords and shields. Ashenforge, staff and wand deliveries have no supplied current-file checksums; import-time fingerprints establish their retained baseline. Unchanged ZIPs, Blender sources, scripts, manifests, QA and presentation files stay private under `.local/animation-packs/generated-packs/<pack>/`, then `.local/agent-archives/<task>/animation-packs/generated-packs/` after cleanup. Bundled scripts are retained without execution. Repeat the import command with `--verify` to check preserved sources, prepared outputs and catalog registrations without writing.

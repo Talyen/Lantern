@@ -77,8 +77,9 @@ async function readPack(archive, pack) {
   }
   if (pack.compact && (!files.has('COMPACT_SHA256SUMS.txt') || !files.has('COMPACT_EDITION.txt')
     || names.some(name => !supplied.has(name) && !['COMPACT_SHA256SUMS.txt', 'COMPACT_EDITION.txt'].includes(name)))) throw new Error('Unreceipted compact archive entry');
-  const manifest = JSON.parse(files.get('manifest.json'));
-  if (!pack.compact) for (const entry of manifest.assets ?? []) {
+  if (!files.has('manifest.json') && !pack.weapon) throw new Error('Missing pack manifest');
+  const manifest = files.has('manifest.json') ? JSON.parse(files.get('manifest.json')) : {};
+  if (!pack.compact) for (const entry of Array.isArray(manifest.assets) ? manifest.assets : []) {
     const digest = entry.sha256 ?? entry.glb_sha256 ?? entry.validation_sha256;
     if (digest) checkHash(entry.file ?? entry.glb ?? `glb/${entry.id}.glb`, digest);
   }
@@ -88,7 +89,14 @@ async function readPack(archive, pack) {
   if (!pack.compact) {
     const visit = value => {
       if (!value || typeof value !== 'object') return;
-      if (typeof value.file === 'string' && value.sha256 !== undefined) checkHash(value.file, value.sha256);
+      const reference = value.file ?? (pack.weapon ? value.path : undefined);
+      if (typeof reference === 'string' && value.sha256 !== undefined) {
+        sourceEntry(reference);
+        // Sword QA names a GLB basename; other delivery receipts use archive-relative paths.
+        const name = pack.weapon && reference === basename(reference) && reference.endsWith('.glb') ? `glb/${reference}` : reference;
+        checkHash(name, value.sha256);
+        if (pack.weapon && value.bytes !== undefined && value.bytes !== files.get(name).length) throw new Error(`Receipt size mismatch: ${name}`);
+      }
       for (const child of Object.values(value)) visit(child);
     };
     for (const [name, bytes] of files) if (name.endsWith('.json')) visit(JSON.parse(bytes));
@@ -143,8 +151,9 @@ export async function importPacks(ids, downloads, verify = false) {
       }
     }
     const triangleTotal = prepared.reduce((sum, item) => sum + (entries.some(entry => entry.file === item.report.file) ? item.report.triangles : 0), 0);
-    const expectedTotal = pack.triangleTotal ?? JSON.parse(files.get('manifest.json')).total_standalone_triangles
-      ?? JSON.parse(files.get('manifest.json')).export_totals?.triangles;
+    const manifest = files.has('manifest.json') ? JSON.parse(files.get('manifest.json')) : {};
+    const expectedTotal = pack.triangleTotal ?? manifest.total_standalone_triangles
+      ?? manifest.export_totals?.triangles ?? (pack.weapon ? manifest.triangles : undefined);
     if (expectedTotal !== undefined && triangleTotal !== expectedTotal) throw new Error(`Pack triangle total differs: ${id}`);
     staged.push({ id, archive, archiveHash, files, supplied, sources, prepared, supportingModels, assets });
   }
