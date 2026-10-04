@@ -45,6 +45,60 @@
       "fingerprint": "f58eb3e2af061ac799bf5c6c4bc23d10421b50acb948df695d39b91f6a34f882",
       "notes": "",
       "updatedAt": "2026-10-03T19:32:21.697Z"
+    },
+    "goblin-war-camp:model:props-sm-prop-barrel-01@area:clearing": {
+      "familyId": "goblin-war-camp:model:props-sm-prop-barrel-01",
+      "url": "/vendor/synty/environment/clearing/props-sm-prop-barrel-01.glb",
+      "name": "Barrel 01",
+      "state": "approved",
+      "fingerprint": "d9e7b49a0f084b574c8985ddad99a68f70fa6a004ea14229a099c07690dac5bc",
+      "notes": "",
+      "updatedAt": "2026-10-04T19:59:02.133Z"
+    },
+    "goblin-war-camp:model:props-sm-prop-barrel-01@gameplay": {
+      "familyId": "goblin-war-camp:model:props-sm-prop-barrel-01",
+      "url": "/vendor/synty/environment/props-sm-prop-barrel-01.glb",
+      "name": "Barrel 01",
+      "state": "approved",
+      "fingerprint": "75627b1bb28aa3b4a28e039f42c51efc745f066826202bc87a4c235805b0a852",
+      "notes": "",
+      "updatedAt": "2026-10-04T19:59:32.087Z"
+    },
+    "goblin-war-camp:model:props-sm-prop-barrel-01@original": {
+      "familyId": "goblin-war-camp:model:props-sm-prop-barrel-01",
+      "url": "/vendor/synty/library/models/goblin-war-camp/2c3b9b002f485c92f6f8.glb",
+      "name": "Barrel 01",
+      "state": "approved",
+      "fingerprint": "2b10c19d9eb43cc8ea73787cc611b92af279c803f907daa203fcd55bab0c7ccc",
+      "notes": "",
+      "updatedAt": "2026-10-04T20:00:26.618Z"
+    },
+    "goblin-war-camp:model:props-sm-prop-bedroll-02@area:clearing": {
+      "familyId": "goblin-war-camp:model:props-sm-prop-bedroll-02",
+      "url": "/vendor/synty/environment/clearing/props-sm-prop-bedroll-02.glb",
+      "name": "Bedroll 02",
+      "state": "approved",
+      "fingerprint": "92e5b593ba7035ffeb9f33e4a435d8cea1f6ae0cad9c81ed10d118cd8d1aabec",
+      "notes": "",
+      "updatedAt": "2026-10-04T20:18:48.088Z"
+    },
+    "goblin-war-camp:model:props-sm-prop-bedroll-02@gameplay": {
+      "familyId": "goblin-war-camp:model:props-sm-prop-bedroll-02",
+      "url": "/vendor/synty/environment/props-sm-prop-bedroll-02.glb",
+      "name": "Bedroll 02",
+      "state": "approved",
+      "fingerprint": "818ffe1933369316a8900652825f629833107f6857517553793e985838d80e29",
+      "notes": "",
+      "updatedAt": "2026-10-04T20:19:51.450Z"
+    },
+    "goblin-war-camp:model:props-sm-prop-bedroll-02@original": {
+      "familyId": "goblin-war-camp:model:props-sm-prop-bedroll-02",
+      "url": "/vendor/synty/library/models/goblin-war-camp/17d20ba14f1137b969c4.glb",
+      "name": "Bedroll 02",
+      "state": "approved",
+      "fingerprint": "dabdac33c90a545d16c66f4f631bf381de3c635ea491a40c8f660d566992197c",
+      "notes": "",
+      "updatedAt": "2026-10-04T20:20:04.916Z"
     }
   },
   "familyDenials": {},
