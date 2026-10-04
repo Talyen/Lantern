@@ -1,7 +1,7 @@
 import { disposeSceneInstances, ownTexture, sceneTextures, isMesh, isTexture } from './resource-ownership';
 import * as THREE from 'three';
 import { cachedRequest } from '../data/cached-request';
-import { MeshStandardNodeMaterial, MeshPhysicalNodeMaterial } from 'three/webgpu';
+import { type MeshStandardNodeMaterial, MeshPhysicalNodeMaterial } from 'three/webgpu';
 import { prepareStandardMaterials, prepareSurfaceMaterial, filterMaterialTexture } from '../rendering/surface-detail';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';

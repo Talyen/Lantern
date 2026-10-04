@@ -1,7 +1,7 @@
 import { isMesh } from '../assets/resource-ownership';
 import * as THREE from 'three';
 import { Fn, If, Loop, float, vec2, vec3, color, uniform, uv, texture, dFdx, dFdy, positionView, positionViewDirection, normalViewGeometry, cross, dot, normalMap, negateOnBackSide, materialRoughness, materialSpecularIntensity, mix, smoothstep } from 'three/tsl';
-import { MeshStandardNodeMaterial, MeshPhysicalNodeMaterial, type Node, type NodeBuilder } from 'three/webgpu';
+import { type MeshStandardNodeMaterial, MeshPhysicalNodeMaterial, type Node, type NodeBuilder } from 'three/webgpu';
 import { calibrationGain } from './material-calibration';
 import { materialRecipes, type MaterialFamily } from './material-recipes';
 import { validateMaterial } from '../assets/material-validation';

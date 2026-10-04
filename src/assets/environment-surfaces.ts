@@ -1,6 +1,6 @@
 import { ownTexture, sceneTextures, isMesh } from './resource-ownership';
 import * as THREE from 'three';
-import { MeshStandardNodeMaterial, MeshPhysicalNodeMaterial } from 'three/webgpu';
+import { type MeshStandardNodeMaterial, MeshPhysicalNodeMaterial } from 'three/webgpu';
 import manifest from '../../assets/textures/environment/manifest.json';
 import { prepareSurfaceMaterial, prepareSurfaceHighlights } from '../rendering/surface-detail';
 import type { AssetRef } from '../levels/types';
