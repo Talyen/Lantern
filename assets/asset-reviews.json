@@ -1,6 +1,25 @@
 {
   "version": 1,
-  "decisions": {},
+  "decisions": {
+    "goblin-war-camp:model:props-sm-prop-anvil-01@original": {
+      "familyId": "goblin-war-camp:model:props-sm-prop-anvil-01",
+      "url": "/vendor/synty/library/models/goblin-war-camp/bc198f5728a1e9e28cb7.glb",
+      "name": "Anvil 01",
+      "state": "approved",
+      "fingerprint": "75e932ad283ba6d75ecd68ae18fee40e3796da7076d128657ae33947f898faca",
+      "notes": "Owner explicitly selected the existing converted Anvil and Forge for Smithing. Successfully displayed and inspected at gameplay scale in the owned normal-settings Homestead preview; private evidence retained by smithing-starter.",
+      "updatedAt": "2026-10-04T04:32:13.722Z"
+    },
+    "goblin-war-camp:model:props-sm-prop-forge-01@original": {
+      "familyId": "goblin-war-camp:model:props-sm-prop-forge-01",
+      "url": "/vendor/synty/library/models/goblin-war-camp/2071c80f5a9fcb212933.glb",
+      "name": "Forge 01",
+      "state": "approved",
+      "fingerprint": "a6c8a419aaae3433d2486948edc29a01f15fa1f4dd5efb616764f60f88765769",
+      "notes": "Owner explicitly selected the existing converted Anvil and Forge for Smithing. Successfully displayed and inspected at gameplay scale in the owned normal-settings Homestead preview; private evidence retained by smithing-starter.",
+      "updatedAt": "2026-10-04T04:32:17.880Z"
+    }
+  },
   "familyDenials": {},
   "deleted": {}
 }

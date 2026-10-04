@@ -125,7 +125,7 @@ export function stepEnemy(state: Encounter, id: EnemyId, dt: number, timing: Tim
       const contactDx = player.x - enemy.x, contactDz = player.z - enemy.z, reach = Math.hypot(contactDx, contactDz);
       const facing = reach > 0 ? (Math.sin(enemy.yaw) * contactDx + Math.cos(enemy.yaw) * contactDz) / reach : 1;
       if (facing >= .5 && Math.hypot(player.x - enemy.x, player.z - enemy.z) <= 1.8 && (!movementWorld || movementWorld.lineOfSight(enemy, player)) && Math.abs(player.y - enemy.y) < .8)
-        hit(state, 'player', timing, events, weaponFamily(enemy.loadout.main) ?? undefined, { x: enemy.x - player.x, z: enemy.z - player.z, melee:id }, dt - attackElapsed + Math.max(0, timing[id].contacts[enemy.contactIndex - 1] - (enemy.attackTime - attackElapsed)));
+        hit(state, 'player', timing, events, weaponFamily(enemy.loadout.main) ?? undefined, { x: enemy.x - player.x, z: enemy.z - player.z, melee:id }, dt - attackElapsed + Math.max(0, timing[id].contacts[enemy.contactIndex - 1] - (enemy.attackTime - attackElapsed)),undefined,undefined,false,enemy.damageType);
       if (state.phase !== 'playing')
         return;
     }
@@ -179,7 +179,7 @@ function stepCaster(state: Encounter, id: EnemyId, dt: number, timing: Timings, 
     enemy.contactIndex = 1;
     events.push({ type: 'action', actor: id, action: 'contact', weapon: 'staff' });
     const dx = Math.sin(enemy.yaw), dz = Math.cos(enemy.yaw);
-    const projectile: Projectile = { id: ++state.nextProjectile, owner: id, kind: 'bolt', x: enemy.x + dx * .35, y: enemy.y + 1.08, z: enemy.z + dz * .35, dx, dz, remaining: 12, firstStep: Math.min(dt, enemy.attackTime - release) };
+    const projectile: Projectile = { id: ++state.nextProjectile, owner: id, kind: 'bolt', damageType:enemy.damageType, x: enemy.x + dx * .35, y: enemy.y + 1.08, z: enemy.z + dz * .35, dx, dz, remaining: 12, firstStep: Math.min(dt, enemy.attackTime - release) };
     if (projectileLaunchClear(projectile, enemy, events, movementWorld) && advanceProjectile(state, projectile, dt, timing, events, movementWorld))
       state.projectiles.push(projectile);
   }

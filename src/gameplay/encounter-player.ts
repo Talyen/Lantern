@@ -9,6 +9,7 @@ import {
   type AimPoint, type ActorTiming, type Encounter, type EncounterEvent, type Input, type Movement,
   type Timings, type PlayerAction,
 } from './encounter-model';
+import { smithingMeleeMultiplier } from './smithing';
 import { hit } from './encounter-damage';
 import { projectileLaunchClear } from './encounter-projectiles';
 
@@ -53,7 +54,7 @@ export function attack(state: Encounter, timing: ActorTiming, paused: boolean, a
   state.attackCooldown = duration;
   state.player.attackTime = 0;
   state.player.contactIndex = 0;
-  state.playerAction = { committed:false, mana:0, cooldown:0, baseDamage:state.stats.damage, impactId: state.nextImpact = (state.nextImpact ?? 0) + 1, duration, contacts: timing.contacts.map(contact => contact / rate), damage: state.stats.damage, rate, reach: state.stats.reach, arc: state.weapon === 'sword' ? Math.PI / 4 : Math.acos(.1), weapon: state.weapon, ability: basicAbility(state.weapon) };
+  state.playerAction = { damageType:state.weapon==='staff' ? 'nature' : 'physical', committed:false, mana:0, cooldown:0, baseDamage:state.stats.damage, impactId: state.nextImpact = (state.nextImpact ?? 0) + 1, duration, contacts: timing.contacts.map(contact => contact / rate), damage: state.stats.damage, rate, reach: state.stats.reach, arc: state.weapon === 'sword' ? Math.PI / 4 : Math.acos(.1), weapon: state.weapon, ability: basicAbility(state.weapon) };
   return [{ type: 'label', value: 'DEFEAT THE RAIDER' }, { type: 'animation', actor: 'player', motion: 'attack' }, { type: 'action', actor: 'player', action: 'attack', weapon: state.weapon }];
 }
 
@@ -108,7 +109,7 @@ export function useAbility(state: Encounter, id: AbilityId, timing: ActorTiming,
     if (aim) faceAim(state.player,aim);
     state.player.lock=state.attackCooldown=action.attack;
     state.player.attackTime=0; state.player.contactIndex=0;
-    state.playerAction={impactId:state.nextImpact=(state.nextImpact ?? 0)+1,committed:false,mana:definition.mana,cooldown:definition.cooldown,duration:action.attack,contacts:[],damage:0,rate:1,reach:0,arc:0,weapon:'axe',ability:id};
+    state.playerAction={impactId:state.nextImpact=(state.nextImpact ?? 0)+1,committed:false,mana:definition.mana,cooldown:definition.cooldown,duration:action.attack,contacts:[],damage:0,rate:1,reach:0,arc:0,weapon:'axe',ability:id,damageType:'physical'};
     return [...events,{type:'animation',actor:'player',motion:'battleCry'},{type:'action',actor:'player',action:'battleCry',weapon:'axe'}];
   }
   const attackEvents = attack(state, { ...timing, ...action }, false, aim);
@@ -308,13 +309,13 @@ export function stepPlayerAttack(state: Encounter, dt: number, timing: Timings, 
     commitAction(state,action,events,offset);
     events.push({type:'action',actor:'player',action:'contact',weapon:action.weapon,...(action.ability && ['thrust','riposte','executioner','onslaught'].includes(action.ability) ? {ability:action.ability} : {})});
     if (action.ability === 'arrow-rain' && action.aim) {
-      state.rains.push({id:action.impactId!,x:action.aim.x,y:action.aim.y ?? player.y,z:action.aim.z,age:.93,damage:action.damage/3,pulse:0,rate:action.rate,firstStep:Math.max(0,(state.frameElapsed ?? dt)-offset)});
+      state.rains.push({damageType:action.damageType ?? 'physical',id:action.impactId!,x:action.aim.x,y:action.aim.y ?? player.y,z:action.aim.z,age:.93,damage:action.damage/3,pulse:0,rate:action.rate,firstStep:Math.max(0,(state.frameElapsed ?? dt)-offset)});
     } else if (action.weapon === 'bow' || action.weapon === 'staff') {
       const angles=action.ability==='multishot' ? [-Math.PI/6,-Math.PI/12,0,Math.PI/12,Math.PI/6] : [0];
       const sharedHits: string[]=[];
       for (const angle of angles) {
         const dx=Math.sin(player.yaw+angle),dz=Math.cos(player.yaw+angle);
-        const projectile={id:++state.nextProjectile,owner:'player',kind:action.weapon==='bow' ? 'arrow' as const : 'bolt' as const,x:player.x+dx*.35,y:player.y+1.22,z:player.z+dz*.35,dx,dz,remaining:action.reach,damage:action.damage,impactId:action.impactId,ability:action.ability,poisonDamage:action.ability==='poison-arrow' ? (action.baseDamage ?? 0)*.8 : undefined,sharedHits:action.ability==='multishot' ? sharedHits : undefined,pierced:action.ability==='piercing-shot' ? [] : undefined,firstStep:Math.min(dt,player.attackTime-contacts[index])};
+        const projectile={id:++state.nextProjectile,owner:'player',kind:action.weapon==='bow' ? 'arrow' as const : 'bolt' as const,damageType:action.damageType ?? (action.weapon==='bow' ? 'physical' as const : 'nature' as const),x:player.x+dx*.35,y:player.y+1.22,z:player.z+dz*.35,dx,dz,remaining:action.reach,damage:action.damage,impactId:action.impactId,ability:action.ability,poisonDamage:action.ability==='poison-arrow' ? (action.baseDamage ?? 0)*.8 : undefined,sharedHits:action.ability==='multishot' ? sharedHits : undefined,pierced:action.ability==='piercing-shot' ? [] : undefined,firstStep:Math.min(dt,player.attackTime-contacts[index])};
         if (projectileLaunchClear(projectile,player,events,movementWorld)) state.projectiles.push(projectile);
       }
     } else {
@@ -326,7 +327,7 @@ export function stepPlayerAttack(state: Encounter, dt: number, timing: Timings, 
       if (single) targets.sort((a,b)=>Math.hypot(state.enemies[a].x-player.x,state.enemies[a].z-player.z)-Math.hypot(state.enemies[b].x-player.x,state.enemies[b].z-player.z));
       for (const id of single ? targets.slice(0,1) : targets) {
         const damage=action.ability==='onslaught' ? (action.baseDamage ?? action.damage)*[1,1.5,2][index] : action.damage;
-        hit(state,id,timing,events,action.weapon ?? undefined,undefined,offset,damage,action.impactId===undefined ? undefined : {actor:'player',ability:action.ability,id:action.impactId});
+        hit(state,id,timing,events,action.weapon ?? undefined,undefined,offset,damage*((action.damageType ?? 'physical')==='physical' ? smithingMeleeMultiplier(state.proficiency.smithing ?? 0) : 1),action.impactId===undefined ? undefined : {actor:'player',ability:action.ability,id:action.impactId},false,action.damageType ?? 'physical');
       }
     }
   }

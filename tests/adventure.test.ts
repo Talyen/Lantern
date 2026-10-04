@@ -680,13 +680,13 @@ test('integrated menu and interaction owners keep Shop modal and dispatch its re
   const shop={paused:true,close:vi.fn(()=>{shop.paused=false;})};
   const openInventory=vi.fn(),openOptions=vi.fn();
   const menus={paused:false,close:vi.fn(),openInventory,openRepair:vi.fn(),openTravel:vi.fn()};
-  const controller=new MenuController({shop,adventure:menus,skills:{paused:false,close:vi.fn(),open:vi.fn()},bindings:{paused:false,close:vi.fn()},options:{paused:false,close:vi.fn(),open:openOptions}},()=>true);
+  const controller=new MenuController({smithing:{paused:false,close:vi.fn()},shop,adventure:menus,skills:{paused:false,close:vi.fn(),open:vi.fn()},bindings:{paused:false,close:vi.fn()},options:{paused:false,close:vi.fn(),open:openOptions}},()=>true);
   expect(controller.paused).toBe(true);controller.toggleInventory();
   expect(shop.close).toHaveBeenCalledOnce();expect(openInventory).not.toHaveBeenCalled();expect(controller.paused).toBe(false);
   controller.toggleInventory();expect(openInventory).toHaveBeenCalledOnce();
   shop.paused=true;controller.toggleOptions();expect(openOptions).not.toHaveBeenCalled();expect(controller.paused).toBe(false);
   const {state,encounter}=trading(),openShop=vi.fn();
-  const actions=new InteractionActions(state,encounter,menus,{select:vi.fn()},{play:vi.fn()},{area:()=>home,definitions:()=>({homestead:home}),paused:()=>controller.paused,changeArea:()=>Promise.resolve(true),syncAdventure:vi.fn(),openShop});
+  const actions=new InteractionActions(state,encounter,menus,{select:vi.fn()},{play:vi.fn()},{area:()=>home,definitions:()=>({homestead:home}),paused:()=>controller.paused,changeArea:()=>Promise.resolve(true),syncAdventure:vi.fn(),openShop,openSmithing:vi.fn()});
   const target={key:'shop/merchant',name:'Shop',type:'shop' as const,position:home.shop!.position,range:1.8,height:0,obstacleId:home.shop!.prop,object:new THREE.Group()};
   actions.execute(target);expect(openShop).toHaveBeenCalledOnce();
   shop.paused=true;actions.execute(target);expect(openShop).toHaveBeenCalledOnce();

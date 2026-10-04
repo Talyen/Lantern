@@ -2471,6 +2471,55 @@
         ],
         "color": "#68523d"
       }
+    },
+    {
+      "id": "homestead-iron-outcrop",
+      "position": [
+        4.5,
+        0,
+        4.6
+      ],
+      "yaw": -0.25,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "pebble",
+        "size": [
+          0.65
+        ],
+        "color": "#746052",
+        "surface": "stone"
+      },
+      "harvest": {
+        "kind": "iron",
+        "radius": 0.65,
+        "level": 1
+      },
+      "castShadow": true,
+      "receiveShadow": true
+    },
+    {
+      "id": "smithing-anvil",
+      "position": [
+        1.8,
+        0,
+        -3.1
+      ],
+      "yaw": 1.57,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "height": 0.65,
+      "asset": {
+        "libraryId": "goblin-war-camp:model:props-sm-prop-anvil-01"
+      },
+      "castShadow": true,
+      "receiveShadow": true
     }
   ],
   "scatter": [],
@@ -2619,6 +2668,22 @@
         },
         "height": 0.28,
         "role": "lantern"
+      },
+      {
+        "id": "smithing-forge",
+        "position": [
+          1.8,
+          -5.2
+        ],
+        "asset": {
+          "libraryId": "goblin-war-camp:model:props-sm-prop-forge-01"
+        },
+        "height": 2.4,
+        "role": "campfire",
+        "emitterHeight": 0.65,
+        "intensity": 10,
+        "distance": 6,
+        "shadow": false
       }
     ]
   },
@@ -2865,7 +2930,7 @@
       {
         "id": "pine-13",
         "position": [
-          -0.0,
+          0,
           1.9927945547004733,
           11.314
         ],
@@ -2923,7 +2988,7 @@
         "position": [
           11.314,
           1.6856361758500327,
-          0.0
+          0
         ],
         "size": [
           0.45,
@@ -3132,7 +3197,7 @@
         "id": "grove-2",
         "position": [
           -1,
-          3.0,
+          3,
           -10
         ],
         "size": [
@@ -3281,6 +3346,48 @@
           0.5
         ],
         "yaw": 0
+      },
+      {
+        "id": "homestead-iron-outcrop",
+        "position": [
+          4.5,
+          0.35,
+          4.6
+        ],
+        "size": [
+          1.1,
+          0.7,
+          1.1
+        ],
+        "yaw": 0
+      },
+      {
+        "id": "smithing-anvil",
+        "position": [
+          1.8,
+          0.325,
+          -3.1
+        ],
+        "size": [
+          1.3,
+          0.65,
+          0.65
+        ],
+        "yaw": 0
+      },
+      {
+        "id": "smithing-forge",
+        "position": [
+          1.8,
+          1.2,
+          -5.2
+        ],
+        "size": [
+          1.4,
+          2.4,
+          1.1
+        ],
+        "yaw": 0
       }
     ]
   },
@@ -3365,5 +3472,12 @@
       "yaw": 0,
       "height": 1.7
     }
+  },
+  "smithing": {
+    "prop": "smithing-anvil",
+    "position": [
+      1.8,
+      -3.1
+    ]
   }
 }

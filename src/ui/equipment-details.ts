@@ -1,3 +1,4 @@
+import { smithingMeleeMultiplier } from '../gameplay/smithing';
 import type { CharacterSave } from '../gameplay/character';
 import type { WeaponSet } from '../gameplay/abilities';
 import { resolveCombatStats, type CombatStats } from '../gameplay/combat-stats';
@@ -83,7 +84,9 @@ export function renderEquipmentDetails(
   const before = resolveCombatStats(character.items, set,character.xp);
   const after = resolveCombatStats(candidate, set,character.xp);
   for (const key of comparisonStats) {
-    const delta = after[key] - before[key];
+    const value=(stats:CombatStats)=>key==='damage' && stats.family && stats.family!=='bow' && stats.family!=='staff'
+      ? stats.damage*smithingMeleeMultiplier(character.xp.smithing) : stats[key];
+    const delta = value(after) - value(before);
     if (Math.abs(delta) < .00001) continue;
     const amount = statValue(key, delta);
     const row = statRow(statLabel(key), `${delta > 0 ? '+' : ''}${amount}`);

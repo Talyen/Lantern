@@ -21,7 +21,7 @@ export type WorldInteraction = WorldTarget & (
   | { type: 'resource'; resource: ResourceDefinition }
   | { type: 'chest'; chest: Chest }
   | { type: 'fire'; fire: Campfire }
-  | { type: 'portal' | 'shelter' | 'stash' | 'shop' }
+  | { type: 'portal' | 'shelter' | 'stash' | 'shop' | 'smithing' }
 );
 
 /** Build stable descriptors once; gameplay still decides eligibility at query time. */
@@ -53,6 +53,10 @@ function areaTargets(area: AreaDefinition, active: AreaInstance): WorldInteracti
     const object = active.interactables.get(key);
     if (object) targets.push({ key, name: 'Shop', type: 'shop', position: area.shop.position,
       range: 1.8, height: 0, obstacleId: area.shop.prop, object });
+  }
+  if (area.smithing) {
+    const object=active.interactables.get('smithing');
+    if(object)targets.push({key:'smithing',name:'Smithing',type:'smithing',position:area.smithing.position,range:1.8,height:0,obstacleId:area.smithing.prop,object});
   }
   if (area.shelter) {
     const site = area.shelter;

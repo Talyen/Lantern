@@ -1,3 +1,4 @@
+import { smithing } from './smithing';
 import { abilities, weaponTrees, type AbilityId } from './abilities';
 import { passives } from './mastery';
 import { skillDefinitions, type Skill } from './skills';
@@ -20,5 +21,10 @@ export function nodesForSkill(skill: Skill): {major:SkillNode[]; minor:SkillNode
     return {id:skill+'-major-'+index,name:ability ? abilities[ability].name : definition.name+' '+role,kind:profession ? 'major' : 'ability',role,index,level:ability ? abilities[ability].level : level,ability,implemented:!!ability};
   });
   const minor=minorMilestones.flatMap((pair,gap)=>pair.map((level,side):SkillNode=>({id:skill+'-minor-'+(gap*2+side),name:definition.name+' '+(profession ? 'Minor ' : 'Passive ')+(gap*2+side+1),kind:'minor',role:profession ? 'Minor bonus' : 'Passive bonus',index:gap*2+side,level})));
+  if(skill==='smithing'){
+    Object.assign(major[0],{name:'Reclamation',role:'Reclamation',description:'Reclaim unequipped metal gear for materials and a little Smithing XP.',implemented:true});
+    Object.assign(minor[0],{name:'Heat Seasoned',level:smithing.heatLevel,description:'Long exposure to forge heat grants 15% Burn Resistance.',implemented:true});
+    Object.assign(minor[1],{name:'Hammer Arm',level:smithing.hammerLevel,description:'Hammer work builds strength. Deal 5% more physical melee damage.',implemented:true});
+  }
   return {major,minor};
 }

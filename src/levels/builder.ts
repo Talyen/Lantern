@@ -178,6 +178,7 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
       const resource = resources.find(n => n.id === p.id);
       if(resource?.kind==='iron')model.traverse(o=>{if(isMesh(o) && o.material instanceof MeshStandardNodeMaterial){const ore=o.material.clone();const vein=mix(color('#5e5b52'),color('#89654e'),smoothstep(.25,.65,sin(positionWorld.x.mul(13).add(positionWorld.z.mul(8))).mul(.5).add(.5)));ore.colorNode=area.id==='clearing' ? mix((o.material.colorNode as Node<'vec3'> | null) ?? color(o.material.color),vein,.3) : vein;ore.roughness=.85;ownedMaterial.add(ore);o.material=ore;}});
       if (resource && resource.kind !== 'tree') { model.userData.harvestResource=p.id; model.traverse(o=>animated.add(o)); model.userData.resourceScaleY=model.scale.y; mineralModels.set(p.id,model); interactables.set(`resource/${p.id}`,model); }
+      if (area.smithing?.prop === p.id) { interactables.set('smithing',model); model.traverse(object=>animated.add(object)); }
       if (area.shop?.prop === p.id) { interactables.set(`shop/${area.shop.id}`, model); model.traverse(object => animated.add(object)); }
       const tree = treeIds.get(p.id);
       const chest=area.chests?.find(chest=>chest.prop===p.id);
@@ -224,7 +225,15 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
         let model: THREE.Group;
         try { model = await asset(p.asset!, true, !!showcase?.placements.includes(p.id)); } catch {
           missing.push(p.id);
-          if (p.fallback) { try { model = await asset(p.fallback); } catch { return; } } else return;
+          if (p.fallback) { try { model = await asset(p.fallback); } catch { return; } }
+          else if(area.smithing?.prop===p.id){
+            // Optional scenery cannot remove the workshop's interaction.
+            model=new THREE.Group();
+            for(const [size,position] of [[[1.05,.15,.5],[0,.575,0]],[[.35,.5,.4],[0,.25,0]],[[.65,.1,.55],[0,.05,0]]]){
+              const definition:Primitive={kind:'box',size,color:'#5d5650',surface:'stone'};
+              const part=new THREE.Mesh(geometry(definition),material(definition));part.position.fromArray(position);part.castShadow=part.receiveShadow=true;model.add(part);
+            }
+          } else return;
         }
         const chest = area.chests?.find(c => c.prop === p.id);
         if (chest) {

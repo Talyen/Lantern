@@ -12,7 +12,7 @@ export function projectileLaunchClear(projectile: Projectile, actor: { x: number
   const origin = { x: actor.x, y: projectile.y, z: actor.z };
   const wall = movementWorld?.segmentHit?.(origin, projectile) ?? null;
   if (wall === null) return true;
-  events.push({ type: 'projectileImpact', owner: projectile.owner, kind: projectile.kind, position: {
+  events.push({ type: 'projectileImpact', owner: projectile.owner, kind: projectile.kind, damageType:projectile.damageType, position: {
     x: origin.x + (projectile.x - origin.x) * wall, y: projectile.y,
     z: origin.z + (projectile.z - origin.z) * wall,
   } });
@@ -23,6 +23,7 @@ export function projectileLaunchClear(projectile: Projectile, actor: { x: number
 export function advanceProjectile(state: Encounter, projectile: Projectile, dt: number, timing: Timings, events: EncounterEvent[], movementWorld?: Movement): boolean {
   if (state.phase === 'lost' || projectile.owner !== 'player' && state.enemies[projectile.owner].hp <= 0)
     return false;
+  const damageType=projectile.damageType ?? (projectile.kind==='arrow' ? 'physical' : projectile.owner==='player' ? 'nature' : state.enemies[projectile.owner].damageType);
   const speed = projectile.owner !== 'player' ? casterBoltSpeed : projectile.kind === 'arrow' ? 24 : 16;
   const elapsed = projectile.firstStep ?? dt;
   const distance = Math.min(projectile.remaining, elapsed * speed);
@@ -55,7 +56,7 @@ export function advanceProjectile(state: Encounter, projectile: Projectile, dt: 
       const started=state.enemies[nearestId].poison!.firstStep===undefined ? 0 : dt-state.enemies[nearestId].poison!.firstStep!;
       advancePoison(state,nearestId,Math.max(0,offset-started),timing,events,started);
     }
-    hit(state, nearestId, timing, events, projectile.kind === 'arrow' ? 'bow' : 'staff', { x: -projectile.dx, z: -projectile.dz }, dt - elapsed + nearestFraction * distance / speed, projectile.damage ?? (projectile.owner === 'player' ? state.stats.damage : enemyAttackDamage), projectile.impactId === undefined ? undefined : { actor: projectile.owner, ability: projectile.ability ?? null, id: projectile.impactId });
+    hit(state, nearestId, timing, events, projectile.kind === 'arrow' ? 'bow' : 'staff', { x: -projectile.dx, z: -projectile.dz }, dt - elapsed + nearestFraction * distance / speed, projectile.damage ?? (projectile.owner === 'player' ? state.stats.damage : enemyAttackDamage), projectile.impactId === undefined ? undefined : { actor: projectile.owner, ability: projectile.ability ?? null, id: projectile.impactId },false,damageType);
     if (nearestId !== 'player' && projectile.poisonDamage && state.enemies[nearestId].hp>0) {
       const enemy=state.enemies[nearestId];
       const impactOffset=dt-elapsed+nearestFraction*distance/speed;
@@ -66,12 +67,12 @@ export function advanceProjectile(state: Encounter, projectile: Projectile, dt: 
   if (hits) {
     hits.sort((a, b) => a.fraction - b.fraction);
     for (const contact of hits) {
-      hit(state, contact.id, timing, events, projectile.kind === 'arrow' ? 'bow' : 'staff', { x: -projectile.dx, z: -projectile.dz }, dt - elapsed + contact.fraction * distance / speed, projectile.damage ?? (projectile.owner === 'player' ? state.stats.damage : enemyAttackDamage), projectile.impactId === undefined ? undefined : { actor: projectile.owner, ability: projectile.ability ?? null, id: projectile.impactId });
+      hit(state, contact.id, timing, events, projectile.kind === 'arrow' ? 'bow' : 'staff', { x: -projectile.dx, z: -projectile.dz }, dt - elapsed + contact.fraction * distance / speed, projectile.damage ?? (projectile.owner === 'player' ? state.stats.damage : enemyAttackDamage), projectile.impactId === undefined ? undefined : { actor: projectile.owner, ability: projectile.ability ?? null, id: projectile.impactId },false,damageType);
       projectile.pierced!.push(contact.id);
     }
   }
   if (wall !== null) {
-    events.push({ type: 'projectileImpact', owner: projectile.owner, kind: projectile.kind, position: { x: projectile.x + (to.x - projectile.x) * wall, y: projectile.y, z: projectile.z + (to.z - projectile.z) * wall } });
+    events.push({ type: 'projectileImpact', owner: projectile.owner, kind: projectile.kind, damageType:projectile.damageType, position: { x: projectile.x + (to.x - projectile.x) * wall, y: projectile.y, z: projectile.z + (to.z - projectile.z) * wall } });
     return false;
   }
   projectile.x = to.x;

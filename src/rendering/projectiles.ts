@@ -18,6 +18,8 @@ export class ProjectileVisuals {
   private poisonMaterial=new MeshBasicNodeMaterial({color:'#a2b570'});
   private boltGeometry = new THREE.SphereGeometry(.045, 8, 6);
   private boltMaterial = new MeshBasicNodeMaterial({color:'#ffd29a'});
+  private fireMaterial = new MeshBasicNodeMaterial({color:'#ffd28a'});
+  private fireRibbonMaterial = new MeshBasicNodeMaterial({transparent:true,depthWrite:false,side:THREE.DoubleSide});
   private enemyBoltMaterial = new MeshBasicNodeMaterial({color:'#91e4ef'});
   private ribbonClock = uniform(0);
   private previousRibbonClock = uniform(0);
@@ -35,6 +37,9 @@ export class ProjectileVisuals {
       positionPrevious.assign(ribbonPosition(this.previousRibbonClock));
       return ribbonPosition(this.ribbonClock);
     })();
+    this.fireRibbonMaterial.colorNode=mix(color('#bb4122'),color('#ffd18a'),uv().y.oneMinus());
+    this.fireRibbonMaterial.opacityNode=uv().y.oneMinus().mul(.72);
+    this.fireRibbonMaterial.positionNode=this.ribbonMaterial.positionNode;
   }
   prepareArrow(): Promise<void> {
     return this.loading ??= assetLibrary.loadAsset(arrowAsset).then(instance => {
@@ -51,13 +56,13 @@ export class ProjectileVisuals {
     for (const projectile of projectiles) {
       let object = this.objects.get(projectile.id);
       if (!object) {
-        object = projectile.kind === 'arrow' ? this.arrows?.object.clone(true) : new THREE.Mesh(this.boltGeometry,projectile.owner !== 'player' ? this.enemyBoltMaterial : this.boltMaterial);
+        object = projectile.kind === 'arrow' ? this.arrows?.object.clone(true) : new THREE.Mesh(this.boltGeometry,projectile.damageType==='burn' ? this.fireMaterial : projectile.owner !== 'player' ? this.enemyBoltMaterial : this.boltMaterial);
         if (!object) continue;
         if (projectile.ability==='poison-arrow') {const tip=new THREE.Mesh(this.poisonGeometry,this.poisonMaterial); tip.position.z=.38; object.add(tip);}
         if (projectile.kind === 'bolt' && projectile.owner !== 'player') {
           const head = object; object = new THREE.Group(); object.add(head);
-          head.scale.set(2, 2, 5);
-          const ribbon = new THREE.Mesh(this.ribbonGeometry, this.ribbonMaterial); object.add(ribbon);
+          if(projectile.damageType==='burn')head.scale.setScalar(3.2);else head.scale.set(2,2,5);
+          const ribbon = new THREE.Mesh(this.ribbonGeometry,projectile.damageType==='burn' ? this.fireRibbonMaterial : this.ribbonMaterial); object.add(ribbon);
         } else if (projectile.kind === 'bolt') object.scale.set(projectile.owner !== 'player' ? 2 : 1, projectile.owner !== 'player' ? 2 : 1, projectile.owner !== 'player' ? 5 : 2.5);
         this.root.add(object); this.objects.set(projectile.id,object);
       }
@@ -65,7 +70,7 @@ export class ProjectileVisuals {
     }
   }
   clear(): void { disposeSceneInstances(this.root); this.root.clear(); this.objects.clear(); this.liveIds.clear(); this.ribbonClock.value = this.previousRibbonClock.value = 0; }
-  dispose(): void { this.disposed=true; this.clear(); this.root.removeFromParent(); this.arrows?.release(); this.poisonGeometry.dispose(); this.poisonMaterial.dispose(); this.boltGeometry.dispose(); this.boltMaterial.dispose(); this.enemyBoltMaterial.dispose(); this.ribbonGeometry.dispose(); this.ribbonMaterial.dispose(); }
+  dispose(): void { this.disposed=true; this.clear(); this.root.removeFromParent(); this.arrows?.release(); this.poisonGeometry.dispose(); this.poisonMaterial.dispose(); this.boltGeometry.dispose(); this.boltMaterial.dispose(); this.enemyBoltMaterial.dispose(); this.fireMaterial.dispose(); this.fireRibbonMaterial.dispose(); this.ribbonGeometry.dispose(); this.ribbonMaterial.dispose(); }
 }
 
 /** A small hand charge and release flash read the cast clock without awarding or firing anything. */
@@ -81,6 +86,7 @@ export class CasterVisuals {
   sync(state: Encounter, release: number, dt: number, visible: boolean): void {
     const enemy = state.enemies[this.id];
     if (!visible || !enemy || !enemy.home || enemy.hp <= 0 || state.phase === 'lost') { this.clear(); return; }
+    this.material.color.set(enemy.damageType==='burn' ? '#ffc477' : '#b0eff4');
     const casting = enemy.attackTime >= 0;
     if (!casting) this.released = false;
     else if (enemy.contactIndex > 0 && !this.released) { this.flash = .12; this.released = true; }

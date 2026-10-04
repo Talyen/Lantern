@@ -93,3 +93,9 @@ The owner selected one stationary lantern with subtle flame variation for startu
 ## Live mastery progression — October 3, 2026
 
 The requested Sword/Bow mastery and Axe kit replace the October 2 placeholder availability for those tracks. Sword/Bow’s six major positions follow learning order (Basic I, Skill I, Basic II, Ultimate I, Skill II, Ultimate II); ten chronological passives use real automatic benefits. Axe has live Basic, Crushing Blow and earned Berserking nodes. Locked actions remain inspectable and assignment follows actual unlocks, with earned actions filling an empty slot safely. [Weapon mastery](../EQUIPMENT.md#sword-and-bow-mastery) and [the adopted brief](concepts/skills-horizontal/BRIEF.md#october-3-mastery-implementation) own values and behavior. Other undefined nodes retain proposed thresholds; complete-adventure pacing remains unevaluated.
+
+## Smithing — October 3, 2026
+
+Owner selected a starter profession offering predictable alternatives from existing item identities, an immediately available forge/anvil, additional Iron deposits split between Homestead and Clearing, raw material costs and level-unlocked recipes without discounts. Recipe knowledge stays outside Skills, whose starter major/minor nodes activate automatically and provide thematic practical benefits rather than XP or trivial duration bonuses.
+
+Selected [A — Workshop sheet](concepts/smithing/README.md): learned-only Forge list, Reclaim tab, left selection/right detail, level/XP header, no next recipe catalogue. Forging is two foreground seconds, cancellable without cost, consuming Bag/Stash materials with Bag-only output. Reclaim is immediate and permanent without confirmation or Undo, with matching guaranteed returns, a little XP, equipped exclusion and cleared selection. [Smithing](../SMITHING.md) records adopted tuning and owners. Original ImageGen concepts guide hierarchy; existing runtime item art and DOM controls supply the actual interface.

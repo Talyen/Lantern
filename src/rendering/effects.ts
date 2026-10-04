@@ -137,9 +137,9 @@ export class CoreEffects {
     return () => { const index = this.emitters.indexOf(emitter); if (index >= 0) this.emitters.splice(index, 1); };
   }
   private visible(object: THREE.Object3D): boolean { for (let o: THREE.Object3D | null = object; o; o = o.parent) if (!o.visible) return false; return true; }
-  burst(kind: 'hit' | 'sparks' | 'debris' | 'chips', position: THREE.Vector3, count = 14): void {
+  burst(kind: 'hit' | 'sparks' | 'debris' | 'chips' | 'fire', position: THREE.Vector3, count = 14): void {
     if (!this.enabled || this.paused || this.disposed || (!this.atmosphericParticles && atmosphericKinds.has(kind))) return;
-    for (let i = 0; i < count; i++) this.spawn(kind, position.x, position.y + 0.9, position.z);
+    for (let i = 0; i < count; i++) this.spawn(kind, position.x, position.y + (kind==='fire' ? 0 : .9), position.z);
   }
   private spawn(kind: ParticleKind, x: number, y: number, z: number): void {
     const p = this.pools.get(kind)!;

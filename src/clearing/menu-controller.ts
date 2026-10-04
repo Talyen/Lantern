@@ -1,3 +1,4 @@
+import type { SmithingPanel } from '../ui/smithing-panel';
 import type { ShopMenu } from '../ui/shop';
 import type { AdventureMenus } from '../ui/adventure';
 import type { CombatUI } from '../ui/combat';
@@ -5,6 +6,7 @@ import type { KeybindingsMenu } from '../ui/keybindings';
 import type { Options } from '../ui/options';
 
 type Menus = {
+  readonly smithing: Pick<SmithingPanel, 'paused' | 'close'>;
   readonly shop: Pick<ShopMenu, 'paused' | 'close'>;
   readonly adventure: Pick<AdventureMenus, 'paused' | 'close' | 'openInventory'>;
   readonly skills: Pick<CombatUI, 'paused' | 'close' | 'open'>;
@@ -18,11 +20,12 @@ export class MenuController {
 
   get paused(): boolean {
     const { adventure, skills, bindings, options, shop } = this.menus;
-    return Boolean(adventure.paused || shop.paused || skills.paused || bindings.paused || options?.paused);
+    return Boolean(this.menus.smithing.paused || adventure.paused || shop.paused || skills.paused || bindings.paused || options?.paused);
   }
 
   close(): void {
     const { adventure, skills, bindings, options, shop } = this.menus;
+    if (this.menus.smithing.paused) this.menus.smithing.close();
     if (bindings.paused) bindings.close();
     if (skills.paused) skills.close();
     if (adventure.paused) adventure.close();

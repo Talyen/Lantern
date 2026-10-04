@@ -1,3 +1,6 @@
+import type { DamageType } from './damage';
+import { smithing } from './smithing';
+import { skillLevel } from './skills';
 import { axeProgression } from './abilities';
 import type { Weapon } from './equipment';
 import { armoredDamage } from './combat-stats';
@@ -7,7 +10,7 @@ import { enemyAttackDamage, type ActorId, type Encounter, type EncounterEvent, t
 /** Damage owns interruption and finite proficiency credit; presentation cannot decide outcomes. */
 export function hit(state: Encounter, actor: ActorId, timing: Timings, events: EncounterEvent[], source?: Weapon, incoming?: {
   x:number; z:number; melee?:ActorId;
-}, impactOffset=0, rawDamage=enemyAttackDamage, origin?:Extract<EncounterEvent,{type:'impact'}>['origin'], periodic=false): void {
+}, impactOffset=0, rawDamage=enemyAttackDamage, origin?:Extract<EncounterEvent,{type:'impact'}>['origin'], periodic=false, damageType:DamageType=source==='staff' ? 'nature' : 'physical'): void {
   const immunity = impactOffset < state.dodgeFrameOffset ? state.invulnerabilityBeforeDodge : state.invulnerability;
   const target = actor === 'player' ? state.player : state.enemies[actor];
   if (target.hp <= 0 || actor === 'player' && immunity > impactOffset) return;
@@ -21,11 +24,12 @@ export function hit(state: Encounter, actor: ActorId, timing: Timings, events: E
     state.player.yaw=Math.atan2(dx,dz);
     state.player.attackTime=0; state.player.contactIndex=0;
     state.player.lock=action.duration; state.attackCooldown=action.duration;
-    events.push({type:'impact',actor,weapon:source ?? null,damage:0,position:{x:target.x,y:target.y,z:target.z},blocked:true,lethal:false},
+    events.push({type:'impact',actor,weapon:source ?? null,damage:0,damageType,position:{x:target.x,y:target.y,z:target.z},blocked:true,lethal:false},
       {type:'animation',actor:'player',motion:'riposte'}, {type:'action',actor:'player',action:'attack',weapon:'sword'});
     return;
   }
-  let damage=actor === 'player' ? armoredDamage(rawDamage,state.stats.armor) : rawDamage;
+  let damage=actor === 'player' && !periodic ? armoredDamage(rawDamage,state.stats.armor) : rawDamage;
+  if(actor==='player' && damageType==='burn' && skillLevel(state.proficiency.smithing ?? 0,'smithing')>=smithing.heatLevel)damage*=1-smithing.heatResistance;
   const blocked=actor === 'player' && state.blocking && impactOffset>=state.blockFrameOffset && frontal;
   if (blocked) damage*=.5;
   const beforeHp=target.hp;
@@ -50,7 +54,7 @@ export function hit(state: Encounter, actor: ActorId, timing: Timings, events: E
     if (impactOffset<state.dodgeFrameOffset) state.invulnerabilityBeforeDodge=state.invulnerability;
   }
   if (!periodic) events.push({type:'hit',actor});
-  events.push({type:'impact',actor,weapon:source ?? null,damage,position:{x:target.x,y:target.y,z:target.z},blocked,lethal:target.hp<=0,...(periodic ? {periodic:true} : {}),...(origin ? {origin} : {})});
+  events.push({type:'impact',actor,weapon:source ?? null,damage,damageType,position:{x:target.x,y:target.y,z:target.z},blocked,lethal:target.hp<=0,...(periodic ? {periodic:true} : {}),...(origin ? {origin} : {})});
   if (target.hp<=0) {
     const won=actor!=='player';
     if (enemy) enemy.poison=undefined;

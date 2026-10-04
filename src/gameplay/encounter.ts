@@ -38,14 +38,14 @@ export function createEncounter(phase: Phase = 'loading', layout: EncounterLayou
   const definitions = layout.enemies ?? (['enemy', 'caster'] as const).map(id => ({
     id, kind: id === 'caster' ? 'caster' as const : enemyKind, rig: 'enemy' as const,
     loadout: { main: id === 'caster' || enemyKind === 'caster' ? 'staff' as const : 'axe' as const, off: null },
-    ...layout[id],
+    position:layout[id]?.position, yaw:layout[id]?.yaw, damageType:layout[id]?.damageType,
   }));
   const enemyIds = definitions.map(enemy => enemy.id);
   const enemies = Object.fromEntries(definitions.map((definition, index): [EnemyId, EnemyState] => {
     const home = definition.position ? { position: definition.position, yaw: definition.yaw! } : undefined;
     const spawn = home ?? layout.player;
     return [definition.id, { ...actor(...spawn.position, home && phase !== 'loading' ? enemyMaxHealth : 0, 1.45),
-        yaw: spawn.yaw, kind: definition.kind, rig: definition.rig, loadout: definition.loadout,
+        yaw: spawn.yaw, damageType: definition.damageType ?? (definition.kind==='caster' ? definition.rig==='skeleton' ? 'freeze' : 'burn' : 'physical'), kind: definition.kind, rig: definition.rig, loadout: definition.loadout,
         home, engaged: false, returning: false, lowestHp: enemyMaxHealth, cooldown: .8 + (layout.enemies ? index * .18 : 0) }];
   }));
   const stats = resolveCombatStats([{ id: 'starter', item: 'axe', quantity: 1, slot: 'main', x: 0, y: 0 }]);

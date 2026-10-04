@@ -30,6 +30,7 @@ export type Chest = RewardMetadata & { id: string; prop: string; position: Point
 export type Campfire = { id: string; name: string; position: Point; arrival: Spawn; heals?: boolean };
 export type AreaDefinition = {
   version: 1; id: string; name: string; ambience?: 'woodland' | 'quiet'; level?: number; shop?: Shop; legacy?: boolean; terminal?: boolean; chests?: Chest[]; enemyEquipment?: Partial<Record<EnemyId,ItemId[]>>; kind?: 'safe' | 'encounter'; campfires?: Campfire[]; portalArrival?: Spawn;
+  smithing?: { prop: string; position: Point };
   shelter?: { position: Point; yaw: number; stash: Point };
   envelope: { width: number; depth: number; apron: number; yaw: number; reference: { width: number; height: number; zoom: number }; screen: [number, number] };
   layout: EncounterLayout; traversal?: Traversal; seed: number; props: Placement[];

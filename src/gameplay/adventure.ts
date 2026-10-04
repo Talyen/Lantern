@@ -8,12 +8,13 @@ import {
   type DropOptions, type GroundDrop, type GroundItem, type LootEvent,
 } from './ground-loot';
 import { purchase, sale, repurchase } from './shop-transactions';
+import { forged, reclaimed, learnedRecipes, smithing, type SmithingContainer } from './smithing';
 import { canRepairShelter, restoredShelter, validatedContainers } from './homestead-transactions';
 import { validBar, abilityUnlocked, weaponTrees, axeProgression, type AbilityId, type ActionBar, type WeaponSet } from './abilities';
 import { createEncounter, healthRegeneration, inCombat, type Encounter, type EnemyId } from './encounter';
 import { near, type Point, type Spawn } from './area';
 import type { AreaDefinition, Campfire, Chest } from '../levels/types';
-import { isEquipmentSlot } from './equipment';
+import { isEquipmentSlot, equipmentCatalog, type ItemId } from './equipment';
 import { character, type CharacterSave } from './character';
 import { CharacterPersistence, type StorageSource } from './character-persistence';
 export { characterSaveKey } from './character-save';
@@ -291,6 +292,30 @@ export class Adventure {
     this.assertShop(encounter, area);
     Object.assign(this.character, repurchase(this.character, id, this.newId));
     this.save();
+  }
+
+  private assertSmithing(encounter: Encounter, area: AreaDefinition): void {
+    if (this.currentArea!==homeArea || area.id!==homeArea || area.kind!=='safe' || !area.smithing || encounter.player.hp<=0
+      || encounter.player.lock>0 || encounter.dodgeRemaining>0 || this.castRemaining>0
+      || !['playing','won'].includes(encounter.phase) || !near([encounter.player.x,encounter.player.z],area.smithing.position,smithing.reach))
+      throw new Error('Smithing is out of reach.');
+  }
+
+  private commitSmithing(next: ReturnType<typeof forged>): string[] {
+    const learned=new Set(learnedRecipes(this.character.xp.smithing).map(recipe=>recipe.item));
+    Object.assign(this.character,next);
+    this.save();
+    return learnedRecipes(this.character.xp.smithing).filter(recipe=>!learned.has(recipe.item)).map(recipe=>equipmentCatalog[recipe.item].name);
+  }
+
+  forge(encounter:Encounter,area:AreaDefinition,item:ItemId):string[] {
+    this.assertSmithing(encounter,area);
+    return this.commitSmithing(forged(this.character,item,this.newId));
+  }
+
+  reclaim(encounter:Encounter,area:AreaDefinition,id:string,container:SmithingContainer):string[] {
+    this.assertSmithing(encounter,area);
+    return this.commitSmithing(reclaimed(this.character,id,container,this.newId));
   }
 
   grantHarvest(item: 'wood' | 'stone' | 'iron', quantity: number, skill: GatheringSkill, xpPerUnit: number, position: Point, source?: RewardSource): void {

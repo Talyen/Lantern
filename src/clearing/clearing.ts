@@ -4,6 +4,7 @@ import { abilities, type ActionBar } from '../gameplay/abilities';
 import { bindingLabel } from '../input/bindings';
 import { loadingScreen } from '../ui/loading';
 import { recordFailure } from '../diagnostics/report';
+import { SmithingPanel } from '../ui/smithing-panel';
 import { ShopMenu } from '../ui/shop';
 import { ClearingDiagnostics } from './diagnostics';
 import { disposeSceneResources, sceneTextures } from '../assets/resource-ownership';
@@ -265,6 +266,14 @@ const shop = new ShopMenu({
   buyBack: id => { adventure.buyBack(encounter, currentArea, id); syncAdventure(); },
 });
 releases.push(() => shop.dispose());
+const smithingMenu = new SmithingPanel({
+  character:()=>adventure.character, backgrounded:hidden,
+  clear:clearInput, focus:()=>renderer.domElement.focus(), sound:cue=>audio.play(cue),
+  forge:item=>{const learned=adventure.forge(encounter,currentArea,item);inventory.syncLoadout();syncAdventure();return learned;},
+  reclaim:(id,container)=>{const learned=adventure.reclaim(encounter,currentArea,id,container);inventory.syncLoadout();syncAdventure();return learned;},
+});
+releases.push(()=>smithingMenu.dispose());
+
 const lootLabels = new LootLabels(mount, selectLoot);
 releases.push(() => lootLabels.dispose());
 function selectLoot(id: string): void {
@@ -331,6 +340,7 @@ const menuController = new MenuController(
   {
     get adventure() { return menus; },
     get shop() { return shop; },
+    get smithing() { return smithingMenu; },
     get skills() { return combatUI; },
     get bindings() { return bindingsMenu; },
     get options() { return options; },
@@ -340,6 +350,7 @@ const menuController = new MenuController(
 const interactionActions = new InteractionActions(adventure, encounter, menus, gathering, audio, {
   area: () => currentArea, definitions: () => definitions, paused, changeArea, syncAdventure,
   openShop: () => { shop.update(adventure.character); shop.open(); },
+  openSmithing: () => smithingMenu.open(),
 });
 function dispatchInput(action: InputAction): void {
   if (loadingScreen.blocking || transitioning) { clearInput(); return; }

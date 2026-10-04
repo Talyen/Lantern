@@ -1,3 +1,4 @@
+import { isDamageType } from '../gameplay/damage.ts';
 import { isItemId, weaponFamily } from '../gameplay/equipment.ts';
 import { resolveAreaLighting } from './lighting.ts';
 import { resolveLocalLight } from './local-lighting.ts';
@@ -23,6 +24,7 @@ export function validateAreas(input: Record<string, AreaDefinition>): string[] {
       reward(area);
       for (const spawn of [...(area.layout.enemies ?? []), area.layout.enemy, area.layout.caster]) if (spawn) {
         reward(spawn);
+        if(spawn.damageType!==undefined && !isDamageType(spawn.damageType)) fail('unknown enemy damage type');
         if (spawn.humanoid !== undefined && typeof spawn.humanoid !== 'boolean') fail('humanoid eligibility must be boolean');
         if (spawn.rank !== undefined && !['normal','elite','boss'].includes(spawn.rank)) fail('unknown enemy reward rank');
         if (spawn.equipmentDrops !== undefined) {
@@ -70,6 +72,7 @@ export function validateAreas(input: Record<string, AreaDefinition>): string[] {
           || !Number.isFinite(merchant.yaw) || !Number.isFinite(merchant.height) || merchant.height <= 0)
           fail('invalid Homestead shop');
       }
+      if (area.smithing && (area.id!=='homestead' || area.kind!=='safe' || !area.props.some(prop=>prop.id===area.smithing!.prop) || !finite(area.smithing.position,2) || boundaryDistance(boundary,area.smithing.position)<0)) fail('invalid Homestead smithing station');
       if (area.shelter && (!finite(area.shelter.position,2) || !finite(area.shelter.stash,2) || !Number.isFinite(area.shelter.yaw) || boundaryDistance(boundary,area.shelter.position)<0 || boundaryDistance(boundary,area.shelter.stash)<0)) fail('invalid shelter position');
       if (area.portalArrival && (!finite(area.portalArrival.position, 2) || !Number.isFinite(area.portalArrival.yaw) || boundaryDistance(boundary, area.portalArrival.position) < 0)) fail('invalid portal arrival');
       for (const region of area.reserved) { id(region.id); if (!finite(region.center, 2) || !Number.isFinite(region.radius) || region.radius <= 0) fail('invalid reserved region'); }

@@ -122,7 +122,8 @@
             "hearth-ring",
             "amber-amulet"
           ]
-        }
+        },
+        "damageType": "freeze"
       }
     ]
   },

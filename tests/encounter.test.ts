@@ -332,7 +332,7 @@ test('a caster plants its feet, commits aim, releases one bolt and exposes its r
   expect(state.projectiles).toHaveLength(0);
   stepEncounter(state,.05,idle,castTiming);
   expect(state.projectiles).toHaveLength(1);
-  expect(state.projectiles[0]).toMatchObject({owner:'enemy',kind:'bolt',dx:0,dz:1});
+  expect(state.projectiles[0]).toMatchObject({owner:'enemy',kind:'bolt',damageType:'burn',dx:0,dz:1});
   expect([state.enemies.enemy.x,state.enemies.enemy.z,state.enemies.enemy.yaw]).toEqual([0,0,0]);
   for(let i=0;i<16;i++) stepEncounter(state,.05,idle,castTiming);
   expect(state.enemies.enemy.attackTime).toBe(-1);
@@ -437,7 +437,7 @@ test('raider commitment preserves a late nonlethal swing, allows early/recovery 
   lethal.player.attackTime=.25; lethal.player.yaw=0;
   const events=stepEncounter(lethal,.02,idle,clocks);
   expect(lethal.enemies.enemy.attackTime).toBe(-1);
-  expect(events).toContainEqual({type:'impact',actor:'enemy',weapon:'axe',blocked:false,lethal:true,damage:50,position:{x:0,y:0,z:1.4}});
+  expect(events).toContainEqual({type:'impact',actor:'enemy',weapon:'axe',blocked:false,lethal:true,damage:50,damageType:'physical',position:{x:0,y:0,z:1.4}});
   lethal.enemies.enemy.x = 99;
   expect(events.find(event => event.type === 'impact')).toMatchObject({ position: { x: 0 } });
   expect(lethal.player.hp).toBe(100);

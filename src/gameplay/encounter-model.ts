@@ -1,3 +1,4 @@
+import type { DamageType } from './damage';
 import type { SkillXP } from './skills';
 import type { AbilityId, WeaponSet } from './abilities';
 import type { Loadout, Weapon } from './equipment';
@@ -23,6 +24,7 @@ export type ActorState = {
 };
 export type EnemyState = ActorState & {
   kind: EnemyKind;
+  damageType: DamageType;
   rig: EnemyRig;
   loadout: Loadout;
   home?: Spawn;
@@ -42,6 +44,7 @@ export type Projectile = {
   id: number;
   owner: ActorId;
   kind: 'arrow' | 'bolt';
+  damageType?: DamageType;
   x: number;
   y: number;
   z: number;
@@ -74,6 +77,7 @@ export type PendingInput = {
   kind: 'swap';
 });
 export type PlayerAction = {
+  damageType?: DamageType;
   impactId?: number;
   committed?: boolean;
   mana?: number;
@@ -98,7 +102,7 @@ export type Encounter = {
   ultimateCooldown: number;
   berserkingRemaining: number;
   riposte?: {remaining:number; action:PlayerAction; frameOffset?:number};
-  rains: {id:number; x:number; y:number; z:number; age:number; damage:number; pulse:number; rate:number; firstStep?:number}[];
+  rains: {damageType?:DamageType; id:number; x:number; y:number; z:number; age:number; damage:number; pulse:number; rate:number; firstStep?:number}[];
   layout: EncounterLayout;
   player: ActorState;
   enemyIds: EnemyId[];
@@ -192,6 +196,7 @@ export type EncounterEvent = {
   ability?: AbilityId;
 } | {
   type: 'impact';
+  damageType?: DamageType;
   origin?: { actor: ActorId; ability: AbilityId | null; id: number };
   actor: ActorId;
   damage: number;
@@ -204,6 +209,7 @@ export type EncounterEvent = {
   type: 'projectileImpact';
   owner?: ActorId;
   kind: 'arrow' | 'bolt';
+  damageType?: DamageType;
   position: {
     x: number;
     y?: number;

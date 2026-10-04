@@ -1,3 +1,4 @@
+import { Vector3 } from 'three';
 import { abilities } from '../gameplay/abilities';
 import type { GameplayAudio } from '../audio/gameplay';
 import { type ActorId, type Encounter, type EncounterEvent } from '../gameplay/encounter';
@@ -53,14 +54,14 @@ export class EncounterPresentation {
             const dx = source ? target.x - source.x : Math.sin(target.yaw), dz = source ? target.z - source.z : Math.cos(target.yaw), length = Math.hypot(dx, dz) || 1;
             effects?.fluids.blood(event.position.x, event.position.y, event.position.z, dx / length, dz / length, !!skill || event.lethal);
           }
-          if (event.weapon === 'staff' && event.actor === 'player' && !event.blocked && event.damage > 0) effects?.fluids.magic(event.position.x, event.position.y + .85, event.position.z);
+          if (event.weapon === 'staff' && event.actor === 'player' && !event.blocked && event.damage > 0) event.damageType==='burn' ? effects?.burst('fire',new Vector3(event.position.x,event.position.y+.85,event.position.z),9) : effects?.fluids.magic(event.position.x, event.position.y + .85, event.position.z);
           effects?.burst(event.blocked ? 'sparks' : 'hit', position, event.blocked ? 7 : skill ? 16 : event.weapon === 'axe' ? 11 : 8);
           break;
         }
         // These events are presented by GameplayAudio and the HUD below.
         case 'action': if (event.action==='berserking') this.context.effects()?.burst('sparks',this.actors.player.root.position,12); break;
         case 'projectileImpact':
-          if (event.kind === 'bolt' && event.owner && event.owner !== 'player') this.context.effects()?.fluids.magic(event.position.x, event.position.y ?? .85, event.position.z);
+          if (event.kind === 'bolt' && event.owner && event.owner !== 'player') event.damageType==='burn' ? this.context.effects()?.burst('fire',new Vector3(event.position.x,event.position.y ?? .85,event.position.z),9) : this.context.effects()?.fluids.magic(event.position.x, event.position.y ?? .85, event.position.z);
           break;
         case 'abilityCommitted': case 'abilityCancelled': case 'label': case 'outcome': break;
       }

@@ -34,6 +34,10 @@ The repaired shelter exposes a chest and a persistent 12 × 8 stash. Click the c
 
 Entering the repaired shelter's 3 m radius automatically refreshes Rested to 30 active-play minutes. Repair completion also grants it immediately. It adds 10% skill XP through the shared XP owner, including Axe Combat; it adds no damage or gathering yield. Refresh replaces remaining duration without stacking or waiting. The Inventory redesign removed its Rested footer; a dedicated visible Rested indicator remains [design work](ui/SCREEN_CATALOG.md#player-surfaces). Paused/loading/offline time does not count; remaining time checkpoints every five active seconds and flushes on normal page exit.
 
+## Smithing support
+
+[Smithing](SMITHING.md) uses existing Iron and Wood directly, with a workshop available before shelter repair. Homestead now has one Iron deposit and Clearing has two, reusing the same novice yield and renewal rules. Reclaimed materials are ordinary inventory supplies and never award gathering XP.
+
 ## Persistence and acceptance
 
 The [current character save](RUNTIME.md#save-recovery) retains item IDs, overflow recovery entries, equipment, all skill XP, discoveries, claims, materials, stash, restoration and remaining Rested time. Revision 9 adds ground-drop XP provenance, partial harvest progress, depletion and renewal deadlines in the outing snapshot. Relaunch preserves these fields; development authoring’s Restart resets the outing while retaining character progress.

@@ -83,7 +83,8 @@
           "quilted-coat",
           "amber-amulet"
         ]
-      }
+      },
+      "damageType": "burn"
     }
   },
   "seed": 137,
@@ -2516,6 +2517,35 @@
         "color": "#77776a",
         "surface": "stone"
       }
+    },
+    {
+      "id": "iron-outcrop-east",
+      "position": [
+        7.7,
+        0,
+        -0.6
+      ],
+      "yaw": -0.25,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "primitive": {
+        "kind": "pebble",
+        "size": [
+          0.65
+        ],
+        "color": "#746052",
+        "surface": "stone"
+      },
+      "harvest": {
+        "kind": "iron",
+        "radius": 0.65,
+        "level": 1
+      },
+      "castShadow": true,
+      "receiveShadow": true
     }
   ],
   "scatter": [],
@@ -3373,6 +3403,20 @@
           0.68
         ],
         "yaw": -0.7853981633974483
+      },
+      {
+        "id": "iron-outcrop-east",
+        "position": [
+          7.7,
+          0.35,
+          -0.6
+        ],
+        "size": [
+          1.1,
+          0.7,
+          1.1
+        ],
+        "yaw": 0
       }
     ]
   },

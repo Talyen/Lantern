@@ -24,7 +24,8 @@ export const itemDefinitions: Record<HandItem,ItemDefinition> = {
 };
 
 export type Bonuses = Partial<Record<'armor' | 'health' | 'mana' | 'manaRegen' | 'damage' | 'attackRate' | 'moveSpeed', number>>;
-export type EquipmentDefinition = { name: string; slot: 'main' | 'off' | 'ring' | Exclude<SharedSlot,'ring-left'|'ring-right'>; width: number; height: number; bonuses: Bonuses; weapon?: { family: Weapon; damage: number; rate: number; reach: number } };
+export type SalvageReturns = Partial<Record<'iron' | 'wood' | 'gold',number>>;
+export type EquipmentDefinition = { salvage?: SalvageReturns; name: string; slot: 'main' | 'off' | 'ring' | Exclude<SharedSlot,'ring-left'|'ring-right'>; width: number; height: number; bonuses: Bonuses; weapon?: { family: Weapon; damage: number; rate: number; reach: number } };
 /** Weapon identities must provide main-hand combat values; other gear cannot claim a hand slot. */
 type EquipmentCatalog = {
   [Id in ItemId]: EquipmentDefinition & (
@@ -37,21 +38,21 @@ type EquipmentCatalog = {
 };
 /** Fixed identities, footprints and properties; no generated affixes or stored stat copies. */
 export const equipmentCatalog: EquipmentCatalog = {
-  axe: {name:'Axe',slot:'main',width:2,height:3,bonuses:{},weapon:{family:'axe',damage:50,rate:1,reach:1.95}},
-  sword: {name:'Sword',slot:'main',width:1,height:3,bonuses:{},weapon:{family:'sword',damage:50,rate:1,reach:1.95}},
-  'iron-broadsword': {name:'Iron Broadsword',slot:'main',width:1,height:3,bonuses:{},weapon:{family:'sword',damage:70,rate:.8,reach:2.2}},
+  axe: {salvage:{iron:1,wood:1},name:'Axe',slot:'main',width:2,height:3,bonuses:{},weapon:{family:'axe',damage:50,rate:1,reach:1.95}},
+  sword: {salvage:{iron:1},name:'Sword',slot:'main',width:1,height:3,bonuses:{},weapon:{family:'sword',damage:50,rate:1,reach:1.95}},
+  'iron-broadsword': {salvage:{iron:2},name:'Iron Broadsword',slot:'main',width:1,height:3,bonuses:{},weapon:{family:'sword',damage:70,rate:.8,reach:2.2}},
   bow: {name:'Bow',slot:'main',width:2,height:4,bonuses:{},weapon:{family:'bow',damage:45,rate:1,reach:12}},
   'yew-longbow': {name:'Yew Longbow',slot:'main',width:2,height:4,bonuses:{},weapon:{family:'bow',damage:60,rate:.85,reach:16}},
   staff: {name:'Staff',slot:'main',width:2,height:4,bonuses:{},weapon:{family:'staff',damage:50,rate:1,reach:12}},
-  shield: {name:'Shield',slot:'off',width:2,height:3,bonuses:{}},
-  'guard-helm': {name:'Guard Helm',slot:'helmet',width:2,height:2,bonuses:{armor:8}},
-  'weathered-mail': {name:'Weathered Mail',slot:'body',width:2,height:3,bonuses:{armor:12}},
+  shield: {salvage:{iron:1,wood:1},name:'Shield',slot:'off',width:2,height:3,bonuses:{}},
+  'guard-helm': {salvage:{iron:1},name:'Guard Helm',slot:'helmet',width:2,height:2,bonuses:{armor:8}},
+  'weathered-mail': {salvage:{iron:2},name:'Weathered Mail',slot:'body',width:2,height:3,bonuses:{armor:12}},
   'quilted-coat': {name:'Quilted Coat',slot:'body',width:2,height:3,bonuses:{mana:20,manaRegen:2}},
   'duelist-gloves': {name:'Duelist Gloves',slot:'gloves',width:2,height:2,bonuses:{attackRate:.08}},
   'trail-boots': {name:'Trail Boots',slot:'boots',width:2,height:2,bonuses:{moveSpeed:.05}},
-  'iron-signet': {name:'Iron Signet',slot:'ring',width:1,height:1,bonuses:{damage:.1}},
-  'hearth-ring': {name:'Hearth Ring',slot:'ring',width:1,height:1,bonuses:{health:15}},
-  'amber-amulet': {name:'Amber Amulet',slot:'amulet',width:1,height:1,bonuses:{mana:20}},
+  'iron-signet': {salvage:{iron:1},name:'Iron Signet',slot:'ring',width:1,height:1,bonuses:{damage:.1}},
+  'hearth-ring': {salvage:{gold:8},name:'Hearth Ring',slot:'ring',width:1,height:1,bonuses:{health:15}},
+  'amber-amulet': {salvage:{gold:10},name:'Amber Amulet',slot:'amulet',width:1,height:1,bonuses:{mana:20}},
   'leather-belt': {name:'Leather Belt',slot:'belt',width:2,height:1,bonuses:{health:10}},
 };
 export const itemIds = Object.keys(equipmentCatalog) as ItemId[];
