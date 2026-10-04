@@ -66,8 +66,8 @@ body { background: #171411; }
 .review-secondary-actions { display: flex; gap: 8px; }
 .review-secondary-actions button { font-size: 11px; flex: 1; }
 .review-feedback:empty { display: none; }
-.review-feedback { color: #c0cd9b; min-height: 20px; font-size: 12px; }
-.review-feedback[data-error="true"] { color: #e3a38f; }
+.review-feedback, #review-save-status { color: #c0cd9b; min-height: 20px; font-size: 12px; }
+.review-feedback[data-error="true"], #review-save-status[data-error="true"] { color: #e3a38f; }
 .review-details section, #asset-technical { border-top: 1px solid var(--review-border); padding-top: 16px; }
 .review-details details { margin-bottom: 10px; }
 .review-details > .review-info { margin-bottom: 0; }

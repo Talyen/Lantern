@@ -1,6 +1,7 @@
 import { parseJson, isRecord } from '../../data/json';
 import { parseReviewSnapshot, parseReviews, effectiveReview, stateLabel, reviewCategories, reviewStates, type ReviewAsset, type ReviewAction, type ReviewSnapshot, type ReviewState } from '../../assets/asset-review';
 import { ReviewStage } from './review-stage';
+import { ReviewSaveQueue, type SavedReviews } from './review-save-queue';
 import '../../ui/ui-tokens.css';
 import './asset-review-lab.css';
 
@@ -26,6 +27,7 @@ app.innerHTML = `<main class="asset-review">
   <aside class="review-details"><div class="review-decision"><div class="review-decision-header"><h2>Decision</h2><span id="asset-state" class="review-badge"></span></div><p id="decision-detail"></p>
     <div class="review-actions"><button id="approve-asset" class="approve-action">Approve</button><button id="deny-asset">Deny</button><button id="delete-asset" class="delete-action">Mark for deletion</button><button id="skip-asset">Skip</button></div>
     <div class="review-secondary-actions"><button id="reset-asset">Set unreviewed</button><button id="deny-family">Deny family</button></div>
+    <div id="review-save-status" role="status" aria-live="polite"></div><button id="review-retry" hidden>Retry saving</button><button id="review-discard" hidden>Discard unsaved decisions</button>
     <p id="review-feedback" class="review-feedback" role="status" aria-live="polite"></p>
     </div><details class="review-info" id="review-info" open><summary>Notes & usage</summary><div class="review-info-content">
     <label>Notes<textarea id="asset-notes" rows="3" maxlength="4000" placeholder="Optional review notes"></textarea></label>
@@ -40,6 +42,7 @@ const feedback = el('review-feedback'), stageStatus = el('stage-status');
 let snapshot: ReviewSnapshot, selected: ReviewAsset | undefined, mode: 'queue' | 'browse' = 'queue';
 let stage: ReviewStage | undefined, generation = 0, busy = true, previewReady = false, paused = false, limit = 100, stopped = false;
 const skipped = new Set<string>();
+let saves: ReviewSaveQueue | undefined;
 let lastSelection: { id: string; detailMs: number; renderMs: number; totalMs: number } | undefined;
 // Compact panes retain decisions beside the preview; secondary detail opens on demand.
 const compactPane = matchMedia('(max-width: 1100px)'), drawerPane = matchMedia('(max-width: 640px)');
@@ -67,32 +70,37 @@ app.addEventListener('keydown', event => {
 });
 
 const message = (text: string, error = false): void => { feedback.textContent = text; feedback.dataset.error = String(error); };
-async function request(path: string, action?: ReviewAction): Promise<unknown> {
-  const response = await fetch(`/__asset-review${path}`, action ? { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-lantern-review-token': snapshot.token }, body: JSON.stringify({ revision: snapshot.revision, action }) } : undefined);
+async function request(path: string, action?: ReviewAction, revision = snapshot?.revision): Promise<unknown> {
+  const response = await fetch(`/__asset-review${path}`, action ? { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-lantern-review-token': snapshot.token }, body: JSON.stringify({ revision, action }) } : undefined);
   const value = parseJson(await response.text());
   if (!response.ok) throw new Error(isRecord(value) && typeof value.error === 'string' ? value.error : `Review request failed (${response.status}).`);
   return value;
 }
 for (const input of [search, category, pack, usage, status, meshes, notes]) input.disabled = true;
 for (const id of ['mode-queue','mode-browse','review-reload','review-finish','approve-asset','deny-asset','delete-asset','skip-asset','reset-asset','deny-family']) el<HTMLButtonElement>(id).disabled = true;
+function familyDenied(asset: ReviewAsset): boolean {
+  return !!snapshot.reviews.familyDenials[asset.familyId] || !!saves?.pending.some(row => row.action.type === 'family-deny'
+    && snapshot.assets.find(candidate => candidate.id === row.action.id)?.familyId === asset.familyId);
+}
 function filtered(): ReviewAsset[] {
   const query = search.value.trim().toLowerCase();
   return snapshot.assets.filter(asset => (meshes.checked || asset.kind !== 'mesh')
     && (!query || `${asset.name} ${asset.id} ${asset.appearance}`.toLowerCase().includes(query))
     && (category.value === 'all' || asset.category === category.value) && (pack.value === 'all' || asset.pack === pack.value)
     && (usage.value === 'all' || usage.value === 'used' && asset.uses.length > 0 || usage.value === 'unused' && !asset.uses.length || usage.value === 'selected' && asset.selected || asset.uses.some(use => use.scene === usage.value))
-    && (mode === 'queue' ? effectiveReview(asset, snapshot.reviews).state === 'unreviewed' && !skipped.has(asset.id) : status.value === 'all' || effectiveReview(asset, snapshot.reviews).state === status.value))
+    && (mode === 'queue' ? effectiveReview(asset, snapshot.reviews).state === 'unreviewed' && !skipped.has(asset.id) && !saves?.has(asset.id) && !familyDenied(asset) : status.value === 'all' || effectiveReview(asset, snapshot.reviews).state === status.value))
     .sort((a, b) => mode === 'queue' && Boolean(a.uses.length) !== Boolean(b.uses.length) ? Number(Boolean(b.uses.length)) - Number(Boolean(a.uses.length)) : a.name.localeCompare(b.name) || a.appearance.localeCompare(b.appearance) || a.id.localeCompare(b.id));
 }
 function updateControls(): void {
-  const writable = snapshot.writable && !busy && !stopped && !!selected;
+  const writable = snapshot.writable && !!saves && !busy && !stopped && !!selected && !saves?.has(selected.id);
   for (const id of ['deny-asset','delete-asset','reset-asset','deny-family']) el<HTMLButtonElement>(id).disabled = !writable;
-  el<HTMLButtonElement>('approve-asset').disabled = !writable || !previewReady || !selected?.fingerprint || !!snapshot.reviews.familyDenials[selected.familyId];
+  el<HTMLButtonElement>('approve-asset').disabled = !writable || !previewReady || !selected?.fingerprint || familyDenied(selected);
+  el<HTMLButtonElement>('deny-family').disabled ||= !!saves?.pending.length;
   el<HTMLButtonElement>('skip-asset').disabled = busy || mode !== 'queue' || !selected;
-  el<HTMLButtonElement>('review-finish').disabled = busy || !snapshot.canFinish || !snapshot.writable || stopped;
+  el<HTMLButtonElement>('review-finish').disabled = busy || !!saves?.pending.length || !snapshot.canFinish || !snapshot.writable || stopped;
   for (const input of [search, category, pack, usage, status, meshes]) input.disabled = busy || stopped;
-  notes.disabled = busy || !snapshot.writable || !selected || stopped;
-  for (const id of ['mode-queue','mode-browse','review-reload','review-more']) el<HTMLButtonElement>(id).disabled = busy || stopped;
+  notes.disabled = busy || !snapshot.writable || !selected || stopped || !!selected && !!saves?.has(selected.id);
+  for (const id of ['mode-queue','mode-browse','review-reload','review-more']) el<HTMLButtonElement>(id).disabled = busy || stopped || id === 'review-reload' && !!saves?.pending.length;
 }
 function drawList(): void {
   const assets = filtered(), list = el('review-list'); list.replaceChildren();
@@ -102,20 +110,24 @@ function drawList(): void {
     const button = document.createElement('button'); button.className = 'review-list-row'; button.dataset.selected = String(asset.id === selected?.id); button.setAttribute('aria-current', String(asset.id === selected?.id)); button.disabled = busy;
     const name = document.createElement('strong'); name.textContent = asset.name;
     const caption = document.createElement('span'); caption.textContent = `${asset.appearance} · ${asset.pack.replaceAll('-', ' ')} · ${asset.kind} · ${asset.uses.length ? 'In use' : 'Unused'}`;
-    const badge = document.createElement('small'); badge.textContent = stateLabel(effectiveReview(asset, snapshot.reviews).state);
+    const badge = document.createElement('small'); badge.textContent = saves?.has(asset.id) ? 'Pending save' : stateLabel(effectiveReview(asset, snapshot.reviews).state);
     button.append(name, caption, badge); button.addEventListener('click', () => { choose(asset).catch((error: unknown) => message(String(error), true)); if (drawerPane.matches) setAssetDrawer(false); }); list.append(button);
   }
   el('review-more').hidden = assets.length <= limit;
   if (!assets.length) { const empty = document.createElement('p'); empty.className = 'review-empty'; empty.textContent = mode === 'queue' ? 'No assets need review in this selection. Browse to revisit decisions.' : 'No matching assets.'; list.append(empty); }
 }
-function drawDetails(): void {
+function drawDecision(): void {
   if (!selected) return;
   const asset = selected, decision = effectiveReview(asset, snapshot.reviews), previous = snapshot.reviews.decisions[asset.id];
-  el('asset-pack').textContent = `${asset.category} / ${asset.pack}`; el('asset-name').textContent = asset.name; el('asset-appearance').textContent = asset.appearance;
-  el('asset-state').textContent = stateLabel(decision.state); el('asset-state').dataset.state = decision.state;
-  el('decision-detail').textContent = decision.familyDenied ? 'Family denied. Clear the family denial to restore individual decisions.' : decision.changed ? 'Artwork changed since approval. Review this appearance again.' : previous ? `Saved ${new Date(previous.updatedAt).toLocaleDateString()}` : 'This appearance has not been reviewed.';
-  el('asset-id').textContent = asset.id; el('asset-build').textContent = asset.selected ? 'Selected for build staging.' : 'Not explicitly selected for build staging.';
+  el('asset-state').textContent = saves?.has(asset.id) ? 'Pending save' : stateLabel(decision.state); el('asset-state').dataset.state = decision.state;
+  el('decision-detail').textContent = saves?.has(asset.id) ? 'Decision pending save.' : decision.familyDenied ? 'Family denied. Clear the family denial to restore individual decisions.' : decision.changed ? 'Artwork changed since approval. Review this appearance again.' : previous ? `Saved ${new Date(previous.updatedAt).toLocaleDateString()}` : 'This appearance has not been reviewed.';
   el<HTMLButtonElement>('deny-family').textContent = decision.familyDenied ? 'Clear family denial' : 'Deny family';
+}
+function drawDetails(): void {
+  if (!selected) return;
+  const asset = selected; drawDecision();
+  el('asset-pack').textContent = `${asset.category} / ${asset.pack}`; el('asset-name').textContent = asset.name; el('asset-appearance').textContent = asset.appearance;
+  el('asset-id').textContent = asset.id; el('asset-build').textContent = asset.selected ? 'Selected for build staging.' : 'Not explicitly selected for build staging.';
   const uses = el('asset-uses'); uses.replaceChildren();
   const groups = new Map<string, typeof asset.uses>(); for (const use of asset.uses) { const key = use.sceneName; groups.set(key, [...(groups.get(key) ?? []), use]); }
   if (!groups.size) uses.textContent = 'No scene or gameplay references.';
@@ -137,51 +149,87 @@ async function choose(asset: ReviewAsset): Promise<void> {
   if (busy || stopped) return;
   const began = performance.now();
   const current = ++generation; selected = asset; previewReady = false; paused = false;
-  notes.value = snapshot.reviews.decisions[asset.id]?.notes ?? ''; el('asset-dimensions').textContent = ''; stageStatus.hidden = false; stageStatus.textContent = stage ? 'Loading prepared asset…' : stageStatus.textContent;
+  notes.value = saves?.pending.find(row => row.action.id === asset.id)?.action.notes ?? snapshot.reviews.decisions[asset.id]?.notes ?? ''; el('asset-dimensions').textContent = ''; stageStatus.hidden = false; stageStatus.textContent = stage ? 'Loading prepared asset…' : stageStatus.textContent;
   el('asset-pause').textContent = 'Pause';
   drawDetails(); drawList();
-  const detail = await request(`/asset?id=${encodeURIComponent(asset.id)}`);
-  if (current !== generation || stopped) return;
-  const detailEnded = performance.now();
-  const parsed = parseReviewSnapshot({ ...snapshot, assets: [detail] }).assets[0]; Object.assign(asset, parsed); selected = asset; drawDetails();
+  const prefetched = detailsAhead.get(asset.id);
+  const fresh = request(`/asset?id=${encodeURIComponent(asset.id)}`);
+  stage?.empty();
+  const early = prefetched?.then(async parsed => {
+    if (current !== generation || stopped) return null;
+    return { fingerprint: parsed.fingerprint, dimensions: await stage?.show(parsed) };
+  }).catch(() => null);
+  preloadNext();
   try {
+    const detail = await fresh;
+    if (current !== generation || stopped) return;
+    const detailEnded = performance.now();
+    const parsed = parseReviewSnapshot({ ...snapshot, assets: [detail] }).assets[0]; Object.assign(asset, parsed); selected = asset; drawDetails();
     if (!stage) throw new Error('Native WebGPU preview unavailable. Reload after resolving the startup error.');
-    const dimensions = await stage.show(asset);
+    const prepared = await early;
+    if (current !== generation || stopped) return;
+    const dimensions = prepared?.fingerprint === asset.fingerprint && prepared.dimensions ? prepared.dimensions : await stage.show(asset);
     if (current !== generation || stopped || !dimensions) return;
     el('asset-dimensions').textContent = dimensions; stageStatus.hidden = true; previewReady = true; preloadNext(); lastSelection = { id: asset.id, detailMs: detailEnded - began, renderMs: performance.now() - detailEnded, totalMs: performance.now() - began }; updateControls();
   } catch (error) { if (current === generation) { stageStatus.hidden = false; stageStatus.textContent = String(error); previewReady = false; updateControls(); } }
 }
 let preloadEpoch = 0;
+const detailsAhead = new Map<string, Promise<ReviewAsset>>();
 function preloadNext(): void {
   const epoch = ++preloadEpoch;
-  if (mode !== 'queue' || !selected || !stage || stopped) return;
+  if (mode !== 'queue' || !selected || !stage || stopped) { detailsAhead.clear(); return; }
   const list = filtered(), position = list.findIndex(asset => asset.id === selected?.id);
   const successors = list.slice(position + 1, position + 3);
-  // Only two successors; checks stay live when a prefetched asset becomes selected.
-  for (const asset of successors) request(`/asset?id=${encodeURIComponent(asset.id)}`).then(async detail => {
-    if (epoch !== preloadEpoch || stopped) return;
-    const parsed = parseReviewSnapshot({ ...snapshot, assets: [detail] }).assets[0];
-    if (parsed.available && parsed.fingerprint) await stage?.preload(parsed);
-  }).catch(() => { /* A failed speculative load is retried visibly on selection. */ });
-}
-async function decide(state: ReviewState): Promise<void> {
-  if (!selected || busy || !snapshot.writable) return;
-  const asset = selected, currentList = filtered(), position = currentList.findIndex(row => row.id === asset.id);
-  await save({ type: 'decision', id: asset.id, state, notes: notes.value, fingerprint: asset.fingerprint });
-  if (mode === 'queue') {
-    skipped.add(asset.id); const next = currentList.slice(position + 1).find(row => effectiveReview(row, snapshot.reviews).state === 'unreviewed' && !skipped.has(row.id)) ?? filtered()[0];
-    if (next) await choose(next); else clearSelection('Review queue complete for this selection.');
+  for (const id of detailsAhead.keys()) if (!successors.some(asset => asset.id === id)) detailsAhead.delete(id);
+  for (const asset of successors) {
+    let detail = detailsAhead.get(asset.id);
+    if (!detail) {
+      detail = request(`/asset?id=${encodeURIComponent(asset.id)}`).then(value => parseReviewSnapshot({ ...snapshot, assets: [value] }).assets[0]);
+      detailsAhead.set(asset.id, detail);
+    }
+    detail.then(async parsed => {
+      if (epoch === preloadEpoch && !stopped && parsed.available && parsed.fingerprint) await stage?.preload(parsed);
+    }).catch(() => { if (detailsAhead.get(asset.id) === detail) detailsAhead.delete(asset.id); });
   }
 }
-async function save(action: ReviewAction): Promise<void> {
-  busy = true; updateControls(); drawList(); message('Saving decision…');
-  try {
-    const result = await request('/decision', action); if (!isRecord(result) || typeof result.revision !== 'string') throw new Error('Invalid save response.');
-    snapshot.reviews = parseReviews(result.reviews); snapshot.revision = result.revision;
-    message(action.type === 'decision' && action.state === 'delete-requested' ? 'Marked for deletion. Files and scenes are unchanged.' : 'Decision saved.');
-  } finally { busy = false; updateControls(); drawDetails(); drawList(); }
+function advance(currentList: ReviewAsset[], asset: ReviewAsset): void {
+  const position = currentList.findIndex(row => row.id === asset.id);
+  const remaining = filtered();
+  const next = currentList.slice(position + 1).find(row => remaining.some(candidate => candidate.id === row.id)) ?? remaining[0];
+  if (next) void choose(next).catch((error: unknown) => message(String(error), true));
+  else { clearSelection('Review queue complete for this selection.'); drawList(); }
+}
+function decide(state: ReviewState): void {
+  if (!selected || busy || stopped || !snapshot.writable || !saves || saves.has(selected.id)) return;
+  if (state === 'approved' && (!previewReady || !selected.fingerprint || familyDenied(selected))) return;
+  const asset = selected, currentList = filtered();
+  saves.enqueue({ name: asset.name, action: { type: 'decision', id: asset.id, state, notes: notes.value, fingerprint: asset.fingerprint } });
+  if (mode === 'queue') advance(currentList, asset);
+}
+function saveStatus(): void {
+  if (!saves) return;
+  snapshot.reviews = saves.committed.reviews; snapshot.revision = saves.committed.revision;
+  const count = saves.pending.length;
+  el('review-save-status').textContent = saves.error ? `Not saved: ${saves.pending[0]?.name ?? 'decisions'}. ${saves.error}`
+    : count ? `Saving ${count} decision${count === 1 ? '' : 's'} in the background…` : 'All decisions saved.';
+  el('review-save-status').dataset.error = String(!!saves.error);
+  el<HTMLButtonElement>('review-retry').hidden = !saves.error;
+  el<HTMLButtonElement>('review-retry').disabled = saves.running || busy;
+  el<HTMLButtonElement>('review-discard').hidden = !saves.error;
+  el<HTMLButtonElement>('review-discard').disabled = saves.running || busy;
+  el('review-discard').textContent = `Discard ${count} unsaved decision${count === 1 ? '' : 's'}`;
+  updateControls(); drawDecision(); drawList();
+  if (!count && !saves.running && selected && mode === 'queue' && !filtered().some(asset => asset.id === selected?.id)) filterChanged();
+}
+function savedResponse(value: unknown): SavedReviews {
+  if (!isRecord(value) || typeof value.revision !== 'string') throw new Error('Invalid save response.');
+  return { reviews: parseReviews(value.reviews), revision: value.revision };
 }
 async function reload(): Promise<void> {
+  if (saves?.pending.length || busy && snapshot) return;
+  busy = true;
+  if (snapshot) updateControls();
+  try {
   const id = selected?.id, draft = notes.value; snapshot = parseReviewSnapshot(await request('/'));
   el('review-session').textContent = snapshot.writable ? 'Review session' : 'Read-only · start npm run assets:review to save';
   el('review-session').title = el('review-session').textContent ?? '';
@@ -191,8 +239,11 @@ async function reload(): Promise<void> {
   while (usage.options.length > 4) usage.remove(4);
   const scenes = new Map(snapshot.assets.flatMap(row => row.uses.filter(use => use.scene).map(use => [use.scene!, use.sceneName] as const)));
   for (const [scene, name] of scenes) usage.add(new Option(`Scene: ${name}`, scene)); if (scenes.has(oldUsage) || ['all','used','unused','selected'].includes(oldUsage)) usage.value = oldUsage;
-  busy = false; updateControls();
+  saves = snapshot.writable && snapshot.task ? new ReviewSaveQueue(snapshot, ReviewSaveQueue.tabStorage(), `lantern-review-pending:${snapshot.task}`,
+    async (revision, action) => savedResponse(await request('/decision', action, revision)), saveStatus) : undefined;
+  busy = false; saveStatus(); updateControls(); saves?.drain().catch((error: unknown) => message(String(error), true));
   const next = filtered().find(row => row.id === id) ?? filtered()[0]; if (next) { await choose(next); if (id === next.id && draft) notes.value = draft; } else { clearSelection('No matching assets. Adjust the filters.'); drawList(); }
+  } finally { busy = false; if (snapshot) updateControls(); }
 }
 function clearSelection(text: string): void {
   generation++; preloadEpoch++; selected = undefined; previewReady = false; stage?.empty(); notes.value = '';
@@ -204,20 +255,29 @@ function filterChanged(): void {
   if (busy) return; preloadEpoch++; limit = 100; drawList(); const assets = filtered();
   if (!assets.length) clearSelection(mode === 'queue' ? 'Review queue complete for this selection.' : 'No matching assets. Adjust the filters.');
   else if (!assets.some(row => row.id === selected?.id)) choose(assets[0]).catch((error: unknown) => message(String(error), true));
+  else preloadNext();
 }
 for (const input of [search, category, pack, usage, status, meshes]) input.addEventListener(input === search ? 'input' : 'change', filterChanged);
 for (const name of reviewCategories) category.add(new Option(name, name)); for (const state of reviewStates) status.add(new Option(stateLabel(state), state));
 for (const target of ['queue','browse'] as const) el(`mode-${target}`).addEventListener('click', () => { mode = target; for (const value of ['queue','browse']) el(`mode-${value}`).setAttribute('aria-pressed', String(value === mode)); filterChanged(); updateControls(); });
 el('review-more').addEventListener('click', () => { limit += 100; drawList(); });
 el('review-reload').addEventListener('click', () => { reload().catch((error: unknown) => message(String(error), true)); });
-for (const [id, state] of [['approve-asset','approved'],['deny-asset','denied'],['delete-asset','delete-requested'],['reset-asset','unreviewed']] as const) el(id).addEventListener('click', () => { decide(state).catch((error: unknown) => message(String(error), true)); });
-el('skip-asset').addEventListener('click', () => { if (!selected || busy) return; skipped.add(selected.id); const next = filtered()[0]; if (next) choose(next).catch((error: unknown) => message(String(error), true)); else { clearSelection('Review queue complete for this selection.'); drawList(); message('Queue complete for this selection.'); } });
-el('deny-family').addEventListener('click', () => { if (selected) save({ type: snapshot.reviews.familyDenials[selected.familyId] ? 'family-clear' : 'family-deny', id: selected.id, notes: notes.value }).then(filterChanged).catch((error: unknown) => message(String(error), true)); });
+for (const [id, state] of [['approve-asset','approved'],['deny-asset','denied'],['delete-asset','delete-requested'],['reset-asset','unreviewed']] as const) el(id).addEventListener('click', () => { try { decide(state); } catch (error) { message(String(error), true); } });
+el('skip-asset').addEventListener('click', () => { if (!selected || busy) return; const asset = selected, list = filtered(); skipped.add(asset.id); advance(list, asset); });
+el('deny-family').addEventListener('click', () => { if (!selected || busy || !snapshot.writable || !saves || saves.pending.length) return;
+  try {
+    const asset = selected, list = filtered();
+    saves.enqueue({ name: asset.name, action: { type: snapshot.reviews.familyDenials[asset.familyId] ? 'family-clear' : 'family-deny', id: asset.id, notes: notes.value } });
+    if (mode === 'queue') advance(list, asset);
+  } catch (error) { message(String(error), true); } });
+el('review-retry').addEventListener('click', () => { request('/records').then(value => saves?.retry(savedResponse(value))).catch((error: unknown) => message(String(error), true)); });
+el('review-discard').addEventListener('click', () => { saves?.discard(); reload().catch((error: unknown) => message(String(error), true)); });
 el<HTMLSelectElement>('asset-view').addEventListener('change', () => { stage?.view(el<HTMLSelectElement>('asset-view').value).then(() => { el('review-view-caption').textContent = el<HTMLSelectElement>('asset-view').value === 'game' ? 'Game camera · saved graphics' : 'Drag to orbit · scroll to zoom'; preloadNext(); }).catch((error: unknown) => message(String(error), true)); });
 el('asset-fit').addEventListener('click', () => { stage?.fit().then(() => { el<HTMLSelectElement>('asset-view').value = 'orbit'; el('review-view-caption').textContent = 'Drag to orbit · scroll to zoom'; preloadNext(); }).catch((error: unknown) => message(String(error), true)); }); el<HTMLInputElement>('asset-scale').addEventListener('change', () => stage?.scaleReference(el<HTMLInputElement>('asset-scale').checked));
 el<HTMLSelectElement>('asset-motion').addEventListener('change', () => { if (selected) stage?.motion(selected, el<HTMLSelectElement>('asset-motion').value).catch((error: unknown) => message(String(error), true)); });
 el('asset-pause').addEventListener('click', () => { paused = !paused; stage?.pause(paused); el('asset-pause').textContent = paused ? 'Play' : 'Pause'; });
 el('review-finish').addEventListener('click', () => {
+  if (saves?.pending.length || busy || stopped) return;
   busy = true; updateControls(); drawList(); message('Integrating review decisions…');
   fetch('/__asset-review/finish', { method: 'POST', headers: { 'x-lantern-review-token': snapshot.token } }).then(async response => {
     const result = parseJson(await response.text()); if (!response.ok || !isRecord(result) || typeof result.message !== 'string') throw new Error(isRecord(result) && typeof result.error === 'string' ? result.error : 'Review integration failed.');
@@ -225,11 +285,12 @@ el('review-finish').addEventListener('click', () => {
     else message(result.message);
   }).catch((error: unknown) => message(String(error), true)).finally(() => { busy = false; updateControls(); drawList(); });
 });
+window.addEventListener('beforeunload', event => { if (saves?.pending.length) { event.preventDefault(); event.returnValue = ''; } });
 window.addEventListener('pagehide', () => { stopped = true; generation++; stage?.dispose(); }, { once: true });
 try {
   stage = await ReviewStage.create(el('review-stage'), error => { previewReady = false; stageStatus.hidden = false; stageStatus.textContent = `Preview failed: ${String(error)}`; if (snapshot) updateControls(); });
   if (stopped) stage.dispose();
 } catch (error) { stageStatus.textContent = `Native WebGPU startup failed: ${String(error)}`; }
-if (!stopped) await reload();
+if (!stopped) await reload().catch((error: unknown) => message(String(error), true));
 
-Object.assign(window, { lanternAssetReview: { diagnostics: () => ({ ready: previewReady, selected: selected?.id, lastSelection, rendering: stage?.diagnostics() }), view: async (value: string) => { await stage?.view(value); el<HTMLSelectElement>('asset-view').value = value; el('review-view-caption').textContent = value === 'game' ? 'Game camera · saved graphics' : 'Drag to orbit · scroll to zoom'; preloadNext(); }, next: async () => { if (!selected || busy || mode !== 'queue') throw new Error('Queue is not ready.'); skipped.add(selected.id); const next = filtered()[0]; if (!next) throw new Error('No next asset.'); await choose(next); return lastSelection; } } });
+Object.assign(window, { lanternAssetReview: { diagnostics: () => ({ ready: previewReady, selected: selected?.id, pendingSaves: saves?.pending.length ?? 0, saveError: saves?.error, lastSelection, rendering: stage?.diagnostics() }), view: async (value: string) => { await stage?.view(value); el<HTMLSelectElement>('asset-view').value = value; el('review-view-caption').textContent = value === 'game' ? 'Game camera · saved graphics' : 'Drag to orbit · scroll to zoom'; preloadNext(); }, next: async () => { if (!selected || busy || mode !== 'queue') throw new Error('Queue is not ready.'); skipped.add(selected.id); const next = filtered()[0]; if (!next) throw new Error('No next asset.'); await choose(next); return lastSelection; } } });

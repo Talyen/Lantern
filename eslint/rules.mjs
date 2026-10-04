@@ -4,6 +4,7 @@ const storageOwners = new Set([
   'src/application.ts',
   'src/rendering/graphics-settings.ts',
   'src/data/preferences.ts',
+  'src/labs/assets/review-save-queue.ts', // Tab-scoped pending asset decisions; never player saves.
 ]);
 const storageNames = new Set(['localStorage', 'sessionStorage', 'indexedDB']);
 const globalObjects = new Set(['window', 'globalThis', 'self']);
