@@ -38,7 +38,7 @@ export function createEncounter(phase: Phase = 'loading', layout: EncounterLayou
   const definitions = layout.enemies ?? (['enemy', 'caster'] as const).map(id => ({
     id, kind: id === 'caster' ? 'caster' as const : enemyKind, rig: 'enemy' as const,
     loadout: { main: id === 'caster' || enemyKind === 'caster' ? 'staff' as const : 'axe' as const, off: null },
-    position:layout[id]?.position, yaw:layout[id]?.yaw, damageType:layout[id]?.damageType,
+    position:layout[id]?.position, yaw:layout[id]?.yaw, damageType:layout[id]?.damageType, interruption:layout[id]?.interruption,
   }));
   const enemyIds = definitions.map(enemy => enemy.id);
   const enemies = Object.fromEntries(definitions.map((definition, index): [EnemyId, EnemyState] => {
