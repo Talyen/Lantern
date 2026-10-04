@@ -1,10 +1,10 @@
 import * as THREE from 'three';
 import { MeshStandardNodeMaterial, type WebGPURenderer } from 'three/webgpu';
-import { color, dFdx, dFdy, float, normalMap, texture, uv, vec2 } from 'three/tsl';
+import { color, dFdx, dFdy, Fn, normalMap, texture, uv, vec2 } from 'three/tsl';
 import { createRenderer } from '../../rendering/renderer';
 import { WebGPUPipeline } from '../../rendering/webgpu-pipeline';
 import { defaults } from '../../rendering/graphics-settings';
-import { prepareSurfaceMaterial } from '../../rendering/surface-detail';
+import { prepareSurfaceMaterial, surfaceBias } from '../../rendering/surface-detail';
 import { lightingPreset } from '../../levels/lighting-preset';
 import { resetMaterialCalibration } from '../../rendering/material-calibration';
 
@@ -62,8 +62,11 @@ export async function runMaterialProbe() {
       if (transform) { albedo.repeat.set(2, 1); albedo.offset.set(.13, .07); albedo.rotation = .5; }
       const material = new MeshStandardNodeMaterial({ color: '#888888', roughness: 1, normalMap: transform || depth ? null : normal, map: transform || depth ? albedo : null, roughnessMap: depth ? data : null, side: kind.startsWith('back') ? THREE.DoubleSide : THREE.FrontSide });
       prepareSurfaceMaterial(material, depth ? data : undefined, depth ? .12 : 0, 3);
-      if (kind === 'legacy' || kind === 'reference' || kind === 'back-reference') material.normalNode = normalMap(texture(normal, uv(2)).grad(dFdx(uv(2)), dFdy(uv(2))), vec2(1));
-      if (kind === 'transform-reference') material.colorNode = texture(albedo).bias(float(0)).rgb.mul(color(material.color));
+      if (kind === 'legacy' || kind === 'reference' || kind === 'back-reference') material.normalNode = Fn(builder => {
+        const scale = surfaceBias(builder).exp2();
+        return normalMap(texture(normal, uv(2)).grad(dFdx(uv(2)).mul(scale), dFdy(uv(2)).mul(scale)), vec2(1));
+      })();
+      if (kind === 'transform-reference') material.colorNode = Fn(builder => texture(albedo).bias(surfaceBias(builder)).rgb.mul(color(material.color)))();
       const mesh = new THREE.Mesh(geometry, material); scene.add(mesh);
       const pipeline = new WebGPUPipeline(renderer, scene, camera, new THREE.Vector3());
       pipeline.configure({ ...defaults(), upscaleQuality: 'native', dof: 'off', ao: 0, bloom: 0, outlines: false, textureDepth: kind !== 'depth-off' && kind !== 'masked-off' }, 1);

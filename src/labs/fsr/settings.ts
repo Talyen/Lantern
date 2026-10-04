@@ -1,4 +1,6 @@
-/** Private visual experiments: never parsed as player preferences or enabled in builds. */
+/** Private visual experiments retain the pre-adoption baseline and isolated
+ * candidates. Normal routes use corrected foliage motion and the −1 mip offset.
+ * Never parsed as player preferences or enabled in builds. */
 export const comparisonPresets = {
   baseline: { sharpness: .5, mipOffset: 0, foliageMotion: false, reactiveCoverage: false },
   'sharpness-0': { sharpness: 0, mipOffset: 0, foliageMotion: false, reactiveCoverage: false },

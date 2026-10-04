@@ -204,7 +204,9 @@ class PipelineGraph {
     }
     this.look = look; this.settings = { ...settings };
     this.outlineScale.value = this.scale;
-    this.materialMipBias.value = Math.max(-1, Math.min(0, Math.log2(this.scale))) + (fsrComparison?.mipOffset ?? 0);
+    // One finer mip than resolution compensation, shared by all material passes.
+    // Private comparison offsets remain relative to the original baseline.
+    this.materialMipBias.value = Math.max(-1, Math.min(0, Math.log2(this.scale))) + (fsrComparison?.mipOffset ?? -1);
     if (this.fsr?.upscaler) this.fsr.upscaler.settings.sharpness = settings.sharpness;
     this.exposure.value = settings.exposure; this.saturation.value = saturation;
     this.aoStrength.value = settings.ao;

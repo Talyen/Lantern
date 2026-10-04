@@ -176,7 +176,9 @@ export class CoreEffects {
         const anchor = pow(max(positionLocal.y.sub(float(box.min.y)).div(float(height)), float(0)), float(1.5));
         const gust = sin(this.clock.mul(1.4).add(positionLocal.x.mul(0.3))).mul(0.65).add(sin(this.clock.mul(0.47)).mul(0.35));
         const displaced = positionLocal.add(vec3(this.wind.x, float(0), this.wind.z).mul(anchor).mul(float(height)).mul(gust));
-        m.positionNode = fsrComparison?.foliageMotion ? Fn(() => {
+        // Private comparisons retain the old motion output; every normal route
+        // supplies the previous wind deformation to temporal reconstruction.
+        m.positionNode = (fsrComparison?.foliageMotion ?? true) ? Fn(() => {
           const previousGust = sin(this.previousClock.mul(1.4).add(positionLocal.x.mul(.3))).mul(.65).add(sin(this.previousClock.mul(.47)).mul(.35));
           positionPrevious.assign(positionLocal.add(this.previousWind.mul(anchor).mul(float(height)).mul(previousGust)));
           return displaced;
@@ -196,7 +198,7 @@ export class CoreEffects {
     this.root.visible = this.enabled;
     const actionDt = this.gameplayDelta ?? dt; this.gameplayDelta = undefined;
     this.previousClock.value = this.clock.value;
-    if (fsrComparison?.foliageMotion) this.previousWind.value.copy(this.wind.value);
+    this.previousWind.value.copy(this.wind.value);
     if (this.paused || !this.enabled) { this.vegetation?.advance(0, this.time, this.wind.value); for (const carpet of this.grass) carpet.update(this.time, this.wind.value); return; }
     dt = Math.min(dt, 0.05);
     this.time += dt; this.clock.value = this.time;
