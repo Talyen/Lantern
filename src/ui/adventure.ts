@@ -5,7 +5,7 @@ import { lootDefinitions } from '../gameplay/inventory';
 import { canRepairShelter, shelterMaterials } from '../gameplay/homestead-transactions';
 import { setText } from './dom';
 
-export type TravelChoice = { name: string; available: boolean; travel(): void };
+export type TravelChoice = { name: string; travel(): void };
 export type InventoryMenuContext = InventoryContext & { repair(): Promise<void> };
 
 /** Adventure menus share input/pause ownership, while Inventory owns its presentation. */
@@ -46,8 +46,8 @@ export class AdventureMenus {
   openTravel(choices: TravelChoice[]): void {
     this.clearInput(); const list = document.getElementById('travel-destinations')!;
     list.replaceChildren(...choices.map(choice => {
-      const button = document.createElement('button'); button.textContent = choice.available ? choice.name : `${choice.name} · Enemies nearby`;
-      button.disabled = !choice.available; button.onclick = () => { this.close(); choice.travel(); }; return button;
+      const button = document.createElement('button'); button.textContent = choice.name;
+      button.onclick = () => { this.close(); choice.travel(); }; return button;
     }));
     if (!choices.length) list.textContent = 'No destinations available.';
     this.travel.showModal(); this.sound?.('menuOpen');

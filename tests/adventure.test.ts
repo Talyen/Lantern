@@ -101,12 +101,12 @@ test('character saves retain scrolls, discoveries and the open return portal', (
   const failed = new Adventure({ getItem: () => null, setItem: () => { throw Error('full'); } }); failed.save(); expect(failed.saveDiagnostics().pending).toBe(true); failed.closeSave();
 });
 
-test('campfires heal over time only when safe and unsafe destinations cannot be used', () => {
+test('campfires heal only when safe but travel ignores source and destination enemies', () => {
   const state = new Adventure(memory(), () => 1), encounter = createEncounter('playing');
   state.enter(encounter, field, field.campfires![0].arrival);
   const fire = field.campfires![0], homeFire = home.campfires![0]; encounter.player.hp = 50;
   state.step(encounter, field, 1); expect(encounter.player.hp).toBe(50);
-  expect(state.canTravel(encounter, field, fire, home, homeFire)).toBe(false);
+  expect(state.canTravel(encounter, field, fire, home, homeFire)).toBe(true);
   encounter.enemies.enemy.x = fire.position[0] + 11; encounter.enemies.enemy.z = fire.position[1]; encounter.enemies.enemy.engaged = true;
   expect(state.fireSafe(field, fire, encounter)).toBe(false);
   encounter.enemies.enemy.engaged = false; encounter.enemies.enemy.returning = true;
@@ -123,12 +123,12 @@ test('campfires heal over time only when safe and unsafe destinations cannot be 
   encounter.player.x -= 10;
   expect(state.canTravel(encounter, field, fire, home, homeFire)).toBe(true);
   state.enter(encounter, home, homeFire.arrival);
-  expect(state.destinations({ clearing: field })[0].available).toBe(true);
+  expect(state.destinations({ clearing: field }).map(destination => destination.area.id)).toEqual(['clearing']);
   expect(state.canTravel(encounter, home, homeFire, field, fire)).toBe(true);
   state.session(field.id).encounter!.enemies.enemy.hp = 100;
   state.session(field.id).encounter!.enemies.enemy.returning = true;
-  expect(state.destinations({ clearing: field })[0].available).toBe(false);
-  expect(state.canTravel(encounter, home, homeFire, field, fire)).toBe(false);
+  expect(state.destinations({ clearing: field }).map(destination => destination.area.id)).toEqual(['clearing']);
+  expect(state.canTravel(encounter, home, homeFire, field, fire)).toBe(true);
 });
 
 test('the chest scatters rewards once per session and only collected gear is permanently claimed', () => {

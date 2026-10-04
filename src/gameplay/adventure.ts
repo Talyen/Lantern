@@ -444,8 +444,8 @@ export class Adventure {
 
   canTravel(encounter: Encounter, sourceArea: AreaDefinition, source: Campfire, targetArea: AreaDefinition, target: Campfire): boolean {
     return this.currentArea === sourceArea.id && encounter.player.hp > 0 && this.castRemaining === 0
-      && near([encounter.player.x, encounter.player.z], source.position, 3) && this.fireSafe(sourceArea, source, encounter)
-      && this.character.campfires.includes(fireKey(targetArea.id, target.id)) && this.fireSafe(targetArea, target);
+      && near([encounter.player.x, encounter.player.z], source.position, 3)
+      && this.character.campfires.includes(fireKey(targetArea.id, target.id));
   }
 
   chest(area: AreaDefinition, chest: Chest): SavedChest {
@@ -474,10 +474,10 @@ export class Adventure {
     return true;
   }
 
-  destinations(areas: Record<string, AreaDefinition>): { area: AreaDefinition; fire: Campfire; available: boolean }[] {
+  destinations(areas: Record<string, AreaDefinition>): { area: AreaDefinition; fire: Campfire }[] {
     return Object.values(areas).flatMap(area => (area.campfires ?? [])
       .filter(fire => area.id !== this.currentArea && this.character.campfires.includes(fireKey(area.id, fire.id)))
-      .map(fire => ({ area, fire, available: this.fireSafe(area, fire) })));
+      .map(fire => ({ area, fire })));
   }
 
   beginCast(alive: boolean, id?: string): boolean {

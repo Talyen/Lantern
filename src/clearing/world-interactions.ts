@@ -117,7 +117,6 @@ export class WorldInteractions {
 export function interactionError(target: WorldInteraction, area: AreaDefinition, adventure: Adventure, encounter: Encounter): string {
   if (adventure.castRemaining > 0) return 'Scroll of Return is casting';
   if (target.type === 'resource' && !gatheringSafe(encounter, area.kind)) return 'Enemies nearby';
-  if (target.type === 'fire' && !adventure.fireSafe(area, target.fire, encounter)) return 'Enemies nearby';
   return '';
 }
 

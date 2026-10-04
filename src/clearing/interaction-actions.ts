@@ -44,8 +44,8 @@ export class InteractionActions {
       case 'fire': {
         adventure.discover(area, [encounter.player.x, encounter.player.z]);
         const sourceFire = target.fire;
-        this.menus.openTravel(adventure.destinations(context.definitions()).map(({ area: destination, fire, available }) => ({
-          name: fire.name, available,
+        this.menus.openTravel(adventure.destinations(context.definitions()).map(({ area: destination, fire }) => ({
+          name: fire.name,
           travel: () => {
             const allowed = () => adventure.canTravel(encounter, area, sourceFire, destination, fire);
             if (allowed()) void context.changeArea({ kind: 'travel', area: destination.id, transition: true, spawn: fire.arrival, canCommit: allowed }).then(ok => {
