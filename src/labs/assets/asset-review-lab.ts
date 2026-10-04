@@ -230,19 +230,19 @@ async function reload(): Promise<void> {
   busy = true;
   if (snapshot) updateControls();
   try {
-  const id = selected?.id, draft = notes.value; snapshot = parseReviewSnapshot(await request('/'));
-  el('review-session').textContent = snapshot.writable ? 'Review session' : 'Read-only · start npm run assets:review to save';
-  el('review-session').title = el('review-session').textContent ?? '';
-  el('review-finish').hidden = !snapshot.canFinish;
-  const packs = [...new Set(snapshot.assets.map(row => row.pack))].sort(), oldPack = pack.value, oldUsage = usage.value;
-  pack.replaceChildren(new Option('All packs', 'all')); packs.forEach(name => pack.add(new Option(name, name))); if (packs.includes(oldPack)) pack.value = oldPack;
-  while (usage.options.length > 4) usage.remove(4);
-  const scenes = new Map(snapshot.assets.flatMap(row => row.uses.filter(use => use.scene).map(use => [use.scene!, use.sceneName] as const)));
-  for (const [scene, name] of scenes) usage.add(new Option(`Scene: ${name}`, scene)); if (scenes.has(oldUsage) || ['all','used','unused','selected'].includes(oldUsage)) usage.value = oldUsage;
-  saves = snapshot.writable && snapshot.task ? new ReviewSaveQueue(snapshot, ReviewSaveQueue.tabStorage(), `lantern-review-pending:${snapshot.task}`,
-    async (revision, action) => savedResponse(await request('/decision', action, revision)), saveStatus) : undefined;
-  busy = false; saveStatus(); updateControls(); saves?.drain().catch((error: unknown) => message(String(error), true));
-  const next = filtered().find(row => row.id === id) ?? filtered()[0]; if (next) { await choose(next); if (id === next.id && draft) notes.value = draft; } else { clearSelection('No matching assets. Adjust the filters.'); drawList(); }
+    const id = selected?.id, draft = notes.value; snapshot = parseReviewSnapshot(await request('/'));
+    el('review-session').textContent = snapshot.writable ? 'Review session' : 'Read-only · start npm run assets:review to save';
+    el('review-session').title = el('review-session').textContent ?? '';
+    el('review-finish').hidden = !snapshot.canFinish;
+    const packs = [...new Set(snapshot.assets.map(row => row.pack))].sort(), oldPack = pack.value, oldUsage = usage.value;
+    pack.replaceChildren(new Option('All packs', 'all')); packs.forEach(name => pack.add(new Option(name, name))); if (packs.includes(oldPack)) pack.value = oldPack;
+    while (usage.options.length > 4) usage.remove(4);
+    const scenes = new Map(snapshot.assets.flatMap(row => row.uses.filter(use => use.scene).map(use => [use.scene!, use.sceneName] as const)));
+    for (const [scene, name] of scenes) usage.add(new Option(`Scene: ${name}`, scene)); if (scenes.has(oldUsage) || ['all','used','unused','selected'].includes(oldUsage)) usage.value = oldUsage;
+    saves = snapshot.writable && snapshot.task ? new ReviewSaveQueue(snapshot, ReviewSaveQueue.tabStorage(), `lantern-review-pending:${snapshot.task}`,
+      async (revision, action) => savedResponse(await request('/decision', action, revision)), saveStatus) : undefined;
+    busy = false; saveStatus(); updateControls(); saves?.drain().catch((error: unknown) => message(String(error), true));
+    const next = filtered().find(row => row.id === id) ?? filtered()[0]; if (next) { await choose(next); if (id === next.id && draft) notes.value = draft; } else { clearSelection('No matching assets. Adjust the filters.'); drawList(); }
   } finally { busy = false; if (snapshot) updateControls(); }
 }
 function clearSelection(text: string): void {

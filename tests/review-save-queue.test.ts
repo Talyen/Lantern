@@ -26,7 +26,7 @@ describe('background review decisions', () => {
       expect(revision).toBe(saved.revision); await gate; saved = applied(saved, row); return saved;
     }, () => {});
     queue.enqueue({ name: 'A', action: action('A') }); queue.enqueue({ name: 'B', action: action('B', 'denied') }); queue.enqueue({ name: 'C', action: action('C', 'delete-requested') });
-    expect(Object.keys(JSON.parse(journal.getItem('pending')!))).toEqual(['reviews', 'revision', 'pending']);
+    expect(Object.keys(JSON.parse(journal.getItem('pending')!) as Record<string, unknown>)).toEqual(['reviews', 'revision', 'pending']);
     expect(journal.getItem('pending')!.length).toBeLessThan(5000);
     expect(queue.pending.map(row => row.action.notes)).toEqual(['notes for A', 'notes for B', 'notes for C']);
     release(); await expect.poll(() => queue.pending.length).toBe(0);
