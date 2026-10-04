@@ -25,7 +25,7 @@ vi.mock('three/webgpu', () => ({ WebGPURenderer: class {
   async init() {}
   setPixelRatio() {}
 } }));
-import { createRenderer, renderNativeFrame, preparingNativeFrame, finishSubmittedFrame } from '../src/rendering/renderer';
+import { createRenderer, renderNativeFrame, preparingNativeFrame, finishSubmittedFrame, resetNativeFrameCompilation } from '../src/rendering/renderer';
 
 async function renderer() {
   fixture.reset(); vi.stubGlobal('navigator', { gpu: {} });
@@ -65,4 +65,28 @@ test('destination reveal waits for submitted GPU work and rejects a reported GPU
   complete(); await readiness; expect(revealed).toBe(true);
   gpu.domElement.dataset.renderError = 'GPU validation failed';
   await expect(finishSubmittedFrame(gpu)).rejects.toThrow('GPU validation failed');
+});
+
+test('retry and another adventure cannot inherit a disposed session compilation failure', async () => {
+  const gpu = await renderer();
+  const backend = gpu.backend as unknown as { createRenderPipeline(object: { pipeline: object }, promises: Promise<void>[] | null): void };
+  renderNativeFrame(gpu, () => backend.createRenderPipeline({ pipeline: {} }, null));
+  resetNativeFrameCompilation(gpu);
+  fixture.state.error = true; fixture.finish(); await new Promise(resolve => setTimeout(resolve, 0));
+  expect(renderNativeFrame(gpu, () => {})).toBe(true);
+  fixture.reset();
+  renderNativeFrame(gpu, () => backend.createRenderPipeline({ pipeline: {} }, null));
+  fixture.state.error = true; fixture.finish(); await new Promise(resolve => setTimeout(resolve, 0));
+  expect(() => renderNativeFrame(gpu, () => {})).toThrow('WebGPU shader compilation failed');
+  resetNativeFrameCompilation(gpu);
+  expect(renderNativeFrame(gpu, () => {})).toBe(true);
+});
+
+test('timestamped module copies retain the native renderer compilation lifetime', async () => {
+  const gpu = await renderer();
+  vi.resetModules();
+  const refreshed = await import('../src/rendering/renderer');
+  expect(refreshed.renderNativeFrame(gpu, () => {})).toBe(true);
+  refreshed.resetNativeFrameCompilation(gpu);
+  expect(renderNativeFrame(gpu, () => {})).toBe(true);
 });

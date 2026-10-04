@@ -3,8 +3,13 @@ import { prepareSceneryLoader } from '../assets/scenery-loader';
 import * as THREE from 'three';
 import { WebGPURenderer } from 'three/webgpu';
 
-type FrameCompilation = { asynchronous: boolean; pending: Set<Promise<void>>; failure?: Error };
-const frameCompilations = new WeakMap<WebGPURenderer, FrameCompilation>();
+type FrameCompilation = { generation: number; asynchronous: boolean; pending: Set<Promise<void>>; failure?: Error };
+// Vite can load different timestamped copies of this owner during a reload.
+// Keep the state on the native renderer so every shared graph sees its lifetime.
+const frameCompilationKey = Symbol.for('lantern.nativeFrameCompilation');
+function frameCompilation(renderer: WebGPURenderer): FrameCompilation | undefined {
+  return Reflect.get(renderer, frameCompilationKey) as FrameCompilation | undefined;
+}
 
 /** Native WebGPU is a requirement, including labs and authoring previews. */
 export async function createRenderer(mount: HTMLElement): Promise<WebGPURenderer> {
@@ -28,8 +33,8 @@ export async function createRenderer(mount: HTMLElement): Promise<WebGPURenderer
     get: (pipeline: object) => { error?: boolean };
   };
   const createPipeline = backend.createRenderPipeline.bind(backend);
-  const frames: FrameCompilation = { asynchronous: false, pending: new Set() };
-  frameCompilations.set(renderer, frames);
+  const frames: FrameCompilation = { generation: 0, asynchronous: false, pending: new Set() };
+  Reflect.set(renderer, frameCompilationKey, frames);
   backend.createRenderPipeline = (object, promises) => {
     // Live graph rendering must not synchronously block Safari on first-use
     // shaders. Explicit compileAsync and probe captures keep their own policy.
@@ -43,9 +48,11 @@ export async function createRenderer(mount: HTMLElement): Promise<WebGPURenderer
         if (backend.get(pipeline).error) throw new Error('WebGPU shader compilation failed.');
       });
       if (deferredFrame) {
+        const generation = frames.generation;
         frames.pending.add(ready);
         ready.then(() => frames.pending.delete(ready), (error: unknown) => {
           frames.pending.delete(ready);
+          if (generation !== frames.generation) return;
           frames.failure = error instanceof Error ? error : new Error(String(error));
           recordFailure('gpu-compilation', frames.failure);
         });
@@ -91,7 +98,7 @@ export async function finishSubmittedFrame(renderer: WebGPURenderer): Promise<vo
 
 /** A frame with skipped, still-compiling objects cannot satisfy world readiness. */
 export function renderNativeFrame(renderer: WebGPURenderer, render: () => void): boolean {
-  const frames = frameCompilations.get(renderer);
+  const frames = frameCompilation(renderer);
   if (!frames) throw new Error('Native WebGPU compilation tracking is unavailable.');
   if (frames.failure) throw frames.failure;
   if (frames.pending.size) return false;
@@ -101,5 +108,15 @@ export function renderNativeFrame(renderer: WebGPURenderer, render: () => void):
 }
 
 export function preparingNativeFrame(renderer: WebGPURenderer): boolean {
-  return (frameCompilations.get(renderer)?.pending.size ?? 0) > 0;
+  return (frameCompilation(renderer)?.pending.size ?? 0) > 0;
+}
+
+/** Retry/another adventure owns a new frame lifetime on the retained renderer.
+ * Late compilation errors from a disposed session cannot poison that lifetime. */
+export function resetNativeFrameCompilation(renderer: WebGPURenderer): void {
+  const frames = frameCompilation(renderer);
+  if (!frames) throw new Error('Native WebGPU compilation tracking is unavailable.');
+  frames.generation++;
+  frames.pending.clear();
+  frames.failure = undefined;
 }

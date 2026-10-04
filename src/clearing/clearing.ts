@@ -1,5 +1,5 @@
 import { RenewalVisibility } from './renewal-visibility';
-import { finishSubmittedFrame } from '../rendering/renderer';
+import { finishSubmittedFrame, resetNativeFrameCompilation } from '../rendering/renderer';
 import { AbilityEffects } from '../rendering/ability-effects';
 import { abilities, type ActionBar } from '../gameplay/abilities';
 import { bindingLabel } from '../input/bindings';
@@ -93,6 +93,7 @@ export type SessionContext = {
 
 /** A fresh world/input/presentation lifetime for one already selected adventure. */
 export async function createGameSession(ctx: SessionContext): Promise<GameSession> {
+resetNativeFrameCompilation(ctx.renderer);
 const lifecycle = new AbortController();
 const releases: (() => void | Promise<void>)[] = [];
 let closed = false;

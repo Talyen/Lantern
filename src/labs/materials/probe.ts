@@ -76,7 +76,13 @@ export async function runMaterialProbe() {
       const mesh = new THREE.Mesh(geometry, material); scene.add(mesh);
       const pipeline = new WebGPUPipeline(renderer, scene, camera, new THREE.Vector3());
       pipeline.configure({ ...defaults(), upscaleQuality: 'native', dof: 'off', ao: 0, bloom: 0, outlines: false, textureDepth: kind !== 'depth-off' && kind !== 'masked-off' }, 1);
-      try { await pipeline.ready(); for (let i = 0; i < 32; i++) { await new Promise(requestAnimationFrame); pipeline.render(); } await device.queue.onSubmittedWorkDone(); pipeline.render(); images[kind] = pixels(renderer); }
+      try {
+        await pipeline.ready();
+        // Shader skips are not warmup frames. Capture only after 32 completed
+        // shared-graph frames, keeping the existing pixel checks unchanged.
+        for (let frames = 0; frames < 32;) { await new Promise(requestAnimationFrame); if (pipeline.render()) frames++; }
+        await device.queue.onSubmittedWorkDone(); pipeline.render(); images[kind] = pixels(renderer);
+      }
       finally { pipeline.dispose(); mesh.dispose(); geometry.dispose(); material.dispose(); [normal, albedo, data].forEach(map => map.dispose()); }
     }
     const checks = {
