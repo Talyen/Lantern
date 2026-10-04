@@ -15,7 +15,27 @@ export async function lightingBakeSignature(area: ResolvedAreaDefinition, root: 
   const meshes: string[] = [];
   const visible = (object: THREE.Object3D) => { for (let parent: THREE.Object3D | null = object; parent; parent = parent.parent) if (!parent.visible || parent.userData.transient || parent instanceof THREE.Light) return false; return true; };
   const digest = async (bytes: Uint8Array) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new Uint8Array(bytes)))].map(b => b.toString(16).padStart(2, '0')).join('');
-  const buffer = async (array: ArrayBufferView) => digest(new Uint8Array(array.buffer, array.byteOffset, array.byteLength));
+  // Instances share geometry buffers. Hash each view once per fingerprint, never
+  // across calls: authoring edits and refreshed art must still invalidate bakes.
+  const buffers = new WeakMap<ArrayBufferView, Promise<string>>();
+  const buffer = (array: ArrayBufferView): Promise<string> => {
+    let pending = buffers.get(array);
+    if (!pending) {
+      pending = digest(new Uint8Array(array.buffer, array.byteOffset, array.byteLength));
+      buffers.set(array, pending);
+    }
+    return pending;
+  };
+  const indices = new WeakMap<THREE.BufferAttribute, Promise<string>>();
+  const indexBuffer = (index: THREE.BufferAttribute): Promise<string> => {
+    let pending = indices.get(index);
+    if (!pending) {
+      // Native rendering promotes indices to 32 bits; preserve the bake format.
+      pending = buffer(new Uint32Array(index.array));
+      indices.set(index, pending);
+    }
+    return pending;
+  };
   const textures = new Map<THREE.Texture, Promise<unknown>>();
   const describeTexture = (texture: THREE.Texture): Promise<unknown> => {
     let pending = textures.get(texture);
@@ -47,18 +67,26 @@ export async function lightingBakeSignature(area: ResolvedAreaDefinition, root: 
       materials.push(properties);
     }
     const instances = mesh instanceof THREE.InstancedMesh ? Array.from({ length: mesh.count }, (_, i) => ({ transform: Array.from(mesh.instanceMatrix.array.slice(i * 16, i * 16 + 16)), color: mesh.instanceColor ? Array.from(mesh.instanceColor.array.slice(i * 3, i * 3 + 3)) : undefined })).map(item => JSON.stringify(item)).sort() : undefined;
-    meshes.push(JSON.stringify({ attributes, index: mesh.geometry.index ? await buffer(new Uint32Array(mesh.geometry.index.array)) : undefined,
-      ...(mesh.userData.lightingOnly ? { lightingOnly: true } : {}), groups: mesh.geometry.groups, transform: mesh.matrixWorld.toArray(), materials,
+    // Browser math can differ below GPU precision; hash the world matrix
+    // actually uploaded to WebGPU so prepared bakes work across engines.
+    const transform = mesh.matrixWorld.toArray().map(Math.fround);
+    meshes.push(JSON.stringify({ attributes, index: mesh.geometry.index ? await indexBuffer(mesh.geometry.index) : undefined,
+      ...(mesh.userData.lightingOnly ? { lightingOnly: true } : {}), groups: mesh.geometry.groups, transform, materials,
       instances, castShadow: mesh.castShadow, receiveShadow: mesh.receiveShadow }));
   }
   // GLB bytes cover embedded image contents; URLs are recorded by the asset owner
   // after projected/original/fallback selection, so the signature describes the actual art.
   // Bound transient source buffers: prepared GLBs now include larger normal atlases.
   const sources: string[] = [];
-  for (const url of (root.userData.lightingSources as string[] | undefined ?? []).slice().sort()) {
-    const response = await fetch(url, { cache: 'no-store' });
-    if (!response.ok) throw new Error(`Cannot fingerprint lighting source: ${url}`);
-    sources.push(await digest(new Uint8Array(await response.arrayBuffer())));
+  const urls = (root.userData.lightingSources as string[] | undefined ?? []).slice().sort();
+  // Two fresh source reads overlap I/O without retaining the whole area's
+  // GLB/normal-atlas bytes at once. Preserve complete, uncached byte hashes.
+  for (let start = 0; start < urls.length; start += 2) {
+    sources.push(...await Promise.all(urls.slice(start, start + 2).map(async url => {
+      const response = await fetch(url, { cache: 'no-store' });
+      if (!response.ok) throw new Error(`Cannot fingerprint lighting source: ${url}`);
+      return digest(new Uint8Array(await response.arrayBuffer()));
+    })));
   }
   const look = area.lighting;
   const payload = { version: lightingBakeVersion, three: THREE.REVISION, materialRecipes,

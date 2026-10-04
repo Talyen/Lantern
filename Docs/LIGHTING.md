@@ -41,7 +41,7 @@ Explicit `position`, `size` and `resolution` overrides are available for deliber
 
 ## Prepared bakes and resource ownership
 
-Live authoring bakes new appearances automatically. Fingerprints cover rendered geometry/instances, transforms, material properties, source asset/texture bytes, procedural surface settings, resolved sun/environment/probes, surface mode and the pinned bake version. Names, enemies, rewards, arrivals, fog and grading do not invalidate a bake unless they actually alter rendered scenery. Asset exports require a fresh preview/cache reload before preparing bakes so the loaded art matches the source files.
+Live authoring bakes new appearances automatically. Fingerprints cover rendered geometry/instances, transforms, material properties, source asset/texture bytes, procedural surface settings, resolved sun/environment/probes, surface mode and the pinned bake version. World matrices are fingerprinted at the 32-bit precision uploaded to WebGPU, so insignificant Safari/Chromium rotation rounding does not reject identical prepared lighting. Geometry and source bytes retain their complete hashes. Names, enemies, rewards, arrivals, fog and grading do not invalidate a bake unless they actually alter rendered scenery. Asset exports require a fresh preview/cache reload before preparing bakes so the loaded art matches the source files.
 
 After an area stabilizes:
 
@@ -53,7 +53,7 @@ npm run levels:stop
 
 The command uses the existing owned native WebGPU preview, exports half-float irradiance atlases under ignored `public/vendor/lighting/`, and updates `assets/lighting-bakes.json` with metadata references. `--area=all` prepares every registered area with probes under the one Golden preset. There are no lighting/profile selection flags. Surface comparison uses `--surfaces=authored`. Never run preparation concurrently with another preview owner or final build gate.
 
-Gameplay loads a matching prepared atlas when available, otherwise it bakes live. Missing, stale or invalid prepared data never replaces the preceding scene with broken lighting; live preparation remains available and diagnostics report the prepared-data failure. Original assets and derived bakes remain private. Build staging copies only indexed private lighting outputs; superseded local bakes remain private and are not staged; source-only builds can omit it. Inspect inventory and applicable licensing before any distribution.
+Gameplay loads a matching prepared atlas when available, otherwise it bakes live. Missing, stale or invalid prepared data never replaces the preceding scene with broken lighting; live preparation remains available and diagnostics report the prepared-data failure. Live preparation waits for each eight-probe GPU batch to complete before submitting the next; a JavaScript yield alone does not bound native graphics work. Startup and travel also wait for completed destination submissions before revealing the world. Original assets and derived bakes remain private. Build staging copies only indexed private lighting outputs; superseded local bakes remain private and are not staged; source-only builds can omit it. Inspect inventory and applicable licensing before any distribution.
 
 The r186 atlas readback/restore adapter is in `src/rendering/lighting-bake.ts`. Revalidate it on three.js upgrades and increment `lightingBakeVersion` when static shading or bake behavior changes. This invalidates incompatible outputs rather than trusting old bytes.
 

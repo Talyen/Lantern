@@ -45,3 +45,19 @@ test('cutaway ceilings remain hidden to gameplay and opaque in sun shadows and p
   expect(await lightingBakeSignature(area,root)).not.toBe(initial);
   roof.geometry.dispose();roof.material.dispose();sun.dispose();
 });
+
+// Observed Safari/Chromium rotation rounding must not force a live world bake
+// when the native model matrix is identical; real GPU-visible edits still do.
+test('prepared lighting fingerprints share identical GPU transforms across browser engines', async () => {
+  const source = homestead as unknown as AreaDefinition;
+  const area: ResolvedAreaDefinition = { ...source, lighting: resolveAreaLighting(source) };
+  const root = new THREE.Group(), mesh = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
+  root.add(mesh); mesh.matrixAutoUpdate = false;
+  mesh.matrix.elements[1] = .0599640064794446;
+  const safari = await lightingBakeSignature(area, root);
+  mesh.matrix.elements[1] = .059964006479444616;
+  expect(await lightingBakeSignature(area, root)).toBe(safari);
+  mesh.matrix.elements[1] = .06;
+  expect(await lightingBakeSignature(area, root)).not.toBe(safari);
+  mesh.geometry.dispose(); mesh.material.dispose();
+});

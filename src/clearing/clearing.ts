@@ -1,4 +1,5 @@
 import { RenewalVisibility } from './renewal-visibility';
+import { finishSubmittedFrame } from '../rendering/renderer';
 import { AbilityEffects } from '../rendering/ability-effects';
 import { abilities, type ActionBar } from '../gameplay/abilities';
 import { bindingLabel } from '../input/bindings';
@@ -635,7 +636,6 @@ try {
   resize();
   loadingScreen.preparing(loadingScreen.current, 'Preparing graphics');
   await graphics.initialize();
-  frameLoop.start();
   if (!await changeArea({ kind: 'travel', area: currentArea.id, spawn: explicitArea ? undefined : resumed.spawn })) throw new Error('Initial area could not be prepared.');
   if (import.meta.env.DEV && renderQuery.get('author') === 'levels') {
     const { attachAuthoring } = await import('../levels/authoring');
@@ -801,7 +801,9 @@ async function changeArea(change: AreaChange): Promise<boolean> {
     if (savedView) {
       cameraOwner.restoreView(savedView);
     }
+    if (!frameLoop.running) frameLoop.start();
     await waitFrames(2);
+    await finishSubmittedFrame(renderer);
     if (closed || request !== generation) return false;
     if (token !== undefined && !await loadingScreen.ready(token)) return false;
     transitioning = false;

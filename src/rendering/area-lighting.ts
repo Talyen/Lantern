@@ -1,4 +1,5 @@
 import { restoreBakeVisibility, includeCutawayShadows } from './cutaway';
+import { finishSubmittedFrame } from './renderer';
 import * as THREE from 'three';
 import { PMREMGenerator, type WebGPURenderer, type RenderTarget } from 'three/webgpu';
 import { LightProbeGrid } from 'three/addons/lighting/LightProbeGrid.js';
@@ -128,6 +129,10 @@ export class AreaLightingResources {
         if (this.disposed) throw new Error('Lighting resources are closed.');
         this.stage = this.renderer.domElement.dataset.lightingStage = `capture:${pass}:${start}/${count}`;
         grid.bake(this.renderer, bake, { cubemapSize: 16, sampleCount: 128, near: .08, far: 100, pass, start, count: Math.min(8, count - start) });
+        // Yielding JavaScript alone can enqueue the entire multi-bounce bake
+        // before Safari finishes its first captures. Bound in-flight GPU work
+        // to this batch without changing probe order or capture settings.
+        await finishSubmittedFrame(this.renderer);
         await new Promise<void>(resolve => setTimeout(resolve, 0));
       }
       grid.removeFromParent(); return { grid, source: 'live' };

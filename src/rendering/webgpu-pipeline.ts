@@ -1,3 +1,4 @@
+import { renderNativeFrame, preparingNativeFrame } from './renderer';
 import { ACESFilmicToneMapping, RedFormat, CustomBlending, OneFactor, OneMinusSrcAlphaFactor, DataUtils, RenderPipeline, BlendMode, NormalBlending, Color, Vector2, Vector3, Vector4, Matrix4, Plane, type Node, type OrthographicCamera, type PerspectiveCamera, type Scene, type WebGPURenderer, type TextureNode, type QuadMesh, type Texture } from 'three/webgpu';
 import { Fn, context, dot, float, mix, mrt, normalView, orthographicDepthToViewZ, perspectiveDepthToViewZ, output, pass, rtt, screenUV, smoothstep, toneMapping, uniform, uv, vec2, vec3, vec4, velocity, positionWorld, select } from 'three/tsl';
 import { ao } from 'three/addons/tsl/display/GTAONode.js';
@@ -316,8 +317,8 @@ class PipelineGraph {
     return images;
   }
 
-  render(): void {
-    if (!this.prepared) return;
+  render(): boolean {
+    if (!this.prepared) return false;
     this.camera.updateMatrixWorld();
     const planes = waterPlanes(this.scene);
     if (this.reflectionRevision !== planes.revision) {
@@ -332,13 +333,15 @@ class PipelineGraph {
     const toneMappingMode = this.renderer.toneMapping;
     const outputColorSpace = this.renderer.outputColorSpace;
     try {
-      this.post.render(); this.successfulFrames++;
+      if (!renderNativeFrame(this.renderer, () => this.post.render())) { this.resetHistory(); return false; }
+      this.successfulFrames++;
       const canvas = this.renderer.domElement, scene = this.scenePass!.renderTarget;
       const resolution = `${scene.width}×${scene.height} → ${canvas.width}×${canvas.height}`;
       if (canvas.dataset.resolution !== resolution) {
         canvas.dataset.resolution = resolution;
         canvas.dispatchEvent(new Event('graphicsresolutionchange'));
       }
+      return true;
     } finally {
       // Includes failed setup/render paths, whose after-hook may not have run.
       this.camera.clearViewOffset();
@@ -425,11 +428,11 @@ export class WebGPUPipeline {
   }
   flush(): void { this.queue.flush(); }
   async ready(): Promise<void> { await this.queue.ready(); if (!this.active && this.preparationError) throw this.preparationError; }
-  get preparing(): boolean { return this.queue.busy; }
+  get preparing(): boolean { return this.queue.busy || preparingNativeFrame(this.renderer); }
   resetHistory(): void { this.active?.resetHistory(); }
   resize(): void { this.active?.resize(); }
-  diagnostics() { return { ...(this.active?.diagnostics() ?? { ready: false, method: 'fsr-temporal', renderedFrames: 0 }), preparing: this.queue.busy, retainedGraphs: this.cache.size }; }
+  diagnostics() { return { ...(this.active?.diagnostics() ?? { ready: false, method: 'fsr-temporal', renderedFrames: 0 }), preparing: this.preparing, retainedGraphs: this.cache.size }; }
   async comparisonInputs() { if (!this.active) throw new Error('Pipeline is not ready.'); return this.active.comparisonInputs(); }
-  render(): void { if (!this.queue.busy) this.active?.render(); }
+  render(): boolean { return !this.queue.busy && (this.active?.render() ?? false); }
   dispose(): void { this.disposed = true; this.queue.dispose(); this.cache.forEach(graph => graph.dispose()); this.cache.clear(); this.active = null; }
 }
