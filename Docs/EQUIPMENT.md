@@ -10,13 +10,13 @@ Helmet, Body, Gloves, Boots, left Ring, right Ring, Amulet and Belt are shared a
 
 Inventory’s toolbar icons show each set’s main-hand glyph with an I/II badge and both view and activate that prepared set. Right-click bag gear to equip, equipped gear to unequip, or drag onto an explicit receptacle. Rings fill an empty slot first, otherwise replace Left; drag chooses Right without a choice panel. Displaced gear returns to the vacated bag cells when it fits, otherwise another free position. A failed candidate or asset/motion preparation retains the original state. Editing equipment remains blocked during combat/actions; prepared-set activation follows action readiness rather than the equipment-edit combat restriction.
 
-Hover/focus tooltips show the item name and useful fixed properties, without automatic comparisons, redundant category labels or enlarged art. The same painted item uses identical dimensions in bag, equipment and carry; [the art owner](../src/ui/inventory-art.ts) defines them. Ground labels remain separate. Shared armor/accessory art does not recolor or replace the Paladin model; hand models remain private and compatible motions follow weapon family.
+Hover/focus tooltips show the item name and useful fixed properties, without automatic comparisons, redundant category labels or enlarged art. The same painted item uses identical dimensions in bag, equipment and carry; [the art owner](../src/ui/inventory-art.ts) defines them. Ground labels remain separate. Shared armor/accessory art does not recolor or replace the Erika model; hand models remain private and compatible motions follow weapon family.
 
 Catalog membership and weapon checks belong to `isItemId` and `isWeaponItem` in [equipment](../src/gameplay/equipment.ts). The catalog type requires combat values for every weapon identity and constrains hand slots; inventory validation and save decoding use these same checks before indexing catalog data.
 
 ## Combat values
 
-Base health and mana are 100, mana recovery is 8 per active second, and movement speed is 3.2 m/s. Both current enemies have 200 health and deal 20 direct damage. Values are prototype tuning, not final balance.
+Base health and mana are 100, mana recovery is 8 per active second, and movement speed is 3.2 m/s. Current ordinary Goblin and Skeleton enemies have 200 health and deal 20 direct damage. Values are prototype tuning, not final balance.
 
 | Weapon | Basic damage | Attack rate | Reach / range |
 | --- | ---: | ---: | ---: |
@@ -43,7 +43,7 @@ Sweep and Piercing Shot deal 120% of equipped weapon damage. Their existing mana
 
 Bonuses to the same property add. Damage is weapon damage times one plus total damage bonus; attack rate is weapon rate times one plus total attack-rate bonus; movement speed follows the same rule. Health, mana, armor and mana recovery bonuses add to their base values.
 
-All direct hits, including melee, arrows and magic, apply `raw damage × 100 / (100 + armor)`. A successful frontal block then halves that result. Blocking is an explicit fact independent of armor, so armored rear hits remain damaging without interrupting the player. Simulation retains fractional damage; displays round values only for readability.
+All direct hits, including melee, arrows and magic, apply `raw damage × 100 / (100 + armor)`. A successful frontal block then halves that result. Blocking is an explicit fact independent of armor, and rear hits remain damaging without interrupting the player. Simulation retains fractional damage; displays round values only for readability.
 
 Accepted attacks snapshot damage, reach/range, duration and contact markers. Duration and markers divide by effective attack rate, and the same rate drives attack animation playback. Released projectiles retain their launch damage and range after a swap. Armor uses the target's current equipped state when contact occurs. Enemy interruption remains attack-specific; player hits do not interrupt attacks or held defenses. Dodge and terrain collision retain their existing values.
 
@@ -60,11 +60,11 @@ Reward equipment lists belong to the [clearing area](../src/levels/areas/clearin
 | Trail cache near the approach's mineral stops | Quilted Coat, Trail Boots, Leather Belt |
 | Optional woodland cache east of the approach | Iron Signet, Hearth Ring |
 
-The camp chest retains two Scrolls of Return and two Health Potions per session. Current enemy scroll chances remain unchanged. Explicit `guard: null` enables unguarded equipment-only caches; omitted guard retains legacy camp-guard behavior. Ground objects use the same [pickup and retention rules](LOOT.md).
+The camp chest gives two Scrolls of Return and two Health Potions per opening, with individual active-play renewal. Current enemy scroll chances remain unchanged. All chests, including equipment-only caches, open independently of enemies; guard metadata is removed. Ground objects use the same [pickup and retention rules](LOOT.md).
 
-Claims become permanent only on successful collection. Uncollected rewards survive travel/death during the session and are offered again after application restart. Collected rewards do not duplicate after restart, dropping, selling in future work or enemy renewal. Each catalog identity currently has one guaranteed source. The legacy serialized name `campClaims` is retained for compatibility and now covers every guaranteed equipment discovery.
+Claims become permanent only on successful collection. Uncollected rewards survive travel, death and relaunch in the saved outing, expiring when their source renews. Renewal offers only equipment that remains unclaimed. Collected rewards do not duplicate after relaunch, dropping, selling or source renewal. Each catalog identity currently has one guaranteed source. The legacy serialized name `campClaims` is retained for compatibility and now covers every guaranteed equipment discovery.
 
-Character revision 7 retains `lantern.character.v1` and the existing backup/recovery owner. Revisions 1–6 preserve item IDs, placements, sets, stash, skill progress, restoration, Rested and earlier claims; older characters initialize new shared slots empty. Stats are derived and never saved as a second source of truth.
+The [current character save](RUNTIME.md#save-recovery) retains `lantern.character.v1` and backup recovery. Migration preserves item IDs, placements, sets, stash, skill progress, restoration, Rested and earlier claims; older characters initialize new shared slots empty. Stats are derived and never saved as a second source of truth.
 
 ## Focused acceptance
 
@@ -101,7 +101,7 @@ Every Sword/Bow Ultimate costs 50 mana and starts the one shared Ultimate timer 
 
 ### Effective damage and passive benefits
 
-Each enemy life retains its lowest reached health through session travel and death. One base XP is awarded per point of damage pushing health below that minimum, attributed to the originating Sword/Bow action even after a swap. Overkill and restored damage earn nothing. Rested applies its existing multiplier. The concurrently integrated finite Axe credit and its 0.2 scale remain intact; gathering progression is unchanged. Restart still creates a fresh outing; cross-session world snapshots and time-away renewal remain separate roadmap work.
+Each enemy life retains its lowest reached health through session travel and death. One base XP is awarded per point of damage pushing health below that minimum, attributed to the originating Sword/Bow action even after a swap. Overkill and restored damage earn nothing. Rested applies its existing multiplier. The concurrently integrated finite Axe credit and its 0.2 scale remain intact; gathering progression is unchanged. Application relaunch preserves the outing and finite reward budgets; the developer Restart command deliberately creates a fresh outing. Renewal uses active-play time, so closed-app time does not advance it.
 
 Combat XP thresholds are level 1/0, 2/100, 3/250, 4/500, 5/1000, 15/5000 and 50/24000, with interpolation between anchors and the final slope continuing beyond level 50. The first Ultimate targets roughly five ordinary enemy lives of dedicated use; 3–5-hour full mastery and pre-boss practice remain provisional until the adventure is expanded and observed.
 
@@ -128,4 +128,4 @@ Berserking unlocks at 100 saved Axe Combat XP (level 2). Effective Axe damage aw
 
 The compatible Axe battle cry lasts 0.5 seconds and remains planted. Ordinary damage does not interrupt this action; death before completion cancels it without mana or cooldown consumption. Completion commits 50 mana and starts the single shared 60-second Ultimate cooldown. For eight active gameplay seconds, the equipped Axe's post-equipment damage, attack rate and movement speed multiply by 1.4, 1.3 and 1.2. Swaps keep the timer running but remove all three benefits while a different weapon is active. Accepted attacks retain their original snapshots; expiry restores base equipment properties, and death ends the buff. Menus/backgrounding pause gameplay clocks; travel preserves the buff and shared cooldown.
 
-The action bar uses distinct Axe motifs, real casting/cooldown states, a compact timed Berserking badge and brief first-opportunity hints with current bindings. The badge dims outside Axe combat. Full saved-outing/cooldown persistence across application restart remains the front-end roadmap's responsibility. Values above are initial tuning rather than final balance.
+The action bar uses distinct Axe motifs, real casting/cooldown states, a compact timed Berserking badge and brief first-opportunity hints with current bindings. The badge dims outside Axe combat. The saved outing retains committed cooldowns across application relaunch; the temporary Berserking effect is not restored. Four independent adventures and title navigation remain front-end roadmap work. Values above are initial tuning rather than final balance.

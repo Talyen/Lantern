@@ -5,7 +5,7 @@ Implementation acceptance follows the [lean task workflow](DEVELOPMENT.md#workin
 
 The physical-drop system is implemented for enemy scrolls, the clearing chest's equipment/scroll/potion rewards, harvested Wood/Stone/Iron, and player-dropped inventory items. The full shared equipment layout and authored stat tradeoffs are implemented; gold and the Homestead shop are implemented; broader reward pacing remains planned. See [combat and equipment](EQUIPMENT.md).
 
-The bag is a 12 × 8 grid. Sword uses 1 × 3 cells; Axe and Shield use 2 × 3; Bow and Staff use 2 × 4. Wood, Stone, Iron, Health Potion and Scroll of Return stacks each use 1 × 1, stack to 99, and can occupy multiple cells. Each equipment copy has its own identity; equipped hand and shared armor/accessory items occupy equipment slots instead of bag space. Item dimensions belong to `src/gameplay/inventory.ts`, alongside placement, transfers and packing.
+The bag is a 12 × 8 grid. Sword uses 1 × 3 cells; Axe and Shield use 2 × 3; Bow and Staff use 2 × 4. Wood, Stone, Iron, Health Potion and Scroll of Return stacks each use 1 × 1, stack to 99, and can occupy multiple cells. Each equipment copy has its own identity; equipped hand and shared armor/accessory items occupy equipment slots instead of bag space. Equipment footprints belong to [the equipment catalog](../src/gameplay/equipment.ts); supply footprints belong to [the inventory catalog](../src/gameplay/inventory-catalog.ts). The inventory facade exposes them alongside placement, transfers and packing.
 
 Pickups auto-place without shuffling the bag. Drag to move, merge, equip or drop outside the panel; invalid moves and Escape cancel. Shift-click chooses an amount to split, then click its destination or the world outside the panel. Sort consolidates supplies and packs larger objects first, committing only when everything fits. Equipped-item displacement and asset/motion preparation must succeed before any equipment change commits. Player-dropped supplies wait until the player leaves their pickup radius and returns, or explicitly selects them.
 
@@ -78,15 +78,15 @@ Review crowded rewards and camera movement under the current gameplay lighting a
 
 ## Health Potions and two equipped sets
 
-Health Potions are 1 × 1 supplies with stacks of 99. Their chest drops use the same toss, landing, 1.5 m auto-pickup, partial-transfer and session-retention rules as other supplies. New characters receive three; revisions 1–4 receive three once during migration, preserving any overflow. The clearing chest scatters two per session.
+Health Potions are 1 × 1 supplies with stacks of 99. Their chest drops use the same toss, landing, 1.5 m auto-pickup, partial-transfer and session-retention rules as other supplies. New characters receive three; saves predating combat fields receive three once during migration, preserving any overflow. The clearing chest scatters two per session.
 
 **F** uses one potion for an immediate 40 health and starts an 8-second shared cooldown. Full health, death, an empty supply or cooldown leaves the stack intact. Potion use does not cancel attacks, movement, dodge or a Return cast. The action bar's separate potion button shows quantity/cooldown, and the input is remappable.
 
-Inventory's I/II tabs select which equipment set to edit. Both sets keep unique instances outside bag cells; an item cannot belong to both. Moving/removing a main hand displaces only that set's Shield, preserving the existing candidate-first/full-bag failure rules. Combat actions switch between compatible prepared sets; collected gear still never auto-equips.
+Inventory’s I/II toolbar icons show and activate the selected prepared set. Both sets keep unique instances outside bag cells; an item cannot belong to both. Moving/removing a main hand displaces only that set's Shield, preserving the existing candidate-first/full-bag failure rules. Combat actions switch between compatible prepared sets; collected gear still never auto-equips.
 
 ## Shared equipment and discoveries
 
-Helmet, Body, Gloves, Boots, two Rings, Amulet and Belt are shared across weapon sets. Their fixed catalog properties, slot comparisons, footprints, guaranteed clearing discoveries and revision 6 migration follow [combat and equipment](EQUIPMENT.md). Equipment-only caches need no guard metadata; the camp chest preserves its consumable rewards. All gear still requires explicit collection and never auto-equips.
+Helmet, Body, Gloves, Boots, two Rings, Amulet and Belt are shared across weapon sets. Their fixed catalog properties, useful properties, footprints, guaranteed clearing discoveries and save migration follow [combat and equipment](EQUIPMENT.md). Equipment-only caches need no guard metadata; the camp chest preserves its consumable rewards. All gear still requires explicit collection and never auto-equips.
 
 
 ## Gold and Homestead trading

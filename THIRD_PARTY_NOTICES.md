@@ -14,7 +14,7 @@ three.js is MIT licensed; preserve its package license and the [full notice](src
 
 navcat 0.4.1 and its mathcat dependency are MIT licensed. `@dimforge/rapier3d-compat` 0.21.0 is Apache-2.0 licensed and includes its WebAssembly physics runtime. Preserve their distributed licenses/notices in packaged builds. The portal composition and retired weapon-ribbon experiment are original Lantern code; no drei-vanilla/meshline code is copied or shipped. The portal rune is drawn locally, without third-party artwork.
 
-The development Ultimate study uses MIT-licensed `three-plume` 0.1.1 and `tslfx` 0.6.0. Preserve their [Plume license](src/labs/animations/LICENSE-plume.txt) and [TSLFX license](src/labs/animations/LICENSE-tslfx.txt) if distributing these dependencies or derived effects. The native r186 peer override and integration boundaries are recorded in [library trials](Docs/LIBRARY_TRIALS.md#ultimate-vfx-library-trial).
+The development Ultimate study and gameplay Rain of Arrows use MIT-licensed `three-plume` 0.1.1 and `tslfx` 0.6.0. Preserve their [Plume license](src/labs/animations/LICENSE-plume.txt) and [TSLFX license](src/labs/animations/LICENSE-tslfx.txt) if distributing these dependencies or derived effects. The native r186 peer override and integration boundaries are recorded in [library trials](Docs/LIBRARY_TRIALS.md#ultimate-vfx-library-trial).
 
 ## Fonts
 
@@ -28,7 +28,7 @@ Pirata One by Rodrigo Fuenzalida is bundled locally for loot labels and Inventor
 | Autumn Atlas and Hearthsteel | Owner-supplied AI-created botanical and weapon packs; delivered READMEs declare original geometry with no third-party meshes/textures | Source archives and editable Blender libraries remain private under `.local/`; prepared GLBs remain under ignored `public/vendor/`. [Preparation and verification](Docs/ASSET_PREPARATION.md#autumn-atlas-and-hearthsteel-libraries) registers only optional library art, without gameplay/build selections. |
 | Synty scenery and warrior | Owner-supplied Synty packs, including Polygon Viking Realm | Licensed third-party sources and exports remain private; project license does not grant redistribution rights. |
 | Gameplay audio | Owner-supplied Sonniss GameAudioGDC recordings from the shared sound library | Selection metadata and preparation code are tracked; masters/intermediates and optimized OGGs remain private. Source terms apply to modified recordings; see [gameplay sound](Docs/AUDIO.md). |
-| Mixamo motions and acquisition characters | Signed-in Mixamo catalog export | Sources/catalog/receipts remain private; gameplay animations retargeted locally to separate Paladin and Goblin rigs; gallery samples target each displayed character. No standalone redistribution through this repository. |
+| Mixamo motions and acquisition characters | Signed-in Mixamo catalog export | Sources/catalog/receipts remain private; gameplay animations retargeted locally to independent Erika, Goblin and Skeleton rigs; gallery samples target each displayed character. No standalone redistribution through this repository. |
 
 Purchase evidence, account tokens and private receipts must not be committed. Local provenance lives with the private acquisition records, not in public notices. The source repository includes conversion tools, not the licensed models, textures or exports.
 

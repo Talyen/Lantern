@@ -1,8 +1,8 @@
 # Active UI design exploration
 
-**Current phase: Inventory/stash implementation authorized; later screens remain in design.** The owner lifted the earlier no-prototype hold after approving the refined composition. Continue first-principles design and focused guiding questions; do not infer approval of unreviewed screen families.
+**Current phase:** Inventory/stash, Skills, orb-led HUD, shared loading and current-menu polish are implemented; [the screen catalog](SCREEN_CATALOG.md) tracks inspection and remaining design gaps. The earlier no-prototype hold was lifted for requested implementations. Continue first-principles design and focused guiding questions for unresolved surfaces; do not infer approval of new screen families.
 
-The owner prefers **A — Crafted instrument** for materials. That choice does **not** approve A's organizational layout. The original three-column organization remains unresolved; the owner requested multiple layout directions. See the [decision record](DESIGN_DECISIONS.md), [foundation](../UI_DESIGN.md), and [Inventory layout round](concepts/inventory-layouts/README.md).
+The owner prefers **A — Crafted instrument** for materials. That choice does **not** approve A's organizational layout. The original three-column organization was superseded by the adopted 40/60 split after multiple layout studies. See the [decision record](DESIGN_DECISIONS.md), [foundation](../UI_DESIGN.md), and [Inventory layout round](concepts/inventory-layouts/README.md).
 
 The owner explicitly requested first-principles design rather than preserving prototype UI, with guiding questions and recommendations at every step. Treat source as an inventory of available data, not a template. Ask a few focused questions for the current decision, explain the recommendation, explore alternatives and incorporate the answer before the next consequential design choice.
 
@@ -12,7 +12,7 @@ Guiding-question answers: prioritize loadout/quick gear exchange with equipment 
 
 After reviewing layout families, the owner chose #1, 40% equipment left / 60% inventory right, outline empty glyphs, grid-like body-relative receptacles and a faint rough sketch background. The owner then authorized implementation of that direction.
 
-Further direction: tighter slots around an artistic Vitruvian-inspired figure sketch; upper-left toolbar set icons show each main-hand weapon plus a tiny I/II badge, and Sort moves into the toolbar. Right-click uses/equips/unequips; drag chooses placement. Rings fill empty slots first, otherwise replace left; drag can replace right, with no choice UI. Replaced gear returns to vacated/free bag space automatically, otherwise the swap is blocked safely with brief local feedback. Viewing/activation, detailed art scale/finish and responsive behavior remain open.
+Further direction: tighter slots around an artistic Vitruvian-inspired figure sketch; upper-left toolbar set icons show each main-hand weapon plus a tiny I/II badge, and Sort moves into the toolbar. Right-click uses/equips/unequips; drag chooses placement. Rings fill empty slots first, otherwise replace left; drag can replace right, with no choice UI. Replaced gear returns to vacated/free bag space automatically, otherwise the swap is blocked safely with brief local feedback. Set icons now show and activate the prepared set; item scale and the minimum viewport follow the implemented Inventory owners. Further visual refinement and wider accessibility remain open.
 
 Latest composition direction: slots use tidy shared columns and row anchors, still relative to body positions. The paper doll becomes a faint rough sketch in the background rather than detailed anatomy or a visual focal point. Preserve item-art scale; neat organization comes from alignment and spacing.
 

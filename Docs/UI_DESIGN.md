@@ -6,7 +6,7 @@ Apply the shared [interaction feedback principle](INTERACTION_FEEDBACK.md) to ev
 
 ## Status and intent
 
-On October 2, 2026, the owner selected warm, crafted fantasy with restrained ornament, desktop keyboard/mouse first and A — Crafted instrument materials. After the layout/sketch/interaction studies, the owner explicitly authorized implementing Inventory and stash. These screens now use [InventoryPanel](../src/ui/inventory-panel.ts), [its style/token owner](../src/ui/inventory.css), [original item art](../assets/ui/inventory/PROMPT.md), and [the shared art renderer](../src/ui/inventory-art.ts). Continue focused guiding questions during implementation. Other screens remain in design until requested; this does not certify whole-game accessibility or quality.
+On October 2, 2026, the owner selected warm, crafted fantasy with restrained ornament, desktop keyboard/mouse first and A — Crafted instrument materials. After the layout/sketch/interaction studies, the owner explicitly authorized implementing Inventory and stash. These screens now use [InventoryPanel](../src/ui/inventory-panel.ts), [its style/token owner](../src/ui/inventory.css), [original item art](../assets/ui/inventory/PROMPT.md), and [the shared art renderer](../src/ui/inventory-art.ts). Continue focused guiding questions during implementation. Subsequent requested work implemented Skills, the orb-led HUD, shared loading and current-menu polish; [the screen catalog](ui/SCREEN_CATALOG.md) records evidence and remaining gaps. These implementations do not certify whole-game accessibility or quality.
 
 Design from first principles of player goals, meaningful information and simple interaction. Do not preserve prototype UI elements or flows merely because they exist; many are rough or unintended. Read current models to understand available data, then recommend the best design and ask focused guiding questions at every consequential design step. The latest owner decisions below take precedence over earlier concept composition.
 
@@ -22,7 +22,7 @@ Hierarchy should come from proportion, spacing, type, contrast and placement bef
 
 Avoid excessive gold borders, constant glow, noisy text backgrounds, tiny decorative labels and ornament around every control. Keep Gothic character in short headings; use highly readable mixed-case labels, descriptions and numerals. Use familiar player-facing names. Do not add lore, slogans, explanatory panels or new mechanics to fill a composition.
 
-The [initial Inventory concepts](ui/concepts/README.md) explore three material treatments. Crafted instrument is the material lead. After [layout exploration](ui/concepts/inventory-layouts/README.md), the owner preferred **one large split panel: 40% equipment/paper doll on the left, 60% inventory on the right**, with **subtle outline glyphs in empty equipment slots**. Detailed hierarchy, anatomical placement, art finish, interactions and responsive behavior remain under study. B/C remain material references. An image is never the source of truth for item data or interaction rules.
+The [initial Inventory concepts](ui/concepts/README.md) explore three material treatments. Crafted instrument is the material lead. After [layout exploration](ui/concepts/inventory-layouts/README.md), the owner preferred **one large split panel: 40% equipment/paper doll on the left, 60% inventory on the right**, with **subtle outline glyphs in empty equipment slots**. The adopted Inventory implementation owns current hierarchy, slot placement, item scale and minimum-size layout; further finish/accessibility refinement remains open. B/C remain material references. An image is never the source of truth for item data or interaction rules.
 
 ## Foundation specifications
 
@@ -81,11 +81,11 @@ For Inventory, develop the preferred **single 40/60 split panel: paper doll/equi
 
 Stash replaces equipment on the left and keeps Bag on the right; it is a two-container sheet rather than a three-region view. Both grids remain visible at normal item scale, with independent toolbar Sort controls. Right-click transfers to the other container while stash is open; drag specifies a position. Inventory set icons both show and activate their chosen prepared set.
 
-Keep Inventory about carried and equipped items. Woodcutting, Mining and Axe Combat/proficiency do not belong in an Inventory footer. Scroll of Return and Health Potions are items in the bag, not separate menu sections. Remove redundant category copy such as “Helmet” below “Guard Helm,” instructional paragraphs and nonessential status. Prefer recognizable icon controls, including an × close affordance, with accessible names and concise hover/focus labels when useful. Use text when it provides necessary identity or meaning that an icon alone cannot communicate.
+Keep Inventory about carried and equipped items. Woodcutting, Mining and weapon proficiency belong in Skills rather than an Inventory footer. Scroll of Return and Health Potions are items in the bag, not separate menu sections. Remove redundant category copy such as “Helmet” below “Guard Helm,” instructional paragraphs and nonessential status. Prefer recognizable icon controls, including an × close affordance, with accessible names and concise hover/focus labels when useful. Use text when it provides necessary identity or meaning that an icon alone cannot communicate.
 
 The owner selected **loadout and quick gear exchange** as Inventory's priority, with equipped and carried items visible together; a **spatial bag with different footprints**; and **hover tooltips containing the name and useful properties only**. Do not automatically add comparison deltas, category labels or action instructions. Early layout studies may use 12 × 8 as a representative bag shape, not an adopted storage-size requirement.
 
-HUD design should protect the central combat space and make urgent state legible. Ask which information needs persistent visibility, then explore resource shape/grouping, action readiness, supplies and weapon-set identity from first principles; do not inherit the prototype's orb/bar arrangement. Larger windows gain breathing room rather than larger empty bars. Compact layouts recompose around combat. Extra quest trackers, minimaps or meters need a player goal before design.
+HUD design protects the central combat space and makes urgent state legible. The [adopted orb-led finish](#adopted-orb-led-hud-finish) owns today’s resource/action arrangement and removed visible set control. Design further changes from the player’s information needs rather than treating either historical mockups or rough prototype elements as requirements. Larger windows gain breathing room rather than larger empty bars. Compact layouts recompose around combat. Extra quest trackers, minimaps or meters need a player goal before design.
 
 ## Shared component contracts
 
@@ -126,7 +126,7 @@ Primary references: [text contrast](https://www.w3.org/WAI/WCAG22/Understanding/
 
 ## Design phase and eventual adoption
 
-Inventory/stash implementation is authorized and follows the managed workflow. First-principles [design exploration](ui/DESIGN_EXPLORATION.md) continues for later screens and remaining questions. Do not infer that one implemented screen approves all HUD/menu layouts.
+Inventory/stash, Skills, the orb-led HUD and shared loading follow the managed workflow and their adopted designs. First-principles [design exploration](ui/DESIGN_EXPLORATION.md) continues for remaining screens and questions. Existing implementation does not approve unreviewed layouts or new screen scope.
 
 When the owner explicitly requests implementation, the proposed adoption sequence is:
 

@@ -2,7 +2,7 @@
 
 ## Project
 
-Lantern is a desktop-browser fantasy action RPG prototype using Vite, TypeScript, three.js, and locally converted licensed art. The current prototype connects Homestead and Forest Clearing, with a guarded camp, a separate caster fight, two weapon sets, assignable abilities, loot, Woodcutting, Mining, shelter restoration and a stash. [The roadmap](ROADMAP.md) owns the remaining milestones.
+Lantern is a desktop-browser fantasy action RPG prototype using Vite, TypeScript, three.js, and locally converted licensed art. The current prototype connects Homestead, Forest Clearing, Graveyard Ruins and Graveyard Crypt, with authored enemy packs, two weapon sets, assignable abilities and weapon mastery, loot/trading, gathering, shelter restoration, a stash and saved outings. [The roadmap](ROADMAP.md) owns the remaining milestones.
 
 ## Load only relevant context
 

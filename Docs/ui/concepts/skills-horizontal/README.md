@@ -42,6 +42,8 @@ Gathering and Crafting share the six-major/ten-minor layout but use generic Majo
 
 ## Implementation checkpoint
 
+The paragraphs below record the initial October 2 implementation. October 3 Sword/Bow mastery and the Axe kit supersede its placeholder-only progression and pending-inspection statements; [the current brief](BRIEF.md#october-3-mastery-implementation) and [screen catalog](../../SCREEN_CATALOG.md) own today’s behavior and evidence. Exact concepts/prompts remain unchanged.
+
 [SkillsPanel](../../../../src/ui/skills-panel.ts) owns the sheet, category/root navigation, sixteen node controls, tooltips and picker presentation. [CombatUI](../../../../src/ui/combat.ts) owns the one real action bar, hold/drag lifecycle and assignment through Adventure. The bar moves into the modal top layer while remaining visually outside the sheet; empty-slot-only picker mode hides the sheet and pauses gameplay safely.
 
 [Skill definitions](../../../../src/gameplay/skills.ts) own all 28 stable tracks and derived levels. [Node definitions](../../../../src/gameplay/skill-nodes.ts) own six proposed major levels (1, 10, 20, 30, 40, 50) and two intermediate minor targets per gap. Existing actions remain available from the start; proposed targets never lock those actions. Every future node remains planned even after XP crosses its proposed level.

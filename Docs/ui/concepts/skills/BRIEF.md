@@ -1,6 +1,6 @@
 # Skills screen brief
 
-**Superseded first round:** use [the active node redesign brief](../skills-nodes/BRIEF.md). The roster below remains selected; its internal assignment strip and earlier layout are historical.
+**Superseded first round:** use [the adopted horizontal brief](../skills-horizontal/BRIEF.md). The roster below remains selected; its internal assignment strip and earlier layout are historical.
 
 ## Scope and status
 

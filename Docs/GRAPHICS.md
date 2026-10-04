@@ -12,6 +12,9 @@ Options contains Graphics and Sound, opens Keybindings, and pauses play while op
 | Shadow Quality | High | Low, Medium, High |
 | Particle Effects | High | Low, Medium, High |
 | Atmospheric particles | On | On / Off |
+| Weather Effects | On | On / Off |
+| Camera Shake | On | On / Off |
+| Resource Numbers | On | On / Off |
 | Outlines | On | On / Off |
 | Texture Depth | On | On / Off |
 | Frame rate limit | 60 in browsers; display-based in Electron | 60, 120, 144, 240, Unlimited |

@@ -53,7 +53,7 @@ The native-only WebGPU pipeline and private-art boundaries remain owned by their
 | Weapon-set viewing/activation behavior | Show and activate together | Implemented through prepared equipment owner | Adopted / implemented |
 | Stash organization | Stash left / Bag right, equipment hidden; both grids remain full size | Reviewed at 1280 × 800 | Adopted / implemented |
 | Minimum window/UI scale | Adopted 1280 × 800 content viewport; one 48px item ruler | Minimum-size native-WebGPU browser interaction review | Implemented; device/controller certification remains future work |
-| HUD hierarchy/organization | Start from urgent player information and protected play space; do not inherit orb/bar organization | Guiding questions, multiple resource/action layouts and feedback storyboards | Open design study |
+| HUD hierarchy/organization | Adopted orb-led resources around the six-slot bar; utility slots outside, no visible set control, saved Resource Numbers | [HUD study and interaction record](concepts/hud-polish/README.md) | Adopted / implemented; wider accessibility and unfamiliar-player observation remain open |
 | Accessibility scope | Menu contrast, visible focus, keyboard paths, larger targets, reduced motion and color-independent state as baseline | Validate changed component pairs and one representative input flow; record wider gaps | Proposed; conformance unverified |
 | Navigation architecture | Start from player tasks and predictable icon/back behavior, not existing menu arrangement | Guiding questions and static entry/exit/navigation storyboards | Open design study |
 | First implementation | Real Inventory/stash with shared art, tooltips and direct actions | Owned native-WebGPU preview and focused interaction review | Authorized / implemented |
@@ -62,7 +62,7 @@ Material identity is sufficiently established for layout studies. Ask guiding qu
 
 ## Deferred scope
 
-Touch/mobile, console certification, a new UI framework, general character levels, rarity tiers, quest trackers and minimaps are not implied by the design request. Shops, Smithing, proficiency unlocks and future front-end screens receive design coverage when the [roadmap](../../ROADMAP.md) and their gameplay owners establish requirements. Concurrent work can advance those owners; refresh the catalog before implementing them.
+Touch/mobile, console certification, a new UI framework, general character levels, rarity tiers, quest trackers and minimaps are not implied by the design request. Shop and Sword/Bow proficiency already have gameplay/UI owners; refresh their current coverage before refinement. Smithing and future front-end screens receive design coverage when the [roadmap](../../ROADMAP.md) and their gameplay owners establish requirements. Concurrent work can advance those owners; refresh the catalog before implementing them.
 
 ## Skills design checkpoint — October 2, 2026
 

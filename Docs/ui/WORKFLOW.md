@@ -2,7 +2,7 @@
 
 This extends [the daily task workflow](../DEVELOPMENT.md); it does not add a second approval system, benchmark requirement or full local test gate. Read [the design system](../UI_DESIGN.md), [art workflow](../ART_DIRECTION.md#agent-visual-workflow), the affected runtime owner and its consumers before editing. One agent owns a task through local integration.
 
-**Current authorization: implement the chosen Inventory/stash design and continue asking guiding questions as they arise.** Sections 3–4 apply to that work. The earlier design-only hold was lifted explicitly by the owner after concept review; other screen families still follow design exploration.
+**Current adoption:** Inventory/stash, Skills, the orb-led HUD, shared loading and current-menu polish have integrated implementations; [the screen catalog](SCREEN_CATALOG.md) records their evidence and remaining gaps. The earlier design-only hold was lifted for those requested surfaces. Continue guiding questions for consequential unresolved choices; a new screen family needs its own requested scope.
 
 Design from first principles. Do not carry forward rough prototype elements/flows by default. Ask guiding questions with recommendations at each consequential design step; use answers to direct layout/hierarchy exploration. Source owners inform available data and eventual integration, while existing UI organization remains replaceable.
 
@@ -40,7 +40,7 @@ Critique at the intended use size: first focus, task clarity, density, material 
 
 ## 3. Make the design functional
 
-The owner authorized this phase for Inventory/stash. Keep later screen implementation within its own requested scope.
+Apply this phase to the requested screen or refinement. Existing implementations and their evidence are recorded in the screen catalog; keep new screen work within its own requested scope.
 
 Translate the chosen first-principles design into the DOM UI. Keep text, hit areas, focus, responsive layout and state chrome in code; use raster art only for appropriate visual surfaces/icons. Implement the documented chosen interaction rather than retaining unintended prototype behavior. Preserve mutation/data safety and document required model changes. All 3D routes continue using the shared native WebGPU pipeline.
 

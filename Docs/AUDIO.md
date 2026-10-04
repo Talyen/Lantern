@@ -14,9 +14,9 @@ Encounter events distinguish accepted attacks, contact/release, dodge/landing, s
 
 Footsteps follow collision-resolved displacement and gait half-cycles. Standing, walking into a wall, teleporting, attack locks and pauses emit none. Player steps occasionally add quiet armor/cloth movement. Combat one-shots have 20 voices, UI has four, and ambient loops have twelve at most. Repeated cues avoid the immediately previous variant. World sounds attenuate to silence at 18 m with restrained stereo placement relative to the isometric view; UI and outcome cues remain centered.
 
-Gameplay audio retains per-actor footstep records and flame descriptors from the current immutable area fire list. Each frame computes each flame distance once, stably sorts the small authored fire list and keeps at most six nearest flames. Refilling in authored order preserves equal-distance priority as the listener moves. The selection array and loop-key set are reused; reset releases the retained area references. This does not change variant selection, gait cadence or playback scheduling.
+Gameplay audio retains per-actor footstep records and flame descriptors from the current immutable area fire list. Each frame computes each flame distance once, inserts into a reusable selection of at most six nearest flames, preserving authored order for equal distances. The selection array and loop-key set are reused; reset releases the retained area references. This does not change variant selection, gait cadence or playback scheduling.
 
-The first pointer/key gesture unlocks playback. Four concurrent jobs prepare the 40 selected buffers; unavailable files warn once and appear in development authoring diagnostics. Late assets never replay missed events. Menus and loading silence the gameplay buses and cancel transient actions while UI remains available. Backgrounding silences every bus, stops gameplay one-shots and suspends the context. Focus changes serialize suspend/resume requests. Travel/reset clears the previous area voices; committed destination state starts only its own fire/portal loops. Interrupted attacks stop their charge/windup, and death stops Return casting.
+The first pointer/key gesture unlocks playback. Four concurrent jobs prepare the manifest-selected buffers; unavailable files warn once and appear in development authoring diagnostics. Late assets never replay missed events. Menus and loading silence the gameplay buses and cancel transient actions while UI remains available. Backgrounding silences every bus, stops gameplay one-shots and suspends the context. Focus changes serialize suspend/resume requests. Travel/reset clears the previous area voices; committed destination state starts only its own fire/portal loops. Interrupted attacks stop their charge/windup, and death stops Return casting.
 
 Sound settings use `lantern.audio.v1`, independent of character and graphics saves. Options presents Master, Effects (including UI) and Ambience volume. Defaults are 80%, 100% and 60%; zero mutes that category. Reset defaults restores both graphics and sound. Invalid preferences use the sound defaults and storage failures retain working session settings.
 
@@ -30,7 +30,7 @@ Sound settings use `lantern.audio.v1`, independent of character and graphics sav
 - Recovery: Health Potion use reuses the healing cue.
 - Menus: Inventory, Travel and Options opening/closing, enabled button activation, successful inventory/stash moves/splits/sorting/drops and equipment changes.
 
-Continuous healing, hovering, XP changes and resource renewal remain quiet. Starter Skills use their existing weapon cues; sounds do not add mechanics for future gold, shops or earned Ultimates. Flame ambience does not decide campfire safety or healing eligibility.
+Continuous healing, hovering, XP changes and resource renewal remain quiet. Skills and Ultimates reuse their authored weapon/effect cues; the Axe cry and rain additions are described below. Gold and Shop use existing reward/menu feedback. Sound never adds gameplay mechanics. Flame ambience does not decide campfire safety or healing eligibility.
 
 ## Private asset preparation
 
@@ -49,6 +49,8 @@ The verified Goblin axe clip retains its approximately 1.05 s duration and 0.46 
 The raider plants and commits facing at acceptance. Contact checks the forward 120-degree arc within 1.8 m, plus existing height and obstruction rules. Early hits interrupt; the final 0.16 s before unresolved contact continues through nonlethal damage while retaining the attack pose. Killing blows always interrupt. Hits during recovery stagger normally, and an uninterrupted miss completes recovery before pursuit resumes. Damage, health and cooldown values retain their ordinary-enemy pacing. Impact particles are short and local; no ground telegraph is added.
 
 ## Acceptance evidence
+
+The first-bank observations below predate the added rain recording and later area/ability work; the current manifest is authoritative for prepared files and cues.
 
 The local native WebGPU preview checks action/event playback, the solo raider dodge/retaliation exchange, gathering, rewards, menus and travel through both playable areas. All 40 files decode without audio errors. Focused simulation checks protect early/late commitment, directional misses, lethal cancellation and exactly-once action/reward events. Export checks record 1.18 MiB of prepared sounds without clipping. These are technical/local interaction checks; listening-based approval of the final mix and other-platform playback remain unverified.
 

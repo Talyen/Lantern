@@ -20,9 +20,11 @@ Owner selected the six-step horizontal grouping and requested implementation Oct
 - The same live action bar remains below/outside the sheet. Drag existing action nodes onto slots, activate an empty slot for an available-ability picker, or rearrange existing bar actions. Passive and future nodes never assign.
 - Empty-slot picker also works outside Skills using a sheet-hidden modal mode, preventing attacks through the popup. Keyboard activation offers the same choices. Escape cancels carrying/picker before closing; focus returns to the target slot or gameplay.
 - Native dialog places the real bar in the modal top layer, physically outside the sheet. There is no duplicate Assigned Abilities area. Menus retain pause and existing outside-combat assignment safety.
-- Category/skill navigation never changes action assignments. Each category retains its last browsed skill for the session; initial selection is Sword.
+- Category/skill navigation never changes action assignments. Each category retains its last browsed skill for the session; initial selection follows the equipped weapon family (Axe uses its retained Axe Combat identity), falling back to Sword.
 
 ## Progression decisions
+
+These paragraphs record the initial October 2 placeholder scope. The [October 3 implementation](#october-3-mastery-implementation) below supersedes Sword/Bow/Axe availability, thresholds and XP sources.
 
 The owner chose existing abilities plus planned nodes, requested proposed milestone thresholds and selected generic profession placeholders. Major targets are provisionally 1/10/20/30/40/50; minor targets are 3/6, 13/16, 23/26, 33/36 and 43/46. Only future tooltips label these targets as proposed. Current Basics, Sweep, Piercing Shot and Shield Basic remain available from the start; they are not gated by prospective positions.
 
