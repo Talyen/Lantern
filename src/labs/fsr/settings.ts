@@ -10,8 +10,9 @@ export const comparisonPresets = {
 } as const;
 export type ComparisonPreset = keyof typeof comparisonPresets;
 const query = new URLSearchParams(typeof location === 'undefined' ? '' : location.search);
-const requested = query.get('fsrCompare');
-export let comparisonPreset = import.meta.env.DEV && query.get('author') === 'levels' && requested && Object.hasOwn(comparisonPresets, requested) ? requested as ComparisonPreset : null;
+const focused = query.get('lab') === 'fsr';
+const requested = query.get('fsrCompare') ?? (focused ? 'baseline' : null);
+export let comparisonPreset = import.meta.env.DEV && (query.get('author') === 'levels' || focused) && requested && Object.hasOwn(comparisonPresets, requested) ? requested as ComparisonPreset : null;
 export let fsrComparison: typeof comparisonPresets[ComparisonPreset] | null = comparisonPreset ? comparisonPresets[comparisonPreset] : null;
 let randomState = 74103;
 export function resetComparisonRandom(seed = 74103): void { randomState = seed; }
