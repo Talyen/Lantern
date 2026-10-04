@@ -8,7 +8,7 @@ The owner explicitly requested first-principles design rather than preserving pr
 
 Inventory constraints adopted from owner feedback: equipment slots surround an illustrated person silhouette; one artwork scale across bag/equipment/carry; hover tooltips instead of persistent item selection/inspection; icon controls where clear; direct item actions such as right-click use; no gathering/proficiency footer, separate return-scroll section, redundant category labels or random instructions. Earlier mockups with those elements are superseded.
 
-Guiding-question answers: prioritize loadout/quick gear exchange with equipment and bag visible together; use a spatial bag with different footprints; tooltip contains name and useful properties only, without automatic comparison. Layout studies compare arrangements of those functions while exact grid dimensions remain open.
+Guiding-question answers: prioritize loadout/quick gear exchange with equipment and bag visible together; use a spatial bag with different footprints; tooltip contains name and useful properties only, without automatic comparison. The layout studies left exact grid dimensions open; the implementation retains the 12 × 8 bag/stash model and one 48px artwork ruler.
 
 After reviewing layout families, the owner chose #1, 40% equipment left / 60% inventory right, outline empty glyphs, grid-like body-relative receptacles and a faint rough sketch background. The owner then authorized implementation of that direction.
 

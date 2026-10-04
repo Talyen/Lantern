@@ -61,7 +61,7 @@ Each renderer has a global least-recently-used budget: **8 sky environments / 32
 
 ## Visual reference and handoff
 
-Maintain a small reference set: a normal gameplay view containing Golden sunlight, shaded scenery, the player lantern and a campfire, plus the character gallery and animation lab under the same preset. Earlier captures remain private historical evidence. When the first interior and enclosed dark area exist, add their fixed views to this set with deliberate area overrides of the same shared preset. Do not create production areas solely to fill a lighting checklist.
+Maintain a small reference set: a normal gameplay view containing Golden sunlight, shaded scenery, the player lantern and a campfire, plus the character gallery and animation lab under the same preset. Graveyard Crypt’s `center` view is the first [enclosed reference](#interior-cutaways). Earlier captures remain private historical evidence. Add future references only when an authored area introduces a distinct lighting concern; keep deliberate area overrides of the same shared preset. Do not create production areas solely to fill a lighting checklist.
 
 Review Erika, Goblin and Skeleton under matched camera, pose, exposure and graphics settings. Require readable faces/material detail, grounded shadows, preserved highlights and useful warm/cool separation. For ordinary lighting content changes, inspect one representative view and affected movement under normal settings. Zoom extremes, narrow windows, travel, failed preparation, repeated visits and prepared/live comparisons are targeted checks for changed loading/cache/bake behavior or a specific visual concern. Keep licensed-art captures private under `.local/`.
 
@@ -94,7 +94,7 @@ DOF runs after FSR reconstruction with aligned depth: Soft uses focus range 24 a
 - All routes use the shared Golden lighting preset and small area overrides through `src/levels/lighting.ts`; see [lighting authoring](#one-preset-and-area-overrides). Do not duplicate scene lighting constants or apply outdoor moods globally.
 - Local flame lights use the shared campfire/torch/lantern recipes. Gameplay campfire eligibility remains independent of cosmetic lighting.
 - Prepare stable irradiance bakes explicitly with `npm run lighting:bake` in an owned native authoring session. Keep derived data private; routine checks/builds never regenerate it.
-- Extend the small visual reference set when the first interior or enclosed dark area is introduced. Review character readability under the shared Golden preset when lighting changes.
+- Use Graveyard Crypt’s fixed `center` view for affected interior work; extend the small reference set when a future area introduces a distinct lighting concern. Review character readability under the shared Golden preset when lighting changes.
 
 ## Interior cutaways
 

@@ -18,7 +18,7 @@ Gameplay audio retains per-actor footstep records and flame descriptors from the
 
 The first pointer/key gesture unlocks playback. Four concurrent jobs prepare the manifest-selected buffers; unavailable files warn once and appear in development authoring diagnostics. Late assets never replay missed events. Menus and loading silence the gameplay buses and cancel transient actions while UI remains available. Backgrounding silences every bus, stops gameplay one-shots and suspends the context. Focus changes serialize suspend/resume requests. Travel/reset clears the previous area voices; committed destination state starts only its own fire/portal loops. Interrupted attacks stop their charge/windup, and death stops Return casting.
 
-Sound settings use `lantern.audio.v1`, independent of character and graphics saves. Options presents Master, Effects (including UI) and Ambience volume. Defaults are 80%, 100% and 60%; zero mutes that category. Reset defaults restores both graphics and sound. Invalid preferences use the sound defaults and storage failures retain working session settings.
+Sound settings use `lantern.audio.v1`, independent of character and graphics saves. Options presents Master, Effects (including UI) and Ambience volume. Defaults are 80%, 100% and 60%; zero mutes that category. Reset defaults restores graphics, sound and Combat Text. Invalid preferences use the sound defaults and storage failures retain working session settings.
 
 ## Current coverage
 

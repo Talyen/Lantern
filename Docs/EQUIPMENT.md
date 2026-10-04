@@ -47,7 +47,7 @@ All direct hits, including melee, arrows and magic, apply `raw damage × 100 / (
 
 Accepted attacks snapshot damage, reach/range, duration and contact markers. Duration and markers divide by effective attack rate, and the same rate drives attack animation playback. Released projectiles retain their launch damage and range after a swap. Armor uses the target's current equipped state when contact occurs. Enemy interruption remains attack-specific; player hits do not interrupt attacks or held defenses. Dodge and terrain collision retain their existing values.
 
-Equipment changes never refill health or mana. Preserve current amounts and clamp them when a maximum falls. Potions still restore 40 health with an eight-second cooldown; safe fires restore 3% of effective maximum health per second. Travel preserves current resources and cooldowns. Death recovery restores effective maximum health; application restart starts with effective maximum health and mana. No passive health regeneration is added here.
+Equipment changes never refill health or mana. Preserve current amounts and clamp them when a maximum falls. Potions still restore 40 health with an eight-second cooldown; safe fires restore 3% of effective maximum health per second. Travel preserves current resources and cooldowns. Death recovery restores effective maximum health; application relaunch starts with effective maximum health and mana. No passive health regeneration is added here.
 
 ## Guaranteed discoveries and persistence
 
@@ -55,7 +55,7 @@ Reward equipment lists belong to the [clearing area](../src/levels/areas/clearin
 
 | Source | Equipment |
 | --- | --- |
-| Guarded camp chest | Sword, Shield, Bow, Staff, Guard Helm, Weathered Mail, Duelist Gloves |
+| Camp chest | Sword, Shield, Bow, Staff, Guard Helm, Weathered Mail, Duelist Gloves |
 | Caster defeat | Iron Broadsword, Yew Longbow, Amber Amulet |
 | Trail cache near the approach's mineral stops | Quilted Coat, Trail Boots, Leather Belt |
 | Optional woodland cache east of the approach | Iron Signet, Hearth Ring |

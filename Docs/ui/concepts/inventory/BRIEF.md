@@ -20,7 +20,7 @@ Prioritize understanding the equipped loadout and quickly exchanging gear, with 
 
 [Equipment catalog](../../../../src/gameplay/equipment.ts) and [inventory model](../../../../src/gameplay/inventory.ts) describe current items/properties/footprints. [Inventory controller](../../../../src/clearing/inventory.ts) and [adventure UI](../../../../src/ui/adventure.ts) show existing operations. Use this information to ground examples; do not preserve prototype UI or unintended behavior. Proposed changes to storage or gameplay rules are explicit questions.
 
-Representative examples: Sword 1×3, Bow 2×4, Shield/Mail 2×3, Guard Helm/Gloves/Boots 2×2, Ring/Amulet 1×1, Belt 2×1, supplies 1×1. Guard Helm has Armor +8. A 12×8 bag may serve as a representative study shape; its dimensions/capacity are not an adopted design requirement.
+Representative examples: Sword 1×3, Bow 2×4, Shield/Mail 2×3, Guard Helm/Gloves/Boots 2×2, Ring/Amulet 1×1, Belt 2×1, supplies 1×1. Guard Helm has Armor +8. The original studies used 12×8 illustratively; implementation now retains the current 12×8 bag/stash model with one 48px artwork ruler. Concepts do not authorize changing storage capacity.
 
 ## Open design questions
 

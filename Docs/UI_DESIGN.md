@@ -59,7 +59,7 @@ These are seed values, not verified contrast pairs. Measure actual foreground/ba
 | Corners | 2–4 on controls, 4–6 on panels; art frames can differ without changing hit geometry |
 | Borders | Quiet 1px separators; stronger selection/focus treatments carry interaction meaning |
 | Menu control size | 40px minimum intended hit area, 44px for main actions; small visual icons may sit inside larger targets |
-| Inventory cells | Spatial bag with different footprints adopted; one shared item-art ruler across bag/equipment/carry; grid dimensions remain a design question |
+| Inventory cells | Implemented 12 × 8 bag/stash; one 48px ruler across bag/equipment/carry; fixed item footprints remain owned by the inventory/equipment catalogs |
 
 The implemented spatial bag and stash use the current 12 × 8 model and different item footprints, without a save migration. All item contexts use one 48px ruler; the measured atlas bounds normalize original artwork once per identity. DOM text, hit geometry, focus and state chrome remain separate from raster art. [inventory.css](../src/ui/inventory.css) and [inventory-art.ts](../src/ui/inventory-art.ts) own exact implementation values.
 
@@ -83,7 +83,7 @@ Stash replaces equipment on the left and keeps Bag on the right; it is a two-con
 
 Keep Inventory about carried and equipped items. Woodcutting, Mining and weapon proficiency belong in Skills rather than an Inventory footer. Scroll of Return and Health Potions are items in the bag, not separate menu sections. Remove redundant category copy such as “Helmet” below “Guard Helm,” instructional paragraphs and nonessential status. Prefer recognizable icon controls, including an × close affordance, with accessible names and concise hover/focus labels when useful. Use text when it provides necessary identity or meaning that an icon alone cannot communicate.
 
-The owner selected **loadout and quick gear exchange** as Inventory's priority, with equipped and carried items visible together; a **spatial bag with different footprints**; and **hover tooltips containing the name and useful properties only**. Do not automatically add comparison deltas, category labels or action instructions. Early layout studies may use 12 × 8 as a representative bag shape, not an adopted storage-size requirement.
+The owner selected **loadout and quick gear exchange** as Inventory's priority, with equipped and carried items visible together; a **spatial bag with different footprints**; and **hover tooltips containing the name and useful properties only**. Do not automatically add comparison deltas, category labels or action instructions. The implementation retains the 12 × 8 bag/stash model; early study dimensions were illustrative and do not authorize a capacity change.
 
 HUD design protects the central combat space and makes urgent state legible. The [adopted orb-led finish](#adopted-orb-led-hud-finish) owns today’s resource/action arrangement and removed visible set control. Design further changes from the player’s information needs rather than treating either historical mockups or rough prototype elements as requirements. Larger windows gain breathing room rather than larger empty bars. Compact layouts recompose around combat. Extra quest trackers, minimaps or meters need a player goal before design.
 
@@ -116,7 +116,7 @@ Do not treat disabled, unavailable, locked and pending as one dimmed appearance.
 
 Current [input ownership](RUNTIME.md#action-bar-and-input-ownership), [inventory commits](RUNTIME.md#inventory-commits) and [save recovery](RUNTIME.md#save-recovery) describe implementation, not constraints to preserve rough UI. Design pause/dismissal, navigation and settings application from player needs, with guiding questions and documented proposed changes. Event consumption, truthful mutations and retained player data remain required implementation safety. Do not attack through menus or manufacture mutation success.
 
-The owner selected direct item actions plus drag: right-click a consumable to use; right-click bag gear to equip; right-click equipped gear to unequip. Drag moves items or equips at an explicit destination. Right-clicking a bag ring fills an empty slot first (left first when both empty), otherwise replaces left; drag can explicitly replace right. No ring-slot choice UI. Replaced gear automatically returns to vacated bag space when it fits, otherwise another free space; block the swap safely with brief local feedback if none exists. Quantities, weapon-set viewing, drop behavior and keyboard equivalents remain design questions. No persistent inspector or instructional prose.
+The owner selected direct item actions plus drag: right-click a consumable to use; right-click bag gear to equip; right-click equipped gear to unequip. Drag moves items or equips at an explicit destination. Right-clicking a bag ring fills an empty slot first (left first when both empty), otherwise replaces left; drag can explicitly replace right. No ring-slot choice UI. Replaced gear automatically returns to vacated bag space when it fits, otherwise another free space; block the swap safely with brief local feedback if none exists. Implemented splitting, carrying, outside-panel drops and keyboard equivalents follow [the runtime controls](RUNTIME.md#hud-and-player-controls); set icons show and activate together, and Stash right-click transfers. Further refinement starts from those current outcomes. No persistent inspector or instructional prose.
 
 For new implementations, define initial focus, visible focus order, close/back behavior and return focus explicitly. Escape cancels the current transient interaction before leaving the owning screen where that behavior applies. Dragging retains a click/keyboard operation for the same player goal; provide clear destination/quantity and cancellation. Gamepad planning includes directional focus, confirm, back, scrolling and alternate operations, but does not add controller support until the input owner implements it.
 
@@ -130,10 +130,10 @@ Inventory/stash, Skills, the orb-led HUD and shared loading follow the managed w
 
 When the owner explicitly requests implementation, the proposed adoption sequence is:
 
-1. Translate the chosen layout/hierarchy/state specifications into a development-only DOM component specimen with fixed representative data, isolated from saves/gameplay, then one functional Inventory vertical slice.
-2. Extract proven semantic tokens and shared menu/control patterns beside `src/ui/`; implement the chosen Inventory/stash design with safe data operations and documented model changes.
-3. Apply those patterns to HUD/action bar and Skills, then Options/Keybindings. Refine at gameplay scale with one relevant interaction per task.
-4. Finish travel, shelter, loot/context prompts, outcomes, startup/loading and save-error/recovery presentation. Extend to shops/Smithing and future screens when their gameplay owners are ready.
+1. Read the current screen/data owners and specify the changed player goal, hierarchy and relevant states. Use a development-only DOM specimen only when it answers a concrete design question; direct refinement of an existing screen needs no parallel demo.
+2. Reuse the implemented Inventory/Skills semantic tokens and proven menu/control patterns beside `src/ui/`. Extract a shared primitive only for concrete consumers; keep data operations safe and document required model changes.
+3. Refine the requested screen at gameplay scale with one relevant interaction. Inventory/stash, HUD/action bar, Skills and shared loading are already implemented; their catalog entries retain actual evidence and remaining limits.
+4. Advance remaining travel, shelter, loot/context, outcome, Keybindings and save-recovery design, then title/slots and Smithing as their gameplay scope becomes current. Existing Shop and Options may receive requested refinements through the same workflow.
 
 The [workflow](ui/WORKFLOW.md) defines the brief, mockup records and acceptance. New screen work updates its catalog row and relevant decisions. Shared tokens/components must have one code owner and documented consumers; avoid per-screen copies of foundation values. Keep developer authoring/labs identifiable and functional with shared readability primitives, while player screens receive the game treatment.
 

@@ -20,7 +20,7 @@ Playable preparation retains source texture resolution; the optional gallery sti
 
 The exporter also adds a non-rendered `lantern-socket` at an authored belt vertex, parented to that vertex's dominant skin bone. The cage handle hangs at this socket with a small connector hook. The shared gameplay/viewer lantern retains its amber recipe and initial chest emitter/bounce positions rather than moving the lighting to belt height.
 
-All 43 curated and historical player clips are independently baked to Erika with existing source selections, trims and contact/release markers. Ring and little finger chains use the current checked baker. Never borrow the old Paladin-baked tracks simply because bone names match. [Animation ownership](ANIMATIONS.md) governs motion preparation and review.
+Curated and historical player clips are independently baked to Erika with the source selections, trims and contact/release markers in [the motion manifest](../assets/motion-profiles.json). Later Sword/Bow and Axe ability additions extend the initial 43-clip preparation; use the manifest and compatible catalog for the current selection. Ring and little finger chains use the current checked baker. Never borrow the old Paladin-baked tracks simply because bone names match. [Animation ownership](ANIMATIONS.md) governs motion preparation and review.
 
 ## Acceptance
 

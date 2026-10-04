@@ -4,6 +4,8 @@ October 2, 2026. The owner selected the six-step horizontal layout and authorize
 
 ## Locked direction
 
+The composition below records the selected October 2 concept. Current Sword/Bow rows use learning order and a quieter chronological passive row; Axe exposes its three live actions. [The October 3 brief](BRIEF.md#october-3-mastery-implementation) owns those later refinements. Original images and exact prompts remain reference history.
+
 Four category tabs at the top; every skill in the active category visible at once in a bottom icon row; a left-to-right selected tree in between. Combat and Magic have at least two Basics, two Skills, two Ultimates and ten smaller passive nodes. Two passive nodes sit between each adjacent pair of major nodes. Every node has its own icon and hover/focus information.
 
 Gathering and Crafting share the six-major/ten-minor layout but use generic Major/Minor placeholders, not Basic/Skill/Ultimate actions. The selected skill's level ruler sits immediately above the skill row, marking 10, 20, 30, 40 and 50, without an XP bar. One actual action bar stays outside the sheet; drag available actions to it or activate an empty slot for its picker.

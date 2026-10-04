@@ -135,11 +135,14 @@ Choose one single-view command for ordinary review. Only `--all` creates a conta
 | `npm run assets:review` / `assets:review:report` / `assets:review:check` | Managed visual review, cleanup report and approval eligibility; [workflow](ASSET_REVIEW.md) |
 | `npm run assets:check` | Available local runtime assets and selected-library closure |
 | `npm run assets:check -- --playable` | Require character and compatible default Mixamo motions |
+| `npm run materials:check` / `materials:probe` | Prepared material validation / source-bound native probe; [adapter acceptance](#material-adapter-acceptance) |
 | `npm run check` | Change-aware sanity checks; no ordinary production build |
 | `npm run check:full` | Complete CI gate; requested local use requires `-- --allow-local` |
 | `npm run agent:start` / `agent:finish` | Private task creation and automatic local integration |
 | `npm run agent:dev` / `main:dev` | Private and integrated previews |
 | `npm run agent:status` / `agent:cleanup` | Lifecycle/resource inspection and safe cleanup |
+| `npm run agent:sources` | Explicitly clone only the private source directories needed by an asset task |
+| `npm run agent:context` / `agent:inspect` / `agent:source` / `agent:diagnostics` | Bounded read-only routing, manifests, source and saved check failures; [tool reference](#read-only-agent-tools) |
 | `npm run desktop` | Build and open a visible window for requested manual play |
 | `npm run desktop:run` | Visible manual play of an existing build |
 | `npm run desktop:check -- --debug-port=9231` | Hidden non-focusable Electron; attach CDP |

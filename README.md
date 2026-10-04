@@ -40,7 +40,7 @@ The public repository contains source and original generated surface/UI art. Pla
 
 ```sh
 npm run check       # change-aware local sanity gate
-npm run check:full  # full production/build gate used by CI
+npm run check:full  # CI gate; requested local use adds -- --allow-local
 npm run desktop     # build and open Electron for manual play
 npm run desktop:check -- --debug-port=9231  # hidden Electron; attach CDP
 ```
@@ -58,7 +58,7 @@ Agents use the [private task workflow](Docs/DEVELOPMENT.md#working-alongside-oth
 - [Art direction](Docs/ART_DIRECTION.md): visual identity and review criteria.
 - [UI design system](Docs/UI_DESIGN.md): shared direction, foundation specifications, interaction rules and staged adoption.
 - [UI design workflow](Docs/ui/WORKFLOW.md): briefs, original ImageGen concepts, functional prototypes and screen coverage.
-- [Active UI exploration](Docs/ui/DESIGN_EXPLORATION.md): first-principles design, guiding questions and layout/hierarchy studies; Inventory/stash now have their first implementation.
+- [Active UI exploration](Docs/ui/DESIGN_EXPLORATION.md): first-principles design and remaining questions; Inventory/stash, Skills, HUD and loading have integrated implementations.
 - [Graphics settings](Docs/GRAPHICS.md): current controls, defaults and comparison URLs.
 - [Lighting](Docs/LIGHTING.md): shared Golden preset, local lights and explicit bake preparation.
 - [Gameplay sound](Docs/AUDIO.md): event timing, sound controls and private preparation.

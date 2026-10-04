@@ -18,7 +18,7 @@ Use [the design system](../UI_DESIGN.md) for shared rules and [the workflow](WOR
 | Icon controls and direct item actions | Adopted by owner | Prefer recognizable icons; right-click consumables to use, direct gear action; define keyboard equivalents and ambiguous secondary choices |
 | Remove unrelated/redundant Inventory content | Adopted by owner | No Woodcutting/Mining/Axe Combat footer or separate Scroll of Return section; no redundant “Helmet” line or random instructions |
 | Loadout and quick gear exchange are Inventory's primary task | Adopted by owner | Equipment and carried items visible together; organization supports changing gear directly |
-| Spatial bag with different item footprints | Adopted by owner | Physical organization; preserve each item's artwork scale across bag/equipment/carry; exact dimensions remain open |
+| Spatial bag with different item footprints | Adopted / implemented | Physical organization; preserve each item's artwork scale across bag/equipment/carry; implementation retains the 12 × 8 bag/stash model with one 48px ruler |
 | Tooltip name and useful properties only | Adopted by owner | Explicit choice over proposed comparison; no automatic comparison, redundant category or instruction copy |
 | One large split panel: equipment left, inventory right | Preferred family selected by owner | Explicit response after organizational studies; silhouette and surrounding slots left, continuous spatial bag right; exact design still open |
 | 40% equipment / 60% inventory | Adopted by owner | Explicit proportion choice; equal item-art scale across halves; reflow questions remain open |
@@ -89,3 +89,7 @@ For a consequential change, append a short dated entry with: question; adopted c
 ## Loading screen — October 2, 2026
 
 The owner selected one stationary lantern with subtle flame variation for startup and travel. Longer travel preparation reveals the composition after 400ms; quick journeys use only the fade. Original artwork, DOM text, reduced-motion support and actionable recovery are adopted in [the loading brief](concepts/loading/README.md). No title menu, saved slots, invented percentages or minimum loading duration.
+
+## Live mastery progression — October 3, 2026
+
+The requested Sword/Bow mastery and Axe kit replace the October 2 placeholder availability for those tracks. Sword/Bow’s six major positions follow learning order (Basic I, Skill I, Basic II, Ultimate I, Skill II, Ultimate II); ten chronological passives use real automatic benefits. Axe has live Basic, Crushing Blow and earned Berserking nodes. Locked actions remain inspectable and assignment follows actual unlocks, with earned actions filling an empty slot safely. [Weapon mastery](../EQUIPMENT.md#sword-and-bow-mastery) and [the adopted brief](concepts/skills-horizontal/BRIEF.md#october-3-mastery-implementation) own values and behavior. Other undefined nodes retain proposed thresholds; complete-adventure pacing remains unevaluated.

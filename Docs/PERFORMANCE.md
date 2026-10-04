@@ -5,6 +5,8 @@ Ordinary feature work follows the [lean task workflow](DEVELOPMENT.md#working-al
 
 Use matched local measurements to judge changes; performance numbers are advisory, not CI gates. Browser resource smoke does not execute the renderer.
 
+Dated sections record the source, art and acceptance limits at the time of each pass. Present-tense descriptions within those records are historical, including the earlier absence of authored water and former graphics defaults. Use [current graphics](GRAPHICS.md), [water authoring](LEVEL_DESIGN.md#reusable-water-surfaces) and the current source owners for today’s behavior; retain raw comparisons without treating them as a current baseline.
+
 ## October 1 isolated task workflow
 
 The two real private tasks initially took 18.14 and 18.53 seconds to prepare on the local Apple M5 / 16 GB APFS Mac, including checkout, two prepared-art snapshots, dependency cloning and asset indexing. These are setup observations, not an estimate of physical storage allocated by clones.

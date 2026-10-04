@@ -53,7 +53,7 @@ Comparison URLs override settings for the current load without saving them throu
 - `?outlines=off`
 - `?textureDepth=off`
 
-Explicitly editing a control saves that choice. Reset defaults restores graphics and sound defaults. Graphics uses `lantern.options.v1`, revision 8, preserving applicable existing preferences, including sharpening and the old quality-to-shadow/particle migration, while stripping retired fields. Rendering-method, render-scale and volumetric preferences/URLs are ignored.
+Explicitly editing a control saves that choice. Reset defaults restores graphics, sound and [Combat Text](UI_DESIGN.md#floating-combat-feedback) defaults; keybindings use their own editor and reset. Graphics uses `lantern.options.v1`, revision 8, preserving applicable existing preferences, including sharpening and the old quality-to-shadow/particle migration, while stripping retired fields. Rendering-method, render-scale and volumetric preferences/URLs are ignored.
 
 Controls update immediately and submit immutable snapshots once per presentation frame. Structural graph changes settle for 150 ms, flushing the latest choice on close. Preparation is serialized; gameplay pauses and the last image remains visible during compilation. Failed replacements retain the working graph with an actionable menu error. Resolution Quality resizes existing buffers; two recently used effect graphs are retained at most. HTML UI remains on the main thread, so cold preparation can still stall it.
 
