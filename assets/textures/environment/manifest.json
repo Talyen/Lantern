@@ -69,149 +69,10 @@
       "bakeSize": 1024
     },
     {
-      "id": "generic:model:sm-gen-env-bush-01",
-      "kind": "bush",
-      "url": "/vendor/synty/environment/sm-gen-env-bush-01.glb",
-      "foliage": {
-        "color": "#874739",
-        "shadow": "#653944",
-        "shadowRetention": 0.65,
-        "valueScale": 0.86
-      },
-      "bakeSize": 1024
-    },
-    {
-      "id": "generic:model:sm-gen-env-fern-01",
-      "kind": "fern",
-      "url": "/vendor/synty/environment/sm-gen-env-fern-01.glb",
-      "foliage": {
-        "color": "#AD9145",
-        "shadow": "#626A45",
-        "shadowRetention": 0.7,
-        "valueScale": 0.74
-      },
-      "bakeSize": 1024
-    },
-    {
       "id": "generic:model:sm-gen-env-log-02",
       "kind": "log",
       "url": "/vendor/synty/environment/sm-gen-env-log-02.glb",
       "bakeSize": 2048
-    },
-    {
-      "id": "generic:model:sm-gen-env-rock-04",
-      "kind": "rock",
-      "url": "/vendor/synty/environment/sm-gen-env-rock-04.glb",
-      "bakeSize": 2048,
-      "bevel": 0.003
-    },
-    {
-      "id": "generic:model:sm-gen-env-tree-pine-01",
-      "kind": "pine",
-      "url": "/vendor/synty/environment/sm-gen-env-tree-pine-01.glb",
-      "foliage": {
-        "color": "#AF8050",
-        "shadow": "#626A45",
-        "shadowRetention": 0.42,
-        "valueScale": 0.82
-      },
-      "bakeSize": 2048,
-      "upAxis": 1,
-      "shape": {
-        "canopyIrregularity": 0.2
-      },
-      "mapping": {
-        "bark": {
-          "mode": "cylinder",
-          "repeat": [
-            1.4,
-            2.4
-          ],
-          "blend": 0.7
-        },
-        "foliage": {
-          "scale": [
-            1.3,
-            0.85,
-            1.3
-          ],
-          "blend": 0.55,
-          "interior": 0.86,
-          "tips": 1.02
-        }
-      }
-    },
-    {
-      "id": "generic:model:sm-gen-env-tree-pine-02",
-      "kind": "pine",
-      "url": "/vendor/synty/environment/sm-gen-env-tree-pine-02.glb",
-      "foliage": {
-        "color": "#AD6035",
-        "shadow": "#626A45",
-        "shadowRetention": 0.5,
-        "valueScale": 0.78
-      },
-      "bakeSize": 2048,
-      "upAxis": 1,
-      "shape": {
-        "canopyIrregularity": 0.2
-      },
-      "mapping": {
-        "bark": {
-          "mode": "cylinder",
-          "repeat": [
-            1.4,
-            2.4
-          ],
-          "blend": 0.7
-        },
-        "foliage": {
-          "scale": [
-            1.3,
-            0.85,
-            1.3
-          ],
-          "blend": 0.55,
-          "interior": 0.86,
-          "tips": 1.02
-        }
-      }
-    },
-    {
-      "id": "generic:model:sm-gen-env-tree-pine-03",
-      "kind": "pine",
-      "url": "/vendor/synty/environment/sm-gen-env-tree-pine-03.glb",
-      "foliage": {
-        "color": "#AD9145",
-        "shadow": "#626A45",
-        "shadowRetention": 0.5,
-        "valueScale": 0.74
-      },
-      "bakeSize": 2048,
-      "upAxis": 1,
-      "shape": {
-        "canopyIrregularity": 0.2
-      },
-      "mapping": {
-        "bark": {
-          "mode": "cylinder",
-          "repeat": [
-            1.4,
-            2.4
-          ],
-          "blend": 0.7
-        },
-        "foliage": {
-          "scale": [
-            1.3,
-            0.85,
-            1.3
-          ],
-          "blend": 0.55,
-          "interior": 0.86,
-          "tips": 1.02
-        }
-      }
     },
     {
       "id": "goblin-war-camp:model:buildings-sm-bld-tent-small-04",
@@ -230,32 +91,6 @@
       "kind": "bedroll",
       "url": "/vendor/synty/environment/props-sm-prop-bedroll-02.glb",
       "bakeSize": 1024
-    },
-    {
-      "id": "goblin-war-camp:model:props-sm-prop-crate-01",
-      "kind": "crate",
-      "url": "/vendor/synty/environment/props-sm-prop-crate-01.glb",
-      "bakeSize": 1024
-    },
-    {
-      "id": "viking-realm:model:sm-prop-lantern-01",
-      "kind": "lantern",
-      "url": "/vendor/synty/environment/sm-prop-lantern-01.glb",
-      "bakeSize": 1024
-    },
-    {
-      "id": "/vendor/synty/chest.glb",
-      "kind": "chest",
-      "url": "/vendor/synty/environment/chest.glb",
-      "bakeSize": 2048
-    },
-    {
-      "id": "/vendor/synty/art-lab/rock-painterly.glb",
-      "kind": "rock",
-      "url": "/vendor/synty/environment/cliff-rock.glb",
-      "sourceUrl": "/vendor/synty/art-lab/rock.glb",
-      "bakeSize": 2048,
-      "bevel": 0.003
     }
   ],
   "showcase": {
@@ -287,7 +122,7 @@
         {
           "center": [
             -11.7,
-            3.0
+            3
           ],
           "radius": 2.2,
           "color": "#71533c",
@@ -319,7 +154,7 @@
             -12.5,
             6.6
           ],
-          "radius": 2.0,
+          "radius": 2,
           "color": "#71533c",
           "strength": 0.5,
           "layer": "litter"
@@ -408,45 +243,6 @@
     },
     "assets": [
       {
-        "id": "generic:model:sm-gen-env-tree-pine-03",
-        "kind": "pine",
-        "url": "/vendor/synty/environment/showcase/pine.glb",
-        "foliage": {
-          "color": "#AD6035",
-          "shadow": "#626A45",
-          "shadowRetention": 0.55,
-          "valueScale": 0.83,
-          "retainSourcePalette": true
-        },
-        "surfaces": {
-          "foliage": "showcase/foliage-v2.png"
-        },
-        "upAxis": 1,
-        "mapping": {
-          "bark": {
-            "mode": "cylinder",
-            "repeat": [
-              1.4,
-              2.4
-            ],
-            "blend": 0.7
-          },
-          "foliage": {
-            "scale": [
-              1.3,
-              0.85,
-              1.3
-            ],
-            "blend": 0.78,
-            "interior": 0.84,
-            "tips": 1.04
-          }
-        },
-        "shape": {
-          "canopyIrregularity": 0.32
-        }
-      },
-      {
         "id": "/vendor/synty/art-lab/rock-painterly.glb",
         "sourceUrl": "/vendor/synty/art-lab/rock.glb",
         "kind": "rock",
@@ -506,84 +302,6 @@
         }
       },
       {
-        "id": "generic:model:sm-gen-env-bush-01",
-        "kind": "bush",
-        "url": "/vendor/synty/environment/clearing/sm-gen-env-bush-01.glb",
-        "foliage": {
-          "color": "#874739",
-          "shadow": "#653944",
-          "shadowRetention": 0.65,
-          "valueScale": 0.86
-        },
-        "bakeSize": 1024,
-        "upAxis": 1,
-        "mapping": {
-          "foliage": {
-            "scale": [
-              0.8,
-              0.65,
-              0.8
-            ],
-            "blend": 0.84,
-            "interior": 0.58,
-            "tips": 1.12,
-            "contrast": 0.04
-          },
-          "bark": {
-            "mode": "cylinder",
-            "repeat": [
-              1.2,
-              1.7
-            ],
-            "blend": 0.85,
-            "footWear": 0.22,
-            "contrast": 0.12
-          }
-        },
-        "surfaces": {
-          "foliage": "showcase/foliage-v2.png"
-        }
-      },
-      {
-        "id": "generic:model:sm-gen-env-fern-01",
-        "kind": "fern",
-        "url": "/vendor/synty/environment/clearing/sm-gen-env-fern-01.glb",
-        "foliage": {
-          "color": "#AD9145",
-          "shadow": "#626A45",
-          "shadowRetention": 0.7,
-          "valueScale": 0.74
-        },
-        "bakeSize": 1024,
-        "upAxis": 1,
-        "mapping": {
-          "foliage": {
-            "scale": [
-              0.8,
-              0.65,
-              0.8
-            ],
-            "blend": 0.84,
-            "interior": 0.58,
-            "tips": 1.12,
-            "contrast": 0.04
-          },
-          "bark": {
-            "mode": "cylinder",
-            "repeat": [
-              1.2,
-              1.7
-            ],
-            "blend": 0.85,
-            "footWear": 0.22,
-            "contrast": 0.12
-          }
-        },
-        "surfaces": {
-          "foliage": "showcase/foliage-v2.png"
-        }
-      },
-      {
         "id": "generic:model:sm-gen-env-log-02",
         "kind": "log",
         "url": "/vendor/synty/environment/clearing/sm-gen-env-log-02.glb",
@@ -610,132 +328,6 @@
             "footWear": 0.2,
             "contrast": 0.12
           }
-        }
-      },
-      {
-        "id": "generic:model:sm-gen-env-tree-pine-01",
-        "kind": "pine",
-        "url": "/vendor/synty/environment/clearing/sm-gen-env-tree-pine-01.glb",
-        "foliage": {
-          "color": "#AF8050",
-          "shadow": "#626A45",
-          "shadowRetention": 0.42,
-          "valueScale": 0.82
-        },
-        "bakeSize": 2048,
-        "upAxis": 1,
-        "shape": {
-          "canopyIrregularity": 0.2
-        },
-        "mapping": {
-          "bark": {
-            "mode": "cylinder",
-            "repeat": [
-              1.2,
-              1.7
-            ],
-            "blend": 0.85,
-            "footWear": 0.22,
-            "contrast": 0.12
-          },
-          "foliage": {
-            "scale": [
-              0.8,
-              0.65,
-              0.8
-            ],
-            "blend": 0.84,
-            "interior": 0.58,
-            "tips": 1.12,
-            "contrast": 0.04
-          }
-        },
-        "surfaces": {
-          "foliage": "showcase/foliage-v2.png"
-        }
-      },
-      {
-        "id": "generic:model:sm-gen-env-tree-pine-02",
-        "kind": "pine",
-        "url": "/vendor/synty/environment/clearing/sm-gen-env-tree-pine-02.glb",
-        "foliage": {
-          "color": "#AD6035",
-          "shadow": "#626A45",
-          "shadowRetention": 0.5,
-          "valueScale": 0.78
-        },
-        "bakeSize": 2048,
-        "upAxis": 1,
-        "shape": {
-          "canopyIrregularity": 0.2
-        },
-        "mapping": {
-          "bark": {
-            "mode": "cylinder",
-            "repeat": [
-              1.2,
-              1.7
-            ],
-            "blend": 0.85,
-            "footWear": 0.22,
-            "contrast": 0.12
-          },
-          "foliage": {
-            "scale": [
-              0.8,
-              0.65,
-              0.8
-            ],
-            "blend": 0.84,
-            "interior": 0.58,
-            "tips": 1.12,
-            "contrast": 0.04
-          }
-        },
-        "surfaces": {
-          "foliage": "showcase/foliage-v2.png"
-        }
-      },
-      {
-        "id": "generic:model:sm-gen-env-tree-pine-03",
-        "kind": "pine",
-        "url": "/vendor/synty/environment/clearing/sm-gen-env-tree-pine-03.glb",
-        "foliage": {
-          "color": "#AD9145",
-          "shadow": "#626A45",
-          "shadowRetention": 0.5,
-          "valueScale": 0.74
-        },
-        "bakeSize": 2048,
-        "upAxis": 1,
-        "shape": {
-          "canopyIrregularity": 0.2
-        },
-        "mapping": {
-          "bark": {
-            "mode": "cylinder",
-            "repeat": [
-              1.2,
-              1.7
-            ],
-            "blend": 0.85,
-            "footWear": 0.22,
-            "contrast": 0.12
-          },
-          "foliage": {
-            "scale": [
-              0.8,
-              0.65,
-              0.8
-            ],
-            "blend": 0.84,
-            "interior": 0.58,
-            "tips": 1.12,
-            "contrast": 0.04
-          }
-        },
-        "surfaces": {
-          "foliage": "showcase/foliage-v2.png"
         }
       },
       {
@@ -843,94 +435,6 @@
             "footWear": 0.16,
             "contrast": 0.04
           }
-        }
-      },
-      {
-        "id": "goblin-war-camp:model:props-sm-prop-crate-01",
-        "kind": "crate",
-        "url": "/vendor/synty/environment/clearing/props-sm-prop-crate-01.glb",
-        "bakeSize": 1024,
-        "upAxis": 1,
-        "mapping": {
-          "timber": {
-            "scale": [
-              0.55,
-              0.8,
-              0.55
-            ],
-            "blend": 0.83,
-            "footWear": 0.2,
-            "contrast": 0.12
-          },
-          "bark": {
-            "scale": [
-              0.7,
-              1.1,
-              0.7
-            ],
-            "blend": 0.88,
-            "footWear": 0.2,
-            "contrast": 0.12
-          }
-        }
-      },
-      {
-        "id": "/vendor/synty/chest.glb",
-        "kind": "chest",
-        "url": "/vendor/synty/environment/clearing/chest.glb",
-        "bakeSize": 2048,
-        "upAxis": 1,
-        "mapping": {
-          "timber": {
-            "scale": [
-              0.55,
-              0.8,
-              0.55
-            ],
-            "blend": 0.83,
-            "footWear": 0.2,
-            "contrast": 0.12
-          },
-          "bark": {
-            "scale": [
-              0.7,
-              1.1,
-              0.7
-            ],
-            "blend": 0.88,
-            "footWear": 0.2,
-            "contrast": 0.12
-          }
-        }
-      },
-      {
-        "id": "/vendor/synty/art-lab/rock-painterly.glb",
-        "kind": "rock",
-        "url": "/vendor/synty/environment/clearing/cliff-rock.glb",
-        "sourceUrl": "/vendor/synty/art-lab/rock.glb",
-        "bakeSize": 2048,
-        "bevel": 0.003,
-        "upAxis": 1,
-        "mapping": {
-          "stone": {
-            "scale": [
-              0.68,
-              0.5,
-              0.68
-            ],
-            "rotation": [
-              0,
-              0.22,
-              0
-            ],
-            "blend": 0.9,
-            "valueScale": 0.96,
-            "footWear": 0.24,
-            "contrast": 0.12
-          }
-        },
-        "surfaces": {
-          "stone": "showcase/stone-v2.png"
         }
       }
     ]

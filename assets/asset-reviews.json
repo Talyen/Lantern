@@ -99,6 +99,87 @@
       "fingerprint": "dabdac33c90a545d16c66f4f631bf381de3c635ea491a40c8f660d566992197c",
       "notes": "",
       "updatedAt": "2026-10-04T20:20:04.916Z"
+    },
+    "ashen-veil:model:forest-autumn-shrub@original": {
+      "familyId": "ashen-veil:model:forest-autumn-shrub",
+      "url": "/vendor/synty/library/models/ashen-veil/forest_autumn_shrub.glb",
+      "name": "forest autumn shrub",
+      "state": "approved",
+      "fingerprint": "741499a54ffe786c513c8923d9f754b5bed088470f182073874000215f555de5",
+      "notes": "Owner requested a rough equivalent replacement for deleted scenery. Displayed and visually inspected using the shared native WebGPU/FSR asset lab; placement and interactions remain area-owned.",
+      "updatedAt": "2026-10-04T23:16:33.182Z"
+    },
+    "autumn-atlas:model:understory-copper-bracken@original": {
+      "familyId": "autumn-atlas:model:understory-copper-bracken",
+      "url": "/vendor/synty/library/models/autumn-atlas/understory_copper_bracken.glb",
+      "name": "Copper bracken",
+      "state": "approved",
+      "fingerprint": "6d61f7a68044a04b08abe4990bfa4e0348384030a9bddaafa3b907f3ffcd711c",
+      "notes": "Owner requested a rough equivalent replacement for deleted scenery. Displayed and visually inspected using the shared native WebGPU/FSR asset lab; placement and interactions remain area-owned.",
+      "updatedAt": "2026-10-04T23:16:33.184Z"
+    },
+    "autumn-atlas:model:tree-golden-larch@original": {
+      "familyId": "autumn-atlas:model:tree-golden-larch",
+      "url": "/vendor/synty/library/models/autumn-atlas/tree_golden_larch.glb",
+      "name": "Golden larch",
+      "state": "approved",
+      "fingerprint": "f51c615ea50fe5b70a64de0c2227ef4daa3f7aa1c8ea3ac8c943ea7dad89c04a",
+      "notes": "Owner requested a rough equivalent replacement for deleted scenery. Displayed and visually inspected using the shared native WebGPU/FSR asset lab; placement and interactions remain area-owned.",
+      "updatedAt": "2026-10-04T23:16:33.187Z"
+    },
+    "ashen-veil:model:forest-rock-small@original": {
+      "familyId": "ashen-veil:model:forest-rock-small",
+      "url": "/vendor/synty/library/models/ashen-veil/forest_rock_small.glb",
+      "name": "forest rock small",
+      "state": "approved",
+      "fingerprint": "d34aae49dd32eb023dd6709018f95054fb0f8030f4d1d9f1dac64d46276a1129",
+      "notes": "Owner requested a rough equivalent replacement for deleted scenery. Displayed and visually inspected using the shared native WebGPU/FSR asset lab; placement and interactions remain area-owned.",
+      "updatedAt": "2026-10-04T23:16:33.187Z"
+    },
+    "ashen-veil:model:forest-rock-large@original": {
+      "familyId": "ashen-veil:model:forest-rock-large",
+      "url": "/vendor/synty/library/models/ashen-veil/forest_rock_large.glb",
+      "name": "forest rock large",
+      "state": "approved",
+      "fingerprint": "348a43dcfc362284d0bb98b4210fcdeb6f7ad197fdfef1534e2bb21b7597710a",
+      "notes": "Owner requested a rough equivalent replacement for deleted scenery. Displayed and visually inspected using the shared native WebGPU/FSR asset lab; placement and interactions remain area-owned.",
+      "updatedAt": "2026-10-04T23:16:33.188Z"
+    },
+    "gothic-lootables:model:crate-single@original": {
+      "familyId": "gothic-lootables:model:crate-single",
+      "url": "/vendor/synty/library/models/gothic-lootables/crate_single.glb",
+      "name": "crate single",
+      "state": "approved",
+      "fingerprint": "65ac95bb14ee62b9b5c0f15ef7c5e296c12660b4b2f08277ee5bf3e8257d7b40",
+      "notes": "Owner requested a rough equivalent replacement for deleted scenery. Displayed and visually inspected using the shared native WebGPU/FSR asset lab; placement and interactions remain area-owned.",
+      "updatedAt": "2026-10-04T23:16:33.189Z"
+    },
+    "ashen-veil:model:prop-flask-health@original": {
+      "familyId": "ashen-veil:model:prop-flask-health",
+      "url": "/vendor/synty/library/models/ashen-veil/prop_flask_health.glb",
+      "name": "prop flask health",
+      "state": "approved",
+      "fingerprint": "52659f6c1b28a6737a289b1fa693fe57004ca40eb6f4b9e3a824bdae4804e859",
+      "notes": "Owner requested a rough equivalent replacement for deleted scenery. Displayed and visually inspected using the shared native WebGPU/FSR asset lab; placement and interactions remain area-owned.",
+      "updatedAt": "2026-10-04T23:16:33.190Z"
+    },
+    "ashen-veil-lights:model:light-tabletop-lantern@original": {
+      "familyId": "ashen-veil-lights:model:light-tabletop-lantern",
+      "url": "/vendor/synty/library/models/ashen-veil-lights/light_tabletop_lantern.glb",
+      "name": "Tabletop lantern",
+      "state": "approved",
+      "fingerprint": "e7145c6c9d36447528132682b488132e8590eb47064bb245e0df6eee3d8e6da0",
+      "notes": "Owner requested a rough equivalent replacement for deleted scenery. Displayed and visually inspected using the shared native WebGPU/FSR asset lab; placement and interactions remain area-owned.",
+      "updatedAt": "2026-10-04T23:16:33.191Z"
+    },
+    "/vendor/synty/chest.glb@/vendor/synty/chest.glb": {
+      "familyId": "/vendor/synty/chest.glb",
+      "url": "/vendor/synty/chest.glb",
+      "name": "chest.glb",
+      "state": "approved",
+      "fingerprint": "7812c9f6b6d8c5b1abd141e2067c132d8e59731a58035fb0a126172aaadd3319",
+      "notes": "Owner requested a rough equivalent replacement for deleted scenery. Displayed and visually inspected using the shared native WebGPU/FSR asset lab; placement and interactions remain area-owned.",
+      "updatedAt": "2026-10-04T23:16:33.193Z"
     }
   },
   "familyDenials": {},
@@ -24672,6 +24753,166 @@
       "familyId": "shops:model:shops-obj-sm-chr-worker-male-01",
       "url": "/vendor/character-gallery/synty-shops-sm_chr_worker_male_01/model.glb",
       "deletedAt": "2026-10-04T22:50:51.301Z"
+    },
+    "generic:model:sm-gen-env-bush-01@gameplay": {
+      "familyId": "generic:model:sm-gen-env-bush-01",
+      "url": "/vendor/synty/environment/sm-gen-env-bush-01.glb",
+      "deletedAt": "2026-10-04T23:20:59.084Z"
+    },
+    "generic:model:sm-gen-env-bush-01@original": {
+      "familyId": "generic:model:sm-gen-env-bush-01",
+      "url": "/vendor/synty/library/models/generic/49e96016fb2ef6805e13.glb",
+      "deletedAt": "2026-10-04T23:20:59.084Z"
+    },
+    "/vendor/synty/chest.glb@area:clearing": {
+      "familyId": "/vendor/synty/chest.glb",
+      "url": "/vendor/synty/environment/clearing/chest.glb",
+      "deletedAt": "2026-10-04T23:20:59.084Z"
+    },
+    "/vendor/synty/chest.glb@gameplay": {
+      "familyId": "/vendor/synty/chest.glb",
+      "url": "/vendor/synty/environment/chest.glb",
+      "deletedAt": "2026-10-04T23:20:59.084Z"
+    },
+    "goblin-war-camp:model:props-sm-prop-crate-01@area:clearing": {
+      "familyId": "goblin-war-camp:model:props-sm-prop-crate-01",
+      "url": "/vendor/synty/environment/clearing/props-sm-prop-crate-01.glb",
+      "deletedAt": "2026-10-04T23:20:59.084Z"
+    },
+    "goblin-war-camp:model:props-sm-prop-crate-01@gameplay": {
+      "familyId": "goblin-war-camp:model:props-sm-prop-crate-01",
+      "url": "/vendor/synty/environment/props-sm-prop-crate-01.glb",
+      "deletedAt": "2026-10-04T23:20:59.084Z"
+    },
+    "generic:model:sm-gen-prop-crate-01@original": {
+      "familyId": "generic:model:sm-gen-prop-crate-01",
+      "url": "/vendor/synty/library/models/generic/7d0ccb315078e165975f.glb",
+      "deletedAt": "2026-10-04T23:20:59.084Z"
+    },
+    "goblin-war-camp:model:props-sm-prop-crate-01@original": {
+      "familyId": "goblin-war-camp:model:props-sm-prop-crate-01",
+      "url": "/vendor/synty/library/models/goblin-war-camp/6a1380168d00e29f4166.glb",
+      "deletedAt": "2026-10-04T23:20:59.084Z"
+    },
+    "generic:model:sm-gen-env-fern-01@area:clearing": {
+      "familyId": "generic:model:sm-gen-env-fern-01",
+      "url": "/vendor/synty/environment/clearing/sm-gen-env-fern-01.glb",
+      "deletedAt": "2026-10-04T23:20:59.084Z"
+    },
+    "generic:model:sm-gen-env-fern-01@gameplay": {
+      "familyId": "generic:model:sm-gen-env-fern-01",
+      "url": "/vendor/synty/environment/sm-gen-env-fern-01.glb",
+      "deletedAt": "2026-10-04T23:20:59.084Z"
+    },
+    "generic:model:sm-gen-env-fern-01@original": {
+      "familyId": "generic:model:sm-gen-env-fern-01",
+      "url": "/vendor/synty/library/models/generic/25b318bc53291cd8710d.glb",
+      "deletedAt": "2026-10-04T23:20:59.084Z"
+    },
+    "viking-realm:model:sm-prop-lantern-01@gameplay": {
+      "familyId": "viking-realm:model:sm-prop-lantern-01",
+      "url": "/vendor/synty/environment/sm-prop-lantern-01.glb",
+      "deletedAt": "2026-10-04T23:20:59.084Z"
+    },
+    "viking-realm:model:sm-prop-lantern-01@original": {
+      "familyId": "viking-realm:model:sm-prop-lantern-01",
+      "url": "/vendor/synty/library/models/viking-realm/fc952e8e9cf6b122c2f5.glb",
+      "deletedAt": "2026-10-04T23:20:59.084Z"
+    },
+    "/vendor/synty/art-lab/rock-painterly.glb@gameplay": {
+      "familyId": "/vendor/synty/art-lab/rock-painterly.glb",
+      "url": "/vendor/synty/environment/cliff-rock.glb",
+      "deletedAt": "2026-10-04T23:20:59.084Z"
+    },
+    "/vendor/synty/art-lab/rock-painterly.glb@area:clearing": {
+      "familyId": "/vendor/synty/art-lab/rock-painterly.glb",
+      "url": "/vendor/synty/environment/clearing/cliff-rock.glb",
+      "deletedAt": "2026-10-04T23:20:59.084Z"
+    },
+    "/vendor/synty/art-lab/rock-painterly.glb@/vendor/synty/art-lab/rock-painterly.glb": {
+      "familyId": "/vendor/synty/art-lab/rock-painterly.glb",
+      "url": "/vendor/synty/art-lab/rock-painterly.glb",
+      "deletedAt": "2026-10-04T23:20:59.084Z"
+    },
+    "generic:model:sm-gen-env-tree-pine-01@area:clearing": {
+      "familyId": "generic:model:sm-gen-env-tree-pine-01",
+      "url": "/vendor/synty/environment/clearing/sm-gen-env-tree-pine-01.glb",
+      "deletedAt": "2026-10-04T23:20:59.084Z"
+    },
+    "generic:model:sm-gen-env-tree-pine-01@gameplay": {
+      "familyId": "generic:model:sm-gen-env-tree-pine-01",
+      "url": "/vendor/synty/environment/sm-gen-env-tree-pine-01.glb",
+      "deletedAt": "2026-10-04T23:20:59.084Z"
+    },
+    "generic:model:sm-gen-env-tree-pine-01@original": {
+      "familyId": "generic:model:sm-gen-env-tree-pine-01",
+      "url": "/vendor/synty/library/models/generic/5c44419b487324850134.glb",
+      "deletedAt": "2026-10-04T23:20:59.084Z"
+    },
+    "generic:model:sm-gen-env-tree-pine-02@area:clearing": {
+      "familyId": "generic:model:sm-gen-env-tree-pine-02",
+      "url": "/vendor/synty/environment/clearing/sm-gen-env-tree-pine-02.glb",
+      "deletedAt": "2026-10-04T23:20:59.084Z"
+    },
+    "generic:model:sm-gen-env-tree-pine-02@gameplay": {
+      "familyId": "generic:model:sm-gen-env-tree-pine-02",
+      "url": "/vendor/synty/environment/sm-gen-env-tree-pine-02.glb",
+      "deletedAt": "2026-10-04T23:20:59.084Z"
+    },
+    "generic:model:sm-gen-env-tree-pine-02@original": {
+      "familyId": "generic:model:sm-gen-env-tree-pine-02",
+      "url": "/vendor/synty/library/models/generic/3f85c3b70142c873fe15.glb",
+      "deletedAt": "2026-10-04T23:20:59.084Z"
+    },
+    "generic:model:sm-gen-env-tree-pine-03@area:clearing": {
+      "familyId": "generic:model:sm-gen-env-tree-pine-03",
+      "url": "/vendor/synty/environment/clearing/sm-gen-env-tree-pine-03.glb",
+      "deletedAt": "2026-10-04T23:20:59.084Z"
+    },
+    "generic:model:sm-gen-env-tree-pine-03@gameplay": {
+      "familyId": "generic:model:sm-gen-env-tree-pine-03",
+      "url": "/vendor/synty/environment/sm-gen-env-tree-pine-03.glb",
+      "deletedAt": "2026-10-04T23:20:59.084Z"
+    },
+    "generic:model:sm-gen-env-tree-pine-03@original": {
+      "familyId": "generic:model:sm-gen-env-tree-pine-03",
+      "url": "/vendor/synty/library/models/generic/7791ebcc58644c0e03b8.glb",
+      "deletedAt": "2026-10-04T23:20:59.084Z"
+    },
+    "generic:model:sm-gen-prop-potion-01@original": {
+      "familyId": "generic:model:sm-gen-prop-potion-01",
+      "url": "/vendor/synty/library/models/generic/248e4f8fb3b2cda4ea33.glb",
+      "deletedAt": "2026-10-04T23:20:59.084Z"
+    },
+    "generic:model:sm-gen-env-rock-04@gameplay": {
+      "familyId": "generic:model:sm-gen-env-rock-04",
+      "url": "/vendor/synty/environment/sm-gen-env-rock-04.glb",
+      "deletedAt": "2026-10-04T23:20:59.084Z"
+    },
+    "generic:model:sm-gen-env-rock-04@original": {
+      "familyId": "generic:model:sm-gen-env-rock-04",
+      "url": "/vendor/synty/library/models/generic/742ffdf826fd0950ab06.glb",
+      "deletedAt": "2026-10-04T23:20:59.084Z"
+    },
+    "generic:model:sm-gen-env-rock-01@original": {
+      "familyId": "generic:model:sm-gen-env-rock-01",
+      "url": "/vendor/synty/library/models/generic/826986cee91b0be12922.glb",
+      "deletedAt": "2026-10-04T23:20:59.084Z"
+    },
+    "character:mixamo-4ebecd82-580e-49f2-8181-b9643ecd9509@gallery": {
+      "familyId": "character:mixamo-4ebecd82-580e-49f2-8181-b9643ecd9509",
+      "url": "/vendor/character-gallery/mixamo-4ebecd82-580e-49f2-8181-b9643ecd9509/model.glb",
+      "deletedAt": "2026-10-04T23:20:59.084Z"
+    },
+    "generic:model:sm-gen-env-tree-pine-03@showcase": {
+      "familyId": "generic:model:sm-gen-env-tree-pine-03",
+      "url": "/vendor/synty/environment/showcase/pine.glb",
+      "deletedAt": "2026-10-04T23:20:59.084Z"
+    },
+    "generic:model:sm-gen-env-bush-01@area:clearing": {
+      "familyId": "generic:model:sm-gen-env-bush-01",
+      "url": "/vendor/synty/environment/clearing/sm-gen-env-bush-01.glb",
+      "deletedAt": "2026-10-04T23:20:59.084Z"
     }
   }
 }

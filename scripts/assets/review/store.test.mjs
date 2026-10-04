@@ -90,3 +90,30 @@ test('cached previews reject stale approval after a reexport with the same ID an
     assert.equal(effectiveReview(changed, (await cache.get()).reviews).state, 'denied');
   } finally { await f.dispose(); }
 });
+
+test('deleting a prepared variant retains its source while deleted originals still report broken scene uses', async () => {
+  const f = await fixture();
+  try {
+    const source = '/vendor/synty/chest.glb', original = 'fixture:assembly:tree';
+    await writeFile(join(f.task.path, 'public', source.slice(1)), 'retained source');
+    await writeJSON(join(f.task.path, 'assets/playable-characters.json'), { player: { name: 'Player', model: '/vendor/player.glb', sourceId: 'fixture-player' } });
+    await writeJSON(join(f.task.path, 'src/levels/areas/fixture.json'), {
+      id: 'fixture', name: 'Fixture', props: [{ id: 'chest', asset: { url: source } }, { id: 'tree', asset: { libraryId: original } }],
+      layout: { enemies: [] }, effects: { fires: [] },
+    });
+    const reviews = emptyReviews();
+    reviews.deleted[`${source}@gameplay`] = { familyId: source, url: '/vendor/synty/environment/chest.glb', deletedAt: new Date().toISOString() };
+    reviews.deleted[`${original}@original`] = { familyId: original, url: '/vendor/synty/library/assemblies/tree.json', deletedAt: new Date().toISOString() };
+    await writeJSON(join(f.task.path, 'assets/asset-reviews.json'), reviews);
+    await writeJSON(join(f.task.path, 'public/vendor/synty/library/catalog.json'), { version: 1, assets: {} });
+    const index = await reviewIndex(f.task.path, { reviewed: false });
+    const chest = index.assets.find(row => row.uses.some(use => use.owner === 'chest'));
+    assert.equal(chest.id, `${source}@${source}`);
+    assert.equal(chest.available, true);
+    assert.deepEqual(chest.warnings, []);
+    const tree = index.assets.find(row => row.uses.some(use => use.owner === 'tree'));
+    assert.equal(tree.id, `${original}@original`);
+    assert.equal(tree.available, false);
+    assert.match(tree.warnings.join('\n'), /Deleted asset is still referenced/);
+  } finally { await f.dispose(); }
+});

@@ -132,6 +132,7 @@ export async function gameplayAssets(source = resolve(root, 'public')) {
   const characters = JSON.parse(await readFile(resolve(root, 'assets/playable-characters.json'), 'utf8'));
   for (const config of Object.values(characters)) {
     await references(config.model); await references(config.catalog);
+    await references(config.lanternModel);
     const catalog = assetPath(source, config.catalog, '/');
     if (existsSync(catalog)) {
       const data = JSON.parse(await readFile(catalog, 'utf8'));

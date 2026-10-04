@@ -8,7 +8,8 @@ import { validateMaterial } from './material-validation';
 import { materialRecipes, type MaterialFamily } from '../rendering/material-recipes';
 
 export type SurfaceMode = 'projected' | 'authored' | 'showcase';
-const variants = new Map(manifest.assets.map(asset => [asset.id, asset]));
+type SurfaceVariant = { id: string; kind: string; url: string; sourceUrl?: string };
+const variants = new Map<string, SurfaceVariant>(manifest.assets.map(asset => [asset.id, asset]));
 const showcaseVariants = new Map(manifest.showcase.assets.map(asset => [asset.id, asset.url]));
 const areaVariants = new Map(Object.entries(manifest.areaAssets).map(([area, assets]) => [area, new Map(assets.map(asset => [asset.id, asset.url]))]));
 export function environmentSurface(ref: AssetRef, mode: SurfaceMode = 'projected', showcasePlacement = false, area?: string): string | undefined {

@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { resolveLocalLight } from '../levels/local-lighting';
 import { MeshStandardNodeMaterial } from 'three/webgpu';
+import characters from '../../assets/playable-characters.json';
 
 /** Personal light follows the verified player rig; it never contributes to static bakes. */
 export class PlayerLantern {
@@ -30,7 +31,7 @@ export class PlayerLantern {
     this.actor.updateMatrixWorld(true);
     const emitterPosition = this.light.getWorldPosition(new THREE.Vector3());
     const bouncePosition = this.ownerBounce.getWorldPosition(new THREE.Vector3());
-    const url = '/vendor/synty/environment/sm-prop-lantern-01.glb';
+    const url = characters.player.lanternModel;
     try {
       const { scene } = await new GLTFLoader().loadAsync(url); sceneTextures(scene);
       this.model = scene;

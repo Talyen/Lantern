@@ -1630,18 +1630,22 @@
         0,
         6.364
       ],
-      "yaw": 0.0,
+      "yaw": 0,
       "scale": [
+        0.297207,
         1,
-        1,
-        1
+        0.287065
       ],
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-tree-pine-01"
+        "libraryId": "autumn-atlas:model:tree-golden-larch"
       },
       "height": 6,
       "castShadow": true,
-      "receiveShadow": true
+      "receiveShadow": true,
+      "harvest": {
+        "kind": "tree",
+        "radius": 0.28
+      }
     },
     {
       "id": "cemetery-pine-1",
@@ -1652,16 +1656,20 @@
       ],
       "yaw": 0.6,
       "scale": [
+        0.385585,
         1,
-        1,
-        1
+        0.34929
       ],
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-tree-pine-02"
+        "libraryId": "autumn-atlas:model:tree-golden-larch"
       },
       "height": 6.2,
       "castShadow": true,
-      "receiveShadow": true
+      "receiveShadow": true,
+      "harvest": {
+        "kind": "tree",
+        "radius": 0.28
+      }
     },
     {
       "id": "cemetery-pine-2",
@@ -1672,16 +1680,20 @@
       ],
       "yaw": 1.2,
       "scale": [
+        0.469649,
         1,
-        1,
-        1
+        0.49916
       ],
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-tree-pine-03"
+        "libraryId": "autumn-atlas:model:tree-golden-larch"
       },
       "height": 5.8,
       "castShadow": true,
-      "receiveShadow": true
+      "receiveShadow": true,
+      "harvest": {
+        "kind": "tree",
+        "radius": 0.28
+      }
     },
     {
       "id": "cemetery-pine-3",
@@ -1692,36 +1704,44 @@
       ],
       "yaw": 1.7999999999999998,
       "scale": [
+        0.297207,
         1,
-        1,
-        1
+        0.287065
       ],
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-tree-pine-01"
+        "libraryId": "autumn-atlas:model:tree-golden-larch"
       },
       "height": 5.5,
       "castShadow": true,
-      "receiveShadow": true
+      "receiveShadow": true,
+      "harvest": {
+        "kind": "tree",
+        "radius": 0.28
+      }
     },
     {
       "id": "cemetery-pine-4",
       "position": [
-        0.0,
+        0,
         0,
         12.7279
       ],
       "yaw": 2.4,
       "scale": [
+        0.385585,
         1,
-        1,
-        1
+        0.34929
       ],
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-tree-pine-02"
+        "libraryId": "autumn-atlas:model:tree-golden-larch"
       },
       "height": 5.5,
       "castShadow": true,
-      "receiveShadow": true
+      "receiveShadow": true,
+      "harvest": {
+        "kind": "tree",
+        "radius": 0.28
+      }
     },
     {
       "id": "cemetery-pine-5",
@@ -1730,18 +1750,22 @@
         0,
         10.9602
       ],
-      "yaw": 3.0,
+      "yaw": 3,
       "scale": [
+        0.469649,
         1,
-        1,
-        1
+        0.49916
       ],
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-tree-pine-03"
+        "libraryId": "autumn-atlas:model:tree-golden-larch"
       },
       "height": 5.8,
       "castShadow": true,
-      "receiveShadow": true
+      "receiveShadow": true,
+      "harvest": {
+        "kind": "tree",
+        "radius": 0.28
+      }
     },
     {
       "id": "cemetery-pine-6",
@@ -1752,16 +1776,20 @@
       ],
       "yaw": 3.5999999999999996,
       "scale": [
+        0.297207,
         1,
-        1,
-        1
+        0.287065
       ],
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-tree-pine-01"
+        "libraryId": "autumn-atlas:model:tree-golden-larch"
       },
       "height": 5,
       "castShadow": true,
-      "receiveShadow": true
+      "receiveShadow": true,
+      "harvest": {
+        "kind": "tree",
+        "radius": 0.28
+      }
     },
     {
       "id": "cemetery-pine-7",
@@ -1772,16 +1800,20 @@
       ],
       "yaw": 4.2,
       "scale": [
+        0.385585,
         1,
-        1,
-        1
+        0.34929
       ],
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-tree-pine-02"
+        "libraryId": "autumn-atlas:model:tree-golden-larch"
       },
       "height": 6,
       "castShadow": true,
-      "receiveShadow": true
+      "receiveShadow": true,
+      "harvest": {
+        "kind": "tree",
+        "radius": 0.28
+      }
     },
     {
       "id": "cemetery-pine-8",
@@ -1792,16 +1824,20 @@
       ],
       "yaw": 4.8,
       "scale": [
+        0.469649,
         1,
-        1,
-        1
+        0.49916
       ],
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-tree-pine-03"
+        "libraryId": "autumn-atlas:model:tree-golden-larch"
       },
       "height": 5.8,
       "castShadow": true,
-      "receiveShadow": true
+      "receiveShadow": true,
+      "harvest": {
+        "kind": "tree",
+        "radius": 0.28
+      }
     },
     {
       "id": "cemetery-rock-0",
@@ -1812,12 +1848,12 @@
       ],
       "yaw": 0,
       "scale": [
+        1.537328,
         1,
-        1,
-        1
+        1.377756
       ],
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-rock-01"
+        "libraryId": "ashen-veil:model:forest-rock-small"
       },
       "height": 0.8,
       "castShadow": true,
@@ -1832,12 +1868,12 @@
       ],
       "yaw": 0,
       "scale": [
+        1.537328,
         1,
-        1,
-        1
+        1.377756
       ],
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-rock-01"
+        "libraryId": "ashen-veil:model:forest-rock-small"
       },
       "height": 1.1,
       "castShadow": true,
@@ -1852,12 +1888,12 @@
       ],
       "yaw": 0,
       "scale": [
+        1.537328,
         1,
-        1,
-        1
+        1.377756
       ],
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-rock-01"
+        "libraryId": "ashen-veil:model:forest-rock-small"
       },
       "height": 0.8,
       "castShadow": true,
@@ -1872,12 +1908,12 @@
       ],
       "yaw": 0,
       "scale": [
+        1.537328,
         1,
-        1,
-        1
+        1.377756
       ],
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-rock-01"
+        "libraryId": "ashen-veil:model:forest-rock-small"
       },
       "height": 1.1,
       "castShadow": true,
@@ -1892,12 +1928,12 @@
       ],
       "yaw": 0,
       "scale": [
+        1.537328,
         1,
-        1,
-        1
+        1.377756
       ],
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-rock-01"
+        "libraryId": "ashen-veil:model:forest-rock-small"
       },
       "height": 0.8,
       "castShadow": true,

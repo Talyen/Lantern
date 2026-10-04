@@ -308,15 +308,15 @@
       ],
       "yaw": 0,
       "scale": [
+        0.998432,
         1,
-        1,
-        1
+        0.998432
       ],
       "height": 0.55,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "viking-realm:model:sm-prop-lantern-01"
+        "libraryId": "ashen-veil-lights:model:light-tabletop-lantern"
       }
     },
     {
@@ -328,15 +328,19 @@
       ],
       "yaw": 4.385949113107529,
       "scale": [
+        0.297207,
         1,
-        1,
-        1
+        0.287065
       ],
       "height": 6.077216300222632,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-tree-pine-01"
+        "libraryId": "autumn-atlas:model:tree-golden-larch"
+      },
+      "harvest": {
+        "kind": "tree",
+        "radius": 0.225
       }
     },
     {
@@ -348,15 +352,19 @@
       ],
       "yaw": 6.015699892207093,
       "scale": [
+        0.385585,
         1,
-        1,
-        1
+        0.34929
       ],
       "height": 6.529485156516696,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-tree-pine-02"
+        "libraryId": "autumn-atlas:model:tree-golden-larch"
+      },
+      "harvest": {
+        "kind": "tree",
+        "radius": 0.225
       }
     },
     {
@@ -368,15 +376,19 @@
       ],
       "yaw": 0.029371703815347667,
       "scale": [
+        0.469649,
         1,
-        1,
-        1
+        0.49916
       ],
       "height": 6.791301668468342,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-tree-pine-03"
+        "libraryId": "autumn-atlas:model:tree-golden-larch"
+      },
+      "harvest": {
+        "kind": "tree",
+        "radius": 0.225
       }
     },
     {
@@ -388,15 +400,19 @@
       ],
       "yaw": 4.296262402363461,
       "scale": [
+        0.297207,
         1,
-        1,
-        1
+        0.287065
       ],
       "height": 5.351129815443606,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-tree-pine-01"
+        "libraryId": "autumn-atlas:model:tree-golden-larch"
+      },
+      "harvest": {
+        "kind": "tree",
+        "radius": 0.225
       }
     },
     {
@@ -408,15 +424,19 @@
       ],
       "yaw": 3.674691594699701,
       "scale": [
+        0.385585,
         1,
-        1,
-        1
+        0.34929
       ],
       "height": 5.524235315577302,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-tree-pine-02"
+        "libraryId": "autumn-atlas:model:tree-golden-larch"
+      },
+      "harvest": {
+        "kind": "tree",
+        "radius": 0.225
       }
     },
     {
@@ -428,15 +448,19 @@
       ],
       "yaw": 3.448784726267582,
       "scale": [
+        0.469649,
         1,
-        1,
-        1
+        0.49916
       ],
       "height": 5.56696472981887,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-tree-pine-03"
+        "libraryId": "autumn-atlas:model:tree-golden-larch"
+      },
+      "harvest": {
+        "kind": "tree",
+        "radius": 0.225
       }
     },
     {
@@ -448,15 +472,19 @@
       ],
       "yaw": 5.533137638050784,
       "scale": [
+        0.297207,
         1,
-        1,
-        1
+        0.287065
       ],
       "height": 4.921184074853006,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-tree-pine-01"
+        "libraryId": "autumn-atlas:model:tree-golden-larch"
+      },
+      "harvest": {
+        "kind": "tree",
+        "radius": 0.225
       }
     },
     {
@@ -468,15 +496,19 @@
       ],
       "yaw": 2.5241633341044167,
       "scale": [
+        0.385585,
         1,
-        1,
-        1
+        0.34929
       ],
       "height": 5.85283255817464,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-tree-pine-02"
+        "libraryId": "autumn-atlas:model:tree-golden-larch"
+      },
+      "harvest": {
+        "kind": "tree",
+        "radius": 0.225
       }
     },
     {
@@ -488,15 +520,19 @@
       ],
       "yaw": 5.136082748614363,
       "scale": [
+        0.469649,
         1,
-        1,
-        1
+        0.49916
       ],
       "height": 6.606942576156625,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-tree-pine-03"
+        "libraryId": "autumn-atlas:model:tree-golden-larch"
+      },
+      "harvest": {
+        "kind": "tree",
+        "radius": 0.225
       }
     },
     {
@@ -508,15 +544,19 @@
       ],
       "yaw": 1.6276208328328627,
       "scale": [
+        0.297207,
         1,
-        1,
-        1
+        0.287065
       ],
       "height": 6.4323337312789,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-tree-pine-01"
+        "libraryId": "autumn-atlas:model:tree-golden-larch"
+      },
+      "harvest": {
+        "kind": "tree",
+        "radius": 0.225
       }
     },
     {
@@ -528,15 +568,19 @@
       ],
       "yaw": 5.465132001225288,
       "scale": [
+        0.385585,
         1,
-        1,
-        1
+        0.34929
       ],
       "height": 5.079784545074868,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-tree-pine-02"
+        "libraryId": "autumn-atlas:model:tree-golden-larch"
+      },
+      "harvest": {
+        "kind": "tree",
+        "radius": 0.225
       }
     },
     {
@@ -548,15 +592,19 @@
       ],
       "yaw": 2.6401113642634506,
       "scale": [
+        0.469649,
         1,
-        1,
-        1
+        0.49916
       ],
       "height": 3.826881084541498,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-tree-pine-03"
+        "libraryId": "autumn-atlas:model:tree-golden-larch"
+      },
+      "harvest": {
+        "kind": "tree",
+        "radius": 0.225
       }
     },
     {
@@ -568,35 +616,43 @@
       ],
       "yaw": 3.544292622642035,
       "scale": [
+        0.297207,
         1,
-        1,
-        1
+        0.287065
       ],
       "height": 3.855622332172262,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-tree-pine-01"
+        "libraryId": "autumn-atlas:model:tree-golden-larch"
+      },
+      "harvest": {
+        "kind": "tree",
+        "radius": 0.225
       }
     },
     {
       "id": "pine-13",
       "position": [
-        -0.0,
+        0,
         0,
         11.314
       ],
       "yaw": 1.9375384673888638,
       "scale": [
+        0.385585,
         1,
-        1,
-        1
+        0.34929
       ],
       "height": 3.9855891094009466,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-tree-pine-02"
+        "libraryId": "autumn-atlas:model:tree-golden-larch"
+      },
+      "harvest": {
+        "kind": "tree",
+        "radius": 0.225
       }
     },
     {
@@ -608,15 +664,19 @@
       ],
       "yaw": 2.871350708490048,
       "scale": [
+        0.469649,
         1,
-        1,
-        1
+        0.49916
       ],
       "height": 2.949087304189288,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-tree-pine-03"
+        "libraryId": "autumn-atlas:model:tree-golden-larch"
+      },
+      "harvest": {
+        "kind": "tree",
+        "radius": 0.225
       }
     },
     {
@@ -628,15 +688,19 @@
       ],
       "yaw": 2.2248402049042566,
       "scale": [
+        0.297207,
         1,
-        1,
-        1
+        0.287065
       ],
       "height": 2.5861558177046984,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-tree-pine-01"
+        "libraryId": "autumn-atlas:model:tree-golden-larch"
+      },
+      "harvest": {
+        "kind": "tree",
+        "radius": 0.225
       }
     },
     {
@@ -648,15 +712,19 @@
       ],
       "yaw": 1.3671084072549193,
       "scale": [
+        0.385585,
         1,
-        1,
-        1
+        0.34929
       ],
       "height": 2.663813096057789,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-tree-pine-02"
+        "libraryId": "autumn-atlas:model:tree-golden-larch"
+      },
+      "harvest": {
+        "kind": "tree",
+        "radius": 0.225
       }
     },
     {
@@ -664,19 +732,23 @@
       "position": [
         11.314,
         0,
-        0.0
+        0
       ],
       "yaw": 0.3403765554474011,
       "scale": [
+        0.469649,
         1,
-        1,
-        1
+        0.49916
       ],
       "height": 3.3712723517000653,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-tree-pine-03"
+        "libraryId": "autumn-atlas:model:tree-golden-larch"
+      },
+      "harvest": {
+        "kind": "tree",
+        "radius": 0.225
       }
     },
     {
@@ -688,15 +760,19 @@
       ],
       "yaw": 4.057113575641516,
       "scale": [
+        0.297207,
         1,
-        1,
-        1
+        0.287065
       ],
       "height": 3.034348552949949,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-tree-pine-01"
+        "libraryId": "autumn-atlas:model:tree-golden-larch"
+      },
+      "harvest": {
+        "kind": "tree",
+        "radius": 0.225
       }
     },
     {
@@ -708,15 +784,19 @@
       ],
       "yaw": 3.783117888227451,
       "scale": [
+        0.297207,
         1,
-        1,
-        1
+        0.287065
       ],
       "height": 4.904460455954,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-tree-pine-01"
+        "libraryId": "autumn-atlas:model:tree-golden-larch"
+      },
+      "harvest": {
+        "kind": "tree",
+        "radius": 0.225
       }
     },
     {
@@ -728,15 +808,19 @@
       ],
       "yaw": 2.871864896654536,
       "scale": [
+        0.385585,
         1,
-        1,
-        1
+        0.34929
       ],
       "height": 6.185925206312214,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-tree-pine-02"
+        "libraryId": "autumn-atlas:model:tree-golden-larch"
+      },
+      "harvest": {
+        "kind": "tree",
+        "radius": 0.225
       }
     },
     {
@@ -748,15 +832,19 @@
       ],
       "yaw": 1.1287265799641304,
       "scale": [
+        0.469649,
         1,
-        1,
-        1
+        0.49916
       ],
       "height": 5.4624315474584755,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-tree-pine-03"
+        "libraryId": "autumn-atlas:model:tree-golden-larch"
+      },
+      "harvest": {
+        "kind": "tree",
+        "radius": 0.225
       }
     },
     {
@@ -768,15 +856,19 @@
       ],
       "yaw": 4.638588339643142,
       "scale": [
+        0.297207,
         1,
-        1,
-        1
+        0.287065
       ],
       "height": 5.9608059685624335,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-tree-pine-01"
+        "libraryId": "autumn-atlas:model:tree-golden-larch"
+      },
+      "harvest": {
+        "kind": "tree",
+        "radius": 0.225
       }
     },
     {
@@ -788,15 +880,15 @@
       ],
       "yaw": 6.023822333722347,
       "scale": [
+        0.864312,
         1,
-        1,
-        1
+        0.880782
       ],
       "height": 1.8,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-rock-04"
+        "libraryId": "ashen-veil:model:forest-rock-large"
       }
     },
     {
@@ -808,15 +900,15 @@
       ],
       "yaw": 0.9559634234187128,
       "scale": [
+        0.864312,
         1,
-        1,
-        1
+        0.880782
       ],
       "height": 1.2,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-rock-04"
+        "libraryId": "ashen-veil:model:forest-rock-large"
       }
     },
     {
@@ -828,15 +920,15 @@
       ],
       "yaw": 5.141103463251269,
       "scale": [
+        0.864312,
         1,
-        1,
-        1
+        0.880782
       ],
       "height": 1.1,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-rock-04"
+        "libraryId": "ashen-veil:model:forest-rock-large"
       }
     },
     {
@@ -848,15 +940,15 @@
       ],
       "yaw": 2.5806795836910084,
       "scale": [
+        0.864312,
         1,
-        1,
-        1
+        0.880782
       ],
       "height": 1.4,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-rock-04"
+        "libraryId": "ashen-veil:model:forest-rock-large"
       }
     },
     {
@@ -868,15 +960,15 @@
       ],
       "yaw": 1.4722982799379456,
       "scale": [
+        0.864312,
         1,
-        1,
-        1
+        0.880782
       ],
       "height": 1.1,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-rock-04"
+        "libraryId": "ashen-veil:model:forest-rock-large"
       }
     },
     {
@@ -888,15 +980,15 @@
       ],
       "yaw": 4.384540792357336,
       "scale": [
+        0.864312,
         1,
-        1,
-        1
+        0.880782
       ],
       "height": 0.8,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-rock-04"
+        "libraryId": "ashen-veil:model:forest-rock-large"
       }
     },
     {
@@ -908,15 +1000,15 @@
       ],
       "yaw": 1.8575884164402836,
       "scale": [
+        0.864312,
         1,
-        1,
-        1
+        0.880782
       ],
       "height": 0.75,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-rock-04"
+        "libraryId": "ashen-veil:model:forest-rock-large"
       }
     },
     {
@@ -928,16 +1020,17 @@
       ],
       "yaw": 4.526120698176076,
       "scale": [
+        1.635013,
         1,
-        1,
-        1
+        1.290602
       ],
       "height": 0.6320302674258061,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-bush-01"
-      }
+        "libraryId": "ashen-veil:model:forest-autumn-shrub"
+      },
+      "vegetation": "shrub"
     },
     {
       "id": "bush-1",
@@ -948,16 +1041,17 @@
       ],
       "yaw": 4.522466423645152,
       "scale": [
+        1.635013,
         1,
-        1,
-        1
+        1.290602
       ],
       "height": 0.7678320088658772,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-bush-01"
-      }
+        "libraryId": "ashen-veil:model:forest-autumn-shrub"
+      },
+      "vegetation": "shrub"
     },
     {
       "id": "bush-2",
@@ -968,16 +1062,17 @@
       ],
       "yaw": 2.027521197592916,
       "scale": [
+        1.635013,
         1,
-        1,
-        1
+        1.290602
       ],
       "height": 0.8768846967583368,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-bush-01"
-      }
+        "libraryId": "ashen-veil:model:forest-autumn-shrub"
+      },
+      "vegetation": "shrub"
     },
     {
       "id": "bush-3",
@@ -988,16 +1083,17 @@
       ],
       "yaw": 4.619791517261798,
       "scale": [
+        1.635013,
         1,
-        1,
-        1
+        1.290602
       ],
       "height": 0.9217325324121108,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-bush-01"
-      }
+        "libraryId": "ashen-veil:model:forest-autumn-shrub"
+      },
+      "vegetation": "shrub"
     },
     {
       "id": "bush-4",
@@ -1008,16 +1104,17 @@
       ],
       "yaw": 1.620549322035949,
       "scale": [
+        1.635013,
         1,
-        1,
-        1
+        1.290602
       ],
       "height": 0.917851737129609,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-bush-01"
-      }
+        "libraryId": "ashen-veil:model:forest-autumn-shrub"
+      },
+      "vegetation": "shrub"
     },
     {
       "id": "bush-6",
@@ -1028,16 +1125,17 @@
       ],
       "yaw": 0.9278324303392166,
       "scale": [
+        1.635013,
         1,
-        1,
-        1
+        1.290602
       ],
       "height": 0.9978680983624169,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-bush-01"
-      }
+        "libraryId": "ashen-veil:model:forest-autumn-shrub"
+      },
+      "vegetation": "shrub"
     },
     {
       "id": "bush-7",
@@ -1048,16 +1146,17 @@
       ],
       "yaw": 3.3561673528249285,
       "scale": [
+        1.635013,
         1,
-        1,
-        1
+        1.290602
       ],
       "height": 0.9466699224621749,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-bush-01"
-      }
+        "libraryId": "ashen-veil:model:forest-autumn-shrub"
+      },
+      "vegetation": "shrub"
     },
     {
       "id": "bush-8",
@@ -1068,16 +1167,17 @@
       ],
       "yaw": 4.029262051640569,
       "scale": [
+        1.635013,
         1,
-        1,
-        1
+        1.290602
       ],
       "height": 0.9153926375886156,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-bush-01"
-      }
+        "libraryId": "ashen-veil:model:forest-autumn-shrub"
+      },
+      "vegetation": "shrub"
     },
     {
       "id": "bush-9",
@@ -1088,16 +1188,17 @@
       ],
       "yaw": 3.0072494861463395,
       "scale": [
+        1.635013,
         1,
-        1,
-        1
+        1.290602
       ],
       "height": 0.9914043413359374,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-bush-01"
-      }
+        "libraryId": "ashen-veil:model:forest-autumn-shrub"
+      },
+      "vegetation": "shrub"
     },
     {
       "id": "bush-10",
@@ -1108,16 +1209,17 @@
       ],
       "yaw": 1.766341197421093,
       "scale": [
+        1.635013,
         1,
-        1,
-        1
+        1.290602
       ],
       "height": 0.8965655282870791,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-bush-01"
-      }
+        "libraryId": "ashen-veil:model:forest-autumn-shrub"
+      },
+      "vegetation": "shrub"
     },
     {
       "id": "bush-11",
@@ -1128,16 +1230,17 @@
       ],
       "yaw": 0.6519050548228147,
       "scale": [
+        1.635013,
         1,
-        1,
-        1
+        1.290602
       ],
       "height": 1.0567956017841023,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-bush-01"
-      }
+        "libraryId": "ashen-veil:model:forest-autumn-shrub"
+      },
+      "vegetation": "shrub"
     },
     {
       "id": "fern-0",
@@ -1148,16 +1251,17 @@
       ],
       "yaw": 5.710616604246148,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.6356749655332712,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-1",
@@ -1168,16 +1272,17 @@
       ],
       "yaw": 5.240820835728576,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.46606931814607455,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-3",
@@ -1188,16 +1293,17 @@
       ],
       "yaw": 2.109810495869229,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.5307012303126828,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-4",
@@ -1208,16 +1314,17 @@
       ],
       "yaw": 2.1499361880436276,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.613765777068529,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-5",
@@ -1228,16 +1335,17 @@
       ],
       "yaw": 3.368691519237817,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.40335284144846056,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-6",
@@ -1248,16 +1356,17 @@
       ],
       "yaw": 5.874455658201674,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.4252051989894879,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-7",
@@ -1268,16 +1377,17 @@
       ],
       "yaw": 1.5132910103780512,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.50240767897235,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-8",
@@ -1288,16 +1398,17 @@
       ],
       "yaw": 3.5166484045072886,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.5558877557131021,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-9",
@@ -1308,16 +1419,17 @@
       ],
       "yaw": 5.93943048452562,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.5540080619437385,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-10",
@@ -1328,16 +1440,17 @@
       ],
       "yaw": 3.0482400782084715,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.5734134425183439,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-11",
@@ -1348,16 +1461,17 @@
       ],
       "yaw": 5.079613978498819,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.5400277942505557,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-12",
@@ -1368,16 +1482,17 @@
       ],
       "yaw": 2.1425613956877663,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.43975328456952567,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-13",
@@ -1388,16 +1503,17 @@
       ],
       "yaw": 4.824469207304098,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.41680674190808464,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-14",
@@ -1408,16 +1524,17 @@
       ],
       "yaw": 4.138108558820088,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.48254018766524265,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-15",
@@ -1428,16 +1545,17 @@
       ],
       "yaw": 2.84044552728822,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.383177006098161,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-17",
@@ -1448,16 +1566,17 @@
       ],
       "yaw": 2.725570908096985,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.5559936932570986,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-20",
@@ -1468,16 +1587,17 @@
       ],
       "yaw": 0.47695739802812365,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.531493513829233,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-21",
@@ -1488,16 +1608,17 @@
       ],
       "yaw": 0.42779027650057827,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.6439047543025334,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-22",
@@ -1508,16 +1629,17 @@
       ],
       "yaw": 3.7611486106363645,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.4637860563481533,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-23",
@@ -1528,16 +1650,17 @@
       ],
       "yaw": 4.8908376132858145,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.6133853671029039,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-24",
@@ -1548,16 +1671,17 @@
       ],
       "yaw": 0.25039276547718287,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.44386848082777247,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-26",
@@ -1568,16 +1692,17 @@
       ],
       "yaw": 4.4986953676817425,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.46684309361529613,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-27",
@@ -1588,16 +1713,17 @@
       ],
       "yaw": 4.467863735470098,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.48090499418273636,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-28",
@@ -1608,16 +1734,17 @@
       ],
       "yaw": 3.6603251364307448,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.569121238150774,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-31",
@@ -1628,16 +1755,17 @@
       ],
       "yaw": 0.8220722464084869,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.6433610225498554,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-32",
@@ -1648,16 +1776,17 @@
       ],
       "yaw": 6.268566376029468,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.5205924583276891,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-33",
@@ -1668,16 +1797,17 @@
       ],
       "yaw": 3.163295831104766,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.45483922103692015,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-35",
@@ -1688,16 +1818,17 @@
       ],
       "yaw": 0.47510032864247237,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.46518525007028605,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-36",
@@ -1708,16 +1839,17 @@
       ],
       "yaw": 0.9493475004569761,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.6195371587583204,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-38",
@@ -1728,16 +1860,17 @@
       ],
       "yaw": 2.8134586316306205,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.6136468103605615,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-39",
@@ -1748,16 +1881,17 @@
       ],
       "yaw": 3.907790537108057,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.6311448242021357,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-40",
@@ -1768,16 +1902,17 @@
       ],
       "yaw": 5.606803001151458,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.5915883566805281,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-42",
@@ -1788,16 +1923,17 @@
       ],
       "yaw": 4.567230048487472,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.4667000461239631,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-43",
@@ -1808,16 +1944,17 @@
       ],
       "yaw": 4.620604954845706,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.5689259809307673,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-44",
@@ -1828,16 +1965,17 @@
       ],
       "yaw": 2.451237115958699,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.5020676282626502,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-45",
@@ -1848,16 +1986,17 @@
       ],
       "yaw": 0.034146890668773605,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.5815904967462248,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-46",
@@ -1868,16 +2007,17 @@
       ],
       "yaw": 0.8459166668803121,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.386869262558871,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-47",
@@ -1888,16 +2028,17 @@
       ],
       "yaw": 5.145818214660462,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.44018330893102425,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-48",
@@ -1908,16 +2049,17 @@
       ],
       "yaw": 2.0612192989660527,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.35832790236873896,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-49",
@@ -1928,16 +2070,17 @@
       ],
       "yaw": 1.9584532504025884,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.5561242160113847,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-50",
@@ -1948,16 +2091,17 @@
       ],
       "yaw": 3.618268928343806,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.48119415218736517,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-51",
@@ -1968,16 +2112,17 @@
       ],
       "yaw": 2.9741776882658466,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.44324615217137314,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-52",
@@ -1988,16 +2133,17 @@
       ],
       "yaw": 3.527906497057829,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.3953231895394967,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-53",
@@ -2008,16 +2154,17 @@
       ],
       "yaw": 0.7420842383618953,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.39265670002403563,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-54",
@@ -2028,16 +2175,17 @@
       ],
       "yaw": 5.863867117666104,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.40049042114848254,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-56",
@@ -2048,16 +2196,17 @@
       ],
       "yaw": 1.5012403462331496,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.4271475081491135,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-57",
@@ -2068,16 +2217,17 @@
       ],
       "yaw": 0.0648921442311788,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.39459810266767187,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-58",
@@ -2088,16 +2238,17 @@
       ],
       "yaw": 4.687485417421579,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.6499890387805596,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-59",
@@ -2108,16 +2259,17 @@
       ],
       "yaw": 5.986108580228776,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.5040231938626842,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-60",
@@ -2128,16 +2280,17 @@
       ],
       "yaw": 1.044345183918612,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.35971983264541596,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-61",
@@ -2148,16 +2301,17 @@
       ],
       "yaw": 4.945461002529443,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.35942486741020213,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-62",
@@ -2168,16 +2322,17 @@
       ],
       "yaw": 2.476359937666354,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.547800988555051,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "fern-63",
@@ -2188,16 +2343,17 @@
       ],
       "yaw": 4.813978687449299,
       "scale": [
+        1.004308,
         1,
-        1,
-        1
+        1.108822
       ],
       "height": 0.6440201570594516,
       "castShadow": false,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-fern-01"
-      }
+        "libraryId": "autumn-atlas:model:understory-copper-bracken"
+      },
+      "vegetation": "soft"
     },
     {
       "id": "grove-0",
@@ -2208,15 +2364,19 @@
       ],
       "yaw": 3.5747277221980744,
       "scale": [
+        0.469649,
         1,
-        1,
-        1
+        0.49916
       ],
       "height": 6.4,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-tree-pine-03"
+        "libraryId": "autumn-atlas:model:tree-golden-larch"
+      },
+      "harvest": {
+        "kind": "tree",
+        "radius": 0.225
       }
     },
     {
@@ -2228,15 +2388,19 @@
       ],
       "yaw": 5.768562036733961,
       "scale": [
+        0.469649,
         1,
-        1,
-        1
+        0.49916
       ],
       "height": 6.8,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-tree-pine-03"
+        "libraryId": "autumn-atlas:model:tree-golden-larch"
+      },
+      "harvest": {
+        "kind": "tree",
+        "radius": 0.225
       }
     },
     {
@@ -2248,15 +2412,19 @@
       ],
       "yaw": 4.7153049261718545,
       "scale": [
+        0.469649,
         1,
-        1,
-        1
+        0.49916
       ],
       "height": 6,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-tree-pine-03"
+        "libraryId": "autumn-atlas:model:tree-golden-larch"
+      },
+      "harvest": {
+        "kind": "tree",
+        "radius": 0.225
       }
     },
     {
@@ -2268,15 +2436,19 @@
       ],
       "yaw": 2.840870332875606,
       "scale": [
+        0.469649,
         1,
-        1,
-        1
+        0.49916
       ],
       "height": 5.8,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-tree-pine-03"
+        "libraryId": "autumn-atlas:model:tree-golden-larch"
+      },
+      "harvest": {
+        "kind": "tree",
+        "radius": 0.225
       }
     },
     {
@@ -2288,15 +2460,19 @@
       ],
       "yaw": 1.2274378862168107,
       "scale": [
+        0.469649,
         1,
-        1,
-        1
+        0.49916
       ],
       "height": 5.3,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-tree-pine-03"
+        "libraryId": "autumn-atlas:model:tree-golden-larch"
+      },
+      "harvest": {
+        "kind": "tree",
+        "radius": 0.225
       }
     },
     {
@@ -2308,15 +2484,19 @@
       ],
       "yaw": 3.4166005130014057,
       "scale": [
+        0.469649,
         1,
-        1,
-        1
+        0.49916
       ],
       "height": 4.5,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-tree-pine-03"
+        "libraryId": "autumn-atlas:model:tree-golden-larch"
+      },
+      "harvest": {
+        "kind": "tree",
+        "radius": 0.225
       }
     },
     {
@@ -2328,15 +2508,19 @@
       ],
       "yaw": 5.137493646919266,
       "scale": [
+        0.469649,
         1,
-        1,
-        1
+        0.49916
       ],
       "height": 4.8,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-env-tree-pine-03"
+        "libraryId": "autumn-atlas:model:tree-golden-larch"
+      },
+      "harvest": {
+        "kind": "tree",
+        "radius": 0.225
       }
     },
     {
@@ -2367,15 +2551,16 @@
       ],
       "yaw": 0,
       "scale": [
+        0.605807,
         0.65,
-        0.65,
-        0.65
+        0.808269
       ],
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-prop-crate-01"
-      }
+        "libraryId": "gothic-lootables:model:crate-single"
+      },
+      "height": 0.953599
     },
     {
       "id": "merchant-potion",
@@ -2386,15 +2571,16 @@
       ],
       "yaw": 0,
       "scale": [
+        0.636923,
         0.6,
-        0.6,
-        0.6
+        0.605162
       ],
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "generic:model:sm-gen-prop-potion-01"
-      }
+        "libraryId": "ashen-veil:model:prop-flask-health"
+      },
+      "height": 0.35616
     },
     {
       "id": "merchant-awning",
@@ -2664,7 +2850,7 @@
           5.3
         ],
         "asset": {
-          "libraryId": "viking-realm:model:sm-prop-lantern-01"
+          "libraryId": "ashen-veil-lights:model:light-tabletop-lantern"
         },
         "height": 0.28,
         "role": "lantern"

@@ -52,6 +52,7 @@ export function resolveUses(data, equipment = itemDefinitions) {
     if (area.shelter) emit({ libraryId: 'generic:model:sm-gen-prop-chest-01' }, area, 'shelter-stash', 'Stash');
     if (area.shop) emit({ url: area.shop.merchant.model }, area, area.shop.id, 'Merchant');
     emit({ url: data.characters.player.model }, area, 'player', 'Player');
+    if (data.characters.player.lanternModel) emit({ url: data.characters.player.lanternModel }, area, 'player-lantern', 'Player lantern');
     const enemies = area.layout.enemies ?? ['enemy', 'caster'].flatMap(id => area.layout[id] ? [{ id, rig: 'enemy', loadout: { main: id === 'caster' ? 'staff' : 'axe', off: null } }] : []);
     for (const enemy of enemies) {
       emit({ url: data.characters[enemy.rig].model }, area, enemy.id, 'Enemy');
@@ -118,7 +119,7 @@ export async function reviewIndex(cwd = root, { revision, reviewed = true } = {}
     let row = byLibrary.get(use.reference) ?? byUrl.get(use.reference);
     if (!row) {
       const url = use.reference.startsWith('/') ? use.reference : catalogEntries.get(use.reference)?.url ?? `/vendor/missing/${encodeURIComponent(use.reference)}.glb`;
-      const tombstone = Object.entries(reviews.deleted).find(([, record]) => record.url === url || record.familyId === use.reference);
+      const tombstone = Object.entries(reviews.deleted).find(([id, record]) => record.url === url || id === `${use.reference}@original`);
       const source = catalogEntries.get(use.reference);
       row = add({ reviewId: tombstone?.[0] ?? (source ? `${source.id}@original` : undefined), familyId: tombstone?.[1].familyId ?? use.reference, url, name: use.reference.split('/').at(-1), pack: 'Standalone', appearance: 'Scene model', category: category(use.reference), available: !tombstone && !!(source || use.reference.startsWith('/')), warnings: tombstone ? ['Deleted asset is still referenced. Replace this use.'] : [] }, true);
     }
