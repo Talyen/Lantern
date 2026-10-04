@@ -131,11 +131,12 @@ test('conflicts return to the owner, failed checks and dirty main cannot promote
     await assert.rejects(finishTask(ctx, bad, { paths: ['broken.txt'] }), /failed/);
     assert.equal(await git(['rev-parse', 'HEAD'], ctx.main), head);
     await rm(join(bad.path, 'broken.txt')); await git(['add', 'broken.txt'], bad.path); await git(['commit', '-m', 'fix'], bad.path);
-    await writeFile(join(ctx.main, 'unexpected.txt'), 'preserve me');
+    const previous = await readFile(join(ctx.main, 'shared.txt'), 'utf8');
+    await writeFile(join(ctx.main, 'shared.txt'), 'preserve me');
     await assert.rejects(finishTask(ctx, await readJSON(taskPath(ctx, bad.id))), /uncommitted/);
-    assert.equal(await readFile(join(ctx.main, 'unexpected.txt'), 'utf8'), 'preserve me');
+    assert.equal(await readFile(join(ctx.main, 'shared.txt'), 'utf8'), 'preserve me');
     await assert.rejects(cleanupTask(ctx, bad), /unfinished/);
-    await rm(join(ctx.main, 'unexpected.txt'));
+    await writeFile(join(ctx.main, 'shared.txt'), previous);
     await finishTask(ctx, await readJSON(taskPath(ctx, bad.id)));
   } finally { await ctx.dispose(); }
 });
@@ -268,7 +269,8 @@ test('retired GPU slot drains, remains blocked for old worktrees and releases on
     const interrupted = once(lease.child, 'exit');
     lease.child.kill('SIGTERM');
     await interrupted;
-    await lease.release();
+    await assert.rejects(lease.release(), /guardian cleanup failed/);
+    lease = undefined;
     lease = await acquire('gpu', { ctx, tryOnly: true });
     assert.ok(lease);
   } finally {

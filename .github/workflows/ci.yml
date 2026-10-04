@@ -42,7 +42,8 @@ jobs:
       - run: npm ci
         env:
           ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
-      - run: |
+      - shell: bash
+        run: |
           mkdir -p .local/checks
           node --test scripts/agents/workflow.test.mjs 2>&1 | tee .local/checks/mac-workflow.log
       - uses: actions/upload-artifact@v4
