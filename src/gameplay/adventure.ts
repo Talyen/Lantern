@@ -250,9 +250,10 @@ export class Adventure {
     const entry = next.find(i => i.id === id && i.slot === 'overflow');
     if (!entry) return;
     next.splice(next.indexOf(entry), 1);
-    entry.quantity -= receive(next, entry.item, entry.quantity, this.newId, lootDefinitions[entry.item].stackable ? undefined : entry.id);
+    const received = receive(next, entry.item, entry.quantity, this.newId, lootDefinitions[entry.item].stackable ? undefined : entry.id);
+    if (!received) throw new Error('Inventory full.');
+    entry.quantity -= received;
     if (entry.quantity) next.push(entry);
-    if (entry.quantity === this.character.items.find(i => i.id === id)?.quantity) throw new Error('Inventory full.');
     this.replaceItems(next);
   }
 
@@ -269,36 +270,30 @@ export class Adventure {
     return true;
   }
 
-  private assertShop(encounter: Encounter, area: AreaDefinition): void {
-    if (this.currentArea !== homeArea || area.id !== this.currentArea || area.kind !== 'safe' || !area.shop || encounter.player.hp <= 0
+  private assertService(encounter: Encounter, area: AreaDefinition, service: 'shop' | 'smithing'): void {
+    const station = area[service], reach = service === 'smithing' ? smithing.reach : 1.8;
+    if (this.currentArea !== homeArea || area.id !== homeArea || area.kind !== 'safe' || !station || encounter.player.hp <= 0
       || encounter.player.lock > 0 || encounter.dodgeRemaining > 0 || !['playing', 'won'].includes(encounter.phase)
-      || this.castRemaining > 0 || !near([encounter.player.x, encounter.player.z], area.shop.position, 1.8))
-      throw new Error('Shop is out of reach.');
+      || this.castRemaining > 0 || !near([encounter.player.x, encounter.player.z], station.position, reach))
+      throw new Error(service === 'shop' ? 'Shop is out of reach.' : 'Smithing is out of reach.');
   }
 
   buy(encounter: Encounter, area: AreaDefinition, item: LootItem): void {
-    this.assertShop(encounter, area);
+    this.assertService(encounter, area, 'shop');
     Object.assign(this.character, purchase(this.character, item, this.newId));
     this.save();
   }
 
   sell(encounter: Encounter, area: AreaDefinition, id: string): void {
-    this.assertShop(encounter, area);
+    this.assertService(encounter, area, 'shop');
     Object.assign(this.character, sale(this.character, id));
     this.save();
   }
 
   buyBack(encounter: Encounter, area: AreaDefinition, id: string): void {
-    this.assertShop(encounter, area);
+    this.assertService(encounter, area, 'shop');
     Object.assign(this.character, repurchase(this.character, id, this.newId));
     this.save();
-  }
-
-  private assertSmithing(encounter: Encounter, area: AreaDefinition): void {
-    if (this.currentArea!==homeArea || area.id!==homeArea || area.kind!=='safe' || !area.smithing || encounter.player.hp<=0
-      || encounter.player.lock>0 || encounter.dodgeRemaining>0 || this.castRemaining>0
-      || !['playing','won'].includes(encounter.phase) || !near([encounter.player.x,encounter.player.z],area.smithing.position,smithing.reach))
-      throw new Error('Smithing is out of reach.');
   }
 
   private commitSmithing(next: ReturnType<typeof forged>): string[] {
@@ -309,12 +304,12 @@ export class Adventure {
   }
 
   forge(encounter:Encounter,area:AreaDefinition,item:ItemId):string[] {
-    this.assertSmithing(encounter,area);
+    this.assertService(encounter,area,'smithing');
     return this.commitSmithing(forged(this.character,item,this.newId));
   }
 
   reclaim(encounter:Encounter,area:AreaDefinition,id:string,container:SmithingContainer):string[] {
-    this.assertSmithing(encounter,area);
+    this.assertService(encounter,area,'smithing');
     return this.commitSmithing(reclaimed(this.character,id,container,this.newId));
   }
 
@@ -341,7 +336,6 @@ export class Adventure {
     this.save();
   }
 
-  grantAxeCombatXp(amount=10): void {this.grantProficiency('axe',amount);}
   grantProficiency(family:'axe' | 'sword' | 'bow',amount:number): void {
     if (family!=='axe') {this.grantWeaponXp(family,amount); return;}
     const previous=this.character.xp.axeCombat;

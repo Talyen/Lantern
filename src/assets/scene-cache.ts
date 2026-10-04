@@ -5,6 +5,7 @@ import { disposeSceneResources, sceneResourceBytes } from './resource-ownership'
 export class SceneCache {
   private entries = new Map<string, { scene: Promise<THREE.Group>; root?: THREE.Group; references: number; bytes: number }>();
   private closed = false;
+  private disposal?: Promise<void>;
   constructor(private unusedBytes = 256 * 1024 * 1024) {}
   acquire(key: string, load: () => Promise<THREE.Group>): { scene: Promise<THREE.Group>; release(this: void): void } {
     if (this.closed) throw new Error('Scene cache is closed.');
@@ -27,8 +28,12 @@ export class SceneCache {
       unused -= entry.bytes; disposeSceneResources(entry.root); this.entries.delete(key);
     }
   }
-  async dispose(): Promise<void> {
-    this.closed = true; await Promise.allSettled([...this.entries.values()].map(entry => entry.scene));
+  dispose(): Promise<void> {
+    this.closed = true;
+    return this.disposal ??= this.releaseResources();
+  }
+  private async releaseResources(): Promise<void> {
+    await Promise.allSettled([...this.entries.values()].map(entry => entry.scene));
     for (const entry of this.entries.values()) if (entry.root) disposeSceneResources(entry.root);
     this.entries.clear();
   }

@@ -1,10 +1,21 @@
 import type { ActorId, ActorState, Encounter, EncounterEvent, Motion } from '../gameplay/encounter';
 import type { AdventureEvent } from '../gameplay/adventure';
 import type { AreaDefinition } from '../levels/types';
-import { type GameAudio, type SoundCue, type SoundPosition } from './audio';
+import { type GameAudio, type SoundPosition } from './audio';
 
 type AuthoredFire = Pick<AreaDefinition['effects']['fires'][number], 'id' | 'position' | 'role'>;
 type AmbientFlame = { key: string; position: SoundPosition; camp: boolean; distance: number };
+
+const lootCues = {
+  scroll: { lootDrop: 'scrollDrop', lootLand: null, lootPickup: 'scrollPickup' },
+  resource: { lootDrop: 'woodDrop', lootLand: 'woodLand', lootPickup: 'reward' },
+  equipment: { lootDrop: 'equipmentDrop', lootLand: 'equipmentLand', lootPickup: 'equipmentReward' },
+} as const;
+const hurtCues = {
+  player: { hurt: 'playerHurt', death: 'playerDeath' },
+  skeleton: { hurt: 'skeletonHurt', death: 'skeletonDeath' },
+  enemy: { hurt: 'enemyHurt', death: 'enemyDeath' },
+} as const;
 
 /** Maps numeric action/results to the authored mix; animation replays stay silent. */
 export class GameplayAudio {
@@ -38,7 +49,10 @@ export class GameplayAudio {
         const actor = event.actor === 'player' ? state.player : state.enemies[event.actor];
         const skill=event.origin?.ability==='sweep' || event.origin?.ability==='piercing-shot' || event.origin?.ability==='crushing-blow';
         this.audio.play(event.blocked ? 'block' : event.weapon === 'staff' ? 'magicImpact' : event.weapon === 'bow' ? 'arrowImpact' : 'bodyImpact', actor, {gain:skill ? 1.12 : 1,rate:event.blocked ? 1 : event.weapon==='axe' ? .92 : event.weapon==='sword' ? 1.05 : 1});
-        if (!event.blocked) this.audio.play(event.actor === 'player' ? event.lethal ? 'playerDeath' : 'playerHurt' : state.enemies[event.actor].rig === 'skeleton' ? event.lethal ? 'skeletonDeath' : 'skeletonHurt' : event.lethal ? 'enemyDeath' : 'enemyHurt', actor);
+        if (!event.blocked) {
+          const rig = event.actor === 'player' ? 'player' : state.enemies[event.actor].rig;
+          this.audio.play(hurtCues[rig][event.lethal ? 'death' : 'hurt'], actor);
+        }
       } else if (event.type === 'projectileImpact') this.audio.play(event.kind === 'arrow' ? 'arrowImpact' : 'magicImpact', event.position);
       else if (event.type === 'outcome') this.audio.play(event.won ? 'victory' : 'defeat');
     }
@@ -53,11 +67,9 @@ export class GameplayAudio {
       if (event.type==='abilityLearned' || event.type==='enemyRenewed') continue;
       if (event.type === 'healthRecovered') continue;
       if (event.type === 'lootDrop' || event.type === 'lootLand' || event.type === 'lootPickup') {
-        const cue: SoundCue = event.item === 'scroll' ? event.type === 'lootPickup' ? 'scrollPickup' : 'scrollDrop'
-          : ['wood','stone','iron'].includes(event.item) ? event.type === 'lootPickup' ? 'reward' : event.type === 'lootLand' ? 'woodLand' : 'woodDrop'
-          : event.type === 'lootPickup' ? 'equipmentReward' : event.type === 'lootLand' ? 'equipmentLand' : 'equipmentDrop';
-        // Paper appearance is enough; avoid a second near-identical sound on landing.
-        if (event.item !== 'scroll' || event.type !== 'lootLand') this.audio.play(cue,event.position);
+        const kind = event.item === 'scroll' ? 'scroll' : ['wood','stone','iron'].includes(event.item) ? 'resource' : 'equipment';
+        const cue = lootCues[kind][event.type];
+        if (cue) this.audio.play(cue, event.position);
       } else {
         if (event.type === 'portalOpen' || event.type === 'portalClose') this.audio.stop('return-cast');
         this.audio.play(mapping[event.type], event.position, event.type === 'returnCast' ? {key:'return-cast'} : {});

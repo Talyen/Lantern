@@ -168,7 +168,7 @@ test('earning Berserking fills only an empty third slot and loading preserves de
   const memory = storage(), adventure = new Adventure(memory);
   await adventure.prepareSave();
   adventure.character.xp.axeCombat = 90;
-  adventure.grantAxeCombatXp(10);
+  adventure.grantProficiency('axe',10);
   expect(adventure.character.actionBar[2]).toBe('berserking');
   const bar = [...adventure.character.actionBar]; bar[2] = null; adventure.setActionBar(bar);
   adventure.closeSave();
@@ -177,7 +177,7 @@ test('earning Berserking fills only an empty third slot and loading preserves de
   expect(loaded.character.actionBar[2]).toBeNull();
   loaded.closeSave();
   const occupied = new Adventure(storage()); occupied.character.xp.axeCombat = 90;
-  occupied.character.actionBar[2] = 'axe-basic'; occupied.grantAxeCombatXp(10);
+  occupied.character.actionBar[2] = 'axe-basic'; occupied.grantProficiency('axe',10);
   expect(occupied.character.actionBar[2]).toBe('axe-basic');
   occupied.closeSave();
 });

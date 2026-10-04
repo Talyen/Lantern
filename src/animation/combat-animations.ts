@@ -3,6 +3,7 @@ import { skywardShot } from './arrow-rain-motion';
 import { heldShot } from './held-shot';
 import type { AbilityMotion } from '../gameplay/abilities';
 import * as THREE from 'three';
+import { cachedRequest } from '../data/cached-request';
 import motionProfiles from '../../assets/motion-profiles.json';
 import { type GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import characters from '../../assets/playable-characters.json';
@@ -22,23 +23,21 @@ const joinedShots = new Map<string, THREE.AnimationClip>();
 const catalogs = new Map<string, Promise<MotionCatalog>>();
 export function getMotionCatalog(who: RigId): Promise<MotionCatalog> {
   const url = characters[who].catalog;
-  if (!catalogs.has(url)) catalogs.set(url, fetch(url).then(async response => {
+  return cachedRequest(catalogs, url, () => fetch(url).then(async response => {
     if (!response.ok) throw new Error('Prepare compatible Mixamo motions with npm run assets:export-character.');
     const catalog = await response.json() as MotionCatalog;
     if (catalog.version !== 1 || !catalog.profiles || !catalog.packs?.some(pack => pack.id === 'mixamo')) throw new Error('Prepare the curated Mixamo motion profiles with npm run assets:export-character.');
     return catalog;
-  }).catch((error: unknown) => { catalogs.delete(url); throw error; }));
-  return catalogs.get(url)!;
+  }));
 }
 export async function loadMotionClip(loader: GLTFLoader, clip: MotionClip): Promise<THREE.AnimationClip> {
   const url = clip.url;
-  if (!cache.has(url)) cache.set(url, loader.loadAsync(url).then(gltf => {
+  const source = await cachedRequest(cache, url, () => loader.loadAsync(url).then(gltf => {
     try {
       if (gltf.animations.length !== 1) throw new Error(`Invalid motion: ${clip.name}`);
       return gltf.animations[0];
     } finally { disposeSceneResources(gltf.scene); }
-  }).catch((error: unknown) => { cache.delete(url); throw error; }));
-  const source = await cache.get(url)!;
+  }));
   // Playback state belongs to each clip/action; keyframe buffers stay read-only.
   return independentClip(source);
 }

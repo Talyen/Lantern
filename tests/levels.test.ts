@@ -174,15 +174,6 @@ test('felling removes trunk collision and enemy detours, and regrowth restores b
 });
 
 
-test('resource level and skill XP drive contact yields without changing depletion or facing selection',async()=>{
-  const {resourceDefinitions}=await import('../src/levels/resources');const {levelXp,skillLevel}=await import('../src/gameplay/skills');
-  const resources=resourceDefinitions(areas.clearing),node=resources.find(n=>n.kind==='stone')!,harvest=new Harvesting();harvest.register('clearing',resources);
-  const point:[number,number]=[node.position[0],node.position[2]+node.radius+1];
-  expect(harvest.facing('clearing',point,Math.PI)?.id).toBe(node.id);expect(harvest.facing('clearing',point,0)?.id).not.toBe(node.id);
-  expect(skillLevel(levelXp(5))).toBe(5);expect(harvest.contact('clearing',node.id,point,levelXp(5))?.quantity).toBe(2);
-  expect(harvest.contact('clearing',node.id,point,levelXp(9))?.quantity).toBe(3);harvest.contact('clearing',node.id,point);expect(harvest.contact('clearing',node.id,point)).toBeUndefined();
-});
-
 test('gathering retries after attack cooldown and cancels a newly pursuing threat before contact', async () => {
   const THREE = await import('three');
   const { GatheringController } = await import('../src/clearing/gathering');

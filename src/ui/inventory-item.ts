@@ -2,7 +2,7 @@ import { lootDefinitions, type InventoryItem } from '../gameplay/inventory-catal
 import { itemIcon } from './item-icons';
 
 /** Shared item presentation; each menu owns selection, actions and availability. */
-export function inventoryItemButton(entry: InventoryItem, equipped = false): HTMLButtonElement {
+export function inventoryItemButton(entry: InventoryItem): HTMLButtonElement {
   const definition = lootDefinitions[entry.item];
   const button = document.createElement('button');
   button.type = 'button';
@@ -10,12 +10,6 @@ export function inventoryItemButton(entry: InventoryItem, equipped = false): HTM
   button.title = definition.name;
   button.setAttribute('aria-label', `${definition.name}${definition.stackable ? `, ${entry.quantity}` : ''}`);
   button.innerHTML = itemIcon(entry.item);
-  if (equipped) {
-    const name = document.createElement('span');
-    name.className = 'equip-name';
-    name.textContent = definition.name;
-    button.append(name);
-  }
   if (definition.stackable) {
     const count = document.createElement('span');
     count.className = 'stack-count';

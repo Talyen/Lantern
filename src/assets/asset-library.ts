@@ -1,5 +1,6 @@
 import { disposeSceneInstances, ownTexture, sceneTextures, isMesh, isTexture } from './resource-ownership';
 import * as THREE from 'three';
+import { cachedRequest } from '../data/cached-request';
 import { MeshStandardNodeMaterial } from 'three/webgpu';
 import { prepareStandardMaterials, prepareSurfaceMaterial, filterMaterialTexture } from '../rendering/surface-detail';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -39,12 +40,7 @@ export class AssetLibrary {
   }
   /** Share successful requests; failed preparation remains eligible for a fresh retry. */
   private cached<T>(cache: Map<string, Promise<T>>, key: string, load: () => Promise<T>): Promise<T> {
-    const existing = cache.get(key);
-    if (existing) return existing;
-    const request = this.track(Promise.resolve().then(load));
-    cache.set(key, request);
-    request.catch(() => { if (cache.get(key) === request) cache.delete(key); });
-    return request;
+    return this.track(cachedRequest(cache, key, load));
   }
   private async fetchJson<T>(url: string): Promise<T> {
     const response = await fetch(url); if (!response.ok) throw new Error(`Asset unavailable (${response.status}): ${url}`); return response.json() as Promise<T>;

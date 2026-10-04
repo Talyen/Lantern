@@ -289,6 +289,16 @@ export class InventoryPanel {
     const rect = grid.getBoundingClientRect(), cell = grid.clientWidth / bagWidth;
     return { x: Math.floor((x - (this.drag?.offsetX ?? 0) - rect.left - grid.clientLeft + cell * .3) / cell), y: Math.floor((y - (this.drag?.offsetY ?? 0) - rect.top - grid.clientTop + cell * .3) / cell) };
   }
+  /** Preview and commit differ only in identity allocation, never in placement rules. */
+  private placedItems(drag: Drag, container: Container, point: { x: number; y: number }, newId: () => string) {
+    const { items, stash } = this.character!;
+    if (container === drag.container) {
+      const next = moveItem(this.contents(container), drag.id, point.x, point.y, drag.quantity, newId);
+      return container === 'bag' ? { items: next, stash } : { items, stash: next };
+    }
+    const next = transferItem(this.contents(drag.container), this.contents(container), drag.id, drag.quantity, newId, point);
+    return container === 'bag' ? { items: next.destination, stash: next.source } : { items: next.source, stash: next.destination };
+  }
   private previewPlacement(x: number, y: number): void {
     const entry = this.entry(this.drag?.id), target = this.targetGrid(x, y), point = target ? this.point(target.grid, x, y) : null; this.marker.hidden = !entry || !point;
     this.dialog.querySelectorAll('.inv-drop-target').forEach(el => el.classList.remove('inv-drop-target'));
@@ -306,8 +316,7 @@ export class InventoryPanel {
     const definition = lootDefinitions[entry.item]; Object.assign(this.marker.style, { gridColumn: `${Math.max(0, point.x) + 1} / span ${definition.width}`, gridRow: `${Math.max(0, point.y) + 1} / span ${definition.height}` });
     this.marker.hidden = point.x < 0 || point.y < 0 || point.x + definition.width > bagWidth || point.y + definition.height > bagHeight;
     try {
-      if (target.container === this.drag.container) moveItem(this.contents(target.container), entry.id, point.x, point.y, this.drag.quantity, () => 'preview');
-      else transferItem(this.drag.container === 'bag' ? this.character!.items : this.character!.stash, this.contents(target.container), entry.id, this.drag.quantity, () => 'preview', point);
+      this.placedItems(this.drag, target.container, point, () => 'preview');
       this.marker.dataset.valid = 'true';
     } catch { this.marker.dataset.valid = 'false'; }
   }
@@ -326,9 +335,9 @@ export class InventoryPanel {
         return this.ctx.change(equipInstance(this.character!.items, entry.id, slot, this.viewSet));
       }
       if (!point || !target) throw new Error('Item does not fit.');
-      if (drag.container !== target.container) return this.ctx.transfer(entry.id, drag.quantity, target.container === 'stash', point);
-      const next = moveItem(this.contents(target.container), entry.id, point.x, point.y, drag.quantity, this.ctx.newId);
-      return target.container === 'stash' ? this.ctx.changeContainers(this.character!.items, next) : this.ctx.change(next);
+      const next = this.placedItems(drag, target.container, point, this.ctx.newId);
+      return drag.container === 'bag' && target.container === 'bag'
+        ? this.ctx.change(next.items) : this.ctx.changeContainers(next.items, next.stash);
     });
   }
   private openSplit(entry: InventoryItem): void {

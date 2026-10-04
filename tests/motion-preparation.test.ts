@@ -19,3 +19,21 @@ test('malformed contact metadata cannot publish combat motions and reports how t
       .rejects.toThrow('Unavailable reviewed contacts for attack. Prepare compatible Mixamo motions with npm run assets:export-character.');
   } finally { loading.mockRestore(); vi.unstubAllGlobals(); }
 });
+
+// Protect startup retry and independent actor playback after sharing an asset request.
+// The catalog validation test above starts with a successful GLTF load.
+test('failed motion loads retry and shared clips retain independent playback state', async () => {
+  const { loadMotionClip } = await import('../src/animation/combat-animations');
+  const loader = new GLTFLoader();
+  const model = await loader.parseAsync(JSON.stringify({ asset: { version: '2.0' }, scenes: [{}], scene: 0 }), '');
+  model.animations = [new AnimationClip('source', 1, [])];
+  const load = vi.spyOn(loader, 'loadAsync').mockRejectedValueOnce(new Error('temporary')).mockResolvedValue(model);
+  const clip = { id: 'retry', name: 'Retry', category: 'idle', url: '/fixture/retry.glb', duration: 1 };
+  try {
+    await expect(loadMotionClip(loader, clip)).rejects.toThrow('temporary');
+    const [first, second] = await Promise.all([loadMotionClip(loader, clip), loadMotionClip(loader, clip)]);
+    first.name = 'player'; first.duration = 2;
+    expect(second.name).toBe('source'); expect(second.duration).toBe(1);
+    expect(load).toHaveBeenCalledTimes(2);
+  } finally { load.mockRestore(); }
+});

@@ -62,7 +62,7 @@ export function decodeCharacter(raw: string): CharacterSave {
     }
   }
   result.campfires = [...new Set<string>(['homestead/camp', ...value.campfires])];
-  if (!hasCombat) addLegacyPotions(result.items, newId);
+  if (!hasCombat) recoverSupplies(result.items, 'potion', 3, newId);
   result.actionBar=result.actionBar.map(id=>id && abilityUnlocked(id,result.xp) ? id : null);
   return result;
 }
@@ -130,10 +130,8 @@ function migrateLegacyInventory(value: SavedFields, xp: SavedFields, newId: () =
       items.splice(items.indexOf(entry), 1);
       if (!receive(items, entry.item, 1, newId, entry.id)) items.push(entry);
     }
-  for (const [item, quantity] of [['scroll', value.scrolls], ['wood', wood]] as [LootItem, number][]) {
-    const remainder = quantity - receive(items, item, quantity, newId);
-    if (remainder) items.push({ id: newId(), item, quantity: remainder, slot: 'overflow', x: 0, y: 0 });
-  }
+  recoverSupplies(items, 'scroll', value.scrolls, newId);
+  recoverSupplies(items, 'wood', wood, newId);
   const result = character(items);
   if (value.version === 2) {
     Object.assign(result.xp, legacyXp);
@@ -158,15 +156,8 @@ function restoreEconomy(value: SavedFields, result: CharacterSave): void {
   result.buyback = buyback;
 }
 
-function addLegacyPotions(items: InventoryItem[], newId: () => string): void {
-  const remainder = 3 - receive(items, 'potion', 3, newId);
-  if (remainder)
-    items.push({
-      id: newId(),
-      item: 'potion',
-      quantity: remainder,
-      slot: 'overflow',
-      x: 0,
-      y: 0,
-    });
+/** Migrations never discard supplies when a legacy bag is full. */
+function recoverSupplies(items: InventoryItem[], item: LootItem, quantity: number, newId: () => string): void {
+  const remainder = quantity - receive(items, item, quantity, newId);
+  if (remainder) items.push({ id: newId(), item, quantity: remainder, slot: 'overflow', x: 0, y: 0 });
 }

@@ -1,6 +1,6 @@
 import { Object3D } from 'three';
 import { loadEquipmentMotions, type CombatMotions } from '../animation/combat-animations';
-import { basicAbility, abilities, abilityIds, type WeaponSet } from '../gameplay/abilities';
+import { abilities, abilityIds, type WeaponSet } from '../gameplay/abilities';
 import type { ActorTiming } from '../gameplay/encounter';
 import { weaponFamily, type Loadout } from '../gameplay/equipment';
 import { itemLoadout, type InventoryItem } from '../gameplay/inventory';
@@ -57,11 +57,10 @@ export class EquipmentSets {
   private refreshTimings(): void {
     const timings: NonNullable<ActorTiming['abilities']> = {};
     for (const prepared of this.sets ?? []) {
-      const basic = basicAbility(weaponFamily(prepared.loadout.main));
-      if (basic) timings[basic] = { attack: prepared.motions.clips.attack.duration, contacts: prepared.motions.contacts };
+      const family = weaponFamily(prepared.loadout.main);
       for (const id of abilityIds) {
         const definition=abilities[id];
-        if (definition.family!==weaponFamily(prepared.loadout.main)) continue;
+        if (definition.family!==family) continue;
         const role=definition.motion;
         const clip=prepared.motions.clips[role], contacts=role==='attack' ? prepared.motions.contacts : prepared.motions.skillContacts[role];
         if (clip && (contacts || id==='berserking')) timings[id]={attack:clip.duration,contacts:contacts ?? []};

@@ -23,6 +23,12 @@ export function consumeMaterial(items: InventoryItem[], item: LootItem, quantity
   }
   return quantity;
 }
+/** Callers establish matching bag stacks; every transfer uses the same capacity rule. */
+function fillStack(entry: InventoryItem, quantity: number): number {
+  const amount = Math.min(quantity, stackLimit - entry.quantity);
+  entry.quantity += amount;
+  return amount;
+}
 /** Transfer only what fits; callers commit the resulting inventory and ground remainder together. */
 export function receive(
   items: InventoryItem[],
@@ -36,8 +42,7 @@ export function receive(
   if (definition.stackable)
     for (const entry of items) {
       if (entry.item !== item || entry.slot !== 'bag') continue;
-      const amount = Math.min(quantity, stackLimit - entry.quantity);
-      entry.quantity += amount;
+      const amount = fillStack(entry, quantity);
       quantity -= amount;
       if (!quantity) return initial;
     }
@@ -81,9 +86,8 @@ export function moveItem(
   const set = entry.weaponSet ?? 0;
   const target = next.find((i) => i.slot === 'bag' && i.id !== id && i.x === x && i.y === y);
   if (target?.item === entry.item && lootDefinitions[entry.item].stackable) {
-    const amount = Math.min(quantity, stackLimit - target.quantity);
+    const amount = fillStack(target, quantity);
     if (!amount) throw new Error('Stack full.');
-    target.quantity += amount;
     entry.quantity -= amount;
     return next.filter((i) => i.quantity > 0);
   }
@@ -211,8 +215,7 @@ export function transferItem(
       (i) => i.slot === 'bag' && i.x === point.x && i.y === point.y,
     );
     if (stack && stack.item === entry.item && lootDefinitions[entry.item].stackable) {
-      amount = Math.min(quantity, stackLimit - stack.quantity);
-      stack.quantity += amount;
+      amount = fillStack(stack, quantity);
     } else {
       if (!fits(nextDestination, entry.item, point.x, point.y))
         throw new Error('Item does not fit.');

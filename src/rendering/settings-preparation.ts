@@ -21,25 +21,28 @@ export class SettingsPreparation<T> {
   }
   private async pump(): Promise<void> {
     if (this.running || this.timer !== undefined || this.disposed) return;
-    const request = this.pending;
-    if (!request) { this.waiters.splice(0).forEach(resolve => resolve()); return; }
-    this.pending = null; this.running = true;
-    let candidate: Awaited<ReturnType<SettingsPreparation<T>['prepare']>> | undefined;
-    let retired = false;
-    const discard = () => { if (candidate && !retired) { retired = true; candidate.dispose(); } };
+    this.running = true;
     try {
-      candidate = await this.prepare(request.value);
-      if (!this.disposed && request.revision === this.revision) candidate.commit();
-      else discard();
-    } catch (error) {
-      discard();
-      if (!this.disposed && request.revision === this.revision) this.failed(error);
+      while (this.pending && this.timer === undefined && !this.disposed) {
+        const request = this.pending;
+        this.pending = null;
+        let candidate: Awaited<ReturnType<SettingsPreparation<T>['prepare']>> | undefined;
+        const discard = () => { const retired = candidate; candidate = undefined; retired?.dispose(); };
+        try {
+          candidate = await this.prepare(request.value);
+          if (!this.disposed && request.revision === this.revision) candidate.commit();
+          else discard();
+        } catch (error) {
+          discard();
+          if (!this.disposed && request.revision === this.revision) this.failed(error);
+        }
+      }
     } finally {
       this.running = false;
-      if (this.disposed) this.waiters.splice(0).forEach(resolve => resolve());
-      else void this.pump().catch(this.failed);
+      if (!this.pending) this.waiters.splice(0).forEach(resolve => resolve());
     }
   }
+
   dispose(): void {
     this.disposed = true; this.revision++; this.pending = null;
     clearTimeout(this.timer); this.timer = undefined;

@@ -1,6 +1,6 @@
 import type { CharacterSave } from './character';
 import { equipmentCatalog, isItemId, type ItemId, type SalvageReturns } from './equipment';
-import { consumeMaterial, countItem, receive, validItems, validStash } from './inventory';
+import { consumeMaterial, countItem, receive, validItems, validStash, type InventoryItem } from './inventory';
 import { progressMultiplier, skillLevel } from './skills';
 
 export type SmithingMaterial = 'iron' | 'wood';
@@ -62,17 +62,21 @@ export function forgeError(state:SmithingState,item:ItemId):string {
 export function salvageReturns(item:unknown):SalvageReturns | undefined {
   return isItemId(item) ? equipmentCatalog[item].salvage : undefined;
 }
+function reclaimEntries(state: SmithingState, container: SmithingContainer): InventoryItem[] {
+  return container === 'bag' ? state.items : state.shelterRestored ? state.stash : [];
+}
+function canReclaim(entry: InventoryItem): boolean {
+  return (entry.slot === 'bag' || entry.slot === 'overflow') && !!salvageReturns(entry.item);
+}
 export function reclaimable(state:SmithingState) {
-  return [
-    ...state.items.filter(entry=>(entry.slot==='bag' || entry.slot==='overflow') && salvageReturns(entry.item)).map(entry=>({entry,container:'bag' as const})),
-    ...(state.shelterRestored ? state.stash.filter(entry=>salvageReturns(entry.item)).map(entry=>({entry,container:'stash' as const})) : []),
-  ];
+  return (['bag', 'stash'] as const).flatMap(container =>
+    reclaimEntries(state, container).filter(canReclaim).map(entry => ({ entry, container })));
 }
 /** Removal, matching returns and XP are indivisible; equipped and stale IDs never qualify. */
 export function reclaimed(state:SmithingState,id:string,container:SmithingContainer,newId:()=>string):SmithingState {
-  const selected=reclaimable(state).find(choice=>choice.entry.id===id && choice.container===container);
+  const selected = reclaimEntries(state, container).find(entry => entry.id === id && canReclaim(entry));
   if (!selected) throw new Error('Select unequipped metal gear.');
-  const returns=salvageReturns(selected.entry.item)!;
+  const returns=salvageReturns(selected.item)!;
   const next={...state,items:structuredClone(state.items),stash:structuredClone(state.stash),
     xp:{...state.xp,smithing:state.xp.smithing+smithingXp(state,smithing.reclaimXp)}};
   if (container==='bag') next.items=next.items.filter(entry=>entry.id!==id);

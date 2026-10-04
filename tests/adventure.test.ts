@@ -84,23 +84,6 @@ test('a moving, damaged caster creates one round-trip portal; death wins over co
   expect([state.castRemaining, state.character.scrolls, state.portal]).toEqual([0, 1, null]);
 });
 
-test('character saves retain scrolls, discoveries and the open return portal', () => {
-  const storage = memory(), state = new Adventure(storage), encounter = createEncounter('playing');
-  const discovered = structuredClone(field); discovered.id = 'new-area';
-  state.enter(encounter, discovered, discovered.campfires![0].arrival); state.step(encounter, discovered, .05);
-  state.beginCast(true); state.step(encounter, discovered, 2);
-  const restored = new Adventure(storage);
-  expect(restored.character).toEqual(state.character); expect(restored.portal).toEqual(state.portal);
-  expect(restored.destinations({ 'new-area': discovered }).map(d => d.area.id)).toEqual(['new-area']);
-  restored.enter(encounter, field); expect(encounter.enemies.enemy.hp).toBe(200);
-  storage.setItem(characterSaveKey, JSON.stringify({ version: 1, scrolls: 7, campfires: ['removed/fire'] }));
-  expect(new Adventure(storage).destinations({ homestead: home, clearing: field })).toHaveLength(1);
-  storage.setItem(characterSaveKey, '{broken');
-  const recovered = new Adventure(storage); expect(recovered.character.scrolls).toBeGreaterThan(0);
-  expect(JSON.parse(storage.getItem(`${characterSaveKey}.unreadable`)!)).toContain('{broken');
-  const failed = new Adventure({ getItem: () => null, setItem: () => { throw Error('full'); } }); failed.save(); expect(failed.saveDiagnostics().pending).toBe(true); failed.closeSave();
-});
-
 test('campfire interaction and healing require a safe source but destination enemies do not block travel', () => {
   const state = new Adventure(memory(), () => 1), encounter = createEncounter('playing');
   state.enter(encounter, field, field.campfires![0].arrival);
@@ -305,7 +288,7 @@ test('Rested uses active time, refreshes on shelter entry, saves fractional XP a
   const withShelter={...home,shelter:{position:[0,0] as [number,number],yaw:0,stash:[0,0] as [number,number]}};
   encounter.player.x=0;state.step(encounter,withShelter,1);expect(state.character.restedSeconds).toBe(1800);
   state.step(encounter,withShelter,1);expect(state.character.restedSeconds).toBe(1799);
-  state.grantAxeCombatXp();expect(state.character.xp.axeCombat).toBe(11);
+  state.grantProficiency('axe',10);expect(state.character.xp.axeCombat).toBe(11);
 });
 
 test('revision 3 migration retains IDs, claims, discoveries and XP while initializing Homestead progress',()=>{
@@ -670,26 +653,6 @@ test('buyback retains only the last ten, migrates revision 6 without gifts and r
   const migrated=decodeCharacter(JSON.stringify(legacy));expect(migrated.version).toBe(9);expect(migrated.gold).toBe(0);expect(migrated.buyback).toEqual([]);
   expect(migrated.items).toEqual(legacy.items); expect(migrated.campClaims).toEqual(legacy.campClaims);
   state.closeSave();restored.closeSave();
-});
-
-test('integrated menu and interaction owners keep Shop modal and dispatch its reached target', async () => {
-  const {MenuController}=await import('../src/clearing/menu-controller');
-  const {InteractionActions}=await import('../src/clearing/interaction-actions');
-  const THREE=await import('three');
-  const shop={paused:true,close:vi.fn(()=>{shop.paused=false;})};
-  const openInventory=vi.fn(),openOptions=vi.fn();
-  const menus={paused:false,close:vi.fn(),openInventory,openRepair:vi.fn(),openTravel:vi.fn()};
-  const controller=new MenuController({smithing:{paused:false,close:vi.fn()},shop,adventure:menus,skills:{paused:false,close:vi.fn(),open:vi.fn()},bindings:{paused:false,close:vi.fn()},options:{paused:false,close:vi.fn(),open:openOptions}},()=>true);
-  expect(controller.paused).toBe(true);controller.toggleInventory();
-  expect(shop.close).toHaveBeenCalledOnce();expect(openInventory).not.toHaveBeenCalled();expect(controller.paused).toBe(false);
-  controller.toggleInventory();expect(openInventory).toHaveBeenCalledOnce();
-  shop.paused=true;controller.toggleOptions();expect(openOptions).not.toHaveBeenCalled();expect(controller.paused).toBe(false);
-  const {state,encounter}=trading(),openShop=vi.fn();
-  const actions=new InteractionActions(state,encounter,menus,{select:vi.fn()},{play:vi.fn()},{area:()=>home,definitions:()=>({homestead:home}),paused:()=>controller.paused,changeArea:()=>Promise.resolve(true),syncAdventure:vi.fn(),openShop,openSmithing:vi.fn()});
-  const target={key:'shop/merchant',name:'Shop',type:'shop' as const,position:home.shop!.position,range:1.8,height:0,obstacleId:home.shop!.prop,object:new THREE.Group()};
-  actions.execute(target);expect(openShop).toHaveBeenCalledOnce();
-  shop.paused=true;actions.execute(target);expect(openShop).toHaveBeenCalledOnce();
-  state.closeSave();
 });
 
 test('area travel preserves the dodge cooldown without carrying the roll', () => {

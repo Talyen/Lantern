@@ -58,20 +58,6 @@ export class Harvesting {
     return node && { hits: node.hits, felled: node.regrowAt !== undefined };
   }
   isDepleted(areaId: string, id: string): boolean { return this.areas.get(areaId)?.get(id)?.regrowAt !== undefined; }
-  facing(areaId: string, point: Point, yaw: number): ResourceDefinition | undefined {
-    return this.closest(areaId, point, gathering.reach, yaw);
-  }
-  private closest(areaId: string, point: Point, reach: number, yaw?: number): ResourceDefinition | undefined {
-    let closest: ResourceDefinition | undefined, distance = reach;
-    for (const node of this.areas.get(areaId)?.values() ?? []) {
-      if (node.regrowAt !== undefined) continue;
-      const candidate = node.definition, next = this.distance(candidate, point);
-      if (!(next <= distance) || closest && next === distance) continue;
-      if (yaw !== undefined && !(Math.cos(Math.atan2(candidate.position[0] - point[0], candidate.position[2] - point[1]) - yaw) >= Math.cos(gathering.facingCone))) continue;
-      closest = candidate; distance = next;
-    }
-    return closest;
-  }
   contact(areaId: string, id: string, point: Point, xp = 0): HarvestReward | undefined {
     const node = this.areas.get(areaId)?.get(id);
     if (!node || node.regrowAt !== undefined || this.distance(node.definition, point) > gathering.reach) return;
