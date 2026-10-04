@@ -84,7 +84,7 @@ Sword/Bow progression now lives in [skills](../src/gameplay/skills.ts), [abiliti
 | 3 | Thrust | Poison Arrow |
 | 5 | Executioner's Strike | Rain of Arrows |
 | 15 | Riposte | Piercing Shot |
-| 50 | Onslaught | Deadeye Shot |
+| 20 | Onslaught | Deadeye Shot |
 
 The twelve actions can share any six slots. Earned actions fill the first empty slot without replacement; a full bar leaves them available in Skills. Assignments require safe conditions. Locked actions remain inspectable. No skill points or separate saved unlock list exists.
 
@@ -103,22 +103,22 @@ Every Sword/Bow Ultimate costs 50 mana and starts the one shared Ultimate timer 
 
 ### Effective damage and passive benefits
 
-Each enemy life retains its lowest reached health through session travel and death. One base XP is awarded per point of damage pushing health below that minimum, attributed to the originating Sword/Bow action even after a swap. Overkill and restored damage earn nothing. Rested applies its existing multiplier. The concurrently integrated finite Axe credit and its 0.2 scale remain intact; gathering progression is unchanged. Application relaunch preserves the outing and finite reward budgets; the developer Restart command deliberately creates a fresh outing. Renewal uses active-play time, so closed-app time does not advance it.
+Each enemy life retains its lowest reached health through session travel and death. Two base XP are awarded per point of damage pushing health below that minimum, attributed to the originating Axe/Sword/Bow action even after a swap. Overkill and restored damage earn nothing. Rested applies its existing multiplier. Axe uses the same combat reward calculation; all skills use [shared progression](PROGRESSION.md). Application relaunch preserves the outing and finite reward budgets; the developer Restart command deliberately creates a fresh outing. Renewal uses active-play time, so closed-app time does not advance it.
 
-Combat XP thresholds are level 1/0, 2/100, 3/250, 4/500, 5/1000, 15/5000 and 50/24000, with interpolation between anchors and the final slope continuing beyond level 50. The first Ultimate targets roughly five ordinary enemy lives of dedicated use; 3–5-hour full mastery and pre-boss practice remain provisional until the adventure is expanded and observed.
+All skill XP thresholds are level 1/0, 2/100, 3/250, 4/500, 5/1000, 15/5000 and 20/24000. Interpolate between anchors and continue by 3,800 XP per level above 20. The first Ultimate requires roughly three full 200-health enemy lives at the base reward rate; 3–5-hour full mastery and pre-boss practice remain provisional until the complete adventure is observed. [Progression budgets](PROGRESSION.md#initial-balance-budgets) distinguish arithmetic from measured playtime.
 
 | Level | Sword passive | Bow passive |
 | --- | --- | --- |
 | 2 | Honed Edge I: +3% damage | Steady Aim I: +3% damage |
 | 4 | Measured Cuts I: +2% attack rate | Smooth Draw I: +2% attack rate |
-| 7 | Long Reach I: +0.10 m reach | Long Shot I: +1 m range |
-| 10 | Economy I: −5% Skill mana | Economy I: −5% Skill mana |
-| 20 | Heavy Hand: +5% Executioner's Strike damage | Arrowstorm: +5% Rain damage |
-| 25 | Honed Edge II: +3% damage | Steady Aim II: +3% damage |
-| 30 | Measured Cuts II: +2% attack rate | Smooth Draw II: +2% attack rate |
-| 35 | Long Reach II: +0.10 m reach | Long Shot II: +1 m range |
-| 40 | Economy II: −5% Skill mana | Economy II: −5% Skill mana |
-| 50 | Relentless: +5% Onslaught damage | Deadeye Mastery: +5% Deadeye damage |
+| 6 | Long Reach I: +0.10 m reach | Long Shot I: +1 m range |
+| 7 | Economy I: −5% Skill mana | Economy I: −5% Skill mana |
+| 9 | Heavy Hand: +5% Executioner's Strike damage | Arrowstorm: +5% Rain damage |
+| 11 | Honed Edge II: +3% damage | Steady Aim II: +3% damage |
+| 13 | Measured Cuts II: +2% attack rate | Smooth Draw II: +2% attack rate |
+| 16 | Long Reach II: +0.10 m reach | Long Shot II: +1 m range |
+| 18 | Economy II: −5% Skill mana | Economy II: −5% Skill mana |
+| 20 | Relentless: +5% Onslaught damage | Deadeye Mastery: +5% Deadeye damage |
 
 Bonuses affect their weapon's actions, not global character power. Like damage bonuses add alongside equipment bonuses, attack-rate bonuses add, reach/range bonuses add and Skill discounts total 10%; Ultimates receive no discount. Accepted attacks snapshot those benefits, costs, damage, timing and range. Already released projectiles, Poison and rain retain their originating snapshots.
 
@@ -126,11 +126,11 @@ Bonuses affect their weapon's actions, not global character power. Like damage b
 
 New characters retain the Axe Basic on LMB and begin with Crushing Blow on Q. Existing saves retain their action assignments. Crushing Blow deals 200% of equipped Axe damage to the nearest reachable target in a 60-degree frontal arc at the equipped reach. Its independently baked downward action targets 0.95 seconds with a 0.38-second contact; actual prepared duration owns the lock. It costs 25 mana at its first strike and has a six-second cooldown. It breaks current enemy windups, including the raider's late commitment. Future protected attacks remain protected unless their simulation explicitly opens a heavy-interruption window.
 
-Berserking unlocks at 100 saved Axe Combat XP (level 2). Effective Axe damage awards 0.2 base XP per newly reached health point, with Rested applied once. Each enemy life retains its lowest health through healing, death recovery and area travel; overkill and re-damaging healed health earn no additional credit. Existing saved XP is retained. Crossing the threshold fills the third action slot (default R) only when empty; occupied slots and deliberately cleared saved assignments remain intact. Skills exposes the real requirement and only permits unlocked assignments.
+Berserking unlocks at 1,000 saved Axe Combat XP (level 5). Effective Axe damage awards two base XP per newly reached health point, with Rested applied once. Each enemy life retains its lowest health through healing, death recovery and area travel; overkill and re-damaging healed health earn no additional credit. Existing saved XP is retained. Crossing the threshold fills the first empty action slot without replacement; occupied slots and deliberately cleared saved assignments remain intact. Skills exposes the real requirement and only permits unlocked assignments.
 
 The compatible Axe battle cry lasts 0.5 seconds and remains planted. Ordinary damage does not interrupt this action; death before completion cancels it without mana or cooldown consumption. Completion commits 50 mana and starts the single shared 60-second Ultimate cooldown. For eight active gameplay seconds, the equipped Axe's post-equipment damage, attack rate and movement speed multiply by 1.4, 1.3 and 1.2. Swaps keep the timer running but remove all three benefits while a different weapon is active. Accepted attacks retain their original snapshots; expiry restores base equipment properties, and death ends the buff. Menus/backgrounding pause gameplay clocks; travel preserves the buff and shared cooldown.
 
-The action bar uses distinct Axe motifs, real casting/cooldown states, a compact timed Berserking badge and brief first-opportunity hints with current bindings. The badge dims outside Axe combat. The saved outing retains committed cooldowns across application relaunch; the temporary Berserking effect is not restored. Four independent adventures and title navigation remain front-end roadmap work. Values above are initial tuning rather than final balance.
+The action bar uses distinct Axe motifs, real casting/cooldown states, a compact timed Berserking badge and brief first-opportunity hints with current bindings. The badge dims outside Axe combat. The saved outing retains committed cooldowns across application relaunch; the temporary Berserking effect is not restored. Four independent adventures and title navigation are implemented. Values above are initial tuning rather than final balance.
 
 ### Axe mastery design in progress
 
@@ -148,7 +148,7 @@ The following references describe useful design patterns, not numerical balance 
 - **Grouping and defense:** Guild Wars 2's [Path of Scars](https://wiki.guildwars2.com/wiki/Path_of_Scars) pulls enemies on the returning axe, while [Whirling Defense](https://wiki.guildwars2.com/wiki/Whirling_Defense) reflects projectiles. These are different tactical roles from increased melee damage; pulls or defensive behavior would require separate approval alongside Axe's no-heavy-interruption direction.
 - **Mobility and sustain:** Last Epoch's [Sentinel skills](https://support.lastepoch.com/hc/en-us/articles/46363123727131-Sentinel-Skills) include target-required Lunge, moving Warpath and conditional defensive retaliation. Diablo III's [Revenge](https://us.diablo3.blizzard.com/en-us/class/barbarian/active/revenge) turns incoming hits into an area attack with healing. Sustain is a possible future direction, not an approved change to Lantern's recovery balance.
 
-The proposed next step is to select one central mechanic: wounds/reaping, momentum/warcries or area control, while retaining Berserking. Bleed consumption and bounded propagation are Lantern design proposals, not inferred requirements or existing effects. The final roster, passives, stacking/refresh rules, presentation, damage, mana, cooldown and unlock pacing remain open. Wound payoffs need a useful boss role as well as a pack role; Bleed must have an explicit rule and readable treatment for skeletons. Preserve existing Axe XP and assignments when implementing the replacement, with an explicit migration for assigned Crushing Blow.
+The proposed next step is to select one central mechanic: wounds/reaping, momentum/warcries or area control, while retaining Berserking. Bleed consumption and bounded propagation are Lantern design proposals, not inferred requirements or existing effects. The selected future Axe roster is Physical Basic, Bleed Basic, a directional rush ending in one strike, a wound-applying cone, a single-target wound-consuming Ultimate and Berserking. Physical attacks build temporary damage/pursuit momentum faster; Bleed builds capped wounds; Berserking grants maximum momentum throughout. The roles now follow shared unlock milestones: starter cone at 1, Bleed Basic at 3, Berserking at 5, rush at 15 and the second Ultimate at 20. Effects, names, stacking details, presentation and combat tuning remain design work; this progression update does not implement that kit. Wound payoffs need a useful boss role as well as a pack role; Bleed must have an explicit rule and readable treatment for skeletons. Preserve existing Axe XP and assignments when implementing the replacement, with an explicit migration for assigned Crushing Blow.
 
 ## Enemy attack interruption
 

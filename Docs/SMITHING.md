@@ -4,19 +4,19 @@ Smithing is a small, predictable profession supporting equipment choices and ret
 
 ## Recipes and progression
 
-[Smithing](../src/gameplay/smithing.ts) owns recipe costs, XP, eligibility and candidate transactions. [Equipment](../src/gameplay/equipment.ts) owns fixed identities, properties and recoverable construction materials. Levels derive from the existing saved Smithing XP using the shared non-weapon curve.
+[Smithing](../src/gameplay/smithing.ts) owns recipe costs, XP, eligibility and candidate transactions. [Equipment](../src/gameplay/equipment.ts) owns fixed identities, properties and recoverable construction materials. Levels derive from the existing saved Smithing XP using the common [skill progression curve](PROGRESSION.md).
 
 | Recipe | Smithing level | Cost | Base XP |
 | --- | ---: | --- | ---: |
 | Sword | 1 | 2 Iron, 1 Wood | 250 |
 | Shield | 1 | 2 Iron, 3 Wood | 250 |
-| Guard Helm | 3 | 3 Iron | 1,000 |
-| Weathered Mail | 6 | 4 Iron | 3,000 |
-| Iron Broadsword | 10 | 4 Iron, 1 Wood | 4,000 |
+| Guard Helm | 3 | 3 Iron | 350 |
+| Weathered Mail | 6 | 4 Iron | 500 |
+| Iron Broadsword | 10 | 4 Iron, 1 Wood | 650 |
 
 The same recipe always awards the same base XP; no first-craft bonus or random quality exists. Rested adds its existing 10% to crafting and reclamation XP. Costs do not change with level and require no gold or intermediate ingots. New recipes appear only upon learning and receive a completion announcement. Recipe unlocks are independent of talent nodes.
 
-The unchanged novice deposits yield three Iron each; Homestead has one and Clearing has two. Their existing Mining, ground-drop provenance, cancellation and 45-minute active-play renewal rules apply. All five recipes cost 15 Iron plus 5 Wood, with shelter restoration requiring another 3 Iron, 12 Wood and 6 Stone. Two novice Iron cycles supply 18 Iron before salvage and higher-level yield changes. These are starting values, not observed complete-adventure pacing.
+At initial skill level the novice deposits yield three Iron each; Homestead has one and Clearing has two. Their existing Mining, ground-drop provenance, cancellation and 45-minute active-play renewal rules apply. All five recipes cost 15 Iron plus 5 Wood, with shelter restoration requiring another 3 Iron, 12 Wood and 6 Stone. Two novice Iron cycles supply at least 18 Iron before salvage, with the shared Mining progression increasing later contact yields. These are starting values, not observed complete-adventure pacing.
 
 ## Talents
 
@@ -25,8 +25,8 @@ The Skills screen contains the real starter major/minor bonuses alongside clearl
 | Talent | Kind / level | Benefit |
 | --- | --- | --- |
 | Reclamation | Major / 1 | Reclaim unequipped metal gear for matching materials and a little Smithing XP. |
-| Heat Seasoned | Minor / 3 | Forge exposure grants 15% Burn Resistance. |
-| Hammer Arm | Minor / 6 | Hammer work grants 5% more physical melee damage. |
+| Heat Seasoned | Minor / 2 | Forge exposure grants 15% Burn Resistance. |
+| Hammer Arm | Minor / 4 | Hammer work grants 5% more physical melee damage. |
 
 Bonuses activate automatically, require no points, and are character benefits rather than changed item properties. Hammer Arm affects actual physical melee contacts, including multi-contact attacks; it does not affect arrows, Staff magic, poison or arrow-rain pulses. Heat Seasoned applies to Burn damage after direct-hit armor and blocking. No XP or forging-speed talent is included.
 

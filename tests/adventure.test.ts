@@ -1,7 +1,7 @@
 import { memory } from './helpers/storage';
 import { isRecord, parseJson } from '../src/data/json';
 import { expect, test, vi } from 'vitest';
-import { skillIds } from '../src/gameplay/skills';
+import { skillIds, progression } from '../src/gameplay/skills';
 import { characterBackupKey, decodeCharacter } from '../src/gameplay/character-save';
 import { Adventure, characterSaveKey } from '../src/gameplay/adventure';
 import { applyEquipment, createEncounter, enemyMaxHealth } from '../src/gameplay/encounter';
@@ -261,12 +261,31 @@ test('harvest XP is collected once, including partial stacks; transfers and re-d
   const state=new Adventure(memory()); const encounter=createEncounter('playing',field.layout);state.enter(encounter,field);
   state.character.items=[{id:'wood-stack',item:'wood',quantity:98,slot:'bag',x:0,y:0}];
   for(let y=0;y<8;y++)for(let x=0;x<12;x++)if(x || y)state.character.items.push({id:`filled-${x}-${y}`,item:'scroll',quantity:99,slot:'bag',x,y});
-  state.grantHarvest('wood',3,'woodcutting',10,[0,0]);const drop=state.session().drops[0];drop.age=.6;
+  state.character.restedSeconds=100;
+  state.grantHarvest('wood',3,'woodcutting',progression.gatheringXp,[0,0]);const drop=state.session().drops[0];drop.age=.6;
   expect(state.character.xp.woodcutting).toBe(0);expect(state.pickup(drop.id,[0,0])).toBe(true);
-  expect([drop.quantity,state.character.xp.woodcutting]).toEqual([2,10]);
-  state.character.items=state.character.items.filter(i=>i.id!=='filled-1-0');expect(state.pickup(drop.id,[0,0])).toBe(true);expect(state.character.xp.woodcutting).toBe(30);
+  expect([drop.quantity,state.character.xp.woodcutting]).toEqual([2,88]);
+  state.character.items=state.character.items.filter(i=>i.id!=='filled-1-0');expect(state.pickup(drop.id,[0,0])).toBe(true);expect(state.character.xp.woodcutting).toBe(264);
   state.dropItem('wood-stack',1,[0,0]);const tossed=state.session().drops[0];tossed.age=.6;
-  state.pickup(tossed.id,tossed.position,true);expect(state.character.xp.woodcutting).toBe(30);
+  state.pickup(tossed.id,tossed.position,true);expect(state.character.xp.woodcutting).toBe(264);
+});
+
+// Admission: shared XP rejection must not consume harvested loot or corrupt a saved character;
+// existing pickup tests exercise capacity, but not an XP failure between preparation and publication.
+test('invalid or overflowing XP retains character progress and harvested loot', () => {
+  const state=new Adventure(memory()),encounter=createEncounter('playing',field.layout);state.enter(encounter,field);
+  const before=JSON.stringify(state.character);
+  for(const amount of [NaN,Infinity,-1])expect(()=>state.awardXp('mining',amount)).toThrow();
+  expect(()=>state.awardXp('healing',10)).toThrow('This skill does not earn XP yet.');
+  expect(JSON.stringify(state.character)).toBe(before);
+  state.character.xp.woodcutting=Number.MAX_SAFE_INTEGER-1;
+  state.grantHarvest('wood',3,'woodcutting',progression.gatheringXp,[0,0]);
+  const drop=state.session().drops[0];drop.age=.6;
+  const full=JSON.stringify(state.character);
+  expect(state.pickup(drop.id,[0,0],true)).toBe(false);
+  expect(drop.quantity).toBe(3);expect(JSON.stringify(state.character)).toBe(full);
+  expect(decodeCharacter(full).xp).toEqual(state.character.xp);
+  state.closeSave();
 });
 
 test('shelter repair consumes its exact recipe once and stash transfers retain overflow without changing equipment',()=>{
@@ -731,8 +750,14 @@ test('weapon unlocks fill empty slots without replacement and survive saving',()
   const decoded=decodeCharacter(JSON.stringify(adventure.character));
   expect(decoded.xp.sword).toBe(adventure.character.xp.sword); expect(decoded.actionBar).toEqual(adventure.character.actionBar);
   const full=['sword-basic','sweep','thrust','executioner','bow-basic','multishot'] as const;
-  adventure.setActionBar([...full]); adventure.grantWeaponXp('sword',24000);
+  adventure.setActionBar([...full]); adventure.takeEvents();
+  adventure.grantWeaponXp('sword',22999.999999);
+  expect(()=>adventure.setActionBar(['onslaught',...full.slice(1)])).toThrow();
+  adventure.takeEvents(); adventure.grantWeaponXp('sword',.000001);
   expect(adventure.character.actionBar).toEqual(full);
+  expect(adventure.takeEvents()).toEqual([{type:'abilityLearned',ability:'onslaught',slot:null}]);
+  adventure.grantWeaponXp('sword',1); expect(adventure.takeEvents()).toEqual([]);
+  adventure.closeSave();
 });
 
 // Admission: a transient stance left by Object.assign area replacement could prevent damage and spend an old attack's costs after travel.

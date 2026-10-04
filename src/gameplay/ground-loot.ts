@@ -32,24 +32,29 @@ export type LootEvent = {
 export const lootEvent = (type: LootEvent['type'], drop: GroundDrop): LootEvent =>
   ({ type, item: drop.item, position: { x: drop.position[0], z: drop.position[1] } });
 
-/** Commit only the quantity that fits. The coordinator owns XP, events and persistence. */
+/** Commit only the quantity that fits, after optional reward preparation succeeds. */
 export function collectGroundDrop(
   drops: GroundDrop[], id: string, point: Point,
   character: Pick<CharacterSave, 'items' | 'gold' | 'campClaims'>,
   newId: () => string, reachable: (drop: GroundDrop) => boolean, manual: boolean,
+  prepare?: (drop: GroundDrop, amount: number) => void,
 ): { collected: true; drop: GroundDrop; amount: number } | { collected: false; notice?: string } {
   const drop = drops.find(drop => drop.id === id);
   if (!drop || drop.age < dropLandingSeconds || !near(point, drop.position, pickupRadius)) return { collected: false };
   if (!reachable(drop)) return { collected: false, notice: manual ? 'Can’t reach item' : undefined };
   if (drop.blocked && !manual) return { collected: false };
+  const items=prepare ? structuredClone(character.items) : character.items;
   const amount = drop.item === 'gold'
     ? Math.min(drop.quantity, Number.MAX_SAFE_INTEGER - character.gold)
-    : receive(character.items, drop.item, drop.quantity, newId, drop.instanceId);
-  if (drop.item === 'gold') character.gold += amount;
+    : receive(items, drop.item, drop.quantity, newId, drop.instanceId);
   if (!amount) {
     const notice = drop.item === 'gold' ? 'Gold wallet is full' : 'Inventory full';
     return { collected: false, notice: manual ? notice : undefined };
   }
+  try { prepare?.(drop,amount); }
+  catch(error) { return {collected:false,notice:manual ? error instanceof Error ? error.message : 'Unable to collect item' : undefined}; }
+  if (prepare) character.items=items;
+  if (drop.item === 'gold') character.gold += amount;
   drop.quantity -= amount;
   if (drop.claim) character.campClaims = [...new Set([...character.campClaims, drop.claim])];
   if (!drop.quantity) drops.splice(drops.indexOf(drop), 1);

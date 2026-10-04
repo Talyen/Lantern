@@ -1,23 +1,23 @@
 import type { CharacterSave } from './character';
 import { equipmentCatalog, isItemId, type ItemId, type SalvageReturns } from './equipment';
 import { consumeMaterial, countItem, receive, validItems, validStash, type InventoryItem } from './inventory';
-import { progressMultiplier, skillLevel } from './skills';
+import { earnedSkillXp, withSkillXp, skillLevel, skillTree } from './skills';
 
 export type SmithingMaterial = 'iron' | 'wood';
 export type SmithingRecipe = { item: ItemId; level: number; materials: Partial<Record<SmithingMaterial, number>>; xp: number };
 export const smithingRecipes: readonly SmithingRecipe[] = [
   {item:'sword',level:1,materials:{iron:2,wood:1},xp:250},
   {item:'shield',level:1,materials:{iron:2,wood:3},xp:250},
-  {item:'guard-helm',level:3,materials:{iron:3},xp:1000},
-  {item:'weathered-mail',level:6,materials:{iron:4},xp:3000},
-  {item:'iron-broadsword',level:10,materials:{iron:4,wood:1},xp:4000},
+  {item:'guard-helm',level:3,materials:{iron:3},xp:350},
+  {item:'weathered-mail',level:6,materials:{iron:4},xp:500},
+  {item:'iron-broadsword',level:10,materials:{iron:4,wood:1},xp:650},
 ];
-export const smithing = { forgeSeconds:2, reclaimXp:20, heatLevel:3, heatResistance:.15, hammerLevel:6, hammerDamage:.05, reach:1.8 };
-export const smithingMeleeMultiplier = (xp:number) => skillLevel(xp,'smithing')>=smithing.hammerLevel ? 1+smithing.hammerDamage : 1;
+export const smithing = { forgeSeconds:2, reclaimXp:20, heatLevel:skillTree.passives[0], heatResistance:.15, hammerLevel:skillTree.passives[1], hammerDamage:.05, reach:1.8 };
+export const smithingMeleeMultiplier = (xp:number) => skillLevel(xp)>=smithing.hammerLevel ? 1+smithing.hammerDamage : 1;
 export type SmithingState = Pick<CharacterSave,'items' | 'stash' | 'gold' | 'xp' | 'restedSeconds' | 'shelterRestored'>;
 export type SmithingContainer = 'bag' | 'stash';
-export const learnedRecipes = (xp:number) => smithingRecipes.filter(recipe => skillLevel(xp,'smithing') >= recipe.level);
-export const smithingXp = (state:Pick<SmithingState,'restedSeconds'>,amount:number) => Math.round(amount * progressMultiplier(state.restedSeconds) * 1e6) / 1e6;
+export const learnedRecipes = (xp:number) => smithingRecipes.filter(recipe => skillLevel(xp) >= recipe.level);
+export const smithingXp = (state:Pick<SmithingState,'restedSeconds'>,amount:number) => earnedSkillXp(amount,state.restedSeconds);
 export function recipeMaterials(state:SmithingState,recipe:SmithingRecipe) {
   const carried = state.items.filter(entry => entry.slot === 'bag');
   return (Object.entries(recipe.materials) as [SmithingMaterial,number][]).map(([item,cost]) => {
@@ -38,7 +38,7 @@ export function forged(state:SmithingState,item:ItemId,newId:()=>string):Smithin
   for (const material of recipeMaterials(state,recipe))
     if (material.held<material.cost) throw new Error('Need '+(material.cost-material.held)+' more '+(material.item==='iron' ? 'Iron' : 'Wood')+'.');
   const next = { ...state, items: structuredClone(state.items), stash: structuredClone(state.stash),
-    xp: { ...state.xp, smithing: state.xp.smithing + smithingXp(state, recipe.xp) } };
+    xp: withSkillXp(state.xp,'smithing',recipe.xp,state.restedSeconds) };
   for (const [material,cost] of Object.entries(recipe.materials) as [SmithingMaterial,number][]) {
     const remaining=consumeMaterial(next.items,material,cost);
     if (remaining && consumeMaterial(next.stash,material,remaining)) throw new Error('Materials are no longer available.');
@@ -75,7 +75,7 @@ export function reclaimed(state:SmithingState,id:string,container:SmithingContai
   if (!selected) throw new Error('Select unequipped metal gear.');
   const returns=salvageReturns(selected.item)!;
   const next = { ...state, items: structuredClone(state.items), stash: structuredClone(state.stash),
-    xp: { ...state.xp, smithing: state.xp.smithing + smithingXp(state, smithing.reclaimXp) } };
+    xp: withSkillXp(state.xp,'smithing',smithing.reclaimXp,state.restedSeconds) };
   if (container==='bag') next.items=next.items.filter(entry=>entry.id!==id);
   else next.stash=next.stash.filter(entry=>entry.id!==id);
   const target=container==='bag' ? next.items : next.stash;

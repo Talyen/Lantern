@@ -20,9 +20,9 @@ A newly completed tree harvest starts a cosmetic fall: the stump appears and the
 
 [`skills.ts`](../src/gameplay/skills.ts) owns shared formulas and named tuning values. Levels derive from saved XP rather than separate saved counters.
 
-- Total XP for level L: `xpStep × L × (L − 1) / 2`, initially `xpStep = 100`.
+- Levels use the common [skill XP curve](PROGRESSION.md#curve-and-tree-milestones), completing each tree at level 20 / 24,000 XP while continuing level growth afterward.
 - Per-contact yield: `floor(baseYield × (1 + yieldGrowth × max(0, skillLevel − resourceLevel)))`, initially base yield 1 and growth 0.25.
-- Gathering XP: collected quantity × resource level × base XP 10 × the active progress multiplier.
+- Gathering XP: collected quantity × resource level × base XP 80 × the active progress multiplier.
 
 The starting recipe uses 12 Wood, 6 Stone and 3 Iron: four novice trees, two stone outcrops and one iron deposit. Recipe costs are authored data, separate from progression formulas. Skills shows derived Woodcutting, Mining and Axe levels; their saved XP remains owned by the character model.
 

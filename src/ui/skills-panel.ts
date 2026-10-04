@@ -1,6 +1,6 @@
 import { weaponFamily } from '../gameplay/equipment';
 import { abilities, abilityIds, abilityUnlocked, type AbilityId } from '../gameplay/abilities';
-import { skillCategories, skillDefinitions, skillLevel, earnsSkillXP, type Skill, type SkillCategory } from '../gameplay/skills';
+import { skillCategories, skillDefinitions, skillLevel, skillTree, earnsSkillXP, type Skill, type SkillCategory } from '../gameplay/skills';
 import { nodesForSkill, type SkillNode } from '../gameplay/skill-nodes';
 import type { CharacterSave } from '../gameplay/character';
 import { skillIcon, skillNodeIcon } from './skill-icons';
@@ -110,7 +110,7 @@ export class SkillsPanel {
       button.innerHTML = '<span>' + skillIcon(skill.id) + '</span><span class="skills-root-name"></span>';
       button.querySelector('.skills-root-name')!.textContent = skill.name;
       button.setAttribute('aria-pressed', String(skill.id === this.skill));
-      button.setAttribute('aria-label', skill.name + ', level ' + skillLevel(this.ctx.character().xp[skill.id],skill.id));
+      button.setAttribute('aria-label', skill.name + ', level ' + skillLevel(this.ctx.character().xp[skill.id]));
       button.onclick = () => { this.skill = skill.id; this.render(); this.roots.querySelector<HTMLButtonElement>('[aria-pressed="true"]')!.focus(); };
       this.roots.append(button);
     }
@@ -121,7 +121,7 @@ export class SkillsPanel {
     button.type = 'button'; button.className = 'skills-node ' + (node.kind === 'minor' ? 'minor' : 'major');
     button.dataset.node = node.id; button.dataset.kind = node.kind;
     button.style.left = x + '%'; button.style.top = y + '%';
-    const learned=node.implemented && (node.ability ? abilityUnlocked(node.ability,this.ctx.character().xp) : skillLevel(this.ctx.character().xp[this.skill],this.skill)>=node.level);
+    const learned=node.implemented && (node.ability ? abilityUnlocked(node.ability,this.ctx.character().xp) : skillLevel(this.ctx.character().xp[this.skill])>=node.level);
     button.innerHTML = '<span class="skills-node-art">' + skillNodeIcon(this.skill, node) + '</span>' +
       (learned ? '' : '<span class="skills-lock" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M5 7V5a3 3 0 0 1 6 0v2M3 7h10v7H3zM8 10v2"/></svg></span>');
     button.classList.toggle('planned', !learned);
@@ -133,7 +133,7 @@ export class SkillsPanel {
     const info = () => node.implemented ? [node.role,
       ...(node.ability ? [abilities[node.ability].description,...this.ctx.abilityInfo(node.ability).split(' · ').slice(1)] : [node.description ?? '']),
       node.level===1 ? 'Available from the start' : (learned ? 'Learned at level ' : 'Requires level ')+node.level] :
-      [node.role,'Proposed level '+node.level,node.kind==='minor' ? 'Bonus not yet defined' : 'Not yet available'];
+      [node.role,'Level '+node.level,node.kind==='minor' ? 'Bonus not yet defined' : 'Not yet available'];
     button.setAttribute('aria-label', node.name + ', ' + info().join(', '));
     button.onmouseenter = button.onfocus = () => this.showTooltip(button, node.name, info());
     button.onmouseleave = () => { if (document.activeElement !== button) this.hideTooltip(); };
@@ -186,16 +186,16 @@ export class SkillsPanel {
   prepare(): void { this.panel.hidden = false; this.showNotice(''); this.render(); }
   focusSelected(): void { this.roots.querySelector<HTMLButtonElement>('[aria-pressed="true"]')!.focus(); }
   update(): void {
-    const level = skillLevel(this.ctx.character().xp[this.skill],this.skill);
+    const level = skillLevel(this.ctx.character().xp[this.skill]);
     if (level === this.displayedLevel) return;
     if (this.displayedLevel>=0) {this.render(); return;}
     this.displayedLevel = level; this.heading.querySelector('.skills-level')!.textContent = 'Level ' + level;
-    this.track.replaceChildren(); this.track.setAttribute('aria-label', 'Level ' + level + '; milestones 10, 20, 30, 40, 50');
-    for (const milestone of [10,20,30,40,50]) {
+    this.track.replaceChildren(); this.track.setAttribute('aria-label', 'Level ' + level + '; milestones ' + skillTree.ruler.join(', '));
+    for (const milestone of skillTree.ruler) {
       const tick = document.createElement('span'); tick.className = 'skills-milestone'; tick.textContent = String(milestone);
-      tick.style.left = (5 + (milestone - 1) / 49 * 90) + '%'; this.track.append(tick);
+      tick.style.left = (5 + (milestone - 1) / (skillTree.completionLevel-1) * 90) + '%'; this.track.append(tick);
     }
     const marker = document.createElement('span'); marker.className = 'skills-level-marker';
-    marker.style.left = (5 + Math.min(49, level - 1) / 49 * 90) + '%'; marker.title = 'Level ' + level; marker.setAttribute('aria-hidden','true'); this.track.append(marker);
+    marker.style.left = (5 + Math.min(skillTree.completionLevel-1, level - 1) / (skillTree.completionLevel-1) * 90) + '%'; marker.title = 'Level ' + level; marker.setAttribute('aria-hidden','true'); this.track.append(marker);
   }
 }

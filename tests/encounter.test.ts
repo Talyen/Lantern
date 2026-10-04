@@ -486,11 +486,11 @@ test('Piercing Shot automatically equips Bow, crosses each enemy once, and stops
   const make=()=>{const state=createEncounter('playing',layout);state.proficiency.bow=5000;sets(state,[{main:'sword',off:null},{main:'bow',off:null}]);return state;};
   const state=make();expect(useAbility(state,'piercing-shot',clocks.player,false)).toContainEqual({type:'weaponSet',set:1});
   stepExploration(state,.7,idle,undefined,clocks);for(let i=0;i<10;i++)stepExploration(state,.025,idle,undefined,clocks);
-  expect([state.enemies.enemy.hp,state.enemies.caster.hp]).toEqual([144.38,144.38]);expect(state.playerMana).toBeCloseTo(73.6121568627451);
+  expect([state.enemies.enemy.hp,state.enemies.caster.hp]).toEqual([142.76,142.76]);expect(state.playerMana).toBeCloseTo(73.71538461538465);
   const blocked=make();useAbility(blocked,'piercing-shot',clocks.player,false);
   const world={move:()=>{},direction:()=>({x:0,z:0}),lineOfSight:()=>true,segmentHit:(from:{z:number},to:{z:number})=>from.z<3 && to.z>=3 ? (3-from.z)/(to.z-from.z) : null};
   stepExploration(blocked,.7,idle,world,clocks);for(let i=0;i<10;i++)stepExploration(blocked,.025,idle,world,clocks);
-  expect([blocked.enemies.enemy.hp,blocked.enemies.caster.hp,blocked.projectiles.length]).toEqual([144.38,200,0]);
+  expect([blocked.enemies.enemy.hp,blocked.enemies.caster.hp,blocked.projectiles.length]).toEqual([142.76,200,0]);
 });
 
 test('automatic swaps and repeated slot assignments preserve skill cooldowns and action locks', () => {
@@ -799,7 +799,7 @@ test('proficiency credits only new health loss, excluding healing and overkill',
   state.enemies.enemy.hp=200;
   hit(state,'enemy',timing,events,'sword',undefined,0,80);
   hit(state,'enemy',timing,events,'bow',undefined,0,500);
-  expect(events.filter(e=>e.type==='proficiency')).toEqual([{type:'proficiency',family:'sword',amount:100},{type:'proficiency',family:'bow',amount:100}]);
+  expect(events.filter(e=>e.type==='proficiency')).toEqual([{type:'proficiency',family:'sword',amount:200},{type:'proficiency',family:'bow',amount:200}]);
 });
 
 test('Poison refresh keeps its next tick and uses Bow attribution after swapping',()=>{
@@ -833,6 +833,6 @@ test('rain pulses respect walls and cannot reaward a defeated enemy',()=>{
   const world:Movement={move:()=>{},direction:()=>({x:0,z:0}),lineOfSight:(_from,to)=>to.x===0};
   const events=stepExploration(state,4,idle,world,timing);
   expect(state.enemies.enemy.hp).toBe(0); expect(state.enemies.caster.hp).toBe(200);
-  expect(events.filter(e=>e.type==='proficiency').reduce((total,e)=>total+e.amount,0)).toBe(200);
+  expect(events.filter(e=>e.type==='proficiency').reduce((total,e)=>total+e.amount,0)).toBe(400);
   expect(stepExploration(state,1,idle,world,timing).some(e=>e.type==='proficiency')).toBe(false);
 });

@@ -1,7 +1,7 @@
 import type { DamageType } from './damage';
 import { smithing } from './smithing';
-import { skillLevel } from './skills';
-import { abilities, axeProgression } from './abilities';
+import { skillLevel, progression } from './skills';
+import { abilities } from './abilities';
 import type { Weapon } from './equipment';
 import { armoredDamage } from './combat-stats';
 import { commitAction } from './action-commit';
@@ -41,7 +41,7 @@ export function hit(state: Encounter, actor: ActorId, timing: Timings, events: E
     return;
   }
   let damage=actor === 'player' && !periodic ? armoredDamage(rawDamage,state.stats.armor) : rawDamage;
-  if(actor==='player' && damageType==='burn' && skillLevel(state.proficiency.smithing ?? 0,'smithing')>=smithing.heatLevel)damage*=1-smithing.heatResistance;
+  if(actor==='player' && damageType==='burn' && skillLevel(state.proficiency.smithing ?? 0)>=smithing.heatLevel)damage*=1-smithing.heatResistance;
   const blocked=actor === 'player' && state.blocking && impactOffset>=state.blockFrameOffset && frontal;
   if (blocked) damage*=.5;
   const beforeHp=target.hp;
@@ -51,8 +51,7 @@ export function hit(state: Encounter, actor: ActorId, timing: Timings, events: E
     const previous=enemy.lowestHp ?? beforeHp;
     const credit=Math.max(0,previous-enemy.hp);
     enemy.lowestHp=Math.min(previous,enemy.hp);
-    if (credit>0 && (source === 'sword' || source === 'bow')) events.push({type:'proficiency',family:source,amount:credit});
-    if (source==='axe' && credit>0) events.push({type:'proficiency',family:'axe',amount:credit*axeProgression.xpPerDamage});
+    if (credit>0 && (source === 'axe' || source === 'sword' || source === 'bow')) events.push({type:'proficiency',family:source,amount:credit*progression.combatXp});
     if (!enemy.returning) enemy.engaged=true;
     const heavy = !!origin?.ability && abilities[origin.ability].interruption === 'heavy';
     if (!periodic && (target.hp <= 0 || interruptsAttack(enemy, timing[actor], impactOffset, heavy))) {

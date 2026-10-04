@@ -18,7 +18,7 @@ function storage() {
   return { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value); } };
 }
 function ready() {
-  const state = createEncounter('playing'); state.proficiency.axeCombat = 100;
+  const state = createEncounter('playing'); state.proficiency.axeCombat = 1000;
   state.player.x = state.player.z = 0; state.player.yaw = 0;
   state.enemies.enemy.x = 0; state.enemies.enemy.z = 1.4; state.enemies.enemy.yaw = Math.PI;
   state.enemies.enemy.cooldown = 999;
@@ -31,7 +31,7 @@ test('healing and overkill cannot replenish an enemy life proficiency budget, in
   adventure.enter(state, clearing as unknown as AreaDefinition);
   const events: EncounterEvent[] = [];
   hit(state, 'enemy', timing, events, 'axe', undefined, 0, 100);
-  expect(xp(events)).toBe(20);
+  expect(xp(events)).toBe(200);
   state.enemies.enemy.hp = 200; // Repeated damage above the prior low-water health earns nothing.
   const repeated: EncounterEvent[] = [];
   hit(state, 'enemy', timing, repeated, 'axe', undefined, 0, 50);
@@ -40,7 +40,7 @@ test('healing and overkill cannot replenish an enemy life proficiency budget, in
   adventure.enter(state, clearing as unknown as AreaDefinition);
   const next: EncounterEvent[] = [];
   hit(state, 'enemy', timing, next, 'axe', undefined, 0, 1000);
-  expect(xp(next)).toBe(20);
+  expect(xp(next)).toBe(200);
   state.enemies.enemy.hp = 200;
   const healed: EncounterEvent[] = [];
   hit(state, 'enemy', timing, healed, 'axe', undefined, 0, 50);
@@ -135,7 +135,7 @@ test('Berserking commits once after the cry and never consumes mana or cooldown 
 
 test('Berserking preserves equipment and accepted attacks while swaps, pause and travel retain its timer', () => {
   const adventure = new Adventure(storage()), state = ready();
-  adventure.character.xp.axeCombat = 100;
+  adventure.character.xp.axeCombat = 1000;
   adventure.character.items.push({ id: 'bow-test', item: 'bow', quantity: 1, slot: 'main', weaponSet: 1, x: 0, y: 0 });
   adventure.enter(state, clearing as unknown as AreaDefinition);
   const original = structuredClone(state.setStats);
@@ -164,19 +164,19 @@ test('Berserking preserves equipment and accepted attacks while swaps, pause and
   adventure.closeSave();
 });
 
-test('earning Berserking fills only an empty third slot and loading preserves deliberate assignments', async () => {
+test('earning Berserking fills an empty slot without replacing occupied slots and loading preserves deliberate assignments', async () => {
   const memory = storage(), adventure = new Adventure(memory);
   await adventure.prepareSave();
-  adventure.character.xp.axeCombat = 90;
+  adventure.character.xp.axeCombat = 990;
   adventure.grantProficiency('axe',10);
-  expect(adventure.character.actionBar[2]).toBe('berserking');
-  const bar = [...adventure.character.actionBar]; bar[2] = null; adventure.setActionBar(bar);
+  expect(adventure.character.actionBar[1]).toBe('berserking');
+  const bar = [...adventure.character.actionBar]; bar[1] = null; adventure.setActionBar(bar);
   adventure.closeSave();
   const loaded = new Adventure(memory); await loaded.prepareSave();
-  expect(loaded.character.xp.axeCombat).toBe(100);
-  expect(loaded.character.actionBar[2]).toBeNull();
+  expect(loaded.character.xp.axeCombat).toBe(1000);
+  expect(loaded.character.actionBar[1]).toBeNull();
   loaded.closeSave();
-  const occupied = new Adventure(storage()); occupied.character.xp.axeCombat = 90;
+  const occupied = new Adventure(storage()); occupied.character.xp.axeCombat = 990;
   occupied.character.actionBar[2] = 'axe-basic'; occupied.grantProficiency('axe',10);
   expect(occupied.character.actionBar[2]).toBe('axe-basic');
   occupied.closeSave();

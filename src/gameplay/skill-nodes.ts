@@ -1,26 +1,27 @@
 import { smithing } from './smithing';
 import { abilities, weaponTrees, type AbilityId } from './abilities';
 import { passives } from './mastery';
-import { skillDefinitions, type Skill } from './skills';
+import { skillDefinitions, skillTree, type Skill } from './skills';
 
-/** Unimplemented tracks retain proposals; Sword/Bow use live unlock definitions. */
-const majorMilestones = [1,10,20,30,40,50] as const;
-const minorMilestones = [[3,6],[13,16],[23,26],[33,36],[43,46]] as const;
+/** Planned and implemented nodes share the same level-20 milestone schedules. */
 export type SkillNode = {id:string; name:string; kind:'ability' | 'major' | 'minor'; role:string; index:number; level:number; ability?:AbilityId; description?:string; implemented?:boolean};
-const existing: Partial<Record<Skill,readonly [AbilityId,AbilityId?,AbilityId?]>> = {axeCombat:['axe-basic','crushing-blow','berserking'],staff:['staff-basic'],shield:['shield-basic']};
+const existing: Partial<Record<Skill,readonly AbilityId[]>> = {axeCombat:['axe-basic','crushing-blow','berserking'],staff:['staff-basic'],shield:['shield-basic']};
 export function nodesForSkill(skill: Skill): {major:SkillNode[]; minor:SkillNode[]} {
   if (skill==='sword' || skill==='bow') return {
-    major:weaponTrees[skill].map((ability,index)=>({id:skill+'-major-'+index,name:abilities[ability].name,kind:'ability',role:['Basic I','Skill I','Basic II','Ultimate I','Skill II','Ultimate II'][index],index,level:abilities[ability].level,ability,implemented:true})),
+    major:weaponTrees[skill].map((ability,index)=>({id:skill+'-major-'+index,name:abilities[ability].name,kind:'ability',role:skillTree.combat[index].role,index,level:abilities[ability].level,ability,implemented:true})),
     minor:passives[skill].map((passive,index)=>({id:skill+'-minor-'+index,name:passive.name,kind:'minor',role:'Passive',index,level:passive.level,description:passive.description,implemented:true})),
   };
   const definition=skillDefinitions.find(entry=>entry.id===skill)!;
   const profession=definition.category==='Gathering' || definition.category==='Crafting';
-  const major=majorMilestones.map((level,index):SkillNode=> {
-    const ability=index===0 ? existing[skill]?.[0] : index===2 ? existing[skill]?.[1] : index===4 ? existing[skill]?.[2] : undefined;
-    const role=profession ? 'Major '+(index+1) : ['Basic I','Basic II','Skill I','Skill II','Ultimate I','Ultimate II'][index];
-    return {id:skill+'-major-'+index,name:ability ? abilities[ability].name : definition.name+' '+role,kind:profession ? 'major' : 'ability',role,index,level:ability ? abilities[ability].level : level,ability,implemented:!!ability};
+  const positions=profession
+    ? skillTree.profession.map((level,index)=>({role:'Major '+(index+1),level}))
+    : skillTree.combat;
+  const major=positions.map(({level,role},index):SkillNode=> {
+    const tier=role.startsWith('Basic') ? 'basic' : role.startsWith('Skill') ? 'skill' : 'ultimate';
+    const ability=existing[skill]?.find(id=>abilities[id].tier===tier && abilities[id].level===level);
+    return {id:skill+'-major-'+index,name:ability ? abilities[ability].name : definition.name+' '+role,kind:profession ? 'major' : 'ability',role,index,level,ability,implemented:!!ability};
   });
-  const minor=minorMilestones.flatMap((pair,gap)=>pair.map((level,side):SkillNode=>({id:skill+'-minor-'+(gap*2+side),name:definition.name+' '+(profession ? 'Minor ' : 'Passive ')+(gap*2+side+1),kind:'minor',role:profession ? 'Minor bonus' : 'Passive bonus',index:gap*2+side,level})));
+  const minor=skillTree.passives.map((level,index):SkillNode=>({id:skill+'-minor-'+index,name:definition.name+' '+(profession ? 'Minor ' : 'Passive ')+(index+1),kind:'minor',role:profession ? 'Minor bonus' : 'Passive bonus',index,level}));
   if(skill==='smithing'){
     Object.assign(major[0],{name:'Reclamation',role:'Reclamation',description:'Reclaim unequipped metal gear for materials and a little Smithing XP.',implemented:true});
     Object.assign(minor[0],{name:'Heat Seasoned',level:smithing.heatLevel,description:'Long exposure to forge heat grants 15% Burn Resistance.',implemented:true});

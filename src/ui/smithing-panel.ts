@@ -1,7 +1,7 @@
 import type { CharacterSave } from '../gameplay/character';
 import { equipmentCatalog, type ItemId } from '../gameplay/equipment';
 import { lootDefinitions, type InventoryItem } from '../gameplay/inventory';
-import { skillLevel, levelXp } from '../gameplay/skills';
+import { skillProgress } from '../gameplay/skills';
 import { learnedRecipes, recipeMaterials, forgeError, reclaimable, reclaimError, salvageReturns, smithing, smithingXp, type SmithingContainer } from '../gameplay/smithing';
 import { inventoryArt } from './inventory-art';
 import { renderItemProperties } from './equipment-details';
@@ -79,8 +79,8 @@ export class SmithingPanel {
     return button;
   }
   private render():void {
-    const character=this.ctx.character(),level=skillLevel(character.xp.smithing,'smithing'),floor=levelXp(level,'smithing'),ceiling=levelXp(level+1,'smithing');
-    this.level.textContent='Level '+level;this.xp.textContent=Math.floor(character.xp.smithing-floor).toLocaleString()+' / '+(ceiling-floor).toLocaleString()+' XP';this.xpBar.value=(character.xp.smithing-floor)/(ceiling-floor);
+    const character=this.ctx.character(),progress=skillProgress(character.xp.smithing);
+    this.level.textContent='Level '+progress.level;this.xp.textContent=Math.floor(progress.earned).toLocaleString()+' / '+progress.required.toLocaleString()+' XP';this.xpBar.value=progress.fraction;
     this.dialog.setAttribute('aria-busy',String(!!this.pending));
     this.dialog.querySelector('#smith-content')!.setAttribute('aria-labelledby','smith-tab-'+this.mode);
     for(const tab of Array.from(this.tabs.querySelectorAll<HTMLButtonElement>('button'))){const active=tab.dataset.mode===this.mode;tab.setAttribute('aria-selected',String(active));tab.tabIndex=active?0:-1;tab.disabled=!!this.pending;}

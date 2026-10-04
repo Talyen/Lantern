@@ -15,7 +15,7 @@ test('forging publishes a complete Bag/Stash candidate without mutating the sour
   expect(state).toEqual(before);
   expect(countItem(next.items,'iron')).toBe(0);expect(countItem(next.stash,'iron')).toBe(4);
   expect(next.items.filter(entry=>entry.item==='weathered-mail')).toHaveLength(1);
-  expect(next.xp.smithing).toBe(4800);
+  expect(next.xp.smithing).toBe(2050);
   expect(validItems(next.items)&&validStash(next.stash,next.items)).toBe(true);
 });
 test('a full Bag blocks forging without consuming even available Stash materials',()=>{
@@ -49,6 +49,14 @@ test('a failed precious-metal wallet return retains the item and XP',()=>{
   const state=character([]),id=ids();state.gold=Number.MAX_SAFE_INTEGER;
   receive(state.items,'hearth-ring',1,id);const before=structuredClone(state);
   expect(()=>reclaimed(state,state.items[0].id,'bag',id)).toThrow('Gold wallet is full.');
+  expect(state).toEqual(before);
+});
+test('overflowing XP blocks both forge and reclaim candidates without spending their inputs',()=>{
+  const state=character([]),id=ids();state.xp.smithing=Number.MAX_SAFE_INTEGER-1;
+  receive(state.items,'iron',2,id);receive(state.items,'wood',1,id);receive(state.items,'shield',1,id);
+  const before=structuredClone(state),gear=state.items.find(entry=>entry.item==='shield')!;
+  expect(()=>forged(state,'sword',id)).toThrow('Skill progress is full.');
+  expect(()=>reclaimed(state,gear.id,'bag',id)).toThrow('Skill progress is full.');
   expect(state).toEqual(before);
 });
 test('repeating crafting and reclamation spends materials rather than funding unlimited XP',()=>{

@@ -10,7 +10,7 @@ import {
 import { purchase, sale, repurchase } from './shop-transactions';
 import { forged, reclaimed, learnedRecipes, smithing, type SmithingContainer } from './smithing';
 import { canRepairShelter, restoredShelter, validatedContainers } from './homestead-transactions';
-import { validBar, abilityUnlocked, weaponTrees, axeProgression, type AbilityId, type ActionBar, type WeaponSet } from './abilities';
+import { validBar, abilityUnlocked, weaponTrees, type AbilityId, type ActionBar, type WeaponSet } from './abilities';
 import { createEncounter, healthRegeneration, inCombat, type Encounter, type EnemyId } from './encounter';
 import { near, type Point, type Spawn } from './area';
 import type { AreaDefinition, Campfire, Chest } from '../levels/types';
@@ -21,7 +21,7 @@ export { characterSaveKey } from './character-save';
 export type { CharacterSave } from './character';
 import { lootDefinitions, receive, transferItem, type InventoryItem, type LootItem } from './inventory';
 
-import { progression, progressMultiplier, type Skill, type GatheringSkill } from './skills';
+import { progression, withSkillXp, combatSkills, type Skill, type GatheringSkill } from './skills';
 
 export const homeArea = 'homestead';
 export { dropLandingSeconds, pickupRadius, type GroundDrop, type GroundItem } from './ground-loot';
@@ -258,14 +258,20 @@ export class Adventure {
   }
 
   pickup(id: string, point: Point, manual = false): boolean {
-    const result = collectGroundDrop(this.session().drops, id, point, this.character, this.newId, this.canCollectGround, manual);
+    let nextXp=this.character.xp;
+    const prepare = this.session().drops.find(drop=>drop.id===id)?.harvestXp
+      ? (drop: GroundDrop, amount: number) => {
+        const harvest=drop.harvestXp!;
+        nextXp=withSkillXp(this.character.xp,harvest.skill,amount*harvest.perUnit,this.character.restedSeconds);
+      } : undefined;
+    const result = collectGroundDrop(this.session().drops, id, point, this.character, this.newId, this.canCollectGround, manual, prepare);
     if (!result.collected) {
       if (result.notice) this.message(result.notice);
       return false;
     }
-    const { drop, amount } = result;
+    const { drop } = result;
+    this.character.xp=nextXp;
     this.events.push(lootEvent('lootPickup', drop));
-    if (drop.harvestXp) this.awardXp(drop.harvestXp.skill, amount * drop.harvestXp.perUnit);
     this.save();
     return true;
   }
@@ -319,15 +325,13 @@ export class Adventure {
   }
 
   awardXp(skill: Skill, amount: number): void {
-    this.character.xp[skill] = Math.round(
-      (this.character.xp[skill] + amount * progressMultiplier(this.character.restedSeconds)) * 1e6,
-    ) / 1e6;
+    this.character.xp=withSkillXp(this.character.xp,skill,amount,this.character.restedSeconds);
   }
 
-  grantWeaponXp(family: 'sword' | 'bow', amount: number): void {
+  grantWeaponXp(family: keyof typeof combatSkills, amount: number): void {
     if (!Number.isFinite(amount) || amount<=0) return;
     const locked=weaponTrees[family].filter(id=>!abilityUnlocked(id,this.character.xp));
-    this.awardXp(family,amount);
+    this.awardXp(combatSkills[family],amount);
     for (const id of locked) if (abilityUnlocked(id,this.character.xp)) {
       const empty=this.character.actionBar.indexOf(null);
       if (empty>=0) this.character.actionBar[empty]=id;
@@ -337,14 +341,7 @@ export class Adventure {
   }
 
   grantProficiency(family:'axe' | 'sword' | 'bow',amount:number): void {
-    if (family!=='axe') {this.grantWeaponXp(family,amount); return;}
-    const previous=this.character.xp.axeCombat;
-    this.awardXp('axeCombat',amount);
-    if (previous<axeProgression.ultimateXp && this.character.xp.axeCombat>=axeProgression.ultimateXp) {
-      if (this.character.actionBar[2]===null) this.character.actionBar[2]='berserking';
-      this.message('Berserking unlocked');
-    }
-    this.save();
+    this.grantWeaponXp(family,amount);
   }
 
   canRepair(): boolean { return canRepairShelter(this.character); }
