@@ -21,7 +21,6 @@ export class CombatText {
   private projected = new THREE.Vector3();
   private settings = readCombatTextSettings();
   private reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
-  private campfire = { amount: 0, elapsed: 0 };
   constructor(private mount: HTMLElement) {
     this.root.className = 'combat-text'; this.root.setAttribute('aria-hidden', 'true');
     this.root.dataset.size = this.settings.size; mount.append(this.root);
@@ -32,7 +31,6 @@ export class CombatText {
       if (!settings[group.category] && !(group.blocked && settings.blocks)) this.retire(group);
       else this.label(group);
     }
-    if (!settings.healing) this.campfire = { amount: 0, elapsed: 0 };
   }
   encounter(events: EncounterEvent[]): void {
     for (const event of events) if (event.type === 'impact' && event.damage > 0) {
@@ -40,17 +38,8 @@ export class CombatText {
     }
   }
   adventure(events: AdventureEvent[]): void {
-    for (const event of events) if (event.type === 'healthRecovered') {
-      if (!this.settings.healing) continue;
-      if (event.source === 'potion') this.spawn('player', 'healing', event.amount, event.position);
-      else {
-        this.campfire.amount += event.amount; this.campfire.elapsed += event.elapsed;
-        if (this.campfire.elapsed >= 1 || event.finished) {
-          this.spawn('player', 'healing', this.campfire.amount, event.position);
-          this.campfire = { amount: 0, elapsed: 0 };
-        }
-      }
-    }
+    for (const event of events) if (event.type === 'healthRecovered' && event.source === 'potion')
+      this.spawn('player', 'healing', event.amount, event.position);
   }
   private label(group: Group): void {
     group.value.hidden = !this.settings[group.category];
@@ -103,7 +92,7 @@ export class CombatText {
   }
   clear(): void {
     for (const group of [...this.groups]) this.retire(group);
-    this.lanes.clear(); this.campfire = { amount: 0, elapsed: 0 };
+    this.lanes.clear();
   }
   dispose(): void { this.clear(); this.root.remove(); this.spare.length = 0; }
 }
