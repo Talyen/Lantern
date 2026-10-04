@@ -103,7 +103,7 @@ test('saved outings retain resources, partial loot, wounded budgets, portal, coo
 test('a save between lethal XP and loot generation resumes the reward exactly once', () => {
   const { adventure, encounter, storage } = setup();
   encounter.enemies.enemy.hp = 0; encounter.enemies.enemy.lowestHp = 0;
-  adventure.grantProficiency('axe', 10); // Combat persists XP before Adventure generates drops.
+  adventure.grantWeaponXp('axe', 10); // Combat persists XP before Adventure generates drops.
   const restored = new Adventure(storage, () => 0);
   restored.configureAreas(areas);
   const next = createEncounter('playing'); restored.enter(next, areas.clearing);

@@ -1,6 +1,6 @@
 import type { CharacterSave } from './character';
 import { equipmentCatalog, isItemId, type ItemId, type SalvageReturns } from './equipment';
-import { consumeMaterial, countItem, receive, validItems, validStash, type InventoryItem } from './inventory';
+import { consumeMaterial, countItem, receive, validatedContainers, type InventoryItem } from './inventory';
 import { earnedSkillXp, withSkillXp, skillLevel, skillTree } from './skills';
 
 export type SmithingMaterial = 'iron' | 'wood';
@@ -26,9 +26,13 @@ export function recipeMaterials(state:SmithingState,recipe:SmithingRecipe) {
     return {item,cost,bag,stash,held:bag+stash};
   });
 }
-function checked(state:SmithingState):SmithingState {
-  if (!Number.isFinite(state.xp.smithing) || state.xp.smithing<0 || state.xp.smithing>Number.MAX_SAFE_INTEGER) throw new Error('Smithing progress is full.');
-  if (!validItems(state.items) || !validStash(state.stash,state.items)) throw new Error('Items do not fit.');
+/** Forge and reclaim detach containers and award XP before spending any inputs. */
+function candidate(state: SmithingState, amount: number): SmithingState {
+  return { ...state, ...structuredClone({ items: state.items, stash: state.stash }),
+    xp: withSkillXp(state.xp, 'smithing', amount, state.restedSeconds) };
+}
+function checked(state: SmithingState): SmithingState {
+  validatedContainers(state.items, state.stash, 'Items do not fit.');
   return state;
 }
 /** Candidates include placement and XP; callers publish exactly once after the forge completes. */
@@ -37,8 +41,7 @@ export function forged(state:SmithingState,item:ItemId,newId:()=>string):Smithin
   if (!recipe) throw new Error('Recipe is not learned.');
   for (const material of recipeMaterials(state,recipe))
     if (material.held<material.cost) throw new Error('Need '+(material.cost-material.held)+' more '+(material.item==='iron' ? 'Iron' : 'Wood')+'.');
-  const next = { ...state, items: structuredClone(state.items), stash: structuredClone(state.stash),
-    xp: withSkillXp(state.xp,'smithing',recipe.xp,state.restedSeconds) };
+  const next = candidate(state, recipe.xp);
   for (const [material,cost] of Object.entries(recipe.materials) as [SmithingMaterial,number][]) {
     const remaining=consumeMaterial(next.items,material,cost);
     if (remaining && consumeMaterial(next.stash,material,remaining)) throw new Error('Materials are no longer available.');
@@ -74,8 +77,7 @@ export function reclaimed(state:SmithingState,id:string,container:SmithingContai
   const selected = reclaimEntries(state, container).find(entry => entry.id === id && canReclaim(entry));
   if (!selected) throw new Error('Select unequipped metal gear.');
   const returns=salvageReturns(selected.item)!;
-  const next = { ...state, items: structuredClone(state.items), stash: structuredClone(state.stash),
-    xp: withSkillXp(state.xp,'smithing',smithing.reclaimXp,state.restedSeconds) };
+  const next = candidate(state, smithing.reclaimXp);
   if (container==='bag') next.items=next.items.filter(entry=>entry.id!==id);
   else next.stash=next.stash.filter(entry=>entry.id!==id);
   const target=container==='bag' ? next.items : next.stash;

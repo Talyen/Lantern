@@ -2,7 +2,8 @@ import { smithingMeleeMultiplier } from '../gameplay/smithing';
 import type { CharacterSave } from '../gameplay/character';
 import type { WeaponSet } from '../gameplay/abilities';
 import { resolveCombatStats, type CombatStats } from '../gameplay/combat-stats';
-import { equipmentCatalog, isItemId, isWeaponItem, supportsShield, type Bonuses, type EquipmentSlot } from '../gameplay/equipment';
+import { equipmentCatalog, isItemId, type Bonuses, type EquipmentSlot } from '../gameplay/equipment';
+import { displacedEquipment, occupiesEquipmentSlot } from '../gameplay/inventory-equipment';
 import { lootDefinitions, type InventoryItem } from '../gameplay/inventory';
 
 const statLabels: Record<keyof CombatStats, string> = {
@@ -69,17 +70,14 @@ export function renderEquipmentDetails(
   if (!isItemId(entry.item)) return;
   renderItemProperties(details, entry);
   const hand = slot === 'main' || slot === 'off';
-  const occupiesDestination = (item: InventoryItem) => item.slot === slot && (!hand || (item.weaponSet ?? 0) === set);
-  const equipped = character.items.find(occupiesDestination);
+  const equipped = character.items.find(item => occupiesEquipmentSlot(item, slot, set));
   if (equipped?.id === entry.id) return;
   const label = document.createElement('p');
   label.textContent = equipped ? `Compared with ${lootDefinitions[equipped.item].name}` : 'Compared with empty slot';
   comparison.append(label);
 
-  const displacesShield = slot === 'main' && isWeaponItem(entry.item) && !supportsShield(entry.item);
-  const candidate = character.items.filter(item =>
-    item.id !== entry.id && !occupiesDestination(item) &&
-    !(displacesShield && item.slot === 'off' && (item.weaponSet ?? 0) === set));
+  const displaced = new Set(displacedEquipment(character.items, entry, slot, set));
+  const candidate = character.items.filter(item => item.id !== entry.id && !displaced.has(item));
   candidate.push({ ...entry, slot, weaponSet: hand ? set : undefined });
   const before = resolveCombatStats(character.items, set,character.xp);
   const after = resolveCombatStats(candidate, set,character.xp);

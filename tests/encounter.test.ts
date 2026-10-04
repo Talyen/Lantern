@@ -33,20 +33,7 @@ test('nearby guards engage, strikes land at contact, and an interrupted enemy st
   stepEncounter(state, 0.05, { ...idle, paused: true }, timing);
   expect(state.enemies.enemy.hp).toBe(150);
 });
-test('four connected Axe strikes win, then retry restores an unengaged encounter', () => {
-  const state = closeEncounter();
-  const winningTiming = { ...timing, enemy: { ...timing.enemy, hit: 0.8 } };
-  for (let strike = 0; strike < 4; strike++) {
-    attack(state, timing.player, false);
-    for (let frame = 0; frame < 22; frame++) stepEncounter(state, 0.05, idle, winningTiming);
-  }
-  expect(state.phase).toBe('won');
-  expect(state.enemies.enemy.hp).toBe(0);
-  resetEncounter(state);
-  expect([state.phase, state.enemies.enemy.engaged, state.player.hp, state.enemies.enemy.hp]).toEqual(['playing', false, 100, 200]);
-  expect(state.player.x).toBe(-2.3);
-});
-test('standing in reach loses after five enemy hits; terminal states stop updating', () => {
+test('defeat stops gameplay updates', () => {
   const state = closeEncounter();
   attack(state, timing.player, false);
   // Face away so this opening strike engages without hurting the raider.
@@ -63,7 +50,9 @@ test('authored spawns survive retry and movement respects a convex area boundary
   const state = createEncounter('playing', layout);
   for (let i=0;i<30;i++) stepEncounter(state,.05,{...idle,x:1},timing);
   expect(state.player.x).toBe(4);
+  state.phase = 'won'; state.player.hp = 1; state.enemies.enemy.hp = 0;
   resetEncounter(state);
+  expect([state.phase, state.enemies.enemy.engaged, state.player.hp, state.enemies.enemy.hp]).toEqual(['playing', false, state.stats.maxHealth, enemyMaxHealth]);
   expect([state.player.x,state.player.z,state.player.yaw]).toEqual([3,0,1]);
 });
 

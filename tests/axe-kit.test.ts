@@ -168,7 +168,7 @@ test('earning Berserking fills an empty slot without replacing occupied slots an
   const memory = storage(), adventure = new Adventure(memory);
   await adventure.prepareSave();
   adventure.character.xp.axeCombat = 990;
-  adventure.grantProficiency('axe',10);
+  adventure.grantWeaponXp('axe',10);
   expect(adventure.character.actionBar[1]).toBe('berserking');
   const bar = [...adventure.character.actionBar]; bar[1] = null; adventure.setActionBar(bar);
   adventure.closeSave();
@@ -177,7 +177,7 @@ test('earning Berserking fills an empty slot without replacing occupied slots an
   expect(loaded.character.actionBar[1]).toBeNull();
   loaded.closeSave();
   const occupied = new Adventure(storage()); occupied.character.xp.axeCombat = 990;
-  occupied.character.actionBar[2] = 'axe-basic'; occupied.grantProficiency('axe',10);
+  occupied.character.actionBar[2] = 'axe-basic'; occupied.grantWeaponXp('axe',10);
   expect(occupied.character.actionBar[2]).toBe('axe-basic');
   occupied.closeSave();
 });

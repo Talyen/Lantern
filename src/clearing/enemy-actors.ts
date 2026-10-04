@@ -1,3 +1,4 @@
+import { cachedRequest } from '../data/cached-request';
 import * as THREE from 'three';
 import type { GLTF, GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import characters from '../../assets/playable-characters.json';
@@ -15,20 +16,22 @@ export type PreparedEnemies = { entries: Record<string, EnemyPresentation>; disp
 
 /** Area-owned actor instances borrow cached rig art; preparation never replaces the active actors. */
 export class EnemyActors {
-  private sources = new Map<EnemyRig, Promise<GLTF>>();
+  private sources = new Map<string, Promise<GLTF>>();
   private active?: PreparedEnemies;
   private disposed = false;
   constructor(private scene: THREE.Scene, private loader: GLTFLoader, private actors: Record<string, Actor>) {}
 
   private source(rig: EnemyRig): Promise<GLTF> {
-    let source = this.sources.get(rig);
-    if (!source) {
-      source = this.loader.loadAsync(characters[rig].model).then(gltf => {
-        sceneTextures(gltf.scene); prepareStandardMaterials(gltf.scene); return gltf;
-      }).catch((error: unknown) => { this.sources.delete(rig); throw new Error(`Prepare ${characters[rig].name} with npm run assets:export-character. ${String(error)}`); });
-      this.sources.set(rig, source);
-    }
-    return source;
+    return cachedRequest(this.sources, rig, async () => {
+      try {
+        const gltf = await this.loader.loadAsync(characters[rig].model);
+        try { sceneTextures(gltf.scene); prepareStandardMaterials(gltf.scene); }
+        catch (error) { disposeSceneResources(gltf.scene); throw error; }
+        return gltf;
+      } catch (error) {
+        throw new Error(`Prepare ${characters[rig].name} with npm run assets:export-character. ${String(error)}`, { cause: error });
+      }
+    });
   }
 
   async prepare(state: Encounter): Promise<PreparedEnemies> {

@@ -9,7 +9,7 @@ import {
 } from './ground-loot';
 import { purchase, sale, repurchase } from './shop-transactions';
 import { forged, reclaimed, learnedRecipes, smithing, type SmithingContainer } from './smithing';
-import { canRepairShelter, restoredShelter, validatedContainers } from './homestead-transactions';
+import { canRepairShelter, restoredShelter } from './homestead-transactions';
 import { validBar, abilityUnlocked, weaponTrees, type AbilityId, type ActionBar, type WeaponSet } from './abilities';
 import { createEncounter, healthRegeneration, inCombat, type Encounter, type EnemyId } from './encounter';
 import { near, type Point, type Spawn } from './area';
@@ -19,7 +19,7 @@ import { character, type CharacterSave } from './character';
 import { CharacterPersistence, type StorageSource } from './character-persistence';
 export { characterSaveKey } from './character-save';
 export type { CharacterSave } from './character';
-import { lootDefinitions, receive, transferItem, type InventoryItem, type LootItem } from './inventory';
+import { lootDefinitions, transferItem, validatedContainers, type InventoryItem, type LootItem } from './inventory';
 
 import { progression, withSkillXp, combatSkills, type Skill, type GatheringSkill } from './skills';
 
@@ -246,15 +246,10 @@ export class Adventure {
   }
 
   recoverItem(id: string): void {
-    const next = structuredClone(this.character.items);
-    const entry = next.find(i => i.id === id && i.slot === 'overflow');
+    const entry = this.character.items.find(item => item.id === id && item.slot === 'overflow');
     if (!entry) return;
-    next.splice(next.indexOf(entry), 1);
-    const received = receive(next, entry.item, entry.quantity, this.newId, lootDefinitions[entry.item].stackable ? undefined : entry.id);
-    if (!received) throw new Error('Inventory full.');
-    entry.quantity -= received;
-    if (entry.quantity) next.push(entry);
-    this.replaceItems(next);
+    const next = transferItem([entry], this.character.items.filter(item => item.id !== id), id, entry.quantity, this.newId);
+    this.replaceItems([...next.destination, ...next.source]);
   }
 
   pickup(id: string, point: Point, manual = false): boolean {
@@ -338,10 +333,6 @@ export class Adventure {
       this.events.push({type:'abilityLearned',ability:id,slot:empty>=0 ? empty : null});
     }
     this.save();
-  }
-
-  grantProficiency(family:'axe' | 'sword' | 'bow',amount:number): void {
-    this.grantWeaponXp(family,amount);
   }
 
   canRepair(): boolean { return canRepairShelter(this.character); }

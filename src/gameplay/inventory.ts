@@ -1,14 +1,14 @@
 import type { WeaponSet } from './abilities';
-import { isItemId, isWeaponItem, slotAccepts, supportsShield, type EquipmentSlot } from './equipment';
+import { isItemId, slotAccepts, supportsShield, type EquipmentSlot } from './equipment';
 import { lootDefinitions, lootIds, stackLimit, type InventoryItem, type LootItem } from './inventory-catalog';
-import { itemLoadout } from './inventory-equipment';
+import { itemLoadout, displacedEquipment } from './inventory-equipment';
 import { fits, emptyPosition } from './inventory-placement';
 
 // Keep the public inventory API stable; leaf owners never import this transaction module.
 export { bagWidth, bagHeight, stackLimit, lootDefinitions, lootIds, type InventoryItem, type LootItem } from './inventory-catalog';
 export { sameEquipment, itemLoadout } from './inventory-equipment';
 export { fits, emptyPosition } from './inventory-placement';
-export { validItems, validStash } from './inventory-validation';
+export { validItems, validStash, validatedContainers } from './inventory-validation';
 
 export const countItem = (items: readonly InventoryItem[], item: LootItem) =>
   items.reduce((sum, entry) => sum + (entry.item === item ? entry.quantity : 0), 0);
@@ -121,20 +121,8 @@ export function equipInstance(
   if (slot === 'off' && (entry.item !== 'shield' || !supportsShield(itemLoadout(next, set).main)))
     throw new Error('Equip an Axe or Sword first.');
   if (!slotAccepts(entry.item, slot)) throw new Error('That item belongs in a different slot.');
-  const sourceSet = entry.weaponSet ?? 0;
   const vacated = entry.slot === 'bag' ? { x: entry.x, y: entry.y } : undefined;
-  const movingMainBetweenSets = entry.slot === 'main' && sourceSet !== set;
-  const handSlot = slot === 'main' || slot === 'off';
-  const needsBothHands = slot === 'main' && isWeaponItem(entry.item) && !supportsShield(entry.item);
-  const displace = next.filter(other => {
-    if (other.id === id) return false;
-    const destinationSet = (other.weaponSet ?? 0) === set;
-    const occupiesSlot = other.slot === slot && (!handSlot || destinationSet);
-    const occupiesOffHand = needsBothHands && other.slot === 'off' && destinationSet;
-    return occupiesSlot || occupiesOffHand;
-  });
-  if (movingMainBetweenSets)
-    displace.push(...next.filter(other => other.slot === 'off' && (other.weaponSet ?? 0) === sourceSet));
+  const displace = displacedEquipment(next, entry, slot, set);
   entry.slot = slot;
   if (slot === 'main' || slot === 'off') entry.weaponSet = set;
   else delete entry.weaponSet;

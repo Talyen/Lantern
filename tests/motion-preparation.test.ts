@@ -8,15 +8,27 @@ import { loadEquipmentMotions, motionStates } from '../src/animation/combat-anim
 test('malformed contact metadata cannot publish combat motions and reports how to repair the source', async () => {
   const clips = motionStates.map(role => ({ id: role, category: role, name: role, url: `/fixture/${role}`, duration: 1,
     ...(role === 'attack' ? { contact: '0.3' } : {}) }));
-  const catalog = { version: 1, packs: [{ id: 'mixamo', clips }], profiles: { axe: Object.fromEntries(motionStates.map(role => [role, role])) } };
-  vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(catalog))));
+  const onslaught = { id: 'onslaught', category: 'onslaught', name: 'Onslaught', url: '/fixture/onslaught', duration: 1, contacts: ['0.2', .4, .6] };
+  const release = { id: 'pierceRelease', category: 'pierceRelease', name: 'Release', url: '/fixture/release', duration: 1, contact: '0.3' };
+  const catalog = { version: 1, packs: [{ id: 'mixamo', clips: [...clips, onslaught, release] }], profiles: { axe: { ...Object.fromEntries(motionStates.map(role => [role, role])), onslaught: 'onslaught', pierceRelease: 'pierceRelease' } } };
+  vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => catalog })));
   const loader = new GLTFLoader();
   const model = await loader.parseAsync(JSON.stringify({ asset: { version: '2.0' }, scenes: [{}], scene: 0 }), '');
   model.animations = [new AnimationClip('fixture', 1, [])];
   const loading = vi.spyOn(loader, 'loadAsync').mockResolvedValue(model);
   try {
-    await expect(loadEquipmentMotions(loader, 'enemy', { main: 'axe', off: null }))
-      .rejects.toThrow('Unavailable reviewed contacts for attack. Prepare compatible Mixamo motions with npm run assets:export-character.');
+    for (const [role, repair] of [
+      ['attack', () => { Object.assign(clips.find(clip => clip.id === 'attack')!, { contact: .3 }); }],
+      ['onslaught', () => { Object.assign(onslaught, { contacts: [.2, .4, .6] }); }],
+      ['pierceRelease', () => { Object.assign(release, { contact: .3 }); }],
+    ] as const) {
+      await expect(loadEquipmentMotions(loader, 'enemy', { main: 'axe', off: null }))
+        .rejects.toThrow(`Unavailable reviewed contacts for ${role}. Prepare compatible Mixamo motions with npm run assets:export-character.`);
+      repair();
+    }
+    const motions = await loadEquipmentMotions(loader, 'enemy', { main: 'axe', off: null });
+    expect(motions.contacts).toEqual([.3]);
+    expect(motions.skillContacts.onslaught).toEqual([.2, .4, .6]);
   } finally { loading.mockRestore(); vi.unstubAllGlobals(); }
 });
 

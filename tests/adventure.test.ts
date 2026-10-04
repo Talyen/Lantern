@@ -307,7 +307,7 @@ test('Rested uses active time, refreshes on shelter entry, saves fractional XP a
   const withShelter={...home,shelter:{position:[0,0] as [number,number],yaw:0,stash:[0,0] as [number,number]}};
   encounter.player.x=0;state.step(encounter,withShelter,1);expect(state.character.restedSeconds).toBe(1800);
   state.step(encounter,withShelter,1);expect(state.character.restedSeconds).toBe(1799);
-  state.grantProficiency('axe',10);expect(state.character.xp.axeCombat).toBe(11);
+  state.grantWeaponXp('axe',10);expect(state.character.xp.axeCombat).toBe(11);
 });
 
 test('revision 3 migration retains IDs, claims, discoveries and XP while initializing Homestead progress',()=>{
@@ -685,13 +685,14 @@ test('area travel preserves the dodge cooldown without carrying the roll', () =>
 });
 
 test('authored enemy IDs and independent chest supplies survive travel and death recovery without repeated rewards', () => {
-  const state=new Adventure(memory()), encounter=createEncounter('playing');
-  const crypt:AreaDefinition={...field,id:'fixture-crypt',layout:{...field.layout,enemy:undefined,caster:undefined,enemies:['first','second','bone-caster'].map((id,index)=>({id,position:[index,0],yaw:0,kind:index===2?'caster':'raider',rig:'skeleton',loadout:{main:index===2?'staff':'sword',off:null}}))}};
+  const state=new Adventure(memory(),()=>0), encounter=createEncounter('playing');
+  const crypt:AreaDefinition={...field,id:'fixture-crypt',layout:{...field.layout,enemy:undefined,caster:undefined,enemies:['first','second','bone-caster'].map((id,index)=>({id,position:[index,0],yaw:0,kind:index===2?'caster':'raider',rig:'skeleton',humanoid:true,loadout:{main:index===2?'staff':'sword',off:null}}))}};
   const chest={...field.chests![0],id:'supplies',position:[0,0] as [number,number],potions:2};
   state.enter(encounter,crypt,{position:[0,0],yaw:0});encounter.enemies.first.hp=0;encounter.enemies.second.hp=40;
   expect(state.openChest(encounter,crypt,chest)).toBe(true);
   state.step(encounter,crypt,.01);
   const drops=state.session().drops;
+  expect(drops.filter(drop=>drop.item==='gold')).toHaveLength(1);
   state.enter(encounter,home,undefined,true);
   state.enter(encounter,crypt,{position:[0,0],yaw:0});
   expect([encounter.enemies.first.hp,encounter.enemies.second.hp,encounter.enemies['bone-caster'].hp]).toEqual([0,40,enemyMaxHealth]);
@@ -701,17 +702,10 @@ test('authored enemy IDs and independent chest supplies survive travel and death
   expect(state.session().drops.filter(drop=>drop.item==='potion').map(drop=>drop.quantity)).toEqual([2]);
   expect(state.openChest(encounter,crypt,chest)).toBe(false);
   state.enter(encounter,home);state.enter(encounter,crypt,{position:[0,0],yaw:0});
+  state.step(encounter,crypt,.01);
+  expect(state.session().drops.filter(drop=>drop.item==='gold')).toHaveLength(3);
   expect(encounter.phase).toBe('won');expect(state.chest(crypt,chest).opened).toBe(true);
   state.closeSave();
-});
-
-test('named skeletons use authored humanoid gold rewards once through return travel', () => {
-  const adventure=new Adventure(memory(),()=>0),encounter=createEncounter('playing');
-  const area:AreaDefinition={...field,id:'named-reward',layout:{...field.layout,enemy:undefined,caster:undefined,enemies:[{id:'skeleton-guard',position:[0,0],yaw:0,kind:'raider',rig:'skeleton',loadout:{main:'sword',off:null},humanoid:true,rank:'normal'}]}};
-  adventure.enter(encounter,area);encounter.enemies['skeleton-guard'].hp=0;adventure.step(encounter,area,.01);
-  expect(adventure.session().drops.filter(drop=>drop.item==='gold').map(drop=>drop.quantity)).toEqual([3]);
-  adventure.enter(encounter,home);adventure.enter(encounter,area);adventure.step(encounter,area,.01);
-  expect(adventure.session().drops.filter(drop=>drop.item==='gold')).toHaveLength(1);adventure.closeSave();
 });
 
 test('revision 7 skill migration preserves the full character and seeds new tracks at zero', () => {

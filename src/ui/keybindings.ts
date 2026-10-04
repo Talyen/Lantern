@@ -1,6 +1,6 @@
 import {
   isMovementAction, keyboardInput, actionSlotInputs, actionNames,
-  bindingConflict, bindingLabel, defaultBindings, inputActions, inputGroups,
+  bindingConflict, bindingLabel, copyBindings, defaultBindings, inputActions, inputGroups,
   validBinding, validBindings, type Bindings, type InputAction, type InputPreferences,
 } from '../input/bindings';
 import { abilities, type ActionBar } from '../gameplay/abilities';
@@ -14,7 +14,7 @@ export class KeybindingsMenu {
   private dialog = document.createElement('dialog');
   private draft: Bindings = defaultBindings();
   private editing: { kind: 'capture'; cell: Cell } | { kind: 'conflict'; cell: Cell; other: Cell; binding: string } | null = null;
-  private capturedClick: AbortController | null = null;
+  private consumeClick = false;
   private get capture(): Cell | null { return this.editing?.kind === 'capture' ? this.editing.cell : null; }
   private get conflict() { return this.editing?.kind === 'conflict' ? this.editing : null; }
   private content = document.createElement('div');
@@ -48,7 +48,7 @@ export class KeybindingsMenu {
     this.dialog.querySelector<HTMLButtonElement>('[data-close]')!.onclick = () => this.close();
     bindMenuDismissal(this.dialog, () => this.close());
     window.addEventListener('keydown', event => {
-      this.capturedClick?.abort();
+      this.consumeClick = false;
       if (!this.dialog.open || !this.capture) return;
       if (event.target instanceof Element && event.target.closest('[data-capture-control]') && ['Enter', ' '].includes(event.key)) return;
       event.preventDefault();
@@ -62,23 +62,24 @@ export class KeybindingsMenu {
         this.choose(keyboardInput(event));
     }, true);
     window.addEventListener('pointerdown', event => {
-      this.capturedClick?.abort();
-      if (!this.dialog.open || !this.capture || (event.target as Element).closest('[data-capture-control]')) return;
+      this.consumeClick = false;
+      if (!this.dialog.open || !this.capture || event.target instanceof Element && event.target.closest('[data-capture-control]')) return;
       event.preventDefault();
       event.stopImmediatePropagation();
       this.choose(`mouse:${event.button}`);
       // Consume the matching click too: it must not open another binding cell.
-      if (event.button === 0) {
-        this.capturedClick = new AbortController();
-        window.addEventListener('click', click => { click.preventDefault(); click.stopImmediatePropagation(); },
-          { capture: true, once: true, signal: this.capturedClick.signal });
-      }
+      this.consumeClick = event.button === 0;
+    }, true);
+    window.addEventListener('click', event => {
+      if (!this.consumeClick) return;
+      this.consumeClick = false;
+      event.preventDefault(); event.stopImmediatePropagation();
     }, true);
     this.dialog.addEventListener('auxclick', event => event.preventDefault());
     this.dialog.addEventListener('contextmenu', event => event.preventDefault());
-    window.addEventListener('pointercancel', () => this.capturedClick?.abort());
+    window.addEventListener('pointercancel', () => this.consumeClick = false);
     window.addEventListener('blur', () => {
-      this.capturedClick?.abort();
+      this.consumeClick = false;
       if (this.capture) {
         this.editing = null;
         this.render();
@@ -89,14 +90,14 @@ export class KeybindingsMenu {
 
   open(): void {
     this.clear();
-    this.draft = structuredClone(this.preferences.value);
+    this.draft = copyBindings(this.preferences.value);
     this.editing = null;
     this.render();
     this.dialog.showModal();
   }
 
   close(): void {
-    this.capturedClick?.abort();
+    this.consumeClick = false;
     this.editing = null;
     this.dialog.close();
     this.clear();

@@ -73,7 +73,10 @@ export async function loadEquipmentMotions(loader: GLTFLoader, who: RigId, loado
   };
   const contacts = contactsFor('attack');
   if (who === 'player') for (const role of ['chop', 'mine'] as const) contactsFor(role);
-  for (const role of ['sweep', 'pierceRelease'] as const) if (clips[role]) contactsFor(role);
+  const skillContacts: CombatMotions['skillContacts'] = {};
+  for (const role of ['sweep', 'crush', 'thrust', 'executioner', 'onslaught', 'riposte'] as const)
+    if (clips[role]) skillContacts[role] = contactsFor(role, role !== 'sweep');
+  if (clips.pierceRelease) contactsFor('pierceRelease');
   if (clips.pierceDraw && clips.pierceRelease) {
     // Joining is deterministic for the cached source pair. Retain its keyframes
     // once, with a separate wrapper/action for each prepared equipment profile.
@@ -81,14 +84,13 @@ export async function loadEquipmentMotions(loader: GLTFLoader, who: RigId, loado
     let joined = joinedShots.get(key);
     if (!joined) { joined = joinShot(clips.pierceDraw, clips.pierceRelease); joinedShots.set(key, joined); }
     clips.pierce = independentClip(joined);
+    skillContacts.pierce = [clips.pierceDraw.duration + contactsFor('pierceRelease')[0]];
   }
   const motions: CombatMotions = { clips, contacts, commitLead: (motionProfiles.clips as Record<string,{commitLead?:number}>)[base.attack.id]?.commitLead ?? 0, runSpeed: base.run.speed ?? 4,
     speeds: Object.fromEntries(Object.entries(all).map(([role, source]) => [role, source.speed ?? 4])),
     chopContact: all.chop?.contact ?? 0, mineContact: all.mine?.contact ?? 0,
-    skillContacts:{sweep:all.sweep?.contact !== undefined ? [all.sweep.contact] : undefined,pierce:clips.pierceDraw && all.pierceRelease?.contact !== undefined ? [clips.pierceDraw.duration+all.pierceRelease.contact] : undefined},
+    skillContacts,
     phases: Object.fromEntries(Object.entries(all).map(([role, source]) => [role, source.phaseOffset ?? 0])) };
-  for (const role of ['crush', 'thrust', 'executioner', 'onslaught', 'riposte'] as const)
-    if (clips[role]) motions.skillContacts[role] = contactsFor(role, true);
   if (clips.riposte) clips['riposte-stance']=riposteStance(clips.riposte,motions.skillContacts.riposte![0]);
   if (who==='player' && clips.pierce && clips.pierceDraw) {
     if (!sourceRig) throw new Error('Derived Bow motions require the prepared player rig.');

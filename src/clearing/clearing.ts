@@ -304,7 +304,7 @@ const presentation = new EncounterPresentation(encounter, actors, gameplayAudio,
     menus.updateCharacter(adventure.character);
     shop.update(adventure.character);
   },
-  proficiency: (family,amount) => {adventure.grantProficiency(family,amount); inventory.syncLoadout();},
+  proficiency: (family,amount) => {adventure.grantWeaponXp(family,amount); inventory.syncLoadout();},
   playerHit: () => interruptApproach(false),
 });
 function present(events: EncounterEvent[]): void {

@@ -1,6 +1,6 @@
 import { abilities, type AbilityId } from '../gameplay/abilities';
 import { hudIcon } from './hud-art';
-const motifs: Partial<Record<AbilityId,string>>={
+export const abilityMotifs: Partial<Record<AbilityId,string>>={
   thrust:'M8 36 37 7 M24 7h13v13 M9 29l10 10',
   riposte:'M10 10a19 19 0 0 1 29 15 M39 25l-9-5 M39 25l4-9 M12 38 29 21 M7 32l11 11',
   executioner:'M24 5v31 M18 28l6 8 6-8 M8 42l9-5 M40 42l-9-5',
@@ -17,6 +17,6 @@ export function abilityIcon(id:AbilityId): string {
     return hudIcon('axe') + `<svg class="axe-ability-mark" viewBox="0 0 48 48" aria-hidden="true"><path d="${motif}"/></svg>`;
   }
   const base=hudIcon(id==='sweep' || id==='piercing-shot' ? id : abilities[id].family);
-  const motif=motifs[id];
+  const motif=abilityMotifs[id];
   return motif ? '<span class="ability-art ability-art--'+id+'">'+base+'<svg class="ability-mark" viewBox="0 0 48 48" aria-hidden="true"><path d="'+motif+'"/></svg></span>' : base;
 }

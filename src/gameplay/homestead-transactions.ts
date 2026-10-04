@@ -1,9 +1,8 @@
 import type { CharacterSave } from './character';
-import { consumeMaterial, countItem, validItems, validStash, type InventoryItem } from './inventory';
+import { consumeMaterial, countItem, type InventoryItem } from './inventory';
 import { progression, shelterRecipe } from './skills';
 
 type ShelterState = Pick<CharacterSave, 'items' | 'shelterRestored'>;
-type Containers = Pick<CharacterSave, 'items' | 'stash'>;
 
 /** Recipe progress is shared by the repair menu and the transaction eligibility check. */
 export function shelterMaterials(items: readonly InventoryItem[]) {
@@ -30,11 +29,4 @@ export function restoredShelter(state: ShelterState): Pick<CharacterSave, 'items
     shelterRestored: true,
     restedSeconds: progression.restedSeconds,
   };
-}
-
-/** Validate both containers together, including identities shared across them. */
-export function validatedContainers(items: InventoryItem[], stash: InventoryItem[]): Containers {
-  if (!validItems(items) || !validStash(stash, items))
-    throw new Error('Item does not fit.');
-  return { items, stash };
 }

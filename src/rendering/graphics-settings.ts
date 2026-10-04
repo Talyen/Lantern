@@ -1,5 +1,5 @@
-import { readPreference } from '../data/preferences';
-import { isRecord, parseJson } from '../data/json';
+import { readPreference, savePreference } from '../data/preferences';
+import { isRecord } from '../data/json';
 import { qualityLevels, type QualityLevel } from './quality-presets';
 export const frameRateLimits = [60, 120, 144, 240, 0] as const;
 export type FrameRateLimit = typeof frameRateLimits[number];
@@ -44,11 +44,9 @@ export function migrateSettings(value: unknown): GraphicsSettings {
   return parseSettings(migrated);
 }
 export function saveSettings(settings: GraphicsSettings, changedKey?: keyof GraphicsSettings): void {
-  try {
-    // Save only an explicitly edited control so comparison URL values stay temporary.
-    const persisted = changedKey ? { ...migrateSettings(parseJson(localStorage.getItem(settingsKey) ?? '{}')), [changedKey]: settings[changedKey] } : settings;
-    localStorage.setItem(settingsKey, JSON.stringify({ ...persisted, defaultsVersion }));
-  } catch { /* Current settings still apply. */ }
+  // Save only an explicitly edited control so comparison URL values stay temporary.
+  const persisted = changedKey ? { ...migrateSettings(readPreference(settingsKey)), [changedKey]: settings[changedKey] } : settings;
+  savePreference(settingsKey, { ...persisted, defaultsVersion });
 }
 export function readSettings(): GraphicsSettings {
   const value = readPreference(settingsKey), saved = isRecord(value) ? value : {};

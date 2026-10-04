@@ -72,36 +72,35 @@ export function stepEnemy(state: Encounter, id: EnemyId, dt: number, timing: Tim
     movementWorld?.move(id, enemy, 0, 0, dt);
     return;
   }
-  if (enemy.kind === 'caster') {
-    stepCaster(state, id, dt, timing, events, movementWorld, readyAfter, movementElapsed);
-    return;
-  }
-  let attackElapsed = dt;
-  // Keep the pre-movement distance: the original encounter uses it to start an enemy strike.
-  const distance = Math.hypot(dx, dz);
-  if (enemy.lock <= 0 && (distance > 1.45 || Math.abs(player.y - enemy.y) >= .8 || movementWorld && !movementWorld.lineOfSight(enemy, player)) && enemy.attackTime < 0) {
+  // Pursuit and attack eligibility retain the distance and aim from before movement.
+  const distance = Math.hypot(dx, dz), yaw = Math.atan2(dx, dz);
+  const visible = !movementWorld || movementWorld.lineOfSight(enemy, player);
+  const pursuitRange = enemy.kind === 'caster' ? casterAttackRange : 1.45;
+  if (enemy.lock <= 0 && enemy.attackTime < 0 && (distance > pursuitRange || Math.abs(player.y - enemy.y) >= .8 || !visible)) {
     const moved = moveEnemy(state, id, player, dt, movementElapsed * enemy.speed, movementWorld, true);
     [enemy.x, enemy.z] = constrain(state.layout.boundary, [enemy.x, enemy.z]);
     animate(moved ? 'run' : 'idle');
-  }
-  else {
+  } else {
     movementWorld?.move(id, enemy, 0, 0, dt);
-    if (enemy.lock <= 0 && enemy.attackTime < 0)
-      animate('idle');
+    if (enemy.lock <= 0 && enemy.attackTime < 0) animate('idle');
   }
-  if (enemy.lock <= 0 && enemy.attackTime < 0 && enemy.cooldown <= 0 && distance <= 1.6 && (!movementWorld || movementWorld.lineOfSight(enemy, player)) && Math.abs(player.y - enemy.y) < .8) {
+  const caster = enemy.kind === 'caster';
+  let attackElapsed = dt;
+  if (enemy.lock <= 0 && enemy.attackTime < 0 && enemy.cooldown <= 0 && distance <= (caster ? casterAttackRange : 1.6)
+    && (caster ? visible : !movementWorld || movementWorld.lineOfSight(enemy, player)) && Math.abs(player.y - enemy.y) < .8) {
+    attackElapsed = Math.max(0, dt - readyAfter);
     enemy.attackTime = 0;
     enemy.contactIndex = 0;
-    attackElapsed = Math.max(0, dt - readyAfter);
-    enemy.cooldown = Math.max(0, timing[id].attack + 0.5 - attackElapsed);
-    enemy.yaw = Math.atan2(dx, dz);
-    events.push({ type: 'label', value: 'RAIDER ATTACKING' });
+    enemy.cooldown = Math.max(0, timing[id].attack + .5 - attackElapsed);
+    enemy.yaw = yaw;
+    events.push({ type: 'label', value: caster ? 'CASTER ATTACKING' : 'RAIDER ATTACKING' });
     animate('attack');
-    events.push({ type: 'action', actor: id, action: 'attack', weapon: weaponFamily(enemy.loadout.main) });
+    events.push({ type: 'action', actor: id, action: 'attack', weapon: caster ? 'staff' : weaponFamily(enemy.loadout.main) });
   }
   if (enemy.attackTime >= 0) {
     enemy.attackTime += attackElapsed;
-    while (enemy.contactIndex < timing[id].contacts.length && enemy.attackTime >= timing[id].contacts[enemy.contactIndex]) {
+    if (caster) releaseBolt(state, id, dt, timing, events, movementWorld);
+    while (!caster && enemy.contactIndex < timing[id].contacts.length && enemy.attackTime >= timing[id].contacts[enemy.contactIndex]) {
       enemy.contactIndex++;
       events.push({ type: 'action', actor: id, action: 'contact', weapon: weaponFamily(enemy.loadout.main) });
       const contactDx = player.x - enemy.x, contactDz = player.z - enemy.z, reach = Math.hypot(contactDx, contactDz);
@@ -113,39 +112,16 @@ export function stepEnemy(state: Encounter, id: EnemyId, dt: number, timing: Tim
     }
     if (enemy.attackTime >= timing[id].attack) {
       enemy.attackTime = -1;
-      events.push({ type: 'label', value: 'DEFEAT THE RAIDER' });
+      events.push({ type: 'label', value: caster ? 'DEFEAT THE CASTER' : 'DEFEAT THE RAIDER' });
+      if (caster) animate('idle');
     }
   }
   return;
 }
 
-/** Caster aim commits at windup; damage interrupts it through the same hit owner as melee. */
-function stepCaster(state: Encounter, id: EnemyId, dt: number, timing: Timings, events: EncounterEvent[], movementWorld: Movement | undefined, readyAfter: number, movementElapsed: number): void {
-  const player = state.player, enemy = state.enemies[id];
-  const dx = player.x - enemy.x, dz = player.z - enemy.z, distance = Math.hypot(dx, dz);
-  let attackElapsed = dt;
-  const visible = !movementWorld || movementWorld.lineOfSight(enemy, player);
-  if (enemy.attackTime < 0 && enemy.lock <= 0 && (distance > casterAttackRange || Math.abs(player.y - enemy.y) >= .8 || !visible)) {
-    const length = moveEnemy(state, id, player, dt, movementElapsed * enemy.speed, movementWorld, true);
-    [enemy.x, enemy.z] = constrain(state.layout.boundary, [enemy.x, enemy.z]);
-    events.push({ type: 'animation', actor: id, motion: length ? 'run' : 'idle' });
-  }
-  else {
-    movementWorld?.move(id, enemy, 0, 0, dt);
-    if (enemy.attackTime < 0 && enemy.lock <= 0)
-      events.push({ type: 'animation', actor: id, motion: 'idle' });
-  }
-  if (enemy.attackTime < 0 && enemy.lock <= 0 && enemy.cooldown <= 0 && distance <= casterAttackRange && visible && Math.abs(player.y - enemy.y) < .8) {
-    enemy.yaw = Math.atan2(dx, dz);
-    enemy.attackTime = 0;
-    enemy.contactIndex = 0;
-    attackElapsed = Math.max(0, dt - readyAfter);
-    enemy.cooldown = Math.max(0, timing[id].attack + .5 - attackElapsed);
-    events.push({ type: 'label', value: 'CASTER ATTACKING' }, { type: 'animation', actor: id, motion: 'attack' }, { type: 'action', actor: id, action: 'attack', weapon: 'staff' });
-  }
-  if (enemy.attackTime < 0)
-    return;
-  enemy.attackTime += attackElapsed;
+/** A caster releases once at its first contact, using the windup's committed aim. */
+function releaseBolt(state: Encounter, id: EnemyId, dt: number, timing: Timings, events: EncounterEvent[], movementWorld?: Movement): void {
+  const enemy = state.enemies[id];
   const release = timing[id].contacts[0];
   if (enemy.contactIndex === 0 && enemy.attackTime >= release) {
     enemy.contactIndex = 1;
@@ -154,9 +130,5 @@ function stepCaster(state: Encounter, id: EnemyId, dt: number, timing: Timings, 
     const projectile: Projectile = { id: ++state.nextProjectile, owner: id, kind: 'bolt', damageType:enemy.damageType, x: enemy.x + dx * .35, y: enemy.y + 1.08, z: enemy.z + dz * .35, dx, dz, remaining: 12, firstStep: Math.min(dt, enemy.attackTime - release) };
     if (projectileLaunchClear(projectile, enemy, events, movementWorld) && advanceProjectile(state, projectile, dt, timing, events, movementWorld))
       state.projectiles.push(projectile);
-  }
-  if (enemy.attackTime >= timing[id].attack) {
-    enemy.attackTime = -1;
-    events.push({ type: 'label', value: 'DEFEAT THE CASTER' }, { type: 'animation', actor: id, motion: 'idle' });
   }
 }

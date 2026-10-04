@@ -55,3 +55,9 @@ export function validStash(value: unknown, carried: readonly InventoryItem[]): v
   const carriedIds = new Set(carried.map(entry => entry.id));
   return value.every(entry => !carriedIds.has(entry.id));
 }
+
+/** All container transactions check placement and shared identities before publication. */
+export function validatedContainers(items: InventoryItem[], stash: InventoryItem[], message = 'Item does not fit.') {
+  if (!validItems(items) || !validStash(stash, items)) throw new Error(message);
+  return { items, stash };
+}

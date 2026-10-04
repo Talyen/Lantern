@@ -2,7 +2,7 @@ import type { Skill } from '../gameplay/skills';
 import type { SkillNode } from '../gameplay/skill-nodes';
 import type { LootItem } from '../gameplay/inventory';
 import { itemIcon } from './item-icons';
-import { abilityIcon } from './ability-icons';
+import { abilityIcon, abilityMotifs } from './ability-icons';
 
 const items: Partial<Record<Skill, LootItem>> = {
   sword:'sword',axeCombat:'axe',bow:'bow',staff:'staff',shield:'shield',defense:'guard-helm',
@@ -59,7 +59,9 @@ export function skillNodeIcon(skill: Skill, node: SkillNode): string {
   if (node.ability) return abilityIcon(node.ability);
   if(skill==='smithing' && node.implemented)return skillIcon(node.kind==='minor' ? node.index===0 ? 'burn' : 'mace' : 'smithing');
   if (node.kind === 'minor') {
-    return '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="' + (node.implemented ? skill==='bow' && node.index===4 ? 'M12 5v25 M8 24l4 6 4-6 M25 10v25 M21 29l4 6 4-6 M38 5v25 M34 24l4 6 4-6 M7 42h34' : skill==='bow' && node.index===9 ? 'M24 4v8 M24 36v8 M4 24h8 M36 24h8 M24 15a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z M18 30 31 17' : masteryShapes[node.index] : minorShapes[node.index]) +
+    const bowMotif = skill === 'bow' ? node.index === 4 ? abilityMotifs['arrow-rain'] : node.index === 9 ? abilityMotifs.deadeye : undefined : undefined;
+    const shape = node.implemented ? bowMotif ?? masteryShapes[node.index] : minorShapes[node.index];
+    return '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="' + shape +
       '"/><svg x="32" y="33" width="14" height="14" viewBox="0 0 48 48">' + skillIcon(skill) + '</svg></svg>';
   }
   const motifs = [

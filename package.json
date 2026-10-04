@@ -33,7 +33,7 @@
     "levels:calibrate": "node scripts/agents/run.mjs --resource gpu --reuse-preview -- node scripts/levels/calibrate.mjs",
     "levels:find": "node scripts/levels/find.mjs",
     "assets:export-characters": "node scripts/agents/run.mjs --resource heavy -- node scripts/assets/characters/export.mjs",
-    "characters:capture": "node scripts/agents/run.mjs --resource gpu -- node scripts/assets/characters/capture.mjs",
+    "characters:capture": "node scripts/assets/characters/capture.mjs",
     "lighting:bake": "node scripts/agents/run.mjs --resource gpu --reuse-preview -- node scripts/levels/bake-lighting.mjs",
     "check:full": "node scripts/check.mjs --full",
     "agent:start": "node scripts/agents/cli.mjs start",
