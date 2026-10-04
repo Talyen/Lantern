@@ -1,18 +1,15 @@
 import { deletionExclusions } from '../review/exclusions.mjs';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import { createHash } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { resolve } from 'node:path';
 import { cli, isMain, parseArgs, root } from '../../lib/cli.mjs';
-import { preserveSources, sourceEntry } from '../../lib/asset-sources.mjs';
+import { preserveSources, sourceEntry, sourceArchiveReader } from '../../lib/asset-sources.mjs';
 import { parseGlb } from '../../lib/glb.mjs';
-const exec = promisify(execFile);
 const weapons = ['sword','axe','mace','pickaxe','bow','shield','greatsword','greathammer','crossbow','staff','wand'];
 /** Validate the delivered pack without running any bundled generation scripts. */
 export async function importArmory(archive) {
-  const read = async name => (await exec('unzip', ['-p', archive, `Asterfall_Armory/${name}`], { encoding: 'buffer', maxBuffer: 32 * 1024 * 1024 })).stdout;
+  const { read } = await sourceArchiveReader(archive, 'Asterfall_Armory/');
   const manifest = JSON.parse(await read('manifest.json'));
   const files = new Map();
   for (const [name, expected] of Object.entries(manifest)) {

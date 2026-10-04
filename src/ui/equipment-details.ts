@@ -16,9 +16,6 @@ const bonusLabels: Record<keyof Bonuses, string> = {
 };
 const comparisonStats = ['damage', 'attackRate', 'reach', 'armor', 'maxHealth', 'maxMana', 'manaRegen', 'moveSpeed'] as const;
 
-function statLabel(key: keyof CombatStats): string {
-  return statLabels[key];
-}
 function statValue(key: keyof CombatStats, value: number): string {
   if (key === 'attackRate') return `${Math.round(value * 100)}%`;
   const amount = Number(value.toFixed(2));
@@ -52,7 +49,7 @@ export function renderItemProperties(details: HTMLElement, entry: InventoryItem)
   if (definition.weapon) {
     for (const [key, value] of [
       ['damage', definition.weapon.damage], ['attackRate', definition.weapon.rate], ['reach', definition.weapon.reach],
-    ] as const) details.append(statRow(statLabel(key), statValue(key, value)));
+    ] as const) details.append(statRow(statLabels[key], statValue(key, value)));
   }
   for (const key of Object.keys(definition.bonuses) as (keyof Bonuses)[]) {
     const value = definition.bonuses[key]!;
@@ -87,7 +84,7 @@ export function renderEquipmentDetails(
     const delta = value(after) - value(before);
     if (Math.abs(delta) < .00001) continue;
     const amount = statValue(key, delta);
-    const row = statRow(statLabel(key), `${delta > 0 ? '+' : ''}${amount}`);
+    const row = statRow(statLabels[key], `${delta > 0 ? '+' : ''}${amount}`);
     row.dataset.gain = String(delta > 0);
     comparison.append(row);
   }

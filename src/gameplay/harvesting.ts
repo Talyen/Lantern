@@ -33,7 +33,8 @@ export class Harvesting {
     const previous = this.areas.get(areaId);
     this.areas.set(areaId, new Map(resources.map(node => {
       const definition: ResourceDefinition = { kind: 'tree', level: gathering.resourceLevel, baseYield: gathering.baseYield, contacts: gathering.contacts, ...node };
-      return [node.id, { ...previous?.get(node.id), definition, hits: previous?.get(node.id)?.hits ?? 0 }];
+      const state = previous?.get(node.id);
+      return [node.id, { definition, hits: state?.hits ?? 0, regrowAt: state?.regrowAt }];
     })));
     // Registration may remove or replace a depleted node. Recompute the next
     // deadline here; active frames need no scan before that deadline arrives.
@@ -44,9 +45,10 @@ export class Harvesting {
   }
   restore(elapsed: number, saved: Record<string, Record<string, SavedResource>>): void {
     this.elapsed = elapsed;
-    for (const [areaId, resources] of Object.entries(saved)) for (const [id, state] of Object.entries(resources)) {
-      const node = this.areas.get(areaId)?.get(id);
-      if (node) { node.hits = Math.min(state.hits, node.definition.contacts); node.regrowAt = state.regrowAt; }
+    for (const [areaId, resources] of this.areas) for (const [id, node] of resources) {
+      const state = saved[areaId]?.[id];
+      node.hits = Math.min(state?.hits ?? 0, node.definition.contacts);
+      node.regrowAt = state?.regrowAt;
     }
     this.nextRegrowthAt = elapsed;
   }

@@ -9,7 +9,7 @@ async function identity(path) {
 }
 /** Cache content only while every observed input has the same filesystem identity. */
 export function createReviewCache(cwd) {
-  let signature, prepared, building;
+  let prepared;
   const files = new Map(), appearances = new Map();
   const memo = async (path, kind, load) => {
     const stamp = await identity(path), key = `${kind}:${path}`, previous = files.get(key);
@@ -27,16 +27,13 @@ export function createReviewCache(cwd) {
       'public/vendor/synty/library/catalog.json', 'public/vendor/asterfall/catalog.json', 'public/vendor/character-gallery/catalog.json',
       'public/vendor/characters/merchant/provenance.json', ...areas.map(name => `src/levels/areas/${name}`)];
     const current = JSON.stringify([await Promise.all(inputs.map(async path => [path, await identity(resolve(cwd, path))])), reviews.deleted]);
-    if (!prepared || current !== signature) {
-      if (!building || building.signature !== current) {
-        const promise = reviewIndex(cwd, { reviewed: false }); building = { signature: current, promise };
-      }
-      let result;
-      try { result = await building.promise; } catch (error) { building = undefined; throw error; }
-      if (current !== signature) appearances.clear();
-      signature = current; prepared = result;
+    if (prepared?.signature !== current) {
+      appearances.clear();
+      const entry = { signature: current, promise: reviewIndex(cwd, { reviewed: false }) };
+      prepared = entry;
+      entry.promise.catch(() => { if (prepared === entry) prepared = undefined; });
     }
-    return { ...prepared, reviews };
+    return { ...await prepared.promise, reviews };
   };
   const inspect = async (index, source) => {
     const row = { ...source, warnings: [...source.warnings] }, cached = appearances.get(row.id);

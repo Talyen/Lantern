@@ -9,12 +9,12 @@ import { assetPath } from '../../lib/assets.mjs';
 await cli(async () => {
   const args = parseArgs(process.argv.slice(2), { '--blender': 'value', '--output': 'value', '--only': 'value', '--area': 'value', '--showcase': 'boolean', '--ground-fields': 'boolean' });
   if (args['--help']) { console.log('Usage: node scripts/assets/surfaces/environment.mjs [--blender PATH] [--output PATH] [--only pine,rock,log,crate] [--area clearing | --showcase] [--ground-fields]'); return; }
-  if (args['--area'] && (args['--showcase'] || args['--ground-fields'])) throw new Error('--area cannot be combined with --showcase or --ground-fields.');
-  if (args['--ground-fields']) { await blender('assets/surfaces/ground_fields.py', [root], args['--blender']); return; }
   const manifest = JSON.parse(await readFile(resolve(root, 'assets/textures/environment/manifest.json'), 'utf8'));
+  const assets = surfaceAssets(manifest, args);
+  if (args['--ground-fields']) { await blender('assets/surfaces/ground_fields.py', [root], args['--blender']); return; }
   const catalog = JSON.parse(await readFile(resolve(root, 'public/vendor/synty/library/catalog.json'), 'utf8'));
   const excluded = deletionExclusions();
-  const jobs = surfaceAssets(manifest, args).filter(asset => !excluded(asset.id, asset.url, args['--area'] ? `area:${args['--area']}` : args['--showcase'] ? 'showcase' : 'gameplay')).map(asset => {
+  const jobs = assets.filter(asset => !excluded(asset.id, asset.url, args['--area'] ? `area:${args['--area']}` : args['--showcase'] ? 'showcase' : 'gameplay')).map(asset => {
     const url = asset.sourceUrl ?? (asset.id.startsWith('/') ? asset.id : catalog.assets[asset.id]?.url);
     const source = assetPath(resolve(root, 'public/vendor/synty'), url, '/vendor/synty/');
     if (!existsSync(source)) throw new Error(`Missing local model: ${asset.id}`);

@@ -106,7 +106,7 @@ export class GameAudio {
   play(cue: SoundCue, position?: SoundPosition, options: { key?: string; loop?: boolean; rate?: number; gain?: number } = {}): void {
     const context = this.context, definition = cues[cue];
     if (!context || this.disposed || !this.unlocked || context.state !== 'running' || this.hidden || this.paused && definition.bus !== 'ui') return;
-    if (options.key && this.keyedVoice(options.key)) return;
+    if (options.key && this.keyedVoices.get(options.key)) return;
     let index = Math.floor(Math.random() * definition.clips.length);
     if (definition.clips.length > 1 && index === this.last.get(cue)) index = (index + 1) % definition.clips.length;
     const id = definition.clips[index], buffer = this.buffers.get(id);
@@ -128,7 +128,7 @@ export class GameAudio {
     source.start(); this.counts.set(cue, (this.counts.get(cue) ?? 0) + 1);
   }
   loop(key: string, cue: SoundCue, position?: SoundPosition, gain = 1): void {
-    const voice = this.keyedVoice(key);
+    const voice = this.keyedVoices.get(key);
     if (voice) {
       if (position) { voice.position ??= { x: 0, z: 0 }; voice.position.x = position.x; voice.position.z = position.z; }
       else voice.position = undefined;
@@ -137,15 +137,9 @@ export class GameAudio {
     let count = 0; for (const active of this.voices) if (active.loop) count++;
     if (count < 12) this.play(cue, position, { key, loop: true, gain });
   }
-  private keyedVoice(key: string): Voice | undefined {
-    if (key) return this.keyedVoices.get(key);
-    // Empty keys historically allow multiple voices; preserve their ordering.
-    for (const voice of this.voices) if (voice.key === key) return voice;
-  }
   keepLoops(keys: Set<string>): void { for (const voice of this.voices) if (voice.loop && voice.key && !keys.has(voice.key)) this.stopVoice(voice); }
   stop(key: string): void {
-    if (key) { const voice = this.keyedVoices.get(key); if (voice) this.stopVoice(voice); }
-    else for (const voice of this.voices) if (voice.key === key) this.stopVoice(voice);
+    const voice = this.keyedVoices.get(key); if (voice) this.stopVoice(voice);
   }
   private removeVoice(voice: Voice): void {
     this.voices.delete(voice);

@@ -1,69 +1,18 @@
 import { deletionExclusions } from '../review/exclusions.mjs';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { resolve } from 'node:path';
-import { Box3, Vector3 } from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { cli, isMain, parseArgs, root } from '../../lib/cli.mjs';
-import { preserveSources, sourceEntry } from '../../lib/asset-sources.mjs';
-import { parseGlb, encodeGlb } from '../../lib/glb.mjs';
-const exec = promisify(execFile);
+import { preserveSources, sourceEntry, sourceArchiveReader } from '../../lib/asset-sources.mjs';
+import { prepareModel, inspectModel, yUpBounds } from '../generated-packs/validate.mjs';
 const prefix = 'Ashen_Veil_Essentials/';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 
-/** r186 treats node extras.pivot as a numeric exporter pivot, including child offsets. */
-function prepareGlb(bytes, name) {
-  const { json, tail } = parseGlb(bytes, name);
-  if (json.buffers?.some(buffer => buffer.uri) || json.images?.some(image => image.uri) || json.extensionsRequired?.some(extension => extension !== 'KHR_materials_emissive_strength')) throw new Error(`Unsupported GLB dependency: ${name}`);
-  let renamed = 0;
-  for (const node of json.nodes ?? []) {
-    if (typeof node.extras?.pivot === 'string') {
-      node.extras.placement_pivot_description = node.extras.pivot; delete node.extras.pivot; renamed++;
-    }
-  }
-  return { bytes: encodeGlb(json, tail), renamed };
-}
-async function inspectGlb(bytes, name, entry) {
-  const gltf = await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '');
-  try {
-    const bounds = new Box3().setFromObject(gltf.scene), size = bounds.getSize(new Vector3());
-    if (!bounds.min.toArray().concat(bounds.max.toArray()).every(Number.isFinite) || size.length() <= 0) throw new Error(`Invalid loaded bounds: ${name}`);
-    let triangles = 0;
-    gltf.scene.traverse(node => {
-      if (!node.matrixWorld.elements.every(Number.isFinite)) throw new Error(`Invalid node transform: ${name}/${node.name}`);
-      if (!node.isMesh) return;
-      const positions = node.geometry.attributes.position, indices = node.geometry.index;
-      if (!positions || !Array.from(positions.array).every(Number.isFinite)) throw new Error(`Invalid positions: ${name}`);
-      if (indices && Array.from(indices.array).some(index => index >= positions.count)) throw new Error(`Invalid triangle index: ${name}`);
-      triangles += (indices?.count ?? positions.count) / 3;
-    });
-    if (entry) {
-      if (triangles !== entry.triangles) throw new Error(`Triangle count differs from manifest: ${name}`);
-      const { min, max } = entry.bounds_blender_m;
-      const expected = [[min[0], min[2], -max[1]], [max[0], max[2], -min[1]]];
-      const actual = [bounds.min.toArray(), bounds.max.toArray()];
-      if (actual.some((point, side) => point.some((value, axis) => Math.abs(value - expected[side][axis]) > .001))) throw new Error(`Placement bounds differ from manifest: ${name}`);
-      for (const pivot of entry.pivots) {
-        const object = gltf.scene.getObjectByName(pivot.name);
-        if (!object) throw new Error(`Missing articulation/placement node: ${name}/${pivot.name}`);
-        const position = object.getWorldPosition(new Vector3()).toArray(), [x, y, z] = pivot.blender_m;
-        if (position.some((value, axis) => Math.abs(value - [x, z, -y][axis]) > .001)) throw new Error(`Changed pivot: ${name}/${pivot.name}`);
-      }
-    }
-    return { bounds: [bounds.min.toArray(), bounds.max.toArray()], triangles };
-  } finally {
-    const geometries = new Set(), materials = new Set();
-    gltf.scene.traverse(node => { if (node.isMesh) { geometries.add(node.geometry); for (const material of Array.isArray(node.material) ? node.material : [node.material]) materials.add(material); } });
-    geometries.forEach(geometry => geometry.dispose()); materials.forEach(material => material.dispose());
-  }
-}
 /** Register placeable originals in the shared scene catalog; no scene placements or build selections. */
 export async function importEnvironment(archive) {
-  const read = async name => (await exec('unzip', ['-p', archive, prefix + name], { encoding: 'buffer', maxBuffer: 32 * 1024 * 1024 })).stdout;
+  const { read } = await sourceArchiveReader(archive, prefix);
   const sums = await read('SHA256SUMS.txt'), files = new Map();
   for (const line of sums.toString().trim().split('\n')) {
     const match = /^([a-f0-9]{64}) {2}(.+)$/.exec(line);
@@ -80,8 +29,11 @@ export async function importEnvironment(archive) {
   const prepared = new Map(), assets = {}, report = [];
   for (const [name, source] of files) {
     if (!name.endsWith('.glb')) continue;
-    const output = prepareGlb(source, name), entry = entries.get(name);
-    const checked = await inspectGlb(output.bytes, name, entry);
+    const output = prepareModel(source, name), entry = entries.get(name);
+    const checked = await inspectModel(output.bytes, name, entry ? {
+      triangles: entry.triangles, bounds: yUpBounds(entry.bounds_blender_m),
+      pivots: entry.pivots.map(pivot => ({ name: pivot.name, position: [pivot.blender_m[0], pivot.blender_m[2], -pivot.blender_m[1]] })),
+    } : {});
     prepared.set(name, output.bytes);
     report.push({ file: name, sourceHash: hash(source), preparedHash: hash(output.bytes), renamedPivotDescriptions: output.renamed, ...checked });
     if (entry) {

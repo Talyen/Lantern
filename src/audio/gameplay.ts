@@ -111,9 +111,7 @@ export class GameplayAudio {
     // Keep at most the six nearest authored flames, including optional scenery.
     for (const fire of this.nearestFlames) this.audio.loop(fire.key, fire.camp ? 'fire' : 'flame', fire.position);
     if (portal) this.audio.loop('portal-hum', 'portalHum', portal);
-    else this.audio.stop('portal-hum');
     if (lantern) this.audio.loop('personal-lantern', 'flame', lantern, .2);
-    else this.audio.stop('personal-lantern');
   }
   reset(): void { this.audio.clearArea(); this.footsteps.clear(); this.fireDefinitions = undefined; this.authoredFlames.length = 0; this.nearestFlames.length = 0; this.loopKeys.clear(); }
 }

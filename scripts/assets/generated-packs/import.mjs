@@ -1,17 +1,14 @@
 import { deletionExclusions } from '../review/exclusions.mjs';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, readdir, writeFile, access } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { basename, dirname, resolve } from 'node:path';
 import { cli, isMain, parseArgs, root, UsageError } from '../../lib/cli.mjs';
-import { preserveSources, sourceEntry } from '../../lib/asset-sources.mjs';
+import { preserveSources, sourceEntry, sourceArchiveReader } from '../../lib/asset-sources.mjs';
 import { context } from '../../agents/state.mjs';
 import { prepareModel, inspectModel } from './validate.mjs';
 import { packs, defaultPacks, entriesFor, demoExpected, packWarnings } from './definitions.mjs';
 
-const execute = promisify(execFile);
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const library = resolve(root, 'public/vendor/synty/library');
 const sourceRoot = resolve(root, '.local/animation-packs/generated-packs');
@@ -35,20 +32,8 @@ const jsonBytes = value => JSON.stringify(value, null, 2) + '\n';
 
 /** Check portable paths before reading; retain every delivered file, including receipts. */
 async function readPack(archive, pack) {
-  const listing = (await execute('unzip', ['-Z1', archive], { maxBuffer: 1024 * 1024 })).stdout.trim().split('\n');
-  if (new Set(listing).size !== listing.length) throw new Error('Duplicate archive entry');
-  const names = [];
-  for (const name of listing) {
-    if (!name.startsWith(pack.prefix)) throw new Error(`Unexpected archive root: ${name}`);
-    const relative = name.slice(pack.prefix.length);
-    if (name === pack.prefix) continue;
-    sourceEntry(relative.endsWith('/') ? relative.slice(0, -1) : relative);
-    if (!relative.endsWith('/')) names.push(relative);
-  }
-  const files = new Map();
-  for (const name of names) {
-    files.set(name, (await execute('unzip', ['-p', archive, pack.prefix + name], { encoding: 'buffer', maxBuffer: 32 * 1024 * 1024 })).stdout);
-  }
+  const { names, read } = await sourceArchiveReader(archive, pack.prefix), files = new Map();
+  for (const name of names) files.set(name, await read(name));
   const supplied = new Map();
   const checkHash = (name, digest) => {
     sourceEntry(name);

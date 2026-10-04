@@ -2,15 +2,10 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { root } from '../../lib/cli.mjs';
-import { parseGlb, encodeGlb } from '../../lib/glb.mjs';
+import { embeddedGlb, encodeGlb } from '../../lib/glb.mjs';
 export function packCharacter(characterUrl, catalogPath, output) {
   function readGlb(path) {
-    const { json, tail } = parseGlb(readFileSync(path), path);
-    if (tail.length < 8 || tail.readUInt32LE(4) !== 0x004e4942 || tail.readUInt32LE(0) !== tail.length - 8
-      || json.buffers?.length !== 1 || json.buffers[0].uri || json.buffers[0].byteLength > tail.length - 8)
-      throw new Error(`Expected one embedded buffer: ${path}`);
-    const bin = tail.subarray(8, 8 + json.buffers[0].byteLength);
-    return { json, bin };
+    return embeddedGlb(readFileSync(path), path);
   }
   const catalog = JSON.parse(readFileSync(catalogPath, 'utf8'));
   const pack = catalog.packs.find((p) => p.id === 'mixamo');

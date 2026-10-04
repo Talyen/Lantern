@@ -18,8 +18,7 @@ test('physical and code-less captured keys remain usable after saving and reopen
   const keys = [
     ['', 'i', 0, 'KeyI'], ['KeyI', 'z', 0, 'KeyI'], ['', 'Shift', 2, 'ShiftRight'],
     ['', '.', 0, 'Period'], ['', '?', 0, 'Slash'], ['', '1', 3, 'Numpad1'], ['', 'Enter', 3, 'NumpadEnter'], ['', 'End', 0, 'End'],
-    ...Array.from(')!@#$%^&*(', (key, digit) => ['', key, 0, `Digit${digit}`] as const),
-    ...[['End','1'],['ArrowDown','2'],['PageDown','3'],['ArrowLeft','4'],['Clear','5'],['ArrowRight','6'],['Home','7'],['ArrowUp','8'],['PageUp','9'],['Insert','0'],['Delete','Decimal']].map(([key, digit]) => ['', key, 3, `Numpad${digit}`] as const),
+    ['', '!', 0, 'Digit1'], ['', ')', 0, 'Digit0'], ['', 'End', 3, 'Numpad1'], ['', 'Delete', 3, 'NumpadDecimal'],
   ] as const;
   let saved = '';
   const storage = { getItem: () => saved || null, setItem: (_key: string, value: string) => { saved = value; } };

@@ -150,15 +150,14 @@ export function removeQuantity(
   return remaining;
 }
 export function sortedItems(items: InventoryItem[]): InventoryItem[] {
-  const fixed = structuredClone(items.filter((i) => i.slot !== 'bag'));
-  const bag = structuredClone(items.filter((i) => i.slot === 'bag'));
-  for (const item of lootIds.filter((i) => lootDefinitions[i].stackable)) {
-    const entries = bag.filter((i) => i.item === item);
-    let quantity = countItem(entries, item);
-    for (const entry of entries) {
-      entry.quantity = Math.min(stackLimit, quantity);
-      quantity -= entry.quantity;
-    }
+  const next = structuredClone(items), fixed = next.filter(entry => entry.slot !== 'bag'), bag = next.filter(entry => entry.slot === 'bag');
+  const quantities = new Map<LootItem, number>();
+  for (const entry of bag) if (lootDefinitions[entry.item].stackable)
+    quantities.set(entry.item, (quantities.get(entry.item) ?? 0) + entry.quantity);
+  for (const entry of bag) if (lootDefinitions[entry.item].stackable) {
+    const quantity = quantities.get(entry.item)!;
+    entry.quantity = Math.min(stackLimit, quantity);
+    quantities.set(entry.item, quantity - entry.quantity);
   }
   bag.sort((a, b) => {
     const da = lootDefinitions[a.item],

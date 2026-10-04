@@ -21,6 +21,7 @@ export function checkStages(files, args = {}) {
     ...(python ? [['lint-python', node, ['scripts/lint.mjs', '--python']]] : []),
     ...(css ? [['lint-css', node, ['scripts/lint.mjs', '--css']]] : []),
     ...(lintPolicy ? [['lint-policy', node, ['--test', 'eslint/rules.test.mjs']]] : []),
+    ...(full ? [['asset-imports', node, ['--test', 'scripts/lib/asset-imports.test.mjs']]] : []),
     ...(full ? [['asset-review-store', node, ['--test', 'scripts/assets/review/store.test.mjs']]] : []),
     ...(full ? [['workflow', node, ['--test', 'scripts/agents/workflow.test.mjs']]] : []),
     ...(full ? [['tests', node, ['node_modules/vitest/vitest.mjs', 'run']]] : []),

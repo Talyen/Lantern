@@ -99,6 +99,12 @@ test('depleted resources survive registration and renew only when unoccupied', (
   expect(harvesting.contact('clearing', tree.id, point)?.felled).toBe(false);
   harvesting.contact('clearing', tree.id, point);
   harvesting.contact('clearing', tree.id, point);
+  // Replacing a snapshot must clear omitted depletion instead of overlaying the previous outing.
+  harvesting.restore(10, { clearing: { tree: { hits: 3, regrowAt: 20 } } });
+  expect(harvesting.isDepleted('clearing', tree.id)).toBe(true);
+  harvesting.restore(10, {});
+  expect(harvesting.state('clearing', tree.id)).toEqual({ hits: 0, felled: false });
+  expect(harvesting.advance(10)).toEqual([]);
   harvesting.reset();
   expect(harvesting.state('clearing', tree.id)).toEqual({ hits: 0, felled: false });
 });

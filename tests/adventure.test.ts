@@ -310,12 +310,6 @@ test('Rested uses active time, refreshes on shelter entry, saves fractional XP a
   state.grantWeaponXp('axe',10);expect(state.character.xp.axeCombat).toBe(11);
 });
 
-test('revision 3 migration retains IDs, claims, discoveries and XP while initializing Homestead progress',()=>{
-  const storage=memory(),state=new Adventure(storage);state.character.campClaims=['bow'];state.character.xp.woodcutting=327;
-  const old={...state.character,items:state.character.items.filter(i=>i.item!=='potion'),version:3};storage.setItem(characterSaveKey,JSON.stringify(old));
-  const restored=new Adventure(storage);expect(restored.character.items.filter(i=>i.item!=='potion')).toEqual(old.items);expect(restored.character.campClaims).toEqual(['bow']);expect(restored.character.xp.woodcutting).toBe(327);expect(restored.character.xp.mining).toBe(0);expect(restored.character.stash).toEqual([]);expect(restored.character.shelterRestored).toBe(false);
-});
-
 test('stash stack transfers retain partial quantities and rejected equipped transfers change neither container',()=>{
   const source:InventoryItem[]=[{id:'s',item:'iron',quantity:3,slot:'bag',x:0,y:0}],destination:InventoryItem[]=[{id:'d',item:'iron',quantity:98,slot:'bag',x:0,y:0}];
   const result=transferItem(source,destination,'s',3,()=> 'split',{x:0,y:0});
@@ -341,6 +335,7 @@ test('revision 3 migration preserves a full bag and grants starter potions only 
   storage.setItem(characterSaveKey,JSON.stringify({version:3,items,campfires:['homestead/camp'],xp:{woodcutting:30,axeCombat:40},campClaims:['sword']}));
   const migrated=new Adventure(storage);expect(migrated.character.version).toBe(9);expect(migrated.character.items.filter(i=>i.item!=='potion')).toEqual(items);
   expect(migrated.character.items.find(i=>i.item==='potion')).toMatchObject({slot:'overflow',quantity:3});
+  expect(migrated.character).toMatchObject({campClaims:['sword'],campfires:['homestead/camp'],xp:{woodcutting:30,axeCombat:40,mining:0},stash:[],shelterRestored:false});
   migrated.character.xp.bow=5000;
   migrated.setActionBar(['sweep','piercing-shot',null,null,'axe-basic','shield-basic']);migrated.setWeaponSet(1);
   const restored=new Adventure(storage);expect(restored.character).toEqual(migrated.character);expect(restored.character.items.filter(i=>i.item==='potion')).toHaveLength(1);

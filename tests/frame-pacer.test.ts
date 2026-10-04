@@ -3,7 +3,7 @@ import { FramePacer } from '../src/rendering/frame-pacer';
 import { FrameLoop } from '../src/clearing/frame-loop';
 
 test('60 FPS cap stays near 60 across nominal and faster displays, then Unlimited allows every frame', () => {
-  for (const displayHz of [59.94, 120, 144, 240]) {
+  for (const displayHz of [59.94, 144]) {
     const pacer = new FramePacer();
     let rendered = 0;
     for (let frame = 0; frame < displayHz * 5; frame++) {

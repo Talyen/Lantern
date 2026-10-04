@@ -12,7 +12,7 @@ export async function hashFile(path) {
 export const sourceArchive = /\.(?:fbx|blend|blend1|zip|unitypackage|7z|rar|tar|gz)$/i;
 /** Portable relative file names shared by imported sources and desktop manifests. */
 export function safeRelativePath(path) {
-  return typeof path === 'string' && !/[\\:\0]/.test(path) && path.split('/').every(part => part && part !== '.' && part !== '..');
+  return typeof path === 'string' && !/[\\:\0\r\n]/.test(path) && path.split('/').every(part => part && part !== '.' && part !== '..');
 }
 export function inside(base, path) {
   const result = resolve(base, path);
@@ -22,7 +22,9 @@ export function inside(base, path) {
 }
 export function assetPath(base, url, prefix = '/vendor/') {
   if (typeof url !== 'string' || !url.startsWith(prefix)) throw new Error(`Invalid asset URL: ${url}`);
-  return inside(base, decodeURIComponent(url.slice(prefix.length)));
+  const path = decodeURIComponent(url.slice(prefix.length));
+  if (!safeRelativePath(path)) throw new Error(`Invalid asset URL: ${url}`);
+  return inside(base, path);
 }
 export async function inventory(base, skip = []) {
   const files = [];
