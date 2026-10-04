@@ -8,7 +8,8 @@ import {
 } from './encounter-model';
 import { preparePlayer, movePlayer, stepPlayerAttack, finishBattleCry } from './encounter-player';
 import { stepProjectiles } from './encounter-projectiles';
-import { stepEnemy, separateEnemies } from './encounter-enemies';
+import { stepEnemy, prepareEnemyMovement } from './encounter-enemies';
+import { syncMovement } from './encounter-movement';
 // Stable entry point for gameplay and presentation consumers.
 export {
   playerMaxHealth, enemyMaxHealth, playerMaxMana, enemyAttackDamage, enemyNoticeRadius,
@@ -17,6 +18,7 @@ export {
   healthRegeneration,
 } from './encounter-model';
 export type {
+  MovementActor, MovementMode, MovementResult,
   EnemyId, ActorId, EnemyKind, Motion, Phase, ActorState, EnemyState, Projectile, PendingInput,
   PlayerAction, Encounter, ActorTiming, Timings, Movement, AimPoint, Input, EncounterEvent,
 } from './encounter-model';
@@ -87,12 +89,14 @@ export function stepExploration(state: Encounter, dt: number, input: Input, move
   state.healthRecoveryElapsed = 0;
   if (input.paused || state.player.hp <= 0 || !['playing', 'won'].includes(state.phase))
     return [];
+  syncMovement(state, movementWorld);
   const combatWasActive = inCombat(state);
   const clocks = timing ?? (state.layout.enemies ? Object.fromEntries(['player', ...state.enemyIds].map(id => [id, explorationTimings.player])) : explorationTimings);
   const { events, attackElapsed, attackOffset, movementElapsed } = preparePlayer(state, dt, input, clocks.player, movementWorld);
   stepPlayerAttack(state, attackElapsed, clocks, events, movementWorld, attackOffset);
   stepProjectiles(state, dt, clocks, events, movementWorld);
   stepCombatEffects(state,dt,clocks,events,movementWorld);
+  syncMovement(state, movementWorld);
   events.push(...movePlayer(state, movementElapsed, input, movementWorld));
   return finishPlayerFrame(state, dt, events, combatWasActive);
 }
@@ -101,6 +105,7 @@ export function stepEncounter(state: Encounter, dt: number, input: Input, timing
   state.healthRecoveryElapsed = 0;
   if (input.paused || state.phase !== 'playing')
     return [];
+  syncMovement(state, movementWorld);
   const combatWasActive = inCombat(state);
   const { events, attackElapsed, attackOffset, movementElapsed } = preparePlayer(state, dt, input, timing.player, movementWorld);
   // New windups consume only the part of the frame after recovery/cooldown.
@@ -119,15 +124,19 @@ export function stepEncounter(state: Encounter, dt: number, input: Input, timing
   stepPlayerAttack(state, attackElapsed, timing, events, movementWorld, attackOffset);
   stepProjectiles(state, dt, timing, events, movementWorld);
   stepCombatEffects(state,dt,timing,events,movementWorld);
-  if (state.phase !== 'playing')
+  if (state.phase !== 'playing') {
+    syncMovement(state, movementWorld);
     return finishPlayerFrame(state, dt, events, combatWasActive);
+  }
+  syncMovement(state, movementWorld);
   events.push(...movePlayer(state, movementElapsed, input, movementWorld));
+  prepareEnemyMovement(state, movementWorld, dt);
   for (const id of state.enemyIds) {
     if (state.phase !== 'playing')
       break;
     if (state.enemies[id].home && state.enemies[id].hp > 0)
       stepEnemy(state, id, dt, timing, events, movementWorld, readiness.values[id], readiness.locks[id]);
   }
-  separateEnemies(state, dt, movementWorld, readiness.locks);
+  syncMovement(state, movementWorld);
   return finishPlayerFrame(state, dt, events, combatWasActive);
 }

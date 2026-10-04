@@ -77,6 +77,7 @@ export type PendingInput = {
   kind: 'swap';
 });
 export type PlayerAction = {
+  lunge?: { x: number; z: number; distance: number; advanced: number; stopped: boolean };
   damageType?: DamageType;
   impactId?: number;
   committed?: boolean;
@@ -148,9 +149,16 @@ export type ActorTiming = {
   }>>;
 };
 export type Timings = Record<ActorId, ActorTiming>;
+export type MovementMode = 'walk' | 'dodge' | 'lunge';
+export type MovementActor = { id: ActorId; state: ActorState; dodging?: boolean };
+export type MovementResult = { x: number; y: number; z: number; blocked: boolean };
 export type Movement = {
+  syncActors?(actors: readonly MovementActor[]): void;
+  releaseDodge?(id: ActorId): void;
+  approach?(id: ActorId, actor: ActorState, target: ActorState, kind: EnemyKind, dt: number): ActorState;
+  steer?(id: ActorId, actor: ActorState, x: number, z: number, dt: number, seeking?: boolean): { x: number; z: number };
   attackGround?(from: ActorState, point: AimPoint): (AimPoint & {y:number}) | null;
-  move(id: ActorId, actor: ActorState, dx: number, dz: number, dt: number): void;
+  move(id: ActorId, actor: ActorState, dx: number, dz: number, dt: number, mode?: MovementMode, dodgeDistance?: number): MovementResult | void;
   direction(from: ActorState, to: ActorState, dt: number): {
     x: number;
     z: number;

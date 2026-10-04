@@ -12,6 +12,7 @@ import {
 import { smithingMeleeMultiplier } from './smithing';
 import { hit } from './encounter-damage';
 import { projectileLaunchClear } from './encounter-projectiles';
+import { prepareThrust, advanceThrust } from './encounter-movement';
 
 const aimDeadZone = .15;
 function faceAim(player: ActorState, aim: AimPoint): void {
@@ -121,6 +122,7 @@ export function useAbility(state: Encounter, id: AbilityId, timing: ActorTiming,
     aim:aim ? {...aim} : undefined,
     reach:state.stats.reach + (id === 'thrust' ? .45 : 0),
     arc:id === 'sweep' ? Math.PI/2 : id === 'thrust' ? Math.PI/12 : id==='crushing-blow' ? Math.PI/6 : id === 'executioner' ? Math.PI/7 : state.playerAction.arc });
+  if (id === 'thrust') prepareThrust(state, state.playerAction, movement);
   if (id === 'riposte') {
     state.riposte = {remaining:.75,action:state.playerAction};
     state.player.attackTime = -1; state.player.lock = .75; state.attackCooldown = 0;
@@ -179,9 +181,9 @@ function advancePlayerClocks(state: Encounter, dt: number): void {
 
 export function movePlayer(state: Encounter, dt: number, input: Input, movementWorld?: Movement): EncounterEvent[] {
   const player = state.player, events: EncounterEvent[] = [];
-  const move = (x: number, z: number, elapsed = dt) => {
+  const move = (x: number, z: number, elapsed = dt, rolling = false) => {
     if (movementWorld)
-      movementWorld.move('player', player, x, z, elapsed);
+      movementWorld.move('player', player, x, z, elapsed, rolling ? 'dodge' : 'walk', dodgeDistance);
     else {
       player.x += x;
       player.z += z;
@@ -190,9 +192,10 @@ export function movePlayer(state: Encounter, dt: number, input: Input, movementW
   };
   if (state.dodgeRemaining > 0) {
     const elapsed = Math.min(dt, state.dodgeRemaining);
-    move(state.dodgeDirection.x * elapsed * dodgeDistance / dodgeDuration, state.dodgeDirection.z * elapsed * dodgeDistance / dodgeDuration, elapsed);
+    move(state.dodgeDirection.x * elapsed * dodgeDistance / dodgeDuration, state.dodgeDirection.z * elapsed * dodgeDistance / dodgeDuration, elapsed, true);
     state.dodgeRemaining = Math.max(0, state.dodgeRemaining - dt);
     if (state.dodgeRemaining === 0) {
+      movementWorld?.releaseDodge?.('player');
       events.push({ type: 'animation', actor: 'player', motion: 'idle' }, { type: 'action', actor: 'player', action: 'land', weapon: state.weapon });
       if (dt - elapsed > 1e-6 && Math.hypot(input.x, input.z) > 0) events.push(...movePlayer(state, dt - elapsed, input, movementWorld));
     }
@@ -303,6 +306,7 @@ export function stepPlayerAttack(state: Encounter, dt: number, timing: Timings, 
   if (action.ability==='berserking') {player.attackTime+=dt; return;}
   const contacts = action.contacts;
   player.attackTime += dt;
+  advanceThrust(player, action, Math.min(player.attackTime, contacts[0]), movementWorld);
   while (player.contactIndex < contacts.length && player.attackTime >= contacts[player.contactIndex]) {
     const index=player.contactIndex++;
     const offset=frameOffset+Math.max(0,contacts[index]-(player.attackTime-dt));

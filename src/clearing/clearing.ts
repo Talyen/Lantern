@@ -331,7 +331,7 @@ function resetPresentation(): void {
   graphics?.resetHistory();
 }
 function reset(): void {
-  clearInput(); resetEncounter(encounter); adventure.restart(); harvesting.reset();
+  clearInput(); resetEncounter(encounter); movementWorld?.resetActors(); adventure.restart(); harvesting.reset();
   if (active && movementWorld) gathering.register(active, movementWorld);
   resetPresentation();
 }

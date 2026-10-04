@@ -2,12 +2,13 @@ import RAPIER from '@dimforge/rapier3d-compat';
 import { DEFAULT_QUERY_FILTER, findPath, type NavMesh } from 'navcat';
 import { buildNavigation, type NavigationGeometry } from './navigation';
 import { constrain, boundaryDistance, type Boundary } from './area';
-import type { ActorId, ActorState, Movement, AimPoint } from './encounter';
+import type { ActorId, ActorState, Movement, AimPoint, MovementActor, MovementMode, EnemyKind } from './encounter-model';
+import { ActorMovement, actorCenterHeight } from './movement-actors';
+import { MovementSteering } from './movement-steering';
 
 export type Surface = { positions: number[]; indices: number[] };
 export type Obstacle = { id: string; position: [number, number, number]; size: [number, number, number]; yaw: number; tree?: boolean; depletedScale?: number };
 export type Traversal = { obstacles: Obstacle[]; surfaces?: Surface[]; ground?: Surface };
-const radius = .3, halfHeight = .55, centerHeight = radius + halfHeight + .02;
 let initialization: Promise<void> | undefined;
 
 function ground(boundary: Boundary): Surface {
@@ -25,8 +26,8 @@ function box(obstacle: Obstacle): Surface {
 /** Numeric navigation/collision adapter. Simulation keeps ownership of actor transforms. */
 export class MovementWorld implements Movement {
   private readonly world = new RAPIER.World({ x: 0, y: 0, z: 0 });
-  private readonly controller = this.world.createCharacterController(.015);
-  private readonly actors = new Map<ActorId, RAPIER.Collider>();
+  private readonly actorMovement: ActorMovement;
+  private readonly steering = new MovementSteering((from, point) => this.goalPath(from, point), (from, to) => this.lineOfSight(from, to));
   private readonly solid = new Set<number>();
   // Ground surfaces remain eligible for loot; active obstacle proxies do not.
   private readonly blockingObstacles = new Set<number>();
@@ -34,8 +35,6 @@ export class MovementWorld implements Movement {
   // Rapier consumes these inputs synchronously. Each area owns its scratch
   // storage; query filters never call back into movement or another query.
   private readonly queryRay = new RAPIER.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 0 });
-  private readonly actorPosition = { x: 0, y: 0, z: 0 };
-  private readonly desiredMovement = { x: 0, y: 0, z: 0 };
   private nav!: NavMesh;
   private readonly baseSurfaces: Surface[];
   private minGroundY = 0;
@@ -57,8 +56,6 @@ export class MovementWorld implements Movement {
   }
   private constructor(private readonly boundary: Boundary, traversal: Traversal) {
     const started = performance.now();
-    this.controller.enableAutostep(.3, .15, false); this.controller.enableSnapToGround(.3);
-    this.controller.setMaxSlopeClimbAngle(Math.PI / 4); this.controller.setMinSlopeSlideAngle(Math.PI / 4);
     this.baseSurfaces = [traversal.ground ?? ground(boundary), ...(traversal.surfaces ?? [])];
     this.customGround = !!traversal.ground;
     if (traversal.ground) for (let i = 1; i < traversal.ground.positions.length; i += 3) {
@@ -72,6 +69,7 @@ export class MovementWorld implements Movement {
       const collider = this.world.createCollider(RAPIER.ColliderDesc.cuboid(...obstacle.size.map(v => v / 2) as [number, number, number]).setTranslation(...obstacle.position).setRotation({ x: 0, y: Math.sin(obstacle.yaw / 2), z: 0, w: Math.cos(obstacle.yaw / 2) }));
       this.solid.add(collider.handle); this.blockingObstacles.add(collider.handle); this.obstacles.set(obstacle.id, { definition: obstacle, current: obstacle, collider, felled: false });
     }
+    this.actorMovement = new ActorMovement(this.world, boundary, this.isSolid, actor => this.groundActor(actor), this.minGroundY);
     this.rebuildNavigation();
     this.world.step();
     this.generationMs = performance.now() - started;
@@ -128,40 +126,59 @@ export class MovementWorld implements Movement {
       obstacle.collider.setShape(new RAPIER.Cuboid(definition.size[0] / 2, height / 2, definition.size[2] / 2));
       obstacle.collider.setTranslation({ x: obstacle.current.position[0], y: obstacle.current.position[1], z: obstacle.current.position[2] });
     }
-    this.world.step(); this.rebuildNavigation(true);
+    this.world.step(); this.actorMovement.sceneryChanged(); this.rebuildNavigation(true);
   }
-  move(id: ActorId, actor: ActorState, dx: number, dz: number, dt: number): void {
+  private groundActor(actor: ActorState): void {
+    if (!this.customGround) return;
+    const ray = this.setQueryRay(actor.x, Math.max(actor.y, this.maxGroundY) + 2, actor.z, 0, -1, 0);
+    const hit = this.world.castRay(ray, 2 + this.maxGroundY - this.minGroundY + Math.abs(actor.y), true, undefined, undefined, undefined, undefined, this.isGround);
+    if (hit) actor.y = ray.origin.y - hit.timeOfImpact;
+  }
+  syncActors(actors: readonly MovementActor[]): void { if (!this.disposed) { this.actorMovement.sync(actors); this.steering.sync(actors); } }
+  releaseDodge(id: ActorId): void { if (!this.disposed) this.actorMovement.releaseDodge(id); }
+  move(id: ActorId, actor: ActorState, dx: number, dz: number, dt: number, mode: MovementMode = 'walk', dodgeDistance?: number) {
     if (this.disposed) return;
-    let collider = this.actors.get(id);
-    if (!collider) {
-      if (this.customGround) {
-        const ray = this.setQueryRay(actor.x, Math.max(actor.y, this.maxGroundY) + 2, actor.z, 0, -1, 0);
-        const hit = this.world.castRay(ray, 2 + this.maxGroundY - this.minGroundY + Math.abs(actor.y), true, undefined, undefined, undefined, undefined, this.isGround);
-        if (hit) actor.y = ray.origin.y - hit.timeOfImpact;
-      }
-      collider = this.world.createCollider(RAPIER.ColliderDesc.capsule(halfHeight, radius).setSensor(true)); this.actors.set(id, collider);
-    }
-    const position = this.actorPosition, movement = this.desiredMovement;
-    position.x = actor.x; position.y = actor.y + centerHeight; position.z = actor.z;
-    movement.x = dx; movement.y = -Math.max(.03, 9.81 * dt * dt); movement.z = dz;
-    collider.setTranslation(position);
-    this.controller.computeColliderMovement(collider, movement, undefined, undefined, this.isSolid);
-    const delta = this.controller.computedMovement();
-    [actor.x, actor.z] = constrain(this.boundary, [actor.x + delta.x, actor.z + delta.z]);
-    actor.y = Math.max(this.minGroundY, actor.y + delta.y);
+    const result = this.actorMovement.move(id, actor, dx, dz, dt, mode, dodgeDistance);
+    this.steering.resolved(id, result, dt, Math.hypot(dx, dz));
+    return result;
   }
+  private goalPath(from: ActorState, point: { x: number; y: number; z: number }) {
+    if (!this.navigationReady || boundaryDistance(this.boundary, [point.x, point.z]) < 0) return null;
+    const result = findPath(this.nav, [from.x, from.y, from.z], [point.x, point.y, point.z], [.6, 1, .6], DEFAULT_QUERY_FILTER);
+    const end = result.path.at(-1)?.position;
+    if (!result.success || !end || Math.hypot(end[0] - point.x, end[2] - point.z) > .2) return null;
+    // Navcat's voxel surface can sit above the actual floor. Visibility must
+    // use the actor's collision height or low cover can produce a false firing goal.
+    const ray = this.setQueryRay(end[0], end[1] + .5, end[2], 0, -1, 0);
+    const hit = this.world.castRay(ray, 1, true, undefined, undefined, undefined, undefined, this.isSolid);
+    if (!hit) return null;
+    const height = Math.max(this.minGroundY, ray.origin.y - hit.timeOfImpact);
+    let distance = 0, previous = [from.x, from.y, from.z];
+    for (const waypoint of result.path) { distance += Math.hypot(waypoint.position[0] - previous[0], waypoint.position[2] - previous[2]); previous = waypoint.position; }
+    const next = result.path.find(waypoint => Math.hypot(waypoint.position[0] - from.x, waypoint.position[2] - from.z) >= .18)?.position ?? end;
+    return { position: { x: end[0], y: height, z: end[2] }, next: { x: next[0], y: next[1], z: next[2] }, distance };
+  }
+  approach(id: ActorId, actor: ActorState, target: ActorState, kind: EnemyKind, dt: number): ActorState {
+    return this.navigationReady ? this.steering.approach(id, actor, target, kind, dt) : target;
+  }
+  steer(id: ActorId, actor: ActorState, x: number, z: number, dt: number, seeking = true) {
+    const landings = this.actorMovement.landings().map(landing => ({ ...landing, position: { ...landing.position, y: landing.position.y - actorCenterHeight } }));
+    return this.navigationReady ? this.steering.steer(id, actor, x, z, dt, this.nav, landings, seeking) : { x, z };
+  }
+  diagnostics() { return { actors: [...this.actorMovement.records].map(([id, record]) => ({ id, ...record })), goals: this.steering.diagnostics() }; }
   direction(from: ActorState, to: ActorState, dt: number): { x: number; z: number } {
+    if (from === to) return { x: 0, z: 0 };
     if (this.navigationPending) {
       // Until fresh routes arrive, use clear direct travel or wait; never follow a stale path into regrowth.
       return this.lineOfSight(from, to) ? { x: to.x - from.x, z: to.z - from.z } : { x: 0, z: 0 };
     }
     let route = this.routes.get(from);
-    if (!route) { route = {path:[],target:[Infinity,Infinity],age:Infinity,next:0}; this.routes.set(from,route); }
+    if (!route) { route = {path:[],target:[Infinity,Infinity,Infinity],age:Infinity,next:0}; this.routes.set(from,route); }
     route.age += dt;
-    if (route.age >= .25 || Math.hypot(to.x - route.target[0], to.z - route.target[1]) >= .4) {
+    if (route.age >= .25 || Math.hypot(to.x - route.target[0], to.z - route.target[1], to.y - route.target[2]) >= .4) {
       const result = findPath(this.nav, [from.x, from.y, from.z], [to.x, to.y, to.z], [.6, 1, .6], DEFAULT_QUERY_FILTER);
       route.path = result.success ? result.path.map(p => [...p.position] as [number, number, number]) : [];
-      route.target[0] = to.x; route.target[1] = to.z; route.age = 0; route.next = 0;
+      route.target[0] = to.x; route.target[1] = to.z; route.target[2] = to.y; route.age = 0; route.next = 0;
     }
     // Consuming a waypoint need not move every remaining point in the array.
     while (route.next < route.path.length && Math.hypot(route.path[route.next][0] - from.x, route.path[route.next][2] - from.z) < .18) route.next++;
@@ -265,6 +282,7 @@ export class MovementWorld implements Movement {
     return hit ? hit.timeOfImpact / length : null;
   }
   get navigationReady(): boolean { return !this.navigationPending && !this.disposed; }
-  reset(): void { this.routes = new WeakMap(); }
+  reset(): void { this.routes = new WeakMap(); this.steering.reset(); }
+  resetActors(): void { this.actorMovement.reset(); this.reset(); }
   dispose(): void { if (this.disposed) return; this.disposed = true; this.navigationWorker?.terminate(); this.world.free(); }
 }

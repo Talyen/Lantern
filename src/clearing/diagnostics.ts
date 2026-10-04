@@ -106,9 +106,9 @@ export class ClearingDiagnostics {
       encounter: {
         enemies: structuredClone(encounter.enemies), equipment: enemyActors.diagnostics(),
         player: { ...encounter.player }, playerMana: encounter.playerMana, berserkingRemaining: encounter.berserkingRemaining, ultimateCooldown: encounter.ultimateCooldown, stats: {...encounter.stats}, dodgeRemaining: encounter.dodgeRemaining,
-        dodgeCooldown: encounter.dodgeCooldown, blocking: encounter.blocking, projectiles: encounter.projectiles, pending: encounter.pending,
+        dodgeCooldown: encounter.dodgeCooldown, lunge: encounter.playerAction?.lunge, blocking: encounter.blocking, projectiles: encounter.projectiles, pending: encounter.pending,
         animations: Object.fromEntries(Object.entries(actors).map(([id, actor]) => [id, actor.current])),
-        navigationReady: movementWorld?.navigationReady ?? false, navigationMs: movementWorld?.generationMs ?? 0,
+        navigationReady: movementWorld?.navigationReady ?? false, navigationMs: movementWorld?.generationMs ?? 0, movement: movementWorld?.diagnostics(),
       },
       camera: { position: camera.position.toArray(), target: controls.target.toArray(), zoom: camera.zoom, viewport: [mount.clientWidth, mount.clientHeight] },
       objects: active?.root.children.length ?? 0,

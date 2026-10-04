@@ -7,42 +7,31 @@ import {
 import { hit } from './encounter-damage';
 import { advanceProjectile, projectileLaunchClear } from './encounter-projectiles';
 
-/** Keep authored packs legible without moving planted attacks or changing legacy solo fights. */
-export function separateEnemies(state: Encounter, dt: number, movementWorld?: Movement, locks?: Readonly<Record<EnemyId, number>>): void {
-  if (!state.layout.enemies)
-    return;
-  state.enemyIds.forEach((id, index) => {
+/** Claim approach goals by stable ID without reordering authored damage/contact updates. */
+export function prepareEnemyMovement(state: Encounter, movement: Movement | undefined, dt: number): void {
+  if (!movement?.approach) return;
+  for (const id of [...state.enemyIds].sort()) {
     const enemy = state.enemies[id];
-    if (enemy.hp <= 0 || enemy.lock > 0 || enemy.attackTime >= 0)
-      return;
-    for (const otherId of state.enemyIds) {
-      if (otherId === id || state.enemies[otherId].hp <= 0)
-        continue;
-      const other = state.enemies[otherId], dx = enemy.x - other.x, dz = enemy.z - other.z;
-      const distance = Math.hypot(dx, dz);
-      if (distance >= .75)
-        continue;
-      const angle = index * 2.4, amount = Math.min((.75 - distance) * .5, Math.max(0, dt - (locks?.[id] ?? 0)) * enemy.speed * .5);
-      const x = (distance > .001 ? dx / distance : Math.sin(angle)) * amount;
-      const z = (distance > .001 ? dz / distance : Math.cos(angle)) * amount;
-      if (movementWorld)
-        movementWorld.move(id, enemy, x, z, dt);
-      else
-        [enemy.x, enemy.z] = constrain(state.layout.boundary, [enemy.x + x, enemy.z + z]);
-    }
-  });
+    if (!enemy.home || enemy.hp <= 0 || enemy.returning || enemy.lock > 0 || enemy.attackTime >= 0) continue;
+    if (enemy.engaged || Math.hypot(enemy.x - state.player.x, enemy.z - state.player.z) <= enemyNoticeRadius && movement.lineOfSight(enemy, state.player))
+      movement.approach(id, enemy, state.player, enemy.kind, dt);
+  }
 }
 
 /** Pursuit and returning use the same navigation step; callers own their distance cap. */
-function moveEnemy(state: Encounter, id: EnemyId, target: ActorState, dt: number, distance: number, movementWorld?: Movement): number {
+function moveEnemy(state: Encounter, id: EnemyId, target: ActorState, dt: number, distance: number, movementWorld?: Movement, approach = false): number {
   const enemy = state.enemies[id];
-  const desired = movementWorld?.direction(enemy, target, dt) ?? { x: target.x - enemy.x, z: target.z - enemy.z };
+  const goal = approach ? movementWorld?.approach?.(id, enemy, target, enemy.kind, 0) ?? target : target;
+  const desired = movementWorld?.direction(enemy, goal, dt) ?? { x: target.x - enemy.x, z: target.z - enemy.z };
   const length = Math.hypot(desired.x, desired.z);
   const x = length ? desired.x / length * distance : 0, z = length ? desired.z / length * distance : 0;
-  if (movementWorld) movementWorld.move(id, enemy, x, z, dt);
+  const velocity = movementWorld?.steer?.(id, enemy, x, z, dt, approach) ?? { x, z };
+  const beforeX = enemy.x, beforeZ = enemy.z;
+  if (movementWorld) movementWorld.move(id, enemy, velocity.x, velocity.z, dt);
   else { enemy.x += x; enemy.z += z; }
-  if (length) enemy.yaw = Math.atan2(desired.x, desired.z);
-  return length;
+  const movedX = enemy.x - beforeX, movedZ = enemy.z - beforeZ, moved = Math.hypot(movedX, movedZ);
+  if (moved > .0001) enemy.yaw = Math.atan2(movedX, movedZ);
+  return moved > .0001 ? moved : 0;
 }
 
 export function stepEnemy(state: Encounter, id: EnemyId, dt: number, timing: Timings, events: EncounterEvent[], movementWorld: Movement | undefined, readyAfter: number, lockedFor = 0): void {
@@ -91,9 +80,9 @@ export function stepEnemy(state: Encounter, id: EnemyId, dt: number, timing: Tim
   // Keep the pre-movement distance: the original encounter uses it to start an enemy strike.
   const distance = Math.hypot(dx, dz);
   if (enemy.lock <= 0 && (distance > 1.45 || Math.abs(player.y - enemy.y) >= .8 || movementWorld && !movementWorld.lineOfSight(enemy, player)) && enemy.attackTime < 0) {
-    moveEnemy(state, id, player, dt, movementElapsed * enemy.speed, movementWorld);
+    const moved = moveEnemy(state, id, player, dt, movementElapsed * enemy.speed, movementWorld, true);
     [enemy.x, enemy.z] = constrain(state.layout.boundary, [enemy.x, enemy.z]);
-    animate('run');
+    animate(moved ? 'run' : 'idle');
   }
   else {
     movementWorld?.move(id, enemy, 0, 0, dt);
@@ -137,7 +126,7 @@ function stepCaster(state: Encounter, id: EnemyId, dt: number, timing: Timings, 
   let attackElapsed = dt;
   const visible = !movementWorld || movementWorld.lineOfSight(enemy, player);
   if (enemy.attackTime < 0 && enemy.lock <= 0 && (distance > casterAttackRange || Math.abs(player.y - enemy.y) >= .8 || !visible)) {
-    const length = moveEnemy(state, id, player, dt, movementElapsed * enemy.speed, movementWorld);
+    const length = moveEnemy(state, id, player, dt, movementElapsed * enemy.speed, movementWorld, true);
     [enemy.x, enemy.z] = constrain(state.layout.boundary, [enemy.x, enemy.z]);
     events.push({ type: 'animation', actor: id, motion: length ? 'run' : 'idle' });
   }

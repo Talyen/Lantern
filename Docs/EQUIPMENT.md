@@ -90,7 +90,7 @@ The twelve actions can share any six slots. Earned actions fill the first empty 
 
 New abilities use the following initial tuning:
 
-- Thrust: 130% weapon damage, narrow single target and +0.45 m reach.
+- Thrust: 130% weapon damage, narrow single target and +0.45 m reach. A visible living enemy in its aimed cone, beyond current reach but within another 0.75 m, permits a short gap-closing step. Near targets and empty swings stay planted. Direction/distance snapshot on acceptance; travel occupies the final half of preparation, scales with attack rate and resolves before contact. Bodies and scenery stop the lunge without sideways sliding. It grants no immunity, homing or knockback; dodge cancels remaining travel.
 - Riposte: a 0.75-second stance that prevents one frontal melee hit and counters its attacker for 200% damage if still within reach. No Shield is required. Rear, arrow and magical hits remain damaging. Base cost is 20 mana with a six-second cooldown, committed on the prevented hit; an unused stance expires free.
 - Executioner's Strike: 350% weapon damage to one target. Existing protected raider attacks are explicitly breakable; protected preparation opts out through the authored attack interruption policy, while heavy-breakable preparation permits the cut. Its reviewed planted overhead source uses a 1.05-second action and 0.74-second contact, before attack-rate scaling.
 - Onslaught: three frontal cuts for 100%, 150% and 200% damage. Dodge stops remaining cuts without refunding the first committed cut.
