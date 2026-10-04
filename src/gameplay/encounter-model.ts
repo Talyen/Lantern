@@ -35,6 +35,7 @@ export type EnemyState = ActorState & {
 };
 export const playerMaxHealth = baseStats.maxHealth, enemyMaxHealth = 200, playerMaxMana = baseStats.maxMana;
 export const enemyAttackDamage = 20;
+export const healthRegeneration = { delay: 8, rate: .005 } as const;
 export const enemyNoticeRadius = 6, enemyLeashRadius = 10;
 export const dodgeDuration = 0.45, dodgeDistance = 2.4, dodgeInvulnerability = 0.25, dodgeCooldown = 1;
 export type Projectile = {
@@ -115,6 +116,8 @@ export type Encounter = {
   attackCooldown: number;
   invulnerability: number;
   playerMana: number;
+  healthRecoveryDelay: number;
+  healthRecoveryElapsed: number;
   weaponSets: [Loadout, Loadout];
   activeSet: WeaponSet;
   abilityCooldowns: Partial<Record<AbilityId, number>>;

@@ -2,7 +2,7 @@ import { stepCombatEffects } from './encounter-effects';
 import { baseStats, resolveCombatStats } from './combat-stats';
 import { legacyLayout, type EncounterLayout } from './area';
 import {
-  playerMaxHealth, enemyMaxHealth, playerMaxMana, type ActorState, type EnemyId, type EnemyState,
+  playerMaxHealth, enemyMaxHealth, playerMaxMana, healthRegeneration, type ActorState, type EnemyId, type EnemyState,
   type EnemyKind, type Phase, type Encounter, type EncounterEvent, type ActorTiming, type Timings,
   type Input, type Movement,
 } from './encounter-model';
@@ -14,6 +14,7 @@ export {
   playerMaxHealth, enemyMaxHealth, playerMaxMana, enemyAttackDamage, enemyNoticeRadius,
   enemyLeashRadius, dodgeDuration, dodgeDistance, dodgeInvulnerability, dodgeCooldown,
   casterAttackRange, casterBoltSpeed,
+  healthRegeneration,
 } from './encounter-model';
 export type {
   EnemyId, ActorId, EnemyKind, Motion, Phase, ActorState, EnemyState, Projectile, PendingInput,
@@ -49,7 +50,7 @@ export function createEncounter(phase: Phase = 'loading', layout: EncounterLayou
   }));
   const stats = resolveCombatStats([{ id: 'starter', item: 'axe', quantity: 1, slot: 'main', x: 0, y: 0 }]);
   return { proficiency:{}, ultimateCooldown:0, berserkingRemaining:0, rains:[], riposte:undefined, frameManaStart:undefined, frameElapsed:0, stats, setStats: [stats, resolveCombatStats([])], weapon: 'axe', shield: false, blocking: false, blockFrameOffset: 0, pending: null, projectiles: [], nextProjectile: 0, phase, layout, player, enemyIds, enemies,
-    attackCooldown: 0, invulnerability: 0, playerMana: playerMaxMana,
+    attackCooldown: 0, invulnerability: 0, playerMana: playerMaxMana, healthRecoveryDelay: healthRegeneration.delay, healthRecoveryElapsed: 0,
     weaponSets: [{ main: 'axe', off: null }, { main: null, off: null }], activeSet: 0, abilityCooldowns: {}, potionCooldown: 0, playerAction: null,
     dodgeRemaining: 0, dodgeCooldown: 0, dodgeFrameOffset: 0, invulnerabilityBeforeDodge: 0, dodgeDirection: { x: 0, z: 0 } };
 }
@@ -65,7 +66,15 @@ export function resetEncounter(state: Encounter): EncounterEvent[] {
 }
 
 /** Contacts compare immunity against their offset before the frame consumes its clock. */
-function finishPlayerFrame(state: Encounter, dt: number, events: EncounterEvent[]): EncounterEvent[] {
+function finishPlayerFrame(state: Encounter, dt: number, events: EncounterEvent[], combatWasActive: boolean): EncounterEvent[] {
+  // Check both ends of the frame: a final kill or consumed bolt still postpones recovery.
+  state.healthRecoveryElapsed = 0;
+  if (combatWasActive || inCombat(state) || events.some(event => event.type === 'impact')) {
+    state.healthRecoveryDelay = healthRegeneration.delay;
+  } else if (state.player.hp > 0) {
+    state.healthRecoveryElapsed = Math.max(0, dt - state.healthRecoveryDelay);
+    state.healthRecoveryDelay = Math.max(0, state.healthRecoveryDelay - dt);
+  }
   if (state.riposte && state.riposte.remaining<=0) {state.riposte=undefined; state.playerAction=null;}
   finishBattleCry(state,dt,events);
   state.invulnerability = Math.max(0, state.invulnerability - dt);
@@ -75,20 +84,24 @@ function finishPlayerFrame(state: Encounter, dt: number, events: EncounterEvent[
 
 /** Safe and cleared areas retain attacks and projectile presentation without enemy AI. */
 export function stepExploration(state: Encounter, dt: number, input: Input, movementWorld?: Movement, timing?: Timings): EncounterEvent[] {
+  state.healthRecoveryElapsed = 0;
   if (input.paused || state.player.hp <= 0 || !['playing', 'won'].includes(state.phase))
     return [];
+  const combatWasActive = inCombat(state);
   const clocks = timing ?? (state.layout.enemies ? Object.fromEntries(['player', ...state.enemyIds].map(id => [id, explorationTimings.player])) : explorationTimings);
   const { events, attackElapsed, attackOffset, movementElapsed } = preparePlayer(state, dt, input, clocks.player, movementWorld);
   stepPlayerAttack(state, attackElapsed, clocks, events, movementWorld, attackOffset);
   stepProjectiles(state, dt, clocks, events, movementWorld);
   stepCombatEffects(state,dt,clocks,events,movementWorld);
   events.push(...movePlayer(state, movementElapsed, input, movementWorld));
-  return finishPlayerFrame(state, dt, events);
+  return finishPlayerFrame(state, dt, events, combatWasActive);
 }
 
 export function stepEncounter(state: Encounter, dt: number, input: Input, timing: Timings, movementWorld?: Movement): EncounterEvent[] {
+  state.healthRecoveryElapsed = 0;
   if (input.paused || state.phase !== 'playing')
     return [];
+  const combatWasActive = inCombat(state);
   const { events, attackElapsed, attackOffset, movementElapsed } = preparePlayer(state, dt, input, timing.player, movementWorld);
   // New windups consume only the part of the frame after recovery/cooldown.
   let readiness = enemyReadiness.get(state);
@@ -107,7 +120,7 @@ export function stepEncounter(state: Encounter, dt: number, input: Input, timing
   stepProjectiles(state, dt, timing, events, movementWorld);
   stepCombatEffects(state,dt,timing,events,movementWorld);
   if (state.phase !== 'playing')
-    return finishPlayerFrame(state, dt, events);
+    return finishPlayerFrame(state, dt, events, combatWasActive);
   events.push(...movePlayer(state, movementElapsed, input, movementWorld));
   for (const id of state.enemyIds) {
     if (state.phase !== 'playing')
@@ -116,5 +129,5 @@ export function stepEncounter(state: Encounter, dt: number, input: Input, timing
       stepEnemy(state, id, dt, timing, events, movementWorld, readiness.values[id], readiness.locks[id]);
   }
   separateEnemies(state, dt, movementWorld, readiness.locks);
-  return finishPlayerFrame(state, dt, events);
+  return finishPlayerFrame(state, dt, events, combatWasActive);
 }

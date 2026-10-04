@@ -3,7 +3,8 @@ import type { LootItem } from './inventory';
 
 export type EnemyRank = 'normal' | 'elite' | 'boss';
 export type RewardMetadata = { level?: number; gold?: boolean };
-export type EnemyRewards = RewardMetadata & { humanoid?: boolean; rank?: EnemyRank };
+export type EquipmentDropPool = { chance: number; items: ItemId[] };
+export type EnemyRewards = RewardMetadata & { humanoid?: boolean; rank?: EnemyRank; equipmentDrops?: EquipmentDropPool };
 export type GoldSource = RewardMetadata & { areaLevel?: number } & (
   | { kind: 'enemy'; humanoid?: boolean; rank?: EnemyRank }
   | { kind: 'chest' }
@@ -20,6 +21,11 @@ export function rollGold(source: GoldSource, random = Math.random): number {
   if (random() >= chance) return 0;
   const level = source.level ?? source.areaLevel ?? 1;
   return Math.min(Number.MAX_SAFE_INTEGER, (3 + Math.floor(random() * 3) + level - 1) * multiplier);
+}
+/** One fixed catalog identity per successful roll; repeat rewards carry no permanent claim. */
+export function rollEquipment(pool: EquipmentDropPool | undefined, random = Math.random): ItemId | null {
+  if (!pool || pool.chance <= 0 || !pool.items.length || random() >= pool.chance) return null;
+  return pool.items[Math.floor(random() * pool.items.length)] ?? null;
 }
 export const shopStock: readonly { item: LootItem; price: number }[] = [
   { item: 'potion', price: 5 }, { item: 'sword', price: 60 }, { item: 'bow', price: 60 },

@@ -24,6 +24,7 @@ export function enterAreaEncounter(encounter: Encounter, area: AreaDefinition, e
     berserkingRemaining: recover ? 0 : encounter.berserkingRemaining,
     proficiency: { ...character.xp },
     potionCooldown: encounter.potionCooldown,
+    healthRecoveryDelay: encounter.healthRecoveryDelay,
     dodgeCooldown: encounter.dodgeCooldown,
     weaponSets: encounter.weaponSets,
     activeSet: encounter.activeSet,

@@ -1,7 +1,7 @@
 import type { AreaDefinition, Chest } from '../levels/types';
 import type { EnemyId } from './encounter';
 import type { ItemId } from './equipment';
-import { rollGold } from './economy';
+import { rollGold, rollEquipment } from './economy';
 import type { DropOptions, GroundItem } from './ground-loot';
 
 type Reward = { item: GroundItem; quantity: number; options?: DropOptions };
@@ -32,5 +32,8 @@ export function enemyRewards(
   const source = area.layout.enemies?.find(enemy => enemy.id === id) ?? legacySource;
   const gold = rollGold({ ...source, kind: 'enemy', areaLevel: area.level }, random);
   if (gold) rewards.push({ item: 'gold', quantity: gold });
-  return [...rewards, ...equipmentRewards(area.enemyEquipment?.[id] ?? [], claims)];
+  rewards.push(...equipmentRewards(area.enemyEquipment?.[id] ?? [], claims));
+  const equipment = rollEquipment(source?.equipmentDrops, random);
+  if (equipment) rewards.push({ item: equipment, quantity: 1 });
+  return rewards;
 }

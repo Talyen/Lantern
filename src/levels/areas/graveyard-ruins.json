@@ -63,7 +63,16 @@
           "off": null
         },
         "humanoid": true,
-        "rank": "normal"
+        "rank": "normal",
+        "equipmentDrops": {
+          "chance": 0.15,
+          "items": [
+            "sword",
+            "shield",
+            "weathered-mail",
+            "iron-signet"
+          ]
+        }
       },
       {
         "id": "court-warrior-2",
@@ -79,7 +88,16 @@
           "off": null
         },
         "humanoid": true,
-        "rank": "normal"
+        "rank": "normal",
+        "equipmentDrops": {
+          "chance": 0.15,
+          "items": [
+            "sword",
+            "shield",
+            "weathered-mail",
+            "iron-signet"
+          ]
+        }
       },
       {
         "id": "court-warrior-3",
@@ -95,7 +113,16 @@
           "off": null
         },
         "humanoid": true,
-        "rank": "normal"
+        "rank": "normal",
+        "equipmentDrops": {
+          "chance": 0.15,
+          "items": [
+            "sword",
+            "shield",
+            "weathered-mail",
+            "iron-signet"
+          ]
+        }
       }
     ]
   },

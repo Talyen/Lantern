@@ -25,6 +25,12 @@ export function validateAreas(input: Record<string, AreaDefinition>): string[] {
         reward(spawn);
         if (spawn.humanoid !== undefined && typeof spawn.humanoid !== 'boolean') fail('humanoid eligibility must be boolean');
         if (spawn.rank !== undefined && !['normal','elite','boss'].includes(spawn.rank)) fail('unknown enemy reward rank');
+        if (spawn.equipmentDrops !== undefined) {
+          const pool = spawn.equipmentDrops;
+          if (!pool || !Number.isFinite(pool.chance) || pool.chance < 0 || pool.chance > 1
+            || !Array.isArray(pool.items) || !pool.items.length || !pool.items.every(isItemId)
+            || new Set(pool.items).size !== pool.items.length) fail('invalid enemy equipment drop pool');
+        }
       }
       const e = area.envelope;
       if (!finite([e.width, e.depth, e.apron, e.yaw, e.reference.width, e.reference.height, e.reference.zoom, ...e.screen]) || e.width <= 0 || e.depth <= 0 || e.apron < 0) fail('invalid design envelope');

@@ -9,10 +9,10 @@ import clearing from '../src/levels/areas/clearing.json';
 import type { AreaDefinition } from '../src/levels/types';
 import { equipInstance, itemLoadout, moveItem, receive, removeQuantity, sortedItems, validItems, transferItem, type InventoryItem } from '../src/gameplay/inventory';
 const home = homestead as unknown as AreaDefinition;
-// Older reward fixtures isolate equipment/scroll behavior from the new independent gold rolls.
+// Older reward fixtures isolate guaranteed equipment/scroll behavior from independent chance rewards.
 const authoredField = clearing as unknown as AreaDefinition;
 const field: AreaDefinition = { ...authoredField, layout: { ...authoredField.layout,
-  enemy: { ...authoredField.layout.enemy!, gold: false }, caster: { ...authoredField.layout.caster!, gold: false } },
+  enemy: { ...authoredField.layout.enemy!, gold: false, equipmentDrops: undefined }, caster: { ...authoredField.layout.caster!, gold: false, equipmentDrops: undefined } },
   chests: authoredField.chests?.map(chest => ({ ...chest, gold: false })) };
 
 const memory = () => { const data = new Map<string, string>(); return { data, getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => { data.set(key, value); } }; };
@@ -599,6 +599,30 @@ test('successful and failed gold rolls cannot repeat through travel, death or ch
     expect(state.session().drops.filter(drop=>drop.item==='gold')).toHaveLength(draw === 0 ? 2 : 0);
     state.closeSave();
   }
+});
+
+test.each([0, .8])('chance equipment rolls survive relaunch without duplicating rewards or consuming discovery claims (%s)', draw => {
+  const area = structuredClone(field);
+  area.layout.enemy!.equipmentDrops = { chance: .15, items: ['sword'] };
+  const storage = memory(), state = new Adventure(storage, () => draw), encounter = createEncounter('playing');
+  state.character.campClaims = ['sword'];
+  state.enter(encounter, area); encounter.enemies.enemy.hp = 0; state.step(encounter, area, .01);
+  const rewards = state.session().drops.filter(drop => drop.item === 'sword');
+  expect(rewards).toHaveLength(draw === 0 ? 1 : 0);
+  if (rewards.length) {
+    const drop = rewards[0];
+    expect(drop.claim).toBeUndefined();
+    drop.age = .6;
+    expect(state.pickup(drop.id, drop.position, true)).toBe(true);
+  }
+  state.save(); state.closeSave();
+  const random = vi.fn(() => 0), restored = new Adventure(storage, random);
+  restored.enter(encounter, area); restored.step(encounter, area, .01);
+  expect(random).not.toHaveBeenCalled();
+  expect(restored.session().drops.filter(drop => drop.item === 'sword')).toHaveLength(0);
+  expect(restored.character.items.filter(item => item.item === 'sword')).toHaveLength(draw === 0 ? 1 : 0);
+  expect(restored.character.campClaims).toEqual(['sword']);
+  restored.closeSave();
 });
 
 function trading() {

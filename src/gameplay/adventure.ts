@@ -10,7 +10,7 @@ import {
 import { purchase, sale, repurchase } from './shop-transactions';
 import { canRepairShelter, restoredShelter, validatedContainers } from './homestead-transactions';
 import { validBar, abilityUnlocked, weaponTrees, axeProgression, type AbilityId, type ActionBar, type WeaponSet } from './abilities';
-import { createEncounter, type Encounter, type EnemyId } from './encounter';
+import { createEncounter, healthRegeneration, inCombat, type Encounter, type EnemyId } from './encounter';
 import { near, type Point, type Spawn } from './area';
 import type { AreaDefinition, Campfire, Chest } from '../levels/types';
 import { isEquipmentSlot } from './equipment';
@@ -44,7 +44,7 @@ export type AdventureEvent =
   }
   | {
     type: 'healthRecovered';
-    source: 'potion' | 'campfire';
+    source: 'potion' | 'campfire' | 'regeneration';
     amount: number;
     elapsed: number;
     finished: boolean;
@@ -56,7 +56,7 @@ export type AdventureEvent =
 /** Continuing character state and inactive area snapshots; no rendering/browser dependencies. */
 export class Adventure {
   private events: AdventureEvent[] = [];
-  private healing = false;
+  private healing: 'campfire' | 'regeneration' | null = null;
   takeEvents(): AdventureEvent[] {
     const events = this.events;
     this.events = [];
@@ -217,7 +217,7 @@ export class Adventure {
     this.cancelPickup();
     this.notice = '';
     this.noticeTime = 0;
-    this.healing = false;
+    this.healing = null;
     this.atShelter = false;
     this.checkpoint = 0;
     this.events = [];
@@ -383,7 +383,7 @@ export class Adventure {
     if (firstEntry) Object.assign(encounter, structuredClone(this.character.outing.cooldowns));
     this.castRemaining = 0;
     this.cancelPickup();
-    this.healing = false;
+    this.healing = null;
     this.atShelter = false;
     this.events = [];
     if (recover) this.portal = null;
@@ -529,7 +529,7 @@ export class Adventure {
       this.castRemaining = 0;
       this.portal = null;
       this.cancelPickup();
-      this.healing = false;
+      this.healing = null;
       if (changed) this.save();
       return;
     }
@@ -571,19 +571,23 @@ export class Adventure {
   }
 
   private updateHealing(encounter: Encounter, area: AreaDefinition, point: Point, dt: number): void {
-    const healing = encounter.player.hp < encounter.stats.maxHealth && !!area.campfires?.some(
+    const atFire = !!area.campfires?.some(
       fire => fire.heals && near(point, fire.position, 3) && this.fireSafe(area, fire, encounter),
     );
-    if (healing && !this.healing) this.events.push({ type: 'healing' });
-    if (!healing && this.healing) this.events.push({ type: 'healthRecovered', source: 'campfire', amount: 0, elapsed: 0, finished: true, position: { x: encounter.player.x, y: encounter.player.y, z: encounter.player.z } });
+    const healing = encounter.player.hp < encounter.stats.maxHealth
+      ? atFire ? 'campfire' : encounter.healthRecoveryElapsed > 0 && !inCombat(encounter) ? 'regeneration' : null
+      : null;
+    if (healing === 'campfire' && this.healing !== 'campfire') this.events.push({ type: 'healing' });
+    if (this.healing && healing !== this.healing) this.events.push({ type: 'healthRecovered', source: this.healing, amount: 0, elapsed: 0, finished: true, position: { x: encounter.player.x, y: encounter.player.y, z: encounter.player.z } });
     this.healing = healing;
     if (healing) {
       const previousHealth = encounter.player.hp;
+      const elapsed = healing === 'campfire' ? dt : encounter.healthRecoveryElapsed;
       encounter.player.hp = Math.min(
         encounter.stats.maxHealth,
-        encounter.player.hp + encounter.stats.maxHealth * .03 * dt,
+        encounter.player.hp + encounter.stats.maxHealth * (healing === 'campfire' ? .03 : healthRegeneration.rate) * elapsed,
       );
-      this.events.push({ type: 'healthRecovered', source: 'campfire', amount: encounter.player.hp - previousHealth, elapsed: dt, finished: encounter.player.hp >= encounter.stats.maxHealth, position: { x: encounter.player.x, y: encounter.player.y, z: encounter.player.z } });
+      this.events.push({ type: 'healthRecovered', source: healing, amount: encounter.player.hp - previousHealth, elapsed, finished: encounter.player.hp >= encounter.stats.maxHealth, position: { x: encounter.player.x, y: encounter.player.y, z: encounter.player.z } });
     }
   }
 

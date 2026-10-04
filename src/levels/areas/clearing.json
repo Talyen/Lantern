@@ -56,7 +56,16 @@
       "yaw": -0.7853981633974483,
       "level": 1,
       "rank": "normal",
-      "humanoid": true
+      "humanoid": true,
+      "equipmentDrops": {
+        "chance": 0.15,
+        "items": [
+          "axe",
+          "shield",
+          "guard-helm",
+          "trail-boots"
+        ]
+      }
     },
     "caster": {
       "position": [
@@ -66,7 +75,15 @@
       "yaw": 0.72,
       "level": 1,
       "rank": "normal",
-      "humanoid": true
+      "humanoid": true,
+      "equipmentDrops": {
+        "chance": 0.15,
+        "items": [
+          "staff",
+          "quilted-coat",
+          "amber-amulet"
+        ]
+      }
     }
   },
   "seed": 137,
