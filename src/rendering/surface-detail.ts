@@ -16,7 +16,7 @@ export function prepareSurfaceHighlights(material: MeshPhysicalNodeMaterial): vo
   material.specularIntensityNode = Fn(() => {
     // Resolve after consumers install procedural roughness. Geometric AA must
     // not classify an otherwise polished surface as dry at silhouette edges.
-    const surfaceRoughness = material.roughnessNode ?? materialRoughness;
+    const surfaceRoughness = (material.roughnessNode as Node<'float'> | null) ?? materialRoughness;
     return materialSpecularIntensity.mul(mix(1, response.specularIntensity,
       smoothstep(response.roughnessStart, response.roughnessEnd, surfaceRoughness)));
   })();
