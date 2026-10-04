@@ -38,6 +38,7 @@ export function enterAreaEncounter(encounter: Encounter, area: AreaDefinition, e
         next.enemies[id] = {
           ...saved,
           kind: authored.kind,
+          interruption: authored.interruption,
           rig: authored.rig,
           loadout: authored.loadout,
           home: authored.home,

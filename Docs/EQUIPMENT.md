@@ -55,16 +55,16 @@ Reward equipment lists belong to the [clearing area](../src/levels/areas/clearin
 
 | Source | Equipment |
 | --- | --- |
-| Camp chest | Sword, Shield, Bow, Staff, Guard Helm, Weathered Mail, Duelist Gloves |
+| Camp chest | Sword, Shield, Guard Helm, Weathered Mail, Duelist Gloves |
 | Caster defeat | Iron Broadsword, Yew Longbow, Amber Amulet |
-| Trail cache near the approach's mineral stops | Quilted Coat, Trail Boots, Leather Belt |
-| Optional woodland cache east of the approach | Iron Signet, Hearth Ring |
+| Trail cache near the approach's mineral stops | Bow, Quilted Coat, Trail Boots, Leather Belt |
+| Optional woodland cache east of the approach | Staff, Iron Signet, Hearth Ring |
 
 The camp chest gives two Scrolls of Return and two Health Potions per opening, with individual active-play renewal. Current enemy scroll chances remain unchanged. All chests, including equipment-only caches, open independently of enemies; guard metadata is removed. Ground objects use the same [pickup and retention rules](LOOT.md).
 
 Ordinary enemies also have a 15% chance per life to drop one equipment identity from their area-authored `equipmentDrops` pool. Pools reuse existing fixed catalog items; every listed item has equal selection weight. These repeatable drops carry no discovery claim, can be sold, and remain eligible after a guaranteed copy has been claimed. Successful and failed rolls are retained with the enemy life in the saved outing; only renewal permits another roll.
 
-Claims become permanent only on successful collection. Uncollected rewards survive travel, death and relaunch in the saved outing, expiring when their source renews. Guaranteed rewards on renewal offer only equipment that remains unclaimed. Collected guaranteed rewards do not duplicate after relaunch, dropping, selling or source renewal. Each catalog identity currently has one guaranteed source. The legacy serialized name `campClaims` is retained for compatibility and now covers every guaranteed equipment discovery.
+Claims become permanent only on successful collection. Uncollected rewards survive travel, death and relaunch in the saved outing, expiring when their source renews. Guaranteed rewards on renewal offer only equipment that remains unclaimed. Collected guaranteed rewards do not duplicate after relaunch, dropping, selling or source renewal. Each catalog identity currently has one guaranteed source. Moving a discovery changes future openings only: existing saved drops and opened chests remain intact, and earlier collection claims still suppress guaranteed copies at the new source. A guaranteed discovery already on the ground also suppresses a new guaranteed copy until collected or expired; this reservation never becomes a permanent claim by itself. The legacy serialized name `campClaims` is retained for compatibility and now covers every guaranteed equipment discovery.
 
 The [current character save](RUNTIME.md#save-recovery) retains `lantern.character.v1` and backup recovery. Migration preserves item IDs, placements, sets, stash, skill progress, restoration, Rested and earlier claims; older characters initialize new shared slots empty. Stats are derived and never saved as a second source of truth.
 
@@ -92,7 +92,7 @@ New abilities use the following initial tuning:
 
 - Thrust: 130% weapon damage, narrow single target and +0.45 m reach.
 - Riposte: a 0.75-second stance that prevents one frontal melee hit and counters its attacker for 200% damage if still within reach. No Shield is required. Rear, arrow and magical hits remain damaging. Base cost is 20 mana with a six-second cooldown, committed on the prevented hit; an unused stance expires free.
-- Executioner's Strike: 350% weapon damage to one target. Existing protected raider attacks are explicitly breakable; protected attacks opt out through `EnemyState.interruption`, while designated heavy windows permit the cut. Its reviewed planted overhead source uses a 1.05-second action and 0.74-second contact, before attack-rate scaling.
+- Executioner's Strike: 350% weapon damage to one target. Existing protected raider attacks are explicitly breakable; protected preparation opts out through the authored attack interruption policy, while heavy-breakable preparation permits the cut. Its reviewed planted overhead source uses a 1.05-second action and 0.74-second contact, before attack-rate scaling.
 - Onslaught: three frontal cuts for 100%, 150% and 200% damage. Dodge stops remaining cuts without refunding the first committed cut.
 - Poison Arrow: Basic shot timing, 60% immediate damage and 80% damage over four seconds. One Poison effect ticks every 0.5 seconds. Reapplication refreshes duration, replaces the damage snapshot and retains the next tick. Poison does not cause repeated flinches, hit pause or hurt sounds. No poison resistance system is introduced.
 - Multishot: five arrows over 60 degrees, 80% damage each, with at most one damaging arrow per enemy per use. Base cost is 25 mana with a five-second cooldown.
@@ -131,3 +131,16 @@ Berserking unlocks at 100 saved Axe Combat XP (level 2). Effective Axe damage aw
 The compatible Axe battle cry lasts 0.5 seconds and remains planted. Ordinary damage does not interrupt this action; death before completion cancels it without mana or cooldown consumption. Completion commits 50 mana and starts the single shared 60-second Ultimate cooldown. For eight active gameplay seconds, the equipped Axe's post-equipment damage, attack rate and movement speed multiply by 1.4, 1.3 and 1.2. Swaps keep the timer running but remove all three benefits while a different weapon is active. Accepted attacks retain their original snapshots; expiry restores base equipment properties, and death ends the buff. Menus/backgrounding pause gameplay clocks; travel preserves the buff and shared cooldown.
 
 The action bar uses distinct Axe motifs, real casting/cooldown states, a compact timed Berserking badge and brief first-opportunity hints with current bindings. The badge dims outside Axe combat. The saved outing retains committed cooldowns across application relaunch; the temporary Berserking effect is not restored. Four independent adventures and title navigation remain front-end roadmap work. Values above are initial tuning rather than final balance.
+
+## Enemy attack interruption
+
+Enemy spawns author `interruption` independently of reward rank; omitted policies resolve to `ordinary-melee` for raiders and `ordinary-caster` for casters when the encounter is created or renewed. Current encounters retain those ordinary policies. Each enemy currently has one attack; future multi-attack enemies must select the active attack's policy in simulation.
+
+| Policy | Nonlethal direct hits before contact | Recovery |
+| --- | --- | --- |
+| `ordinary-melee` | Interrupt early preparation; the prepared motion's final `commitLead` resists normal hits. Heavy abilities break that commitment. | Interruptible |
+| `ordinary-caster` | Interruptible throughout preparation. | Interruptible; released bolts remain live |
+| `protected` | Continue through all hits, including heavy abilities. | Interruptible |
+| `heavy-window` | Continue through normal hits; heavy abilities interrupt preparation through contact. | Interruptible |
+
+Crushing Blow and Executioner's Strike declare heavy interruption beside their ability definitions. Damage and impact feedback still occur when an attack resists interruption; only successful interruptions start the existing hit reaction and cancel remaining contacts. Contact decisions use the impact's within-frame time, with protection ending after the first contact is consumed. Death always cancels the attack and clears that enemy's bolts; periodic damage never starts a hit reaction. No stagger meter or player interruption rule is introduced.

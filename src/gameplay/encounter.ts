@@ -46,7 +46,7 @@ export function createEncounter(phase: Phase = 'loading', layout: EncounterLayou
     const spawn = home ?? layout.player;
     return [definition.id, { ...actor(...spawn.position, home && phase !== 'loading' ? enemyMaxHealth : 0, 1.45),
         yaw: spawn.yaw, damageType: definition.damageType ?? (definition.kind==='caster' ? definition.rig==='skeleton' ? 'freeze' : 'burn' : 'physical'), kind: definition.kind, rig: definition.rig, loadout: definition.loadout,
-        home, engaged: false, returning: false, lowestHp: enemyMaxHealth, cooldown: .8 + (layout.enemies ? index * .18 : 0) }];
+        home, interruption: definition.interruption ?? (definition.kind === 'caster' ? 'ordinary-caster' : 'ordinary-melee'), engaged: false, returning: false, lowestHp: enemyMaxHealth, cooldown: .8 + (layout.enemies ? index * .18 : 0) }];
   }));
   const stats = resolveCombatStats([{ id: 'starter', item: 'axe', quantity: 1, slot: 'main', x: 0, y: 0 }]);
   return { proficiency:{}, ultimateCooldown:0, berserkingRemaining:0, rains:[], riposte:undefined, frameManaStart:undefined, frameElapsed:0, stats, setStats: [stats, resolveCombatStats([])], weapon: 'axe', shield: false, blocking: false, blockFrameOffset: 0, pending: null, projectiles: [], nextProjectile: 0, phase, layout, player, enemyIds, enemies,

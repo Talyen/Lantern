@@ -3,7 +3,7 @@ import type { SkillXP } from './skills';
 import type { AbilityId, WeaponSet } from './abilities';
 import type { Loadout, Weapon } from './equipment';
 import { baseStats, type CombatStats } from './combat-stats';
-import type { EncounterLayout, Spawn, EnemyRig } from './area';
+import type { EncounterLayout, Spawn, EnemyRig, EnemyInterruption } from './area';
 
 /** Encounter simulation. Positions, clocks and animation timings use world units and seconds. */
 export type EnemyId = string;
@@ -32,7 +32,7 @@ export type EnemyState = ActorState & {
   returning: boolean;
   cooldown: number;
   lowestHp: number;
-  interruption?: 'protected' | 'heavy-window';
+  interruption: EnemyInterruption;
   poison?: {remaining:number; nextTick:number; damage:number; impactId:number; firstStep?:number};
 };
 export const playerMaxHealth = baseStats.maxHealth, enemyMaxHealth = 200, playerMaxMana = baseStats.maxMana;

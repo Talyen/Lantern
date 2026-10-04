@@ -2913,8 +2913,6 @@
       "equipment": [
         "sword",
         "shield",
-        "bow",
-        "staff",
         "guard-helm",
         "weathered-mail",
         "duelist-gloves"
@@ -2929,6 +2927,7 @@
       ],
       "scrolls": 0,
       "equipment": [
+        "bow",
         "quilted-coat",
         "trail-boots",
         "leather-belt"
@@ -2943,6 +2942,7 @@
       ],
       "scrolls": 0,
       "equipment": [
+        "staff",
         "iron-signet",
         "hearth-ring"
       ]

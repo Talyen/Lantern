@@ -25,6 +25,7 @@ export function validateAreas(input: Record<string, AreaDefinition>): string[] {
       for (const spawn of [...(area.layout.enemies ?? []), area.layout.enemy, area.layout.caster]) if (spawn) {
         reward(spawn);
         if(spawn.damageType!==undefined && !isDamageType(spawn.damageType)) fail('unknown enemy damage type');
+        if (spawn.interruption !== undefined && !['ordinary-melee','ordinary-caster','protected','heavy-window'].includes(spawn.interruption)) fail('unknown enemy attack interruption policy');
         if (spawn.humanoid !== undefined && typeof spawn.humanoid !== 'boolean') fail('humanoid eligibility must be boolean');
         if (spawn.rank !== undefined && !['normal','elite','boss'].includes(spawn.rank)) fail('unknown enemy reward rank');
         if (spawn.equipmentDrops !== undefined) {

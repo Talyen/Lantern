@@ -452,13 +452,19 @@ export class Adventure {
     return this.session(area.id).chests[chest.id] ??= { opened: false, remaining: chest.scrolls };
   }
 
+  /** Pending discoveries also reserve their identity when authored reward sources move. */
+  private unavailableDiscoveries(): ItemId[] {
+    return [...this.character.campClaims, ...[...this.sessions.values()].flatMap(session =>
+      session.drops.flatMap(drop => drop.claim ? [drop.claim] : []))];
+  }
+
   openChest(encounter: Encounter, area: AreaDefinition, chest: Chest): boolean {
     if (this.currentArea !== area.id || encounter.player.hp <= 0
       || this.castRemaining > 0 || !near([encounter.player.x, encounter.player.z], chest.position, 1.8)) return false;
     const state = this.chest(area, chest);
     if (state.opened) return false;
     this.events.push({ type: 'chestOpen', position: { x: chest.position[0], z: chest.position[1] } });
-    for (const reward of chestRewards(chest, state.remaining, area.level, this.character.campClaims, this.random))
+    for (const reward of chestRewards(chest, state.remaining, area.level, this.unavailableDiscoveries(), this.random))
       this.spawnDrop(reward.item, reward.quantity, chest.position, { ...reward.options, source: { kind: 'chest', id: chest.id } });
     state.opened = true;
     state.remaining = 0;
@@ -625,7 +631,7 @@ export class Adventure {
       session.enemies[id] = { hp: 0, lowestHp: enemy.lowestHp, rewarded: true, renewAt: session.enemies[id]?.renewAt ?? this.elapsed + renewalSeconds };
       this.nextRenewalAt = Math.min(this.nextRenewalAt, session.enemies[id].renewAt!);
       const point: Point = [enemy.x, enemy.z];
-      for (const reward of enemyRewards(area, id, this.character.campClaims, this.random))
+      for (const reward of enemyRewards(area, id, this.unavailableDiscoveries(), this.random))
         this.spawnDrop(reward.item, reward.quantity, point, { ...reward.options, source: { kind: 'enemy', id } });
       this.save();
     }

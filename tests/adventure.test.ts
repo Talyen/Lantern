@@ -138,14 +138,14 @@ test('the chest scatters rewards once per session and only collected gear is per
   encounter.enemies.enemy.hp = 0; encounter.phase = 'won';
   expect(state.openChest(encounter, field, chest)).toBe(false);
   expect(state.character.equipment).toEqual(['axe']); expect(state.character.scrolls).toBe(3);
-  expect(state.session().drops).toHaveLength(9); expect(state.openChest(encounter, field, chest)).toBe(false);
+  expect(state.session().drops).toHaveLength(7); expect(state.openChest(encounter, field, chest)).toBe(false);
   const sword = state.session().drops.find(d => d.item === 'sword')!; sword.age = .6;
   expect(state.pickup(sword.id, chest.position, true)).toBe(true);
   state.enter(encounter, home); state.enter(encounter, field);
-  expect(state.session().drops).toHaveLength(8);
+  expect(state.session().drops).toHaveLength(6);
   const restored = new Adventure(storage); restored.enter(encounter, field, { position: chest.position, yaw: 0 }); encounter.enemies.enemy.hp = 0;
   restored.openChest(encounter, field, chest);
-  expect(restored.session().drops.map(d => d.item)).toEqual(['scroll', 'potion', 'shield', 'bow', 'staff','guard-helm','weathered-mail','duelist-gloves']);
+  expect(restored.session().drops.map(d => d.item)).toEqual(['scroll', 'potion', 'shield','guard-helm','weathered-mail','duelist-gloves']);
 });
 
 test('legacy characters migrate equipped copies, resources and claimed rewards without loss', () => {
@@ -234,7 +234,7 @@ test('the separate caster and camp guard retain independent defeat and reward st
   expect(state.openChest(encounter,field,chest)).toBe(false);
   state.enter(encounter,home,undefined,true); state.enter(encounter,field);
   expect([encounter.enemies.caster.hp,encounter.enemies.enemy.hp,encounter.phase]).toEqual([0,0,'won']);
-  expect(state.session(field.id).drops).toHaveLength(14);
+  expect(state.session(field.id).drops).toHaveLength(12);
 });
 
 test('landing and physical access gate pickups, and a casting scroll cannot be dropped', () => {
@@ -256,7 +256,7 @@ test('adventure sound facts describe successful changes once and do not replay a
   expect(adventure.openChest(encounter,field,chest)).toBe(true);
   const rewards=adventure.takeEvents();
   expect(rewards.filter(e=>e.type==='chestOpen')).toHaveLength(1);
-  expect(rewards.filter(e=>e.type==='lootDrop')).toHaveLength(9);
+  expect(rewards.filter(e=>e.type==='lootDrop')).toHaveLength(7);
   const sword=adventure.session().drops.find(drop=>drop.item==='sword')!;
   sword.age=.6; expect(adventure.pickup(sword.id,sword.position,true)).toBe(true);
   expect(adventure.takeEvents().filter(e=>e.type==='lootPickup')).toHaveLength(1);
@@ -523,7 +523,7 @@ test('Restart refreshes chest rewards, drops and portals while retaining collect
   expect(state.session().drops).toEqual([]);
   expect(state.portal).toBeNull(); expect(state.castRemaining).toBe(0);
   expect(state.openChest(encounter,field,chest)).toBe(true);
-  expect(state.session().drops.map(d=>d.item)).toEqual(['scroll','potion','shield','bow','staff','guard-helm','weathered-mail','duelist-gloves']);
+  expect(state.session().drops.map(d=>d.item)).toEqual(['scroll','potion','shield','guard-helm','weathered-mail','duelist-gloves']);
 });
 
 test('shared equipment stays across swaps, accepts only its slots, and full-bag removal is atomic', () => {
@@ -565,10 +565,10 @@ test('unguarded caches and caster gear are claimed only on collection and reoffe
   const storage=memory(),adventure=new Adventure(storage,()=>1),encounter=createEncounter('playing'),cache=field.chests![1];
   adventure.enter(encounter,field,{position:cache.position,yaw:0});expect(adventure.openChest(encounter,field,cache)).toBe(true);
   const coat=adventure.session().drops.find(drop=>drop.item==='quilted-coat')!;coat.age=.6;expect(adventure.pickup(coat.id,coat.position,true)).toBe(true);
-  encounter.enemies.caster.hp=0;adventure.step(encounter,field,.01);expect(adventure.session().drops.filter(drop=>drop.claim).map(drop=>drop.item)).toEqual(['trail-boots','leather-belt','iron-broadsword','yew-longbow','amber-amulet']);
-  adventure.enter(encounter,home,undefined,true);adventure.enter(encounter,field);expect(adventure.session().drops.filter(drop=>drop.claim)).toHaveLength(5);
+  encounter.enemies.caster.hp=0;adventure.step(encounter,field,.01);expect(adventure.session().drops.filter(drop=>drop.claim).map(drop=>drop.item)).toEqual(['bow','trail-boots','leather-belt','iron-broadsword','yew-longbow','amber-amulet']);
+  adventure.enter(encounter,home,undefined,true);adventure.enter(encounter,field);expect(adventure.session().drops.filter(drop=>drop.claim)).toHaveLength(6);
   const restored=new Adventure(storage,()=>1);restored.enter(encounter,field,{position:cache.position,yaw:0});restored.openChest(encounter,field,cache);encounter.enemies.caster.hp=0;restored.step(encounter,field,.01);
-  expect(restored.session().drops.filter(drop=>drop.claim).map(drop=>drop.item)).toEqual(['trail-boots','leather-belt','iron-broadsword','yew-longbow','amber-amulet']);
+  expect(restored.session().drops.filter(drop=>drop.claim).map(drop=>drop.item)).toEqual(['bow','trail-boots','leather-belt','iron-broadsword','yew-longbow','amber-amulet']);
 });
 
 
@@ -781,4 +781,30 @@ test('travel clears an uncommitted Riposte stance without spending its costs',()
   encounter.riposte={remaining:.5,action:{duration:.62,contacts:[.26],damage:100,rate:1,reach:2,arc:Math.PI/4,weapon:'sword',ability:'riposte',mana:20,cooldown:6}};
   adventure.enter(encounter,home);
   expect(encounter.riposte).toBeUndefined(); expect(encounter.playerAction).toBeNull(); expect(encounter.playerMana).toBe(100); expect(encounter.abilityCooldowns.riposte ?? 0).toBe(0);
+});
+
+// Moving sources must preserve old rewards without minting another guaranteed copy.
+test('saved camp discoveries reserve their identities at the new caches until collected', () => {
+  const storage = memory();
+  const oldField: AreaDefinition = { ...field, chests: field.chests!.map((chest, index) => index === 0
+    ? { ...chest, equipment: [...chest.equipment!, 'bow', 'staff'] } : chest) };
+  const old = new Adventure(storage, () => 1), encounter = createEncounter('playing');
+  old.enter(encounter, oldField, {position:oldField.chests![0].position,yaw:0});
+  old.openChest(encounter, oldField, oldField.chests![0]);
+  old.closeSave();
+  const restored = new Adventure(storage, () => 1);
+  for (const chest of field.chests!.slice(1)) {
+    restored.enter(encounter, field, {position:chest.position,yaw:0});
+    expect(restored.openChest(encounter, field, chest)).toBe(true);
+  }
+  for (const item of ['bow', 'staff'] as const) {
+    const drops = restored.session().drops.filter(drop => drop.claim === item);
+    expect(drops).toHaveLength(1);
+    expect(drops[0].source).toEqual({kind:'chest',id:'camp-chest'});
+    expect(restored.character.campClaims).not.toContain(item);
+    drops[0].age = .6;
+    expect(restored.pickup(drops[0].id, drops[0].position, true)).toBe(true);
+    expect(restored.character.campClaims).toContain(item);
+  }
+  restored.closeSave();
 });

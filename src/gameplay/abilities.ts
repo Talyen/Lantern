@@ -5,12 +5,12 @@ export type AbilityId = 'axe-basic' | 'sword-basic' | 'bow-basic' | 'staff-basic
 export type AbilityMotion = 'attack' | 'block' | 'sweep' | 'pierce' | 'thrust' | 'riposte' | 'executioner' | 'onslaught' | 'arrow-rain' | 'deadeye' | 'crush' | 'battleCry';
 export type WeaponSet = 0 | 1;
 export type ActionBar = (AbilityId | null)[];
-export type AbilityDefinition = { name: string; family: Weapon | 'shield'; activation: 'tap' | 'hold'; tier: 'basic' | 'skill' | 'ultimate'; level: number; mana: number; cooldown: number; motion: AbilityMotion; damageScale: number; description: string };
+export type AbilityDefinition = { name: string; family: Weapon | 'shield'; activation: 'tap' | 'hold'; tier: 'basic' | 'skill' | 'ultimate'; level: number; mana: number; cooldown: number; motion: AbilityMotion; damageScale: number; interruption?: 'heavy'; description: string };
 export const axeProgression = { xpPerDamage: .2, ultimateXp: 100 } as const;
 export const berserking = { seconds: 8, damage: 1.4, attackRate: 1.3, moveSpeed: 1.2 } as const;
 export const abilities: Record<AbilityId, AbilityDefinition> = {
   berserking: {name:'Berserking',family:'axe',activation:'tap',tier:'ultimate',level:2,mana:50,cooldown:60,motion:'battleCry',damageScale:0,description:'Battle cry grants 8s of +40% damage, +30% attack speed and +20% movement while Axe is active.'},
-  'crushing-blow': {name:'Crushing Blow',family:'axe',activation:'tap',tier:'skill',level:1,mana:25,cooldown:6,motion:'crush',damageScale:2,description:'A narrow heavy strike for 200% weapon damage. Interrupts eligible windups.'},
+  'crushing-blow': {name:'Crushing Blow',family:'axe',activation:'tap',tier:'skill',level:1,mana:25,cooldown:6,motion:'crush',damageScale:2,interruption:'heavy',description:'A narrow heavy strike for 200% weapon damage. Interrupts eligible windups.'},
   'axe-basic': {name:'Axe Basic',family:'axe',activation:'tap',tier:'basic',level:1,mana:0,cooldown:0,motion:'attack',damageScale:1,description:'A close-range axe strike.'},
   'sword-basic': {name:'Sword Basic',family:'sword',activation:'tap',tier:'basic',level:1,mana:0,cooldown:0,motion:'attack',damageScale:1,description:'A close-range sword cut.'},
   'bow-basic': {name:'Bow Basic',family:'bow',activation:'tap',tier:'basic',level:1,mana:0,cooldown:0,motion:'attack',damageScale:1,description:'Fire one aimed arrow.'},
@@ -20,7 +20,7 @@ export const abilities: Record<AbilityId, AbilityDefinition> = {
   'piercing-shot': {name:'Piercing Shot',family:'bow',activation:'tap',tier:'skill',level:15,mana:30,cooldown:6,motion:'pierce',damageScale:1.2,description:'An arrow that pierces enemies for 120% weapon damage.'},
   thrust: {name:'Thrust',family:'sword',activation:'tap',tier:'basic',level:3,mana:0,cooldown:0,motion:'thrust',damageScale:1.3,description:'A narrow strike for 130% damage with 0.45 m extra reach.'},
   riposte: {name:'Riposte',family:'sword',activation:'tap',tier:'skill',level:15,mana:20,cooldown:6,motion:'riposte',damageScale:2,description:'Counter stance for 0.75s. Prevent one frontal melee hit and counter for 200% damage.'},
-  executioner: {name:"Executioner's Strike",family:'sword',activation:'tap',tier:'ultimate',level:5,mana:50,cooldown:30,motion:'executioner',damageScale:3.5,description:'A heavy cut for 350% damage. Breaks interruptible committed attacks.'},
+  executioner: {name:"Executioner's Strike",family:'sword',activation:'tap',tier:'ultimate',level:5,mana:50,cooldown:30,motion:'executioner',damageScale:3.5,interruption:'heavy',description:'A heavy cut for 350% damage. Breaks interruptible committed attacks.'},
   onslaught: {name:'Onslaught',family:'sword',activation:'tap',tier:'ultimate',level:50,mana:50,cooldown:30,motion:'onslaught',damageScale:1,description:'Three frontal cuts for 100%, 150% and 200% damage.'},
   'poison-arrow': {name:'Poison Arrow',family:'bow',activation:'tap',tier:'basic',level:3,mana:0,cooldown:0,motion:'attack',damageScale:.6,description:'60% arrow damage plus 80% Poison damage over 4s. Reapplication refreshes one Poison effect.'},
   multishot: {name:'Multishot',family:'bow',activation:'tap',tier:'skill',level:1,mana:25,cooldown:5,motion:'attack',damageScale:.8,description:'Five arrows in a 60° fan. Each enemy takes at most one 80% hit.'},

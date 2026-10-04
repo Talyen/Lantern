@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest';
 import { Adventure } from '../src/gameplay/adventure';
 import { hit } from '../src/gameplay/encounter-damage';
-import { attack, createEncounter, stepEncounter, stepExploration, swapWeaponSet, useAbility, type EncounterEvent, type Timings } from '../src/gameplay/encounter';
+import { attack, createEncounter, resetEncounter, stepEncounter, stepExploration, swapWeaponSet, useAbility, type EncounterEvent, type Timings } from '../src/gameplay/encounter';
 import type { AreaDefinition } from '../src/levels/types';
 import clearing from '../src/levels/areas/clearing.json';
 import homestead from '../src/levels/areas/homestead.json';
@@ -70,6 +70,45 @@ test('protected attacks permit Crushing Blow interruption only in a designated h
     expect(state.enemies.enemy.hp).toBe(100);
     expect(state.player.hp).toBe(window === 'protected' ? 80 : 100);
   }
+});
+
+test('authored attack protection ends after contact, and death cancels protected attacks', () => {
+  const area = clearing as unknown as AreaDefinition;
+  const layout = { ...area.layout, enemy: { ...area.layout.enemy!, interruption: 'protected' as const } };
+  const state = createEncounter('playing', layout);
+  let enemy = state.enemies.enemy;
+  expect(enemy.interruption).toBe('protected');
+  resetEncounter(state);
+  expect(state.enemies.enemy.interruption).toBe('protected');
+  enemy = state.enemies.enemy;
+  for (const clock of [.1, .46]) {
+    enemy.attackTime = clock; enemy.contactIndex = 0;
+    hit(state, 'enemy', timing, [], 'axe', undefined, 0, 1);
+    expect(enemy.attackTime).toBe(clock);
+  }
+  enemy.attackTime = .46; enemy.contactIndex = 1;
+  const recovery: EncounterEvent[] = [];
+  hit(state, 'enemy', timing, recovery, 'axe', undefined, 0, 1);
+  expect(enemy.attackTime).toBe(-1);
+  expect(recovery).toContainEqual({type:'animation',actor:'enemy',motion:'hit'});
+  enemy.attackTime = .1; enemy.contactIndex = 0; enemy.hp = 1;
+  hit(state, 'enemy', timing, [], 'axe', undefined, 0, 1, undefined, true);
+  expect(enemy.hp).toBe(0); expect(enemy.attackTime).toBe(-1);
+});
+
+test('ordinary commitment checks the impact offset and caster recovery retains released bolts', () => {
+  for (const [offset, interrupted] of [[.099, true], [.1, false], [.27, false]] as const) {
+    const state = ready(); const enemy = state.enemies.enemy;
+    enemy.attackTime = .2;
+    hit(state, 'enemy', timing, [], 'axe', undefined, offset, 1);
+    expect(enemy.attackTime < 0).toBe(interrupted);
+  }
+  const state = ready(); const caster = state.enemies.caster;
+  caster.hp = 200; caster.attackTime = .8; caster.contactIndex = 1;
+  state.projectiles.push({id:1,owner:'caster',kind:'bolt',x:0,y:0,z:0,dx:0,dz:1,remaining:10});
+  hit(state, 'caster', timing, [], 'axe', undefined, 0, 1);
+  expect(caster.attackTime).toBe(-1);
+  expect(state.projectiles).toHaveLength(1);
 });
 
 test('Berserking commits once after the cry and never consumes mana or cooldown when death wins', () => {
