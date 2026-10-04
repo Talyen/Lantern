@@ -15,7 +15,7 @@ const area: AreaDefinition = {
 };
 function actor() { return { x: 0, y: 0, z: -2.5, yaw: 0, hp: 100, speed: 3, lock: 0, attackTime: -1, contactIndex: 0 }; }
 
-test.each(['channel', 'pond', 'raised-pond'] as const)('characters descend into authored water ground and can return to dry ground (%s)', async shape => {
+test.each(['channel', 'pond', 'raised-pond'] as const)('characters descend into authored water, reach their loot and return to dry ground (%s)', async shape => {
   const fixture = structuredClone(area);
   if (shape !== 'channel') fixture.effects.water[0] = { id: 'water', position: [0, 0], width: 6, length: 4, flow: 0, depth: .2, preset: 'pond' };
   const elevation = shape === 'raised-pond' ? 1 : 0;
@@ -26,23 +26,11 @@ test.each(['channel', 'pond', 'raised-pond'] as const)('characters descend into 
     for (let i = 0; i < 100; i++) world.move('player', player, 0, .025, 1 / 60);
     expect(player.y - elevation).toBeLessThan(-.1);
     expect(player.y - elevation).toBeGreaterThan(-.24);
-    for (let i = 0; i < 160; i++) world.move('player', player, 0, -.025, 1 / 60);
-    expect(player.z).toBeLessThan(-2);
-    expect(Math.abs(player.y - elevation)).toBeLessThan(.025);
-  } finally { world.dispose(); }
-});
-
-test.each(['channel', 'pond', 'raised-pond'] as const)('loot on a below-zero water bed remains grounded and reachable (%s)', async shape => {
-  const fixture = structuredClone(area);
-  if (shape !== 'channel') fixture.effects.water[0] = { id: 'water', position: [0, 0], width: 6, length: 4, flow: 0, depth: .2, preset: 'pond' };
-  const elevation = shape === 'raised-pond' ? 1 : 0;
-  if (elevation) { fixture.props[0].position[1] += elevation; fixture.effects.water[0].height = elevation + .04; }
-  const world = await MovementWorld.create(fixture.layout.boundary, { obstacles: [], ground: waterGround(fixture)! });
-  try {
-    const player = actor();
-    for (let i = 0; i < 100; i++) world.move('player', player, 0, .025, 1 / 60);
     const drop = world.lootGround([player.x, player.z], 0, player);
     expect(drop.height - elevation).toBeLessThan(-.1);
     expect(world.pickupPath(player, drop.position, drop.height)).not.toBeNull();
+    for (let i = 0; i < 160; i++) world.move('player', player, 0, -.025, 1 / 60);
+    expect(player.z).toBeLessThan(-2);
+    expect(Math.abs(player.y - elevation)).toBeLessThan(.025);
   } finally { world.dispose(); }
 });

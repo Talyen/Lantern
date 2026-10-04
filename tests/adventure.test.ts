@@ -1,3 +1,4 @@
+import { memory } from './helpers/storage';
 import { isRecord, parseJson } from '../src/data/json';
 import { expect, test, vi } from 'vitest';
 import { skillIds } from '../src/gameplay/skills';
@@ -15,7 +16,6 @@ const field: AreaDefinition = { ...authoredField, layout: { ...authoredField.lay
   enemy: { ...authoredField.layout.enemy!, gold: false, equipmentDrops: undefined }, caster: { ...authoredField.layout.caster!, gold: false, equipmentDrops: undefined } },
   chests: authoredField.chests?.map(chest => ({ ...chest, gold: false })) };
 
-const memory = () => { const data = new Map<string, string>(); return { data, getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => { data.set(key, value); } }; };
 
 test('failed equipment preparation retains saved gear and releases the gate for a successful retry', async () => {
   const THREE = await import('three');
@@ -571,7 +571,6 @@ test('unguarded caches and caster gear are claimed only on collection and reoffe
   expect(restored.session().drops.filter(drop=>drop.claim).map(drop=>drop.item)).toEqual(['bow','trail-boots','leather-belt','iron-broadsword','yew-longbow','amber-amulet']);
 });
 
-
 test('gold auto-collects only after landing without bag space, and unreachable gold remains intact', () => {
   const state = new Adventure(memory()), encounter = createEncounter('playing'); state.enter(encounter, field);
   state.character.items = Array.from({length:96}, (_,i) => ({id:`full-${i}`,item:'wood',quantity:99,slot:'bag',x:i%12,y:Math.floor(i/12)}));
@@ -732,7 +731,6 @@ test('named skeletons use authored humanoid gold rewards once through return tra
   adventure.enter(encounter,home);adventure.enter(encounter,area);adventure.step(encounter,area,.01);
   expect(adventure.session().drops.filter(drop=>drop.item==='gold')).toHaveLength(1);adventure.closeSave();
 });
-
 
 test('revision 7 skill migration preserves the full character and seeds new tracks at zero', () => {
   const adventure = new Adventure(memory());

@@ -1,3 +1,4 @@
+import { archiveUnreadable } from '../data/preferences';
 import { character, type CharacterSave } from './character';
 import { RetryTimer, storageRetryDelays } from '../data/retry';
 import {
@@ -30,14 +31,7 @@ export class CharacterPersistence {
       return null;
     }
   }
-  private preserve(storage: Storage, key: string, raw: string): void {
-    const archiveKey = `${key}.unreadable`,
-      existing = storage.getItem(archiveKey);
-    const archived: unknown = existing === null ? [] : JSON.parse(existing);
-    if (!Array.isArray(archived) || !archived.every((value) => typeof value === 'string'))
-      throw new Error('Unreadable-save archive unavailable');
-    if (!archived.includes(raw)) storage.setItem(archiveKey, JSON.stringify([...archived, raw]));
-  }
+
   private read(): { value: CharacterSave; existing: boolean } {
     const storage = this.storage(),
       raw = storage.getItem(characterSaveKey);
@@ -49,8 +43,8 @@ export class CharacterPersistence {
     const backupRaw = storage.getItem(characterBackupKey),
       backup = this.decode(backupRaw);
     // Preserve every unreadable copy before a replacement is permitted.
-    if (raw !== null) this.preserve(storage, characterSaveKey, raw);
-    if (backupRaw !== null && !backup) this.preserve(storage, characterBackupKey, backupRaw);
+    if (raw !== null) archiveUnreadable(storage, characterSaveKey, raw);
+    if (backupRaw !== null && !backup) archiveUnreadable(storage, characterBackupKey, backupRaw);
     this.loaded = true;
     return { value: backup ?? character(), existing: !!backup };
   }
@@ -100,10 +94,10 @@ export class CharacterPersistence {
         if (raw !== null) {
           if (this.decode(raw)) {
             const backup = storage.getItem(characterBackupKey);
-            if (backup !== null && !this.decode(backup)) this.preserve(storage, characterBackupKey, backup);
+            if (backup !== null && !this.decode(backup)) archiveUnreadable(storage, characterBackupKey, backup);
             storage.setItem(characterBackupKey, raw);
           }
-          else this.preserve(storage, characterSaveKey, raw);
+          else archiveUnreadable(storage, characterSaveKey, raw);
         }
         storage.setItem(characterSaveKey, this.pending);
       }

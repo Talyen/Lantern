@@ -5,12 +5,12 @@ import { mkdir, readFile, writeFile, open } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
-import { cli, parseArgs, root, run, UsageError } from '../../lib/cli.mjs';
+import { cli, parseArgs, root, run, integer, UsageError } from '../../lib/cli.mjs';
 const execute = promisify(execFile);
 await cli(async () => {
   const args = parseArgs(process.argv.slice(2), { '--limit': 'value', '--motions': 'boolean', '--family': 'value', '--character': 'value', '--all': 'boolean' });
   if (args['--help']) { console.log('Usage: npm run characters:capture -- --character ID | --all [--limit N] [--motions] [--family NAME]\nExports roster thumbnails/contact sheets; --motions also captures idle/run/attack review sheets.'); return; }
-  if (args['--limit'] && (!Number.isInteger(Number(args['--limit'])) || Number(args['--limit']) < 1)) throw new UsageError('--limit must be a positive integer');
+  if (args['--limit']) integer(args['--limit'], 1, 1, Number.MAX_SAFE_INTEGER, 'Limit');
   if (!!args['--character'] === !!args['--all']) throw new UsageError('Choose one --character ID or explicitly request --all.');
   const directory = resolve(root, '.local/character-gallery');
   const vendor = resolve(root, 'public/vendor/character-gallery');

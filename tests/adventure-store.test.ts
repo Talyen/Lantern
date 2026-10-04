@@ -1,20 +1,9 @@
+import { memory } from './helpers/storage';
 import { expect, test, vi } from 'vitest';
 import { AdventureStore, slotKey, migrationKey } from '../src/gameplay/adventure-store';
 import { character } from '../src/gameplay/character';
 import { characterSaveKey, characterBackupKey } from '../src/gameplay/character-save';
 
-function memory() {
-  const data = new Map<string, string>();
-  let writable = true, readable = true;
-  return {
-    data,
-    set writable(value: boolean) { writable = value; },
-    set readable(value: boolean) { readable = value; },
-    getItem(key: string) { if (!readable) throw Error('Read unavailable'); return data.get(key) ?? null; },
-    setItem(key: string, value: string) { if (!writable) throw Error('Write unavailable'); data.set(key, value); },
-    removeItem(key: string) { if (!writable) throw Error('Write unavailable'); data.delete(key); },
-  };
-}
 
 test('four slots keep complete character and outing state independent through fresh store lifetimes', () => {
   const storage = memory(), store = new AdventureStore(storage);
@@ -178,4 +167,23 @@ test('primary damage does not downgrade a known latest snapshot to its older bac
   expect(store.load(1)?.character.gold).toBe(91);
   store.close();
   const restored = new AdventureStore(storage); expect(restored.load(1)?.character.gold).toBe(91); restored.close();
+});
+
+// Admission: malformed recovery archives must never permit damaged progress to be overwritten.
+test('a malformed unreadable archive blocks repair without changing primary or backup progress', () => {
+  const storage = memory(), store = new AdventureStore(storage);
+  const saved = store.create(1, 'Protected')!;
+  saved.character.gold = 87; store.save(1, saved.id, saved.character); store.close();
+  const key = slotKey(1), backup = storage.getItem(`${key}.backup`);
+  storage.setItem(key, '{damaged');
+  storage.setItem(`${key}.unreadable`, '{}');
+  const restored = new AdventureStore(storage);
+  try {
+    restored.initialize();
+    expect(restored.load(1)).not.toBeNull();
+    expect(storage.getItem(key)).toBe('{damaged');
+    expect(storage.getItem(`${key}.backup`)).toBe(backup);
+    expect(storage.getItem(`${key}.unreadable`)).toBe('{}');
+    expect(restored.diagnostics().pending).toBe(true);
+  } finally { restored.close(); }
 });

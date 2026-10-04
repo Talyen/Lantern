@@ -1,6 +1,6 @@
 import type { CharacterSave } from './character';
 import { equipmentCatalog, isItemId, type ItemId, type SalvageReturns } from './equipment';
-import { countItem, receive, validItems, validStash, type InventoryItem } from './inventory';
+import { consumeMaterial, countItem, receive, validItems, validStash } from './inventory';
 import { progressMultiplier, skillLevel } from './skills';
 
 export type SmithingMaterial = 'iron' | 'wood';
@@ -19,8 +19,9 @@ export type SmithingContainer = 'bag' | 'stash';
 export const learnedRecipes = (xp:number) => smithingRecipes.filter(recipe => skillLevel(xp,'smithing') >= recipe.level);
 export const smithingXp = (state:Pick<SmithingState,'restedSeconds'>,amount:number) => Math.round(amount * progressMultiplier(state.restedSeconds) * 1e6) / 1e6;
 export function recipeMaterials(state:SmithingState,recipe:SmithingRecipe) {
+  const carried = state.items.filter(entry => entry.slot === 'bag');
   return (Object.entries(recipe.materials) as [SmithingMaterial,number][]).map(([item,cost]) => {
-    const bag=countItem(state.items.filter(entry=>entry.slot==='bag'),item);
+    const bag=countItem(carried,item);
     const stash=state.shelterRestored ? countItem(state.stash,item) : 0;
     return {item,cost,bag,stash,held:bag+stash};
   });
@@ -29,14 +30,6 @@ function recipeFor(state:SmithingState,item:ItemId):SmithingRecipe {
   const recipe=learnedRecipes(state.xp.smithing).find(recipe=>recipe.item===item);
   if (!recipe) throw new Error('Recipe is not learned.');
   return recipe;
-}
-function consume(items:InventoryItem[],item:SmithingMaterial,quantity:number,bag:boolean):number {
-  for (const entry of items) {
-    if (entry.item!==item || bag && entry.slot!=='bag') continue;
-    const amount=Math.min(quantity,entry.quantity); entry.quantity-=amount; quantity-=amount;
-    if (!quantity) break;
-  }
-  return quantity;
 }
 function checked(state:SmithingState):SmithingState {
   if (!Number.isFinite(state.xp.smithing) || state.xp.smithing<0 || state.xp.smithing>Number.MAX_SAFE_INTEGER) throw new Error('Smithing progress is full.');
@@ -50,8 +43,8 @@ export function forged(state:SmithingState,item:ItemId,newId:()=>string):Smithin
     if (material.held<material.cost) throw new Error('Need '+(material.cost-material.held)+' more '+(material.item==='iron' ? 'Iron' : 'Wood')+'.');
   const items=structuredClone(state.items),stash=structuredClone(state.stash);
   for (const [material,cost] of Object.entries(recipe.materials) as [SmithingMaterial,number][]) {
-    const remaining=consume(items,material,cost,true);
-    if (remaining && consume(stash,material,remaining,false)) throw new Error('Materials are no longer available.');
+    const remaining=consumeMaterial(items,material,cost);
+    if (remaining && consumeMaterial(stash,material,remaining)) throw new Error('Materials are no longer available.');
   }
   const next={...state,items:items.filter(entry=>entry.quantity>0),stash:stash.filter(entry=>entry.quantity>0),
     xp:{...state.xp,smithing:state.xp.smithing+smithingXp(state,recipe.xp)}};

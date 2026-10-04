@@ -1,8 +1,8 @@
 import { access, readFile, open } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { stripVTControlCharacters } from 'node:util';
-import { cli, parseArgs, UsageError } from '../lib/cli.mjs';
-import { budget, integer, recordPage, recordWindow } from './read-text.mjs';
+import { cli, parseArgs, integer, UsageError } from '../lib/cli.mjs';
+import { budget, recordPage, recordWindow } from './read-text.mjs';
 
 await cli(async () => {
   const args = parseArgs(process.argv.slice(2), { '--evidence': 'value', '--stage': 'value', '--offset': 'value', '--limit': 'value', '--max-chars': 'value' });

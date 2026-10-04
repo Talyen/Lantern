@@ -1,8 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import { resolve, relative, dirname } from 'node:path';
-import { cli, isMain, parseArgs, root, UsageError } from '../lib/cli.mjs';
+import { cli, isMain, parseArgs, root, integer, UsageError } from '../lib/cli.mjs';
 import { markdownHeadings } from '../lib/markdown.mjs';
-import { budget, integer, linePage, recordPage, repositoryPath } from './read-text.mjs';
+import { budget, linePage, recordPage, repositoryPath } from './read-text.mjs';
 import { git } from './state.mjs';
 
 // The human-readable table is the single owner map; no generated copy or cache.

@@ -1,3 +1,4 @@
+import { archiveUnreadable } from '../data/preferences';
 import { character, type CharacterSave } from './character';
 import { characterSaveKey, characterBackupKey, decodeCharacter } from './character-save';
 import { isRecord, parseJson } from '../data/json';
@@ -146,12 +147,7 @@ export class AdventureStore {
     if (slot === 1) { this.legacyResolved = true; this.legacyProtected = false; }
     this.flush(); this.changed();
   }
-  private preserve(storage: Storage, key: string, raw: string): void {
-    const archive = `${key}.unreadable`, previous = storage.getItem(archive);
-    const values: unknown = previous === null ? [] : parseJson(previous);
-    if (!Array.isArray(values) || !values.every(value => typeof value === 'string')) throw new Error('Unreadable archive unavailable');
-    if (!values.includes(raw)) storage.setItem(archive, JSON.stringify([...values, raw]));
-  }
+
   private writeSlot(slot: SlotId, value: Slot): void {
     const storage = this.storage(), key = slotKey(slot), identity = value.identity!;
     // Identity is written first. A failed creation/deletion cannot recover an older incarnation.
@@ -163,10 +159,10 @@ export class AdventureStore {
       const next = JSON.stringify(value.record), primary = storage.getItem(key), backup = storage.getItem(`${key}.backup`);
       let previous: Record | undefined;
       if (primary !== null) {
-        try { previous = decodeRecord(primary); } catch { this.preserve(storage, key, primary); }
+        try { previous = decodeRecord(primary); } catch { archiveUnreadable(storage, key, primary); }
       }
       if (backup !== null) {
-        try { decodeRecord(backup); } catch { this.preserve(storage, `${key}.backup`, backup); }
+        try { decodeRecord(backup); } catch { archiveUnreadable(storage, `${key}.backup`, backup); }
       }
       if (primary !== next) {
         storage.setItem(`${key}.backup`, previous?.id === identity.id ? primary! : next);

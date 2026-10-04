@@ -1,12 +1,7 @@
 import { resolve, relative, isAbsolute } from 'node:path';
 import { realpathSync } from 'node:fs';
-import { root, UsageError } from '../lib/cli.mjs';
+import { root, integer, UsageError } from '../lib/cli.mjs';
 
-export function integer(value, fallback, min, max, name) {
-  const number = Number(value ?? fallback);
-  if (!Number.isSafeInteger(number) || number < min || number > max) throw new UsageError(`${name} must be an integer between ${min} and ${max}.`);
-  return number;
-}
 export function budget(args) { return integer(args['--max-chars'], 12000, 1000, 50000, 'Max characters'); }
 function repositoryLocal(path, base) {
   const local = relative(base, path).replaceAll('\\', '/');

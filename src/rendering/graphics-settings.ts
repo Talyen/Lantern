@@ -58,6 +58,9 @@ export function readSettings(): GraphicsSettings {
   if (saved.defaultsVersion !== defaultsVersion) saveSettings(migrated);
   return parseSettings(migrated, query);
 }
+function choice<T>(values: readonly T[], value: unknown, fallback: T): T {
+  return values.find(candidate => candidate === value) ?? fallback;
+}
 export function parseSettings(value: unknown = {}, query = new URLSearchParams()): GraphicsSettings {
   const saved = isRecord(value) ? value : {};
   const result = defaults(query);
@@ -67,18 +70,12 @@ export function parseSettings(value: unknown = {}, query = new URLSearchParams()
     if (override === 'on' || override === 'true') result[key] = true;
     else if (override === 'off' || override === 'false') result[key] = false;
   }
-  const cameraDistance = query.get('cameraDistance') ?? saved.cameraDistance;
-  if (cameraDistances.includes(cameraDistance as CameraDistance)) result.cameraDistance = cameraDistance as CameraDistance;
-  const dof = query.get('dof') ?? saved.dof;
-  if (depthOfFieldModes.includes(dof as DepthOfFieldMode)) result.dof = dof as DepthOfFieldMode;
-  const upscaleQuality = query.get('upscaleQuality') ?? saved.upscaleQuality;
-  if (upscaleQualities.includes(upscaleQuality as UpscaleQuality)) result.upscaleQuality = upscaleQuality as UpscaleQuality;
-  for (const key of ['shadowQuality', 'particleQuality'] as const) {
-    const value = query.get(key) ?? saved[key];
-    if (qualityLevels.includes(value as QualityLevel)) result[key] = value as QualityLevel;
-  }
-  const fpsLimit = query.has('fpsLimit') ? Number(query.get('fpsLimit')) : saved.fpsLimit;
-  if (frameRateLimits.includes(fpsLimit as FrameRateLimit)) result.fpsLimit = fpsLimit as FrameRateLimit;
+  result.cameraDistance = choice(cameraDistances, query.get('cameraDistance') ?? saved.cameraDistance, result.cameraDistance);
+  result.dof = choice(depthOfFieldModes, query.get('dof') ?? saved.dof, result.dof);
+  result.upscaleQuality = choice(upscaleQualities, query.get('upscaleQuality') ?? saved.upscaleQuality, result.upscaleQuality);
+  for (const key of ['shadowQuality', 'particleQuality'] as const)
+    result[key] = choice(qualityLevels, query.get(key) ?? saved[key], result[key]);
+  result.fpsLimit = choice(frameRateLimits, query.has('fpsLimit') ? Number(query.get('fpsLimit')) : saved.fpsLimit, result.fpsLimit);
   for (const key of Object.keys(ranges) as NumericSetting[]) {
     const value = query.has(key) ? Number(query.get(key)) : saved[key];
     if (typeof value === 'number' && Number.isFinite(value)) {

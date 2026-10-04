@@ -280,6 +280,19 @@ test('released mesh instances free native bindings while retaining shared art', 
   geometry.dispose(); material.dispose(); texture.dispose();
 });
 
+// Admission: releasing a shared skeleton twice can invalidate native bindings during area cleanup.
+test('scene cleanup releases each shared skeleton and art resource once', async () => {
+  const { disposeSceneResources } = await import('../src/assets/resource-ownership');
+  const root = new THREE.Group(), geometry = new THREE.BoxGeometry(), texture = new THREE.Texture();
+  const material = new THREE.MeshBasicMaterial({ map: texture }), skeleton = new THREE.Skeleton();
+  const first = new THREE.SkinnedMesh(geometry, material), second = new THREE.SkinnedMesh(geometry, [material, material]);
+  first.skeleton = second.skeleton = skeleton;
+  root.add(first, second);
+  const released = [first, second, geometry, material, texture, skeleton].map(resource => vi.spyOn(resource, 'dispose'));
+  disposeSceneResources(root);
+  for (const release of released) expect(release).toHaveBeenCalledOnce();
+});
+
 test('temporary catalog and model failures can be retried without reopening the game', async () => {
   const { AssetLibrary } = await import('../src/assets/asset-library');
   const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');

@@ -12,6 +12,17 @@ export { validItems, validStash } from './inventory-validation';
 
 export const countItem = (items: readonly InventoryItem[], item: LootItem) =>
   items.reduce((sum, entry) => sum + (entry.item === item ? entry.quantity : 0), 0);
+/** Spend Bag materials on an unpublished candidate and return any unmet quantity. */
+export function consumeMaterial(items: InventoryItem[], item: LootItem, quantity: number): number {
+  for (const entry of items) {
+    if (entry.item !== item || entry.slot !== 'bag') continue;
+    const amount = Math.min(quantity, entry.quantity);
+    entry.quantity -= amount;
+    quantity -= amount;
+    if (!quantity) break;
+  }
+  return quantity;
+}
 /** Transfer only what fits; callers commit the resulting inventory and ground remainder together. */
 export function receive(
   items: InventoryItem[],

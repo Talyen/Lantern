@@ -1,9 +1,9 @@
 import { readFile } from 'node:fs/promises';
 import { resolve, relative, dirname, extname } from 'node:path';
 import ts from 'typescript';
-import { cli, isMain, parseArgs, root, UsageError } from '../lib/cli.mjs';
+import { cli, isMain, parseArgs, root, integer, UsageError } from '../lib/cli.mjs';
 import { repositoryFiles } from './state.mjs';
-import { budget, integer, linePage, recordPage, repositoryPath } from './read-text.mjs';
+import { budget, linePage, recordPage, repositoryPath } from './read-text.mjs';
 
 const supported = /\.(?:[cm]?js|tsx?)$/;
 export function sourceSymbols(text, file) {

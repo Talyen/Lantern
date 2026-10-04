@@ -2,7 +2,7 @@ import { constrain } from './area';
 import { weaponFamily } from './equipment';
 import {
   enemyNoticeRadius, enemyLeashRadius, enemyMaxHealth, casterAttackRange, type Encounter,
-  type EncounterEvent, type EnemyId, type Motion, type Movement, type Projectile, type Timings,
+  type ActorState, type EncounterEvent, type EnemyId, type Motion, type Movement, type Projectile, type Timings,
 } from './encounter-model';
 import { hit } from './encounter-damage';
 import { advanceProjectile, projectileLaunchClear } from './encounter-projectiles';
@@ -31,6 +31,18 @@ export function separateEnemies(state: Encounter, dt: number, movementWorld?: Mo
         [enemy.x, enemy.z] = constrain(state.layout.boundary, [enemy.x + x, enemy.z + z]);
     }
   });
+}
+
+/** Pursuit and returning use the same navigation step; callers own their distance cap. */
+function moveEnemy(state: Encounter, id: EnemyId, target: ActorState, dt: number, distance: number, movementWorld?: Movement): number {
+  const enemy = state.enemies[id];
+  const desired = movementWorld?.direction(enemy, target, dt) ?? { x: target.x - enemy.x, z: target.z - enemy.z };
+  const length = Math.hypot(desired.x, desired.z);
+  const x = length ? desired.x / length * distance : 0, z = length ? desired.z / length * distance : 0;
+  if (movementWorld) movementWorld.move(id, enemy, x, z, dt);
+  else { enemy.x += x; enemy.z += z; }
+  if (length) enemy.yaw = Math.atan2(desired.x, desired.z);
+  return length;
 }
 
 export function stepEnemy(state: Encounter, id: EnemyId, dt: number, timing: Timings, events: EncounterEvent[], movementWorld: Movement | undefined, readyAfter: number, lockedFor = 0): void {
@@ -62,17 +74,7 @@ export function stepEnemy(state: Encounter, id: EnemyId, dt: number, timing: Tim
     }
     else if (enemy.lock <= 0) {
       const home = { ...enemy, x: spawn.position[0], z: spawn.position[1] };
-      const desired = movementWorld?.direction(enemy, home, dt) ?? { x: home.x - enemy.x, z: home.z - enemy.z };
-      const length = Math.hypot(desired.x, desired.z), distance = Math.min(homeDistance, movementElapsed * enemy.speed);
-      const x = length ? desired.x / length * distance : 0, z = length ? desired.z / length * distance : 0;
-      if (movementWorld)
-        movementWorld.move(id, enemy, x, z, dt);
-      else {
-        enemy.x += x;
-        enemy.z += z;
-      }
-      if (length)
-        enemy.yaw = Math.atan2(desired.x, desired.z);
+      const length = moveEnemy(state, id, home, dt, Math.min(homeDistance, movementElapsed * enemy.speed), movementWorld);
       animate(length ? 'run' : 'idle');
     }
     return;
@@ -89,17 +91,8 @@ export function stepEnemy(state: Encounter, id: EnemyId, dt: number, timing: Tim
   // Keep the pre-movement distance: the original encounter uses it to start an enemy strike.
   const distance = Math.hypot(dx, dz);
   if (enemy.lock <= 0 && (distance > 1.45 || Math.abs(player.y - enemy.y) >= .8 || movementWorld && !movementWorld.lineOfSight(enemy, player)) && enemy.attackTime < 0) {
-    const desired = movementWorld?.direction(enemy, player, dt) ?? { x: dx, z: dz };
-    const length = Math.hypot(desired.x, desired.z);
-    if (movementWorld)
-      movementWorld.move(id, enemy, length ? desired.x / length * movementElapsed * enemy.speed : 0, length ? desired.z / length * movementElapsed * enemy.speed : 0, dt);
-    else if (length) {
-      enemy.x += desired.x / length * movementElapsed * enemy.speed;
-      enemy.z += desired.z / length * movementElapsed * enemy.speed;
-    }
+    moveEnemy(state, id, player, dt, movementElapsed * enemy.speed, movementWorld);
     [enemy.x, enemy.z] = constrain(state.layout.boundary, [enemy.x, enemy.z]);
-    if (length)
-      enemy.yaw = Math.atan2(desired.x, desired.z);
     animate('run');
   }
   else {
@@ -144,18 +137,8 @@ function stepCaster(state: Encounter, id: EnemyId, dt: number, timing: Timings, 
   let attackElapsed = dt;
   const visible = !movementWorld || movementWorld.lineOfSight(enemy, player);
   if (enemy.attackTime < 0 && enemy.lock <= 0 && (distance > casterAttackRange || Math.abs(player.y - enemy.y) >= .8 || !visible)) {
-    const desired = movementWorld?.direction(enemy, player, dt) ?? { x: dx, z: dz };
-    const length = Math.hypot(desired.x, desired.z);
-    const x = length ? desired.x / length * movementElapsed * enemy.speed : 0, z = length ? desired.z / length * movementElapsed * enemy.speed : 0;
-    if (movementWorld)
-      movementWorld.move(id, enemy, x, z, dt);
-    else {
-      enemy.x += x;
-      enemy.z += z;
-    }
+    const length = moveEnemy(state, id, player, dt, movementElapsed * enemy.speed, movementWorld);
     [enemy.x, enemy.z] = constrain(state.layout.boundary, [enemy.x, enemy.z]);
-    if (length)
-      enemy.yaw = Math.atan2(desired.x, desired.z);
     events.push({ type: 'animation', actor: id, motion: length ? 'run' : 'idle' });
   }
   else {

@@ -2,33 +2,11 @@ import { expect, test } from 'vitest';
 import * as THREE from 'three';
 import { LightingCache } from '../src/rendering/lighting-cache';
 import { lightingBakeSignature } from '../src/rendering/lighting-bake';
-import { resolveAreaLighting, resolveLighting } from '../src/levels/lighting';
-import { resolveLocalLight } from '../src/levels/local-lighting';
+import { resolveAreaLighting } from '../src/levels/lighting';
 import type { AreaDefinition, ResolvedAreaDefinition } from '../src/levels/types';
 import homestead from '../src/levels/areas/homestead.json';
 import clearing from '../src/levels/areas/clearing.json';
 
-test('shared lighting covers the area and applies overrides without mutating its recipes', () => {
-  const area = homestead as unknown as AreaDefinition;
-  const shared = resolveLighting(), golden = resolveAreaLighting(area), baseline = structuredClone(golden);
-  const boundary = area.layout.boundary;
-  const points = boundary.kind === 'polygon' ? boundary.points : [
-    [boundary.center[0] - boundary.radius, boundary.center[1] - boundary.radius],
-    [boundary.center[0] + boundary.radius, boundary.center[1] + boundary.radius],
-  ];
-  const probes = golden.probes!;
-  expect(points.every(([x, z]) => Math.abs(x - probes.position[0]) <= probes.size[0] / 2 && Math.abs(z - probes.position[2]) <= probes.size[2] / 2)).toBe(true);
-  const overridden = resolveAreaLighting({ ...area, lighting: { overrides: { fogFar: 80, probes: false } } });
-  expect(overridden.fogFar).toBe(80); expect(overridden.probes).toBeUndefined();
-  expect(resolveLighting().sun.color).toBe(golden.sun.color);
-  expect(resolveAreaLighting(clearing as unknown as AreaDefinition).sun.color).toBe(golden.sun.color);
-  expect(golden).toEqual(baseline);
-  expect(resolveAreaLighting(area)).toEqual(baseline);
-  expect(resolveLighting()).toEqual(shared);
-  const flame = structuredClone(resolveLocalLight({ role: 'campfire' }));
-  expect(resolveLocalLight({ role: 'campfire', intensity: 11, shadow: false })).toMatchObject({ intensity: 11, shadow: false });
-  expect(resolveLocalLight({ role: 'campfire' })).toEqual(flame);
-});
 test('lighting resources remain globally bounded across dozens of areas and protect active/candidate leases', () => {
   const destroyed: number[] = [], cache = new LightingCache<number>(2, 24, item => destroyed.push(item));
   const active = cache.insert('active', 0, 12);

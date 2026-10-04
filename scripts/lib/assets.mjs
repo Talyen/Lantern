@@ -164,17 +164,14 @@ export async function checkAssets(playable = false) {
   let motionCount = 0, characterCount = 0;
   for (const [who, config] of Object.entries(characters)) {
     const states = who === 'player' ? [...combatStates, 'dodge'] : combatStates;
-    const urls = [config.model];
-    const models = [];
-    for (const url of urls) {
-      const path = assetPath(vendor, url);
-      if (!existsSync(path)) { if (playable) throw new Error(`${config.name} unavailable; run assets:export-character`); continue; }
-      const character = await readGlb(path);
-      if (!character.skins?.length || states.some(name => !character.animations?.some(clip => clip.name === name))) throw new Error(`${config.name} needs a skin and its retained motions`);
-      if (character.animations.some(clip => clip.channels.some(channel => !character.nodes[channel.target.node]))) throw new Error(`Invalid embedded animation binding: ${config.name}`);
-      models.push(character);
-    }
-    if (models.length) characterCount++;
+    const modelPath = assetPath(vendor, config.model);
+    let model;
+    if (existsSync(modelPath)) {
+      model = await readGlb(modelPath);
+      if (!model.skins?.length || states.some(name => !model.animations?.some(clip => clip.name === name))) throw new Error(`${config.name} needs a skin and its retained motions`);
+      if (model.animations.some(clip => clip.channels.some(channel => !model.nodes[channel.target.node]))) throw new Error(`Invalid embedded animation binding: ${config.name}`);
+      characterCount++;
+    } else if (playable) throw new Error(`${config.name} unavailable; run assets:export-character`);
     const catalogPath = assetPath(vendor, config.catalog);
     if (!existsSync(catalogPath)) { if (playable) throw new Error(`${config.name} motion catalog unavailable; run assets:export-character`); continue; }
     const catalog = JSON.parse(await readFile(catalogPath, 'utf8'));
@@ -186,7 +183,7 @@ export async function checkAssets(playable = false) {
       for (const clip of pack.clips) {
         const data = await readGlb(assetPath(vendor, clip.url));
         if (data.animations?.length !== 1 || data.animations[0].channels.some(channel => !data.nodes[channel.target.node]?.name)) throw new Error(`Invalid motion: ${clip.name}`);
-        for (const model of models) if (data.animations[0].channels.some(channel => !model.nodes.some(node => node.name === data.nodes[channel.target.node].name))) throw new Error(`${config.name} rig mismatch: ${clip.name}`);
+        if (model && data.animations[0].channels.some(channel => !model.nodes.some(node => node.name === data.nodes[channel.target.node].name))) throw new Error(`${config.name} rig mismatch: ${clip.name}`);
         motionCount++;
       }
     }

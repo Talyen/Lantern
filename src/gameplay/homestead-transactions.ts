@@ -1,5 +1,5 @@
 import type { CharacterSave } from './character';
-import { countItem, validItems, validStash, type InventoryItem } from './inventory';
+import { consumeMaterial, countItem, validItems, validStash, type InventoryItem } from './inventory';
 import { progression, shelterRecipe } from './skills';
 
 type ShelterState = Pick<CharacterSave, 'items' | 'shelterRestored'>;
@@ -23,14 +23,8 @@ export function canRepairShelter(state: ShelterState): boolean {
 export function restoredShelter(state: ShelterState): Pick<CharacterSave, 'items' | 'shelterRestored' | 'restedSeconds'> {
   if (!canRepairShelter(state)) throw new Error('Not enough materials.');
   const items = structuredClone(state.items);
-  for (const [item, cost] of Object.entries(shelterRecipe)) {
-    let remaining = cost;
-    for (const entry of items.filter(entry => entry.slot === 'bag' && entry.item === item)) {
-      const amount = Math.min(remaining, entry.quantity);
-      entry.quantity -= amount;
-      remaining -= amount;
-    }
-  }
+  for (const item of Object.keys(shelterRecipe) as (keyof typeof shelterRecipe)[])
+    consumeMaterial(items, item, shelterRecipe[item]);
   return {
     items: items.filter(entry => entry.quantity > 0),
     shelterRestored: true,

@@ -4,6 +4,11 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 export const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 export const defaultBlender = '/Applications/Blender.app/Contents/MacOS/Blender';
 export class UsageError extends Error {}
+export function integer(value, fallback, min, max, name) {
+  const number = Number(value ?? fallback);
+  if (!Number.isSafeInteger(number) || number < min || number > max) throw new UsageError(`${name} must be an integer between ${min} and ${max}.`);
+  return number;
+}
 /** Importable command modules must not run their CLI when used as libraries. */
 export function isMain(moduleURL) {
   return !!process.argv[1] && moduleURL === pathToFileURL(resolve(process.argv[1])).href;

@@ -48,18 +48,26 @@ export function advanceProjectile(state: Encounter, projectile: Projectile, dt: 
       else if (fraction < nearestFraction) { nearestId = id; nearestFraction = fraction; }
     }
   }
+  const contactOffset = (fraction: number) => dt - elapsed + fraction * distance / speed;
+  const impact = (id: ActorId, fraction: number) => hit(
+    state, id, timing, events, projectile.kind === 'arrow' ? 'bow' : 'staff',
+    { x: -projectile.dx, z: -projectile.dz }, contactOffset(fraction),
+    projectile.damage ?? (projectile.owner === 'player' ? state.stats.damage : enemyAttackDamage),
+    projectile.impactId === undefined ? undefined : { actor: projectile.owner, ability: projectile.ability ?? null, id: projectile.impactId },
+    false, damageType,
+  );
   if (nearestId !== undefined) {
     if (projectile.sharedHits?.includes(nearestId)) return false;
     projectile.sharedHits?.push(nearestId);
     if (nearestId!=='player' && projectile.poisonDamage && state.enemies[nearestId].poison) {
-      const offset=dt-elapsed+nearestFraction*distance/speed;
+      const offset=contactOffset(nearestFraction);
       const started=state.enemies[nearestId].poison!.firstStep===undefined ? 0 : dt-state.enemies[nearestId].poison!.firstStep!;
       advancePoison(state,nearestId,Math.max(0,offset-started),timing,events,started);
     }
-    hit(state, nearestId, timing, events, projectile.kind === 'arrow' ? 'bow' : 'staff', { x: -projectile.dx, z: -projectile.dz }, dt - elapsed + nearestFraction * distance / speed, projectile.damage ?? (projectile.owner === 'player' ? state.stats.damage : enemyAttackDamage), projectile.impactId === undefined ? undefined : { actor: projectile.owner, ability: projectile.ability ?? null, id: projectile.impactId },false,damageType);
+    impact(nearestId, nearestFraction);
     if (nearestId !== 'player' && projectile.poisonDamage && state.enemies[nearestId].hp>0) {
       const enemy=state.enemies[nearestId];
-      const impactOffset=dt-elapsed+nearestFraction*distance/speed;
+      const impactOffset=contactOffset(nearestFraction);
       enemy.poison={remaining:4,nextTick:enemy.poison ? enemy.poison.nextTick : .5,damage:projectile.poisonDamage/8,impactId:projectile.impactId!,firstStep:Math.max(0,dt-impactOffset)};
     }
     return false;
@@ -67,7 +75,7 @@ export function advanceProjectile(state: Encounter, projectile: Projectile, dt: 
   if (hits) {
     hits.sort((a, b) => a.fraction - b.fraction);
     for (const contact of hits) {
-      hit(state, contact.id, timing, events, projectile.kind === 'arrow' ? 'bow' : 'staff', { x: -projectile.dx, z: -projectile.dz }, dt - elapsed + contact.fraction * distance / speed, projectile.damage ?? (projectile.owner === 'player' ? state.stats.damage : enemyAttackDamage), projectile.impactId === undefined ? undefined : { actor: projectile.owner, ability: projectile.ability ?? null, id: projectile.impactId },false,damageType);
+      impact(contact.id, contact.fraction);
       projectile.pierced!.push(contact.id);
     }
   }

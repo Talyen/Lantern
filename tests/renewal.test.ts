@@ -1,3 +1,4 @@
+import { memory } from './helpers/storage';
 import { isRecord, parseJson } from '../src/data/json';
 // Admission: renewal and save boundaries can duplicate rewards, lose ground items or reset finite XP budgets.
 import { expect, test, vi } from 'vitest';
@@ -10,10 +11,6 @@ import { resourceDefinitions } from '../src/levels/resources';
 import { areas } from '../src/levels/registry';
 import { RenewalVisibility } from '../src/clearing/renewal-visibility';
 
-const memory = () => {
-  const data = new Map<string, string>();
-  return { data, getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => { data.set(key, value); } };
-};
 const setup = (storage = memory()) => {
   const adventure = new Adventure(storage, () => 0);
   adventure.configureAreas(areas);
@@ -172,7 +169,6 @@ test('expired inactive enemies renew on entry while the arrival protects nearby 
   expect(adventure.session().drops.filter(drop => drop.source?.id === 'enemy').map(drop => drop.id)).toEqual(nearLoot);
   expect(adventure.session().drops.some(drop => drop.source?.id === 'caster')).toBe(false);
 });
-
 
 test('a failed pickup save retries character and ground state together without duplicating currency', async () => {
   vi.useFakeTimers();
