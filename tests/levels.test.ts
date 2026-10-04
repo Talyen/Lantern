@@ -232,11 +232,11 @@ test('area candidates retain the active area and release failed, superseded and 
   const candidate = resources(), prepared = await prepareAreaCandidate(async()=>candidate.area,async()=>candidate.movement,async()=>candidate.lighting);
   expect(()=>prepared.accept(()=>true,()=>{throw Error('repair failed');})).toThrow('repair failed');
   prepared.dispose(); expect(candidate.area.dispose).toHaveBeenCalledTimes(1); expect(candidate.movement.dispose).toHaveBeenCalledTimes(1); expect(candidate.lighting.release).toHaveBeenCalledTimes(1);
-  expect(prepared.accept(() => true, () => active.dispose())).toBe(false);
+  expect(prepared.accept(() => true, () => { active.dispose(); })).toBe(false);
   expect(active.dispose).not.toHaveBeenCalled();
   const accepted = resources(), committed = await prepareAreaCandidate(async()=>accepted.area,async()=>accepted.movement,async()=>accepted.lighting);
   expect(committed.accept(()=>true,()=>{})).toBe(true); committed.dispose();
-  expect(committed.accept(() => true, () => active.dispose())).toBe(false);
+  expect(committed.accept(() => true, () => { active.dispose(); })).toBe(false);
   expect(active.dispose).not.toHaveBeenCalled();
   expect(accepted.area.dispose).not.toHaveBeenCalled(); expect(accepted.movement.dispose).not.toHaveBeenCalled(); expect(accepted.lighting.release).not.toHaveBeenCalled();
 });

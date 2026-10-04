@@ -32,6 +32,11 @@ test('scene budgets count shared interleaved storage once, including morph targe
   geometry.setAttribute('normal', new InterleavedBufferAttribute(data, 3, 3));
   geometry.morphAttributes.position = [new BufferAttribute(new Float32Array(9), 3)];
   const material = new MeshBasicMaterial(), root = new Group().add(new Mesh(geometry, material), new Mesh(geometry, material));
-  try { expect(sceneResourceBytes(root)).toBe((18 + 9) * 4); }
-  finally { geometry.dispose(); material.dispose(); }
+  const cache = new SceneCache((18 + 9) * 4), load = vi.fn(async () => root);
+  try {
+    expect(sceneResourceBytes(root)).toBe((18 + 9) * 4);
+    const first = cache.acquire('shared', load); await first.scene; first.release();
+    const returning = cache.acquire('shared', load); await returning.scene; returning.release();
+    expect(load).toHaveBeenCalledOnce(); // Correct accounting keeps warm art reusable within the budget.
+  } finally { await cache.dispose(); }
 });
