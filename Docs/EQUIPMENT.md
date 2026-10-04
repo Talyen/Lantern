@@ -132,6 +132,12 @@ The compatible Axe battle cry lasts 0.5 seconds and remains planted. Ordinary da
 
 The action bar uses distinct Axe motifs, real casting/cooldown states, a compact timed Berserking badge and brief first-opportunity hints with current bindings. The badge dims outside Axe combat. The saved outing retains committed cooldowns across application relaunch; the temporary Berserking effect is not restored. Four independent adventures and title navigation remain front-end roadmap work. Values above are initial tuning rather than final balance.
 
+### Axe mastery design in progress
+
+The October 4 design discussion selects a complete Axe tree with two Basics, two Skills, two Ultimates and ten modest automatic passives. Its identity is aggressive close-range pressure, with short-reach positioning as the main challenge. Keep Berserking's core role; replace Crushing Blow with Double Strike. Each of its two cuts should hit a compact frontal group, with much less coverage than a spin. The planned Axe kit has no heavy interruption; ordinary enemy hit reactions still follow their authored policy. These are future design decisions, not changes to the live kit described above.
+
+[The motion comparison](ANIMATIONS.md#axe-double-strike-design-review) recommends the Ver. 3 two-hit source and preserves both original candidates plus a trimmed timing trial in the animation lab. Contact markers, damage, mana, cooldown, unlock pacing and the remaining roster/passives are not settled. A compact spin is a proposed alternate Skill; alternate Basic and second-Ultimate roles still need owner selection. Preserve existing Axe XP and assignments when implementing the agreed replacement, with an explicit migration for assigned Crushing Blow.
+
 ## Enemy attack interruption
 
 Enemy spawns author `interruption` independently of reward rank; omitted policies resolve to `ordinary-melee` for raiders and `ordinary-caster` for casters when the encounter is created or renewed. Current encounters retain those ordinary policies. Each enemy currently has one attack; future multi-attack enemies must select the active attack's policy in simulation.

@@ -299,7 +299,16 @@ async function selectRig(lane: Lane, rig: RigId): Promise<void> {
   lane.rigLoading = true; lane.info.textContent = 'Loading character…';
   lane.rigSelect.disabled = lane.loadoutSelect.disabled = lane.packSelect.disabled = lane.clipSelect.disabled = lane.search.disabled = true;
   try {
-    const catalog = await getMotionCatalog(rig) as Catalog;
+    const gameplayCatalog = await getMotionCatalog(rig) as Catalog;
+    // Comparison clips live outside the gameplay catalog and build dependency closure.
+    const response = await fetch(characters[rig].catalog.replace(/catalog\.json$/, 'study.json'));
+    let comparisons: Clip[] = [];
+    if (response.ok) {
+      const study = await response.json() as { version: number; clips: Clip[] };
+      if (study.version !== 1 || !Array.isArray(study.clips) || study.clips.some(clip => clip.category !== 'study')) throw new Error('Prepare comparison motions with npm run assets:export-character.');
+      comparisons = study.clips;
+    } else if (response.status !== 404) throw new Error('Unable to load comparison motions. Reload to retry.');
+    const catalog: Catalog = { ...gameplayCatalog, packs: gameplayCatalog.packs.map(pack => ({ ...pack, clips: [...pack.clips, ...(pack.id === 'mixamo' ? comparisons : [])] })) };
     if (!characterCache.has(catalog.character)) characterCache.set(catalog.character, loader.loadAsync(catalog.character).then(gltf => { sceneTextures(gltf.scene); return gltf.scene; }).catch((error: unknown) => { characterCache.delete(catalog.character); throw error; }));
     const source = await characterCache.get(catalog.character)!;
     if (disposed || generation !== lane.generation) return;

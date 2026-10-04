@@ -483,6 +483,26 @@
         1.6
       ]
     },
+    "axe-double-strike-v3-review": {
+      "sourceId": "8592ac65ac9f",
+      "name": "Axe Double Strike \u2014 Ver. 3 source review",
+      "category": "study"
+    },
+    "axe-double-strike-v1-review": {
+      "sourceId": "6a6969484303",
+      "name": "Axe Double Strike \u2014 Ver. 1 source review",
+      "category": "study"
+    },
+    "axe-double-strike-review": {
+      "sourceId": "8592ac65ac9f",
+      "name": "Axe Double Strike \u2014 timing review",
+      "category": "study",
+      "trim": [
+        0.25,
+        2.35
+      ],
+      "duration": 1.05
+    },
     "sword-thrust": {
       "sourceId": "03d0fa095e67",
       "name": "Sword Thrust",
@@ -702,7 +722,10 @@
       "study-sword-combo",
       "study-bow-shot",
       "study-bow-draw",
-      "study-bow-release"
+      "study-bow-release",
+      "axe-double-strike-v3-review",
+      "axe-double-strike-v1-review",
+      "axe-double-strike-review"
     ]
   },
   "enemy": {
