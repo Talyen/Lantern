@@ -1,3 +1,4 @@
+import { streamTerrain } from '../rendering/stream-terrain';
 import { createMerchant } from '../rendering/merchant';
 
 import { lightingOnly, includeCutawayShadows } from '../rendering/cutaway';
@@ -121,7 +122,10 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
         shape.quadraticCurveTo(w/2,h/2,0,h/2); shape.quadraticCurveTo(-w/2,h/2,-w/2,h*.20); shape.closePath();
         g = new THREE.ExtrudeGeometry(shape, { depth:d, bevelEnabled:true, bevelThickness:.035, bevelSize:.035, bevelSegments:1, steps:1, curveSegments:3 }); g.translate(0,0,-d/2);
       }
-      else if (p.kind === 'box') g = new THREE.BoxGeometry(s[0], s[1], s[2]);
+      else if (p.kind === 'box') {
+        const terrain = area.props.find(prop => prop.terrain && prop.primitive === p);
+        g = terrain && streamTerrain(terrain, area.effects.water) || new THREE.BoxGeometry(s[0], s[1], s[2]);
+      }
       else if (p.kind === 'cylinder') g = new THREE.CylinderGeometry(s[0], s[1], s[2], s[3] ?? 32);
       else if (p.kind === 'tent') {
         const [w, h, d] = s, positions: number[] = [];

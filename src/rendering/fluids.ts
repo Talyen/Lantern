@@ -15,11 +15,17 @@ class FluidPool {
   private cursor = 0;
   private pending = false;
   constructor(readonly kind: 'drop' | 'ring' | 'stain', capacity: number) {
-    const geometry = kind === 'drop' ? new THREE.SphereGeometry(1, 6, 4) : kind === 'ring' ? new THREE.RingGeometry(.88, 1, 24) : new THREE.CircleGeometry(1, 16);
+    const geometry = kind === 'drop' ? new THREE.SphereGeometry(1, 6, 4) : kind === 'ring' ? new THREE.PlaneGeometry(2, 2) : new THREE.CircleGeometry(1, 16);
     this.opacity = new THREE.InstancedBufferAttribute(new Float32Array(capacity), 1).setUsage(THREE.DynamicDrawUsage);
     geometry.setAttribute('fluidOpacity', this.opacity);
     const material = new MeshBasicNodeMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide });
     material.opacityNode = attribute('fluidOpacity', 'float');
+    if (kind === 'ring') {
+      const p = uv().sub(.5).mul(2), radius = p.length();
+      const crest = smoothstep(.61, .72, radius).mul(smoothstep(.75, .88, radius).oneMinus());
+      const broken = sin(p.x.mul(13).add(p.y.mul(17))).mul(.3).add(.7);
+      material.opacityNode = attribute('fluidOpacity', 'float').mul(crest).mul(broken);
+    }
     if (kind === 'stain') {
       const p = uv().sub(.5).mul(2);
       const edge = p.length().add(sin(p.x.mul(15)).mul(sin(p.y.mul(11))).mul(.10));
@@ -59,9 +65,9 @@ class FluidPool {
       transform.position.set(s.x, s.y, s.z);
       transform.rotation.set(this.kind === 'drop' ? 0 : -Math.PI / 2, 0, s.yaw);
       const size = this.kind === 'ring' ? s.size * (.25 + t * .75) : this.kind === 'stain' ? s.size * (.75 + Math.min(1, t * 8) * .25) : s.size;
-      transform.scale.set(size, this.kind === 'drop' ? size * 2.4 : size * (this.kind === 'stain' ? .7 : 1), size);
+      transform.scale.set(size, this.kind === 'drop' ? size * 2.4 : size * (this.kind === 'stain' ? .7 : this.kind === 'ring' ? .82 : 1), size);
       transform.updateMatrix(); this.mesh.setMatrixAt(count, transform.matrix); this.mesh.setColorAt(count, this.colors[i]);
-      this.opacity.setX(count, (this.kind === 'stain' ? .6 : this.kind === 'ring' ? .42 : .75) * Math.min(1, (1 - t) * (this.kind === 'stain' ? 3 : 1.8)));
+      this.opacity.setX(count, (this.kind === 'stain' ? .6 : this.kind === 'ring' ? .20 : .75) * (this.kind === 'ring' ? Math.sin(t * Math.PI) : 1) * Math.min(1, (1 - t) * (this.kind === 'stain' ? 3 : 1.8)));
       count++;
     }
     this.mesh.count = count; this.mesh.visible = count > 0;
@@ -80,7 +86,7 @@ export class FluidEffects {
   private emission = 1;
   private last: { x: number; z: number; phase: number } | undefined;
   private wakeCarry = 0;
-  private waterColor = new THREE.Color('#b5bca6');
+  private waterColor = new THREE.Color('#9eafb0');
   private bloodColor = new THREE.Color('#8e2728');
   private magicColor = new THREE.Color('#8bd8db');
   constructor() {
@@ -118,7 +124,7 @@ export class FluidEffects {
         this.splash(fx, waterHeight + .03, fz, this.waterColor, dx / distance, dz / distance, 4, .024);
       }
     }
-    this.wakeCarry += distance * 3 * this.emission;
+    this.wakeCarry += distance * 1.3 * this.emission;
     if (this.wakeCarry >= 1) { this.wakeCarry %= 1; this.ripple(x - dx / distance * .15, z - dz / distance * .15, .28); }
   }
   private splash(x: number, y: number, z: number, tint: THREE.Color, dx: number, dz: number, count: number, size: number): void {

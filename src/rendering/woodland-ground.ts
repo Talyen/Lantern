@@ -69,6 +69,7 @@ export function woodlandMaterial(load: (url: string, data: boolean) => THREE.Tex
     })();
     return { color, field, normal: surfaceNormal };
   };
+  if (bankWetness) { const bed = smoothstep(.79, .85, bankWetness); litter = litter.mul(bed.oneMinus()); rocky = rocky.max(bed.mul(.85)); }
   const earth = layer('earth', float(1)), leaves = layer('litter', litter), stone = layer('rocky-soil', rocky);
   const weight = (coverage: typeof litter, raised: typeof earth.field) => {
     const detail = raised.r.sub(earth.field.r).mul(recipe.heightBlend);

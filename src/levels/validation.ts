@@ -124,6 +124,11 @@ export function validateAreas(input: Record<string, AreaDefinition>): string[] {
             if (Math.abs(signedArea) < .001) fail('water boundary has no area');
           }
         }
+        if (water.obstacles !== undefined && (!Array.isArray(water.obstacles) || water.obstacles.length > 16 || water.obstacles.some(o => !finite(o.position, 2) || !Number.isFinite(o.radius) || o.radius <= 0))) fail('invalid stream obstacle');
+        if (water.channel) {
+          const sections = water.channel.sections;
+          if (!Array.isArray(sections) || sections.length < 2 || sections.length > 24 || sections.some((s, i) => !finite([s.x, s.z, s.width, s.depth]) || s.width <= 0 || s.depth <= 0 || Math.abs(s.z) + s.width / 2 + (water.channel!.bankWidth ?? .65) > water.length / 2 || i > 0 && s.x <= sections[i - 1].x) || sections[0]?.x !== -water.width / 2 || sections.at(-1)?.x !== water.width / 2 || water.channel.bankWidth !== undefined && (!Number.isFinite(water.channel.bankWidth) || water.channel.bankWidth <= 0)) fail('invalid stream channel');
+        }
         if (water.currents !== undefined && (!Array.isArray(water.currents) || !water.currents.length || water.currents.length > 32 || water.currents.some(c => !finite(c.position, 2) || !finite(c.direction, 2) || [...c.position, ...c.direction].some(v => Math.abs(v) > 1)))) fail('invalid water currents');
       }
       if (area.effects.weather) {
