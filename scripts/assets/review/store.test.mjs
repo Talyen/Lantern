@@ -19,6 +19,7 @@ async function fixture() {
   await writeJSON(join(directory, 'package.json'), { name: 'review-fixture', version: '0.0.0', private: true });
   await writeJSON(join(directory, 'package-lock.json'), { name: 'review-fixture', version: '0.0.0', lockfileVersion: 3, packages: { '': { name: 'review-fixture', version: '0.0.0' } } });
   await writeJSON(join(directory, 'assets/asset-reviews.json'), emptyReviews());
+  await writeJSON(join(directory, 'assets/material-recipes.json'), { dryHighlights: { roughnessStart: .45, roughnessEnd: .85, specularIntensity: .35 } });
   await writeJSON(join(directory, 'assets/library-selection.json'), []);
   await writeJSON(join(directory, 'assets/playable-characters.json'), {});
   await writeJSON(join(directory, 'assets/textures/environment/manifest.json'), { assets: [], showcase: { assets: [] }, areaAssets: {} });
@@ -60,6 +61,9 @@ test('changed appearances need fresh approval while family denial and deletion r
   try {
     const index = await reviewIndex(f.task.path), asset = index.assets[0], initial = await readReviews(f.task.path);
     const approved = await saveReview(f.task.path, reviewRevision(initial), { type: 'decision', id: asset.id, state: 'approved', notes: '', fingerprint: await fingerprint(index, asset) });
+    await writeJSON(join(f.task.path, 'assets/material-recipes.json'), { dryHighlights: { roughnessStart: .45, roughnessEnd: .85, specularIntensity: .4 } });
+    const reshaded = (await reviewIndex(f.task.path)).assets[0];
+    assert.equal(effectiveReview(reshaded, approved.reviews).changed, true, 'a shared highlight change invalidates original-asset approval');
     await writeFile(join(f.task.path, 'public', asset.url.slice(1)), '{"nodes":[{"name":"changed"}]}');
     const changed = (await reviewIndex(f.task.path)).assets[0]; assert.equal(effectiveReview(changed, approved.reviews).changed, true);
     const denied = await saveReview(f.task.path, approved.revision, { type: 'family-deny', id: asset.id, notes: 'Retire all appearances' });

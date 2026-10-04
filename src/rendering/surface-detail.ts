@@ -1,6 +1,6 @@
 import { isMesh } from '../assets/resource-ownership';
 import * as THREE from 'three';
-import { Fn, If, Loop, float, vec2, vec3, color, uniform, uv, texture, dFdx, dFdy, positionView, positionViewDirection, normalViewGeometry, cross, dot, normalMap, negateOnBackSide, roughness, materialSpecularIntensity, mix, smoothstep } from 'three/tsl';
+import { Fn, If, Loop, float, vec2, vec3, color, uniform, uv, texture, dFdx, dFdy, positionView, positionViewDirection, normalViewGeometry, cross, dot, normalMap, negateOnBackSide, materialRoughness, materialSpecularIntensity, mix, smoothstep } from 'three/tsl';
 import { MeshStandardNodeMaterial, MeshPhysicalNodeMaterial, type Node, type NodeBuilder } from 'three/webgpu';
 import { calibrationGain } from './material-calibration';
 import { materialRecipes, type MaterialFamily } from './material-recipes';
@@ -9,12 +9,17 @@ import { validateMaterial } from '../assets/material-validation';
 type SurfaceContext = { materialMipBias?: Node<'float'>; textureDepth?: boolean };
 // The pinned r186 builder exposes this method; its declarations omit it.
 type SurfaceBuilder = NodeBuilder & { isFlatShading(): boolean };
-/** Use the shaded roughness, including maps/wetness, rather than an asset-wide gloss override.
+/** Use authored roughness, including maps/wetness, rather than an asset-wide gloss override.
  * Physical materials retain the metallic branch and authored smooth-surface response. */
 export function prepareSurfaceHighlights(material: MeshPhysicalNodeMaterial): void {
   const response = materialRecipes.dryHighlights;
-  material.specularIntensityNode = materialSpecularIntensity.mul(mix(1, response.specularIntensity,
-    smoothstep(response.roughnessStart, response.roughnessEnd, roughness)));
+  material.specularIntensityNode = Fn(() => {
+    // Resolve after consumers install procedural roughness. Geometric AA must
+    // not classify an otherwise polished surface as dry at silhouette edges.
+    const surfaceRoughness = material.roughnessNode ?? materialRoughness;
+    return materialSpecularIntensity.mul(mix(1, response.specularIntensity,
+      smoothstep(response.roughnessStart, response.roughnessEnd, surfaceRoughness)));
+  })();
 }
 export function createSurfaceMaterial(parameters?: ConstructorParameters<typeof MeshPhysicalNodeMaterial>[0]): MeshPhysicalNodeMaterial {
   const material = new MeshPhysicalNodeMaterial(parameters);
