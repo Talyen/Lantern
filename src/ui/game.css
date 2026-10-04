@@ -17,6 +17,20 @@
 .game-menu button:hover:enabled,.result-panel button:hover:enabled{background:#3b3024;border-color:#c7a36a}
 .game-menu button:focus-visible,.result-panel button:focus-visible{outline-color:#f6d89b}
 #interaction-prompt{background:#171411ed;color:#f0e6d2;border:1px solid #80664080;border-radius:2px;box-shadow:0 3px 9px #0005;max-width:calc(100vw - 32px);text-align:center}
-#travel-destinations button{text-align:left;padding:12px 16px}
+#travel-dialog{left:24px;right:auto;top:calc((100dvh - 160px)/2);bottom:auto;transform:translateY(-50%);margin:0;width:min(360px,calc(100vw - 48px));max-height:calc(100dvh - 208px);padding:24px;overflow:hidden;background:linear-gradient(125deg,#302820,#171411 60%)}
+#travel-dialog[open]{display:flex;flex-direction:column}
+#travel-dialog::backdrop{background:#0002}
+#travel-dialog header{align-items:flex-start;flex-shrink:0;margin:0 0 16px;padding-bottom:20px;border-bottom:1px solid #80664080;gap:16px}
+#travel-dialog header>div{min-width:0}
+#travel-dialog h2{font-size:32px;line-height:1.15;overflow-wrap:anywhere}
+#travel-subtitle{margin:6px 0 0;color:#beb19a;font-size:14px;line-height:1.4}
+#travel-dialog [data-close]{width:44px;min-height:44px;flex-shrink:0;padding:0;font-size:24px;line-height:1;background:transparent;border-color:transparent}
+#travel-destinations{min-height:0;overflow-y:auto;padding:6px;margin:-6px;scrollbar-color:#806640 #171411}
+#travel-destinations button{display:flex;align-items:center;justify-content:space-between;gap:16px;text-align:left;padding:12px 16px;min-height:48px;font-size:16px;line-height:1.4;background:#24201b;border-color:#65533c}
+#travel-destinations button span:first-child{overflow-wrap:anywhere}
+#travel-destinations button span:last-child{flex-shrink:0;color:#c7a36a;font-size:24px;line-height:1}
+#travel-destinations button:focus-visible{background:#3b3024;border-color:#c7a36a}
+#travel-destinations button:active{background:#463827}
+#travel-destinations p{margin:0;padding:8px 0;color:#beb19a;font-size:14px;line-height:1.5}
 @media(prefers-reduced-motion:no-preference){.game-menu[open],.result-panel:not([hidden]){animation:menu-settle .14s ease-out}}
 @keyframes menu-settle{from{opacity:.7;filter:brightness(.9)}to{opacity:1;filter:brightness(1)}}

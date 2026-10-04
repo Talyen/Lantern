@@ -23,6 +23,17 @@ export class AdventureMenus {
       dialog.querySelector<HTMLButtonElement>('[data-close]')!.onclick = () => this.close();
       bindMenuDismissal(dialog, () => this.close());
     }
+    this.travel.onkeydown = event => {
+      if (['Enter', ' '].includes(event.key) && event.repeat) { event.preventDefault(); return; }
+      if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+      event.preventDefault(); event.stopPropagation();
+      const buttons = Array.from(this.travel.querySelectorAll<HTMLButtonElement>('#travel-destinations button'));
+      if (!buttons.length) return;
+      const current = buttons.findIndex(button => button === document.activeElement);
+      const next = current < 0 ? (event.key === 'ArrowDown' ? 0 : buttons.length - 1)
+        : (current + (event.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length;
+      buttons[next].focus();
+    };
     document.getElementById('shelter-repair')!.onclick = async () => {
       if (this.repairing) return;
       this.repairing = true; this.refreshRepair(); document.getElementById('repair-error')!.textContent = '';
@@ -43,14 +54,27 @@ export class AdventureMenus {
     this.clearInput(); this.refreshRepair(); document.getElementById('repair-error')!.textContent = '';
     this.repair.showModal(); this.sound?.('menuOpen');
   }
-  openTravel(choices: TravelChoice[]): void {
+  openTravel(sourceName: string, choices: TravelChoice[]): void {
     this.clearInput(); const list = document.getElementById('travel-destinations')!;
+    setText(document.getElementById('travel-title')!, sourceName);
+    let activated = false;
     list.replaceChildren(...choices.map(choice => {
-      const button = document.createElement('button'); button.textContent = choice.name;
-      button.onclick = () => { this.close(); choice.travel(); }; return button;
+      const button = document.createElement('button'); button.type = 'button';
+      const name = document.createElement('span'); name.textContent = choice.name;
+      const arrow = document.createElement('span'); arrow.textContent = '›'; arrow.setAttribute('aria-hidden', 'true');
+      button.append(name, arrow);
+      button.onclick = () => {
+        if (activated || !this.travel.open) return;
+        activated = true; this.close(); choice.travel();
+      };
+      return button;
     }));
-    if (!choices.length) list.textContent = 'No destinations available.';
+    if (!choices.length) {
+      const empty = document.createElement('p'); empty.textContent = 'No other campfires discovered.'; list.append(empty);
+    }
     this.travel.showModal(); this.sound?.('menuOpen');
+    list.scrollTop = 0;
+    (list.querySelector<HTMLButtonElement>('button') ?? this.travel.querySelector<HTMLButtonElement>('[data-close]'))!.focus();
   }
   update(_scrolls: number, canUse: boolean, prompt: string, casting: number): void {
     this.panel.updateScroll(canUse); setText(this.prompt, casting > 0 ? `Scroll of Return · ${casting.toFixed(1)}s` : prompt);

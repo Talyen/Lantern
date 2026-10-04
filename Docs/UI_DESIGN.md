@@ -91,6 +91,10 @@ HUD design protects the central combat space and makes urgent state legible. The
 
 [ui-tokens.css](../src/ui/ui-tokens.css) owns the shared semantic colors used by Inventory and Skills; each screen retains its authored layout and material gradients.
 
+### Campfire Travel
+
+The adopted [Campfire Travel brief](ui/concepts/campfire-travel/BRIEF.md) uses a compact left-side panel to keep the character visible. The current fire's name is the heading, with Campfire Travel beneath it; only other discovered destinations appear. Destination activation starts travel directly. First-destination focus, wrapping Up/Down navigation, normal Tab navigation and Escape/close/outside-click cancellation belong to [Adventure menus](../src/ui/adventure.ts). [game.css](../src/ui/game.css) owns the 360px width, 24px left inset, above-HUD placement, restrained backdrop and scrollable rows; no new runtime art is used. Existing discovery, safety and transition owners remain authoritative.
+
 ### Skills node direction
 
 The owner selected an Inventory-sized Skills sheet with category tabs above and every skill in the active category visible in a bottom icon row. [The adopted six-step horizontal tree](ui/concepts/skills-horizontal/README.md) has two Basics, two Skills, two Ultimates and two smaller passive nodes between every pair of majors; Gathering/Crafting instead use generic Major/Minor placeholders. Each node has its own icon and hover/focus information; planned art retains identity beneath a small badge. A level ruler above the skill row marks 10/20/30/40/50 without an XP bar. Assignment uses the real gameplay bar outside the sheet: drag an existing action to it or activate an empty slot for its picker. No in-panel Assigned Abilities section. [SkillsPanel](../src/ui/skills-panel.ts) and [skills.css](../src/ui/skills.css) own the screen; Sword/Bow now show learned/locked live abilities in learning order and ten chronological automatic passives; other tracks retain planned nodes and thresholds. See [weapon mastery](EQUIPMENT.md#sword-and-bow-mastery).
