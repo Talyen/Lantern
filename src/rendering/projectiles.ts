@@ -103,6 +103,7 @@ export class CasterVisuals {
     this.material.opacity = charging ? .55 + progress * .4 : this.flash / .12;
   }
   attach(parent: THREE.Object3D): void { parent.add(this.root); }
+  detach(): void { this.root.removeFromParent(); }
   clear(): void { this.root.visible = false; this.flash = 0; this.released = false; }
   dispose(): void { this.root.removeFromParent(); this.geometry.dispose(); this.material.dispose(); }
 }

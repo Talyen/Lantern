@@ -1,3 +1,6 @@
+import type { SurfaceMode } from '../assets/environment-surfaces';
+import type { AreaLighting } from '../levels/types';
+import type { RenewalVisibility } from './renewal-visibility';
 import type { AreaInstance } from '../levels/builder';
 import type { MovementWorld } from '../gameplay/movement';
 import type { PreparedLighting } from '../rendering/area-lighting';
@@ -6,7 +9,11 @@ import type { AdventureVisuals } from '../rendering/adventure';
 import type { WorldInteractions } from './world-interactions';
 import type { PreparedEnemies } from './enemy-actors';
 
-export type AreaResources = {
+export type AreaResources = Readonly<{
+  appearance: Readonly<{ surfaces: SurfaceMode; shelterRestored: boolean }>;
+  lightingDefinition: AreaLighting;
+  contentHash: string;
+  renewalVisibility: RenewalVisibility;
   area: AreaInstance;
   movement: MovementWorld;
   lighting: PreparedLighting;
@@ -14,7 +21,7 @@ export type AreaResources = {
   enemies: PreparedEnemies;
   visuals: AdventureVisuals;
   interactions: WorldInteractions;
-};
+}>;
 
 /** One owner for all destination resources, before and after promotion. */
 export class PreparedArea {

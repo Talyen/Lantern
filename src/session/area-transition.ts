@@ -1,5 +1,5 @@
 import type { AreaChange, AreaChangeResult } from './area-change';
-import type { PreparedArea } from './area-candidate';
+import type { PreparedArea, AreaResources } from './area-candidate';
 
 export type AreaRequest = {
   generation: number;
@@ -10,7 +10,9 @@ export type AreaRequest = {
 };
 export type AreaOperation = {
   prepare(): Promise<PreparedArea>;
-  commit(candidate: PreparedArea): void;
+  commitGameplay(candidate: PreparedArea): void;
+  activate(candidate: PreparedArea): void;
+  deactivate(): void;
   ready(): Promise<boolean>;
   cancelled(): Promise<void>;
   failed(error: unknown, committed: boolean): Promise<'retry' | 'back' | 'superseded'>;
@@ -23,12 +25,14 @@ export class AreaTransitionController {
   private request?: AbortController;
   private active?: PreparedArea;
   private activeReady = false;
+  private deactivateActive?: () => void;
   private closed = false;
   private pending = new Set<Promise<AreaChangeResult>>();
   private blocked = false;
   preparation = { generation: 0, destination: 'startup', stage: 'character' };
 
   constructor(private readonly begin: (change: AreaChange, request: AreaRequest) => AreaOperation) {}
+  get current(): AreaResources | undefined { return this.active?.value; }
   get transitioning(): boolean { return this.blocked; }
 
   change(change: AreaChange): Promise<AreaChangeResult> {
@@ -78,13 +82,22 @@ export class AreaTransitionController {
       }
       // The only precommit gameplay callback is an eligible shelter repair.
       if (change.kind === 'refresh') change.onCommit?.();
-      const previous = this.active;
+      const previous = this.active, deactivatePrevious = this.deactivateActive;
       this.active = candidate;
       this.activeReady = false;
       candidate = undefined;
       committed = true;
-      try { operation.commit(this.active); }
-      finally { previous?.dispose(); }
+      this.deactivateActive = () => operation!.deactivate();
+      try {
+        operation.commitGameplay(this.active);
+        deactivatePrevious?.();
+        operation.activate(this.active);
+      } catch (error) {
+        // Both old and partially installed bindings must let go before retirement.
+        deactivatePrevious?.();
+        operation.deactivate();
+        throw error;
+      } finally { previous?.dispose(); }
       const ready = await operation.ready();
       if (ready && request.current()) this.activeReady = true;
       return { status: 'committed', readiness: ready && request.current() ? 'ready' : 'superseded' };
@@ -116,6 +129,7 @@ export class AreaTransitionController {
     this.invalidate();
     // Let pending preparation release its resources while renderer/services still exist.
     await Promise.allSettled([...this.pending]);
+    this.deactivateActive?.(); this.deactivateActive = undefined;
     this.active?.dispose(); this.active = undefined;
   }
 }

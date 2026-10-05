@@ -233,6 +233,13 @@ export class AreaLightingResources {
     this.ownsActive = !borrowed; this.active = prepared;
     scene.environment = prepared.environment; if (prepared.grid) scene.add(prepared.grid);
   }
+  detach(scene: THREE.Scene): void {
+    const previous = this.active, owned = this.ownsActive;
+    this.active = null; this.ownsActive = true;
+    scene.environment = null;
+    previous?.grid?.removeFromParent();
+    if (owned) previous?.release();
+  }
   async exportCurrent(): Promise<PreparedProbeBake> {
     const active = this.active;
     if (!active?.grid || !active.probes) throw new Error('This scene has no irradiance probes.');

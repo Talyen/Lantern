@@ -54,13 +54,22 @@ export class EnemyActors {
   }
 
   commit(next: PreparedEnemies, borrowed = false): void {
-    if (this.ownsActive) this.active?.dispose();
-    this.ownsActive = !borrowed;
-    for (const id of Object.keys(this.actors)) if (id !== 'player') delete this.actors[id];
+    this.detach();
+    this.active = next; this.ownsActive = !borrowed;
     for (const [id, { actor, caster }] of Object.entries(next.entries)) {
       this.actors[id] = actor; this.scene.add(actor.root); caster?.attach(this.scene);
     }
-    this.active = next;
+  }
+  detach(): void {
+    const previous = this.active, owned = this.ownsActive;
+    this.active = undefined; this.ownsActive = true;
+    for (const id of Object.keys(this.actors)) if (id !== 'player') delete this.actors[id];
+    for (const { actor, caster } of Object.values(previous?.entries ?? {})) {
+      for (const detach of [() => actor.root.removeFromParent(), () => caster?.detach()]) {
+        try { detach(); } catch (error) { console.error('Unable to detach enemy presentation.', error); }
+      }
+    }
+    if (owned) previous?.dispose();
   }
   clear(): void { for (const entry of Object.values(this.active?.entries ?? {})) entry.caster?.clear(); }
   sync(state: Encounter, dt: number, visible: boolean): void {

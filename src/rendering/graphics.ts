@@ -94,6 +94,7 @@ export class Graphics {
   exportLighting() { return this.areaLighting.exportCurrent(); }
   lightingDiagnostics() { return this.areaLighting.diagnostics(); }
   commitLighting(prepared: PreparedLighting, borrowed = false): void { prepared.updateFlame(worldFirelightGain(this.settings.warmth)); this.areaLighting.commit(this.ctx.scene, prepared, borrowed); }
+  detachLighting(): void { this.areaLighting.detach(this.ctx.scene); this.projectedCasters = []; this.fitView.valid = false; }
   dispose(): void { this.disposed = true; cancelAnimationFrame(this.applyFrame); this.localShadows.dispose(); this.areaLighting.dispose(); this.ctx.scene.environment = null; this.effects.dispose(); this.gpuPipeline?.dispose(); }
   apply(settings: GraphicsSettings): void {
     this.pendingSettings = { ...settings };
