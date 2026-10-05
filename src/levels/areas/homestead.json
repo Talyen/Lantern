@@ -308,15 +308,15 @@
       ],
       "yaw": 0,
       "scale": [
-        1.2066981311435656,
         1,
-        3.1005437259420194
+        1,
+        1
       ],
       "height": 0.55,
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "ashen-veil-lights:model:light-wooden-lantern-post"
+        "libraryId": "ashen-veil-lights:model:light-hanging-iron-lantern"
       }
     },
     {

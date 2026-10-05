@@ -11,200 +11,6 @@
         "sources": []
       }
     },
-    "19e0aef4cf9d7fc8d399abf2c8fb86d86093c2b05857362d2831edc229d6aa2b": {
-      "url": "/vendor/lighting/19e0aef4cf9d7fc8d399abf2c8fb86d86093c2b05857362d2831edc229d6aa2b.json",
-      "area": "clearing",
-      "surfaces": "projected",
-      "shelterRestored": false,
-      "preparation": {
-        "key": "b75a49f0431f6e164e8f4dfaa64ec138d19cb3e070ee12729c0155b817a4e2cd",
-        "sources": [
-          {
-            "hash": "ed743f355b202a109df32868c4534e9c8b35e89914b60a6c7c57d596055b2b0d",
-            "url": "/assets/textures/environment/ground/earth-normal.png"
-          },
-          {
-            "hash": "06818cf717beee2f862fdef4f8647acc677cbdc84bf9025289250c2edf6a66fc",
-            "url": "/assets/textures/environment/ground/earth-surface.png"
-          },
-          {
-            "hash": "2e5a04a42b5c0d03b439848a2b0b35a496a35efee69f1f8f90c87a63a538d259",
-            "url": "/assets/textures/environment/ground/litter-normal.png"
-          },
-          {
-            "hash": "f44b36fcbb57953fa5b97fe8add79f56178ae575435b6920a3c478a8aebe66f5",
-            "url": "/assets/textures/environment/ground/litter-surface.png"
-          },
-          {
-            "hash": "27880fa22e081504f6f17d987d90d8b2d8cdf6cb1e4f8c07f0856e59066d3b69",
-            "url": "/assets/textures/environment/ground/rocky-soil-normal.png"
-          },
-          {
-            "hash": "00d1808a061d88bb984f82f0fc08c8c38b53bbf40d98d21b2b2d3bf2decc717b",
-            "url": "/assets/textures/environment/ground/rocky-soil-surface.png"
-          },
-          {
-            "hash": "4c733e0a286c1815f5a00185c5505d229552c246fbda6407872ccddb986deb9a",
-            "url": "/assets/textures/environment/ground/stone-v2-normal.png"
-          },
-          {
-            "hash": "b41118a0233f5ff7ea3c8a5664713ca505eeb622bf1572f00b6d25864709387a",
-            "url": "/assets/textures/environment/ground/stone-v2-surface.png"
-          },
-          {
-            "hash": "098be3e985e7859c2f79f9ed7711f380c52cf72ba4ba52ddf837db121c376807",
-            "url": "/assets/textures/environment/showcase/earth-v2.png"
-          },
-          {
-            "hash": "2ee3ac419c6575655be2b298dab5dd2c87d46c61356b64a3a66f2c5cdff1b80e",
-            "url": "/assets/textures/environment/showcase/litter-v2.png"
-          },
-          {
-            "hash": "4b2c632ee78e80e9bf90fc637a512877284b57fbb0e702dbe458d33de75fd084",
-            "url": "/assets/textures/environment/showcase/rocky-soil-v2.png"
-          },
-          {
-            "hash": "07e1164983de6fa5c2a420c27bc42952898a7dba370ecac7760e79dcf3d6af4e",
-            "url": "/assets/textures/environment/showcase/stone-v2.png"
-          },
-          {
-            "hash": "39136d34323bc10881762fad9ba673f77d92b57d823dee919e2255f44e0c123c",
-            "url": "/vendor/synty/chest.glb"
-          },
-          {
-            "hash": "c2f13ac3513152382789d65ead8b2c9a31e31cd54ebf53083fb35619b510278c",
-            "url": "/vendor/synty/environment/clearing/buildings-sm-bld-tent-small-04.glb"
-          },
-          {
-            "hash": "d69e196c724d8421dff0d0ae15d795b55378011c209b769114faa0f7243f6b46",
-            "url": "/vendor/synty/environment/clearing/props-sm-prop-barrel-01.glb"
-          },
-          {
-            "hash": "6a8bbcc67bac9f0ca4d6548257e44259855e4a98304341ccc7cd4fcc89e1fe06",
-            "url": "/vendor/synty/environment/clearing/props-sm-prop-bedroll-02.glb"
-          },
-          {
-            "hash": "f554c63a7ff36557b21e2ab96c0c91872a1d7c0dec1aaf7fd209f22adf005fd7",
-            "url": "/vendor/synty/environment/clearing/props-sm-prop-campfire-01.glb"
-          },
-          {
-            "hash": "c17f95542a71a1bb326980fa8aaa21d1783afb158121532c5e86a995b0b59079",
-            "url": "/vendor/synty/environment/clearing/sm-gen-env-log-02.glb"
-          },
-          {
-            "hash": "f88b2d92a10c8b00ea4fb848a5e8e17953121b9f0a4c458201cc750bddba3e5a",
-            "url": "/vendor/synty/library/models/ashen-veil/forest_autumn_shrub.glb"
-          },
-          {
-            "hash": "7ca42e596e4296dfa02700e7617ce8d0c590819a0aa5317f2dc4980df520f229",
-            "url": "/vendor/synty/library/models/ashen-veil/forest_rock_large.glb"
-          },
-          {
-            "hash": "f0936534b4057701f0ed75f79a4198759fe8563a7fed16c1815e7ba7bbf260ef",
-            "url": "/vendor/synty/library/models/autumn-atlas/tree_golden_larch.glb"
-          },
-          {
-            "hash": "368a0bbe5ac6f0530b8cd1ae5ac72f0241c7c362aa785200f9493c0e29ec96f8",
-            "url": "/vendor/synty/library/models/autumn-atlas/understory_copper_bracken.glb"
-          },
-          {
-            "hash": "e0c840aae3acc6df7ee339e4e2af34ea90f581844c98ab03503291925d305184",
-            "url": "/vendor/synty/library/models/gothic-lootables/crate_single.glb"
-          }
-        ]
-      }
-    },
-    "2b34ff03aa18268d1444c67e4b88d017abf9cab21bd6d496745453ae0f455902": {
-      "url": "/vendor/lighting/2b34ff03aa18268d1444c67e4b88d017abf9cab21bd6d496745453ae0f455902.json",
-      "area": "graveyard-ruins",
-      "surfaces": "projected",
-      "shelterRestored": false,
-      "preparation": {
-        "key": "7d72d3808bdbef7f8dabd04fac0b9645e1060e4a58bdc3d9c9a73060a111cce9",
-        "sources": [
-          {
-            "hash": "ed743f355b202a109df32868c4534e9c8b35e89914b60a6c7c57d596055b2b0d",
-            "url": "/assets/textures/environment/ground/earth-normal.png"
-          },
-          {
-            "hash": "06818cf717beee2f862fdef4f8647acc677cbdc84bf9025289250c2edf6a66fc",
-            "url": "/assets/textures/environment/ground/earth-surface.png"
-          },
-          {
-            "hash": "2e5a04a42b5c0d03b439848a2b0b35a496a35efee69f1f8f90c87a63a538d259",
-            "url": "/assets/textures/environment/ground/litter-normal.png"
-          },
-          {
-            "hash": "f44b36fcbb57953fa5b97fe8add79f56178ae575435b6920a3c478a8aebe66f5",
-            "url": "/assets/textures/environment/ground/litter-surface.png"
-          },
-          {
-            "hash": "27880fa22e081504f6f17d987d90d8b2d8cdf6cb1e4f8c07f0856e59066d3b69",
-            "url": "/assets/textures/environment/ground/rocky-soil-normal.png"
-          },
-          {
-            "hash": "00d1808a061d88bb984f82f0fc08c8c38b53bbf40d98d21b2b2d3bf2decc717b",
-            "url": "/assets/textures/environment/ground/rocky-soil-surface.png"
-          },
-          {
-            "hash": "b1cf87d3c87c0851989a17558e52fb6a5cf3358fc868f3a2b255d411ad07fdb9",
-            "url": "/assets/textures/environment/ground/stone-v1-normal.png"
-          },
-          {
-            "hash": "de5a6fa39417de289ac6426a7400abb23aa68756cc72ee409df560790f71e089",
-            "url": "/assets/textures/environment/ground/stone-v1-surface.png"
-          },
-          {
-            "hash": "098be3e985e7859c2f79f9ed7711f380c52cf72ba4ba52ddf837db121c376807",
-            "url": "/assets/textures/environment/showcase/earth-v2.png"
-          },
-          {
-            "hash": "2ee3ac419c6575655be2b298dab5dd2c87d46c61356b64a3a66f2c5cdff1b80e",
-            "url": "/assets/textures/environment/showcase/litter-v2.png"
-          },
-          {
-            "hash": "4b2c632ee78e80e9bf90fc637a512877284b57fbb0e702dbe458d33de75fd084",
-            "url": "/assets/textures/environment/showcase/rocky-soil-v2.png"
-          },
-          {
-            "hash": "88cd0eeaf052f61456c37ed381d7c5b8a5dc45f91fd7178654ad5ce76a0a8e10",
-            "url": "/assets/textures/environment/stone-v1.png"
-          },
-          {
-            "hash": "3f7b81d96b3a4c1164790935bc2a4df583cedd8427a0daaaf98fb62cd15ee147",
-            "url": "/vendor/synty/environment/props-sm-prop-campfire-01.glb"
-          },
-          {
-            "hash": "ec4c399d4cc05710b62f519281b54a715752dc210224f6a2af1d2bc3e65b9216",
-            "url": "/vendor/synty/library/models/ashen-veil/forest_rock_small.glb"
-          },
-          {
-            "hash": "f0936534b4057701f0ed75f79a4198759fe8563a7fed16c1815e7ba7bbf260ef",
-            "url": "/vendor/synty/library/models/autumn-atlas/tree_golden_larch.glb"
-          },
-          {
-            "hash": "208ab61bc966319a053bc9d93032a57ce9527ca1d3de87cd8a9b91654628aea3",
-            "url": "/vendor/synty/library/models/goblin-war-camp/2bcd53ab8a311056b9ca.glb"
-          },
-          {
-            "hash": "48a4815fa3a2097e5a43258de5423e9c3f50a033f3e535037cb6014fe201901e",
-            "url": "/vendor/synty/library/models/goblin-war-camp/dfb7ef2fb047acbe8394.glb"
-          },
-          {
-            "hash": "3c57856be0e4f67044cce18d20f8a6e409cd9cf737e4fc6c2f8da940435c40b6",
-            "url": "/vendor/synty/library/textures/goblin-war-camp/1520369f13ff6de25051.png"
-          },
-          {
-            "hash": "932e2b565e09a4e9f8e947f2c22759015e7a4f0889151f46e7c4d6508fe7eb46",
-            "url": "/vendor/synty/library/textures/goblin-war-camp/2535bfcbadaaab97ba00.png"
-          },
-          {
-            "hash": "0884a08127542f18166d9ec047285357cd7116fd54dcfbc41537134bc2bc1947",
-            "url": "/vendor/synty/library/textures/goblin-war-camp/e3294ce5cefda9cf098e.png"
-          }
-        ]
-      }
-    },
     "42c8176325b1aa4637092acb4f19c757cbed6985c8a07168051263ad1c950cc2": {
       "url": "/vendor/lighting/42c8176325b1aa4637092acb4f19c757cbed6985c8a07168051263ad1c950cc2.json",
       "area": "graveyard-crypt",
@@ -260,13 +66,13 @@
         ]
       }
     },
-    "c8b06305e6bb5a11ebcf918838e82c41c77bab367bfd580d27b90faac5f179da": {
-      "url": "/vendor/lighting/c8b06305e6bb5a11ebcf918838e82c41c77bab367bfd580d27b90faac5f179da.json",
+    "d02f4ba5f0c6ae0e90d7d7b4ab82d523337d271355cdf3d7d6d191331d6f2ccd": {
+      "url": "/vendor/lighting/d02f4ba5f0c6ae0e90d7d7b4ab82d523337d271355cdf3d7d6d191331d6f2ccd.json",
       "area": "homestead",
       "surfaces": "projected",
-      "shelterRestored": false,
+      "shelterRestored": true,
       "preparation": {
-        "key": "fd131d7807482d0f63a375b2d390d9b5e6154ccdbb6fad23e5e3a6066d8760bc",
+        "key": "034678181da49304489a4ee48f7535024e80cadd869a99a96c0a0e7f10d50ab0",
         "sources": [
           {
             "hash": "ed743f355b202a109df32868c4534e9c8b35e89914b60a6c7c57d596055b2b0d",
@@ -317,60 +123,60 @@
             "url": "/assets/textures/environment/stone-v1.png"
           },
           {
-            "hash": "71d50155fd6bd8cd87525d1555bedec852b405bce8ed19da10ae22e7dc96b4e3",
-            "url": "/vendor/synty/environment/props-sm-prop-bedroll-02.glb"
-          },
-          {
             "hash": "3f7b81d96b3a4c1164790935bc2a4df583cedd8427a0daaaf98fb62cd15ee147",
             "url": "/vendor/synty/environment/props-sm-prop-campfire-01.glb"
           },
           {
-            "hash": "5e7e49507f07e3c92dce3254f161383761da885942ed5682273b6d04f067306c",
-            "url": "/vendor/synty/environment/sm-gen-env-log-02.glb"
+            "hash": "640bde613a08b2ebf7c71376e72d797b95ebe8ff70d638433751973956bef3b5",
+            "url": "/vendor/synty/library/models/ashen-veil-lights/light_wooden_lantern_post.glb"
           },
           {
-            "hash": "933c006b350034aba0f99ec69ad802b1c4ee49b99498f90f3dc956c25141d115",
-            "url": "/vendor/synty/library/models/ashen-veil-lights/light_tabletop_lantern.glb"
-          },
-          {
-            "hash": "f88b2d92a10c8b00ea4fb848a5e8e17953121b9f0a4c458201cc750bddba3e5a",
-            "url": "/vendor/synty/library/models/ashen-veil/forest_autumn_shrub.glb"
-          },
-          {
-            "hash": "7ca42e596e4296dfa02700e7617ce8d0c590819a0aa5317f2dc4980df520f229",
-            "url": "/vendor/synty/library/models/ashen-veil/forest_rock_large.glb"
+            "hash": "2ca548625b76c76a74afec827e95f27a0a66aef3436940f85582b6b63f0b0bca",
+            "url": "/vendor/synty/library/models/ashen-veil/forest_birch_copper.glb"
           },
           {
             "hash": "23f2f3d31a04c36c0b28b160300e01323dc31a75b2e23fed284873c5f00b096c",
             "url": "/vendor/synty/library/models/ashen-veil/prop_flask_health.glb"
           },
           {
-            "hash": "f0936534b4057701f0ed75f79a4198759fe8563a7fed16c1815e7ba7bbf260ef",
-            "url": "/vendor/synty/library/models/autumn-atlas/tree_golden_larch.glb"
-          },
-          {
-            "hash": "368a0bbe5ac6f0530b8cd1ae5ac72f0241c7c362aa785200f9493c0e29ec96f8",
-            "url": "/vendor/synty/library/models/autumn-atlas/understory_copper_bracken.glb"
+            "hash": "e6785eb429dc0e0b8a413bf2ddf8d02fed61f432856ec8a6ff3f90456a3f82f8",
+            "url": "/vendor/synty/library/models/autumn-atlas/understory_sword_fern.glb"
           },
           {
             "hash": "73cd7e9d436fef844300f333bfdcfc8c76961e199fcc7bff7f9dfe7414c56e26",
             "url": "/vendor/synty/library/models/generic/208830e280d9ce7666f6.glb"
           },
           {
-            "hash": "f331231e63bc0af1acc2ab6652d71044a37fde3c373e63f264fb312b5f032221",
-            "url": "/vendor/synty/library/models/generic/28ef6c08f5bacc238511.glb"
+            "hash": "97ac3af53adc76dbe633f75c57bf5fa3d80006e2573bf631048c8822b11188c5",
+            "url": "/vendor/synty/library/models/generic/45fd189d75987e912311.glb"
           },
           {
-            "hash": "b315b2f2875c17b8a841253888deaf22980843f519280b6d4f7f4b9d99ab748f",
-            "url": "/vendor/synty/library/models/goblin-war-camp/2071c80f5a9fcb212933.glb"
+            "hash": "be365a2b2b6336058d835d6ca26ffc9c5f150c1b3e68c3bb678847e509ef6f45",
+            "url": "/vendor/synty/library/models/generic/6e132df74331d5c7c0aa.glb"
           },
           {
-            "hash": "dc1d355cf93f8ca357f5ed7703ee73e8f2b48a79e7272e715a35b247d2b094e5",
-            "url": "/vendor/synty/library/models/goblin-war-camp/bc198f5728a1e9e28cb7.glb"
+            "hash": "8f522020decb25ade4f121b2f89cb120e3a895f2689af7dcf400c2866d5ccee8",
+            "url": "/vendor/synty/library/models/generic/96432045b55421391430.glb"
+          },
+          {
+            "hash": "e04a3ecb84144027a97403ff1d74c40c53b914fda95b774be99b838a1d2db8d2",
+            "url": "/vendor/synty/library/models/goblin-war-camp/714a26e62c3f97867d44.glb"
           },
           {
             "hash": "e0c840aae3acc6df7ee339e4e2af34ea90f581844c98ab03503291925d305184",
             "url": "/vendor/synty/library/models/gothic-lootables/crate_single.glb"
+          },
+          {
+            "hash": "0f49b36fe7ced25b4960ce8c973c8aca288e4acc67d7fe7a5d06c02cea42cae9",
+            "url": "/vendor/synty/library/models/lantern-original/iron-anvil.glb"
+          },
+          {
+            "hash": "e6644441d206ce9997c0f50dc24a142c44690a9f31a6e7d3958d60e747bdcd5c",
+            "url": "/vendor/synty/library/models/viking-realm/0592eaadcdd4f83e163e.glb"
+          },
+          {
+            "hash": "7a56f995aad544becb2ab28fedbc316f6f5f6dddd710e5efa57c1b4e1238636f",
+            "url": "/vendor/synty/library/models/viking-realm/804a5aa703aca5ec45ac.glb"
           },
           {
             "hash": "fb6eea4cbdd6d86962739d0bc384fdc605fba7651745c1fd950e1f031eece3f1",
@@ -383,6 +189,240 @@
           {
             "hash": "a90f6d28c0b889cc582df4a7013c3dd7fa421280b3fcd5063acc780971cb3daf",
             "url": "/vendor/synty/library/textures/generic/af1c33fc0d90e85d3566.png"
+          },
+          {
+            "hash": "3c57856be0e4f67044cce18d20f8a6e409cd9cf737e4fc6c2f8da940435c40b6",
+            "url": "/vendor/synty/library/textures/goblin-war-camp/1520369f13ff6de25051.png"
+          },
+          {
+            "hash": "932e2b565e09a4e9f8e947f2c22759015e7a4f0889151f46e7c4d6508fe7eb46",
+            "url": "/vendor/synty/library/textures/goblin-war-camp/2535bfcbadaaab97ba00.png"
+          },
+          {
+            "hash": "0884a08127542f18166d9ec047285357cd7116fd54dcfbc41537134bc2bc1947",
+            "url": "/vendor/synty/library/textures/goblin-war-camp/e3294ce5cefda9cf098e.png"
+          },
+          {
+            "hash": "b44238ae8471bc4bdbc8eb7d35da7505b50fc42abe5f2511f01d0f966a415b72",
+            "url": "/vendor/synty/library/textures/viking-realm/6550c35630c9b0f19d2b.png"
+          },
+          {
+            "hash": "4c2aaca565cccab2ab17f10c0eb925d1af9e515578de18d15b3f4433d921fb43",
+            "url": "/vendor/synty/library/textures/viking-realm/78f85969ff3b6ca92544.png"
+          }
+        ]
+      }
+    },
+    "e1d7327fd1c1cba35d1a00bec5d1a22bc6663d607f8eb5b9dc76796972eb94fb": {
+      "url": "/vendor/lighting/e1d7327fd1c1cba35d1a00bec5d1a22bc6663d607f8eb5b9dc76796972eb94fb.json",
+      "area": "clearing",
+      "surfaces": "projected",
+      "shelterRestored": false,
+      "preparation": {
+        "key": "d5e03330fa9306da3f7b455047ed86e955da857d813f7b475c39fe2bb977ccee",
+        "sources": [
+          {
+            "hash": "ed743f355b202a109df32868c4534e9c8b35e89914b60a6c7c57d596055b2b0d",
+            "url": "/assets/textures/environment/ground/earth-normal.png"
+          },
+          {
+            "hash": "06818cf717beee2f862fdef4f8647acc677cbdc84bf9025289250c2edf6a66fc",
+            "url": "/assets/textures/environment/ground/earth-surface.png"
+          },
+          {
+            "hash": "2e5a04a42b5c0d03b439848a2b0b35a496a35efee69f1f8f90c87a63a538d259",
+            "url": "/assets/textures/environment/ground/litter-normal.png"
+          },
+          {
+            "hash": "f44b36fcbb57953fa5b97fe8add79f56178ae575435b6920a3c478a8aebe66f5",
+            "url": "/assets/textures/environment/ground/litter-surface.png"
+          },
+          {
+            "hash": "27880fa22e081504f6f17d987d90d8b2d8cdf6cb1e4f8c07f0856e59066d3b69",
+            "url": "/assets/textures/environment/ground/rocky-soil-normal.png"
+          },
+          {
+            "hash": "00d1808a061d88bb984f82f0fc08c8c38b53bbf40d98d21b2b2d3bf2decc717b",
+            "url": "/assets/textures/environment/ground/rocky-soil-surface.png"
+          },
+          {
+            "hash": "4c733e0a286c1815f5a00185c5505d229552c246fbda6407872ccddb986deb9a",
+            "url": "/assets/textures/environment/ground/stone-v2-normal.png"
+          },
+          {
+            "hash": "b41118a0233f5ff7ea3c8a5664713ca505eeb622bf1572f00b6d25864709387a",
+            "url": "/assets/textures/environment/ground/stone-v2-surface.png"
+          },
+          {
+            "hash": "098be3e985e7859c2f79f9ed7711f380c52cf72ba4ba52ddf837db121c376807",
+            "url": "/assets/textures/environment/showcase/earth-v2.png"
+          },
+          {
+            "hash": "2ee3ac419c6575655be2b298dab5dd2c87d46c61356b64a3a66f2c5cdff1b80e",
+            "url": "/assets/textures/environment/showcase/litter-v2.png"
+          },
+          {
+            "hash": "4b2c632ee78e80e9bf90fc637a512877284b57fbb0e702dbe458d33de75fd084",
+            "url": "/assets/textures/environment/showcase/rocky-soil-v2.png"
+          },
+          {
+            "hash": "07e1164983de6fa5c2a420c27bc42952898a7dba370ecac7760e79dcf3d6af4e",
+            "url": "/assets/textures/environment/showcase/stone-v2.png"
+          },
+          {
+            "hash": "c2f13ac3513152382789d65ead8b2c9a31e31cd54ebf53083fb35619b510278c",
+            "url": "/vendor/synty/environment/clearing/buildings-sm-bld-tent-small-04.glb"
+          },
+          {
+            "hash": "f554c63a7ff36557b21e2ab96c0c91872a1d7c0dec1aaf7fd209f22adf005fd7",
+            "url": "/vendor/synty/environment/clearing/props-sm-prop-campfire-01.glb"
+          },
+          {
+            "hash": "2ca548625b76c76a74afec827e95f27a0a66aef3436940f85582b6b63f0b0bca",
+            "url": "/vendor/synty/library/models/ashen-veil/forest_birch_copper.glb"
+          },
+          {
+            "hash": "e6785eb429dc0e0b8a413bf2ddf8d02fed61f432856ec8a6ff3f90456a3f82f8",
+            "url": "/vendor/synty/library/models/autumn-atlas/understory_sword_fern.glb"
+          },
+          {
+            "hash": "97ac3af53adc76dbe633f75c57bf5fa3d80006e2573bf631048c8822b11188c5",
+            "url": "/vendor/synty/library/models/generic/45fd189d75987e912311.glb"
+          },
+          {
+            "hash": "be365a2b2b6336058d835d6ca26ffc9c5f150c1b3e68c3bb678847e509ef6f45",
+            "url": "/vendor/synty/library/models/generic/6e132df74331d5c7c0aa.glb"
+          },
+          {
+            "hash": "8f522020decb25ade4f121b2f89cb120e3a895f2689af7dcf400c2866d5ccee8",
+            "url": "/vendor/synty/library/models/generic/96432045b55421391430.glb"
+          },
+          {
+            "hash": "6c3245e93f9c26ec9411c733120c825201864290e6ed261b91659c69f57b9781",
+            "url": "/vendor/synty/library/models/generic/e3568472b9906fbaa0d8.glb"
+          },
+          {
+            "hash": "e04a3ecb84144027a97403ff1d74c40c53b914fda95b774be99b838a1d2db8d2",
+            "url": "/vendor/synty/library/models/goblin-war-camp/714a26e62c3f97867d44.glb"
+          },
+          {
+            "hash": "e0c840aae3acc6df7ee339e4e2af34ea90f581844c98ab03503291925d305184",
+            "url": "/vendor/synty/library/models/gothic-lootables/crate_single.glb"
+          },
+          {
+            "hash": "b56c467ac3f049a15fd6ed3509600048b28fe81913983e5f3ae5ee872e771419",
+            "url": "/vendor/synty/library/models/viking-realm/3e4683815adbef8ab11d.glb"
+          },
+          {
+            "hash": "fb6eea4cbdd6d86962739d0bc384fdc605fba7651745c1fd950e1f031eece3f1",
+            "url": "/vendor/synty/library/textures/generic/1fb4463bd39b7d97a63c.png"
+          },
+          {
+            "hash": "fd5f3e5f33fa9051d7d5ea9abe00a93f4ddd442e97d380bcf6a86907c86b6457",
+            "url": "/vendor/synty/library/textures/generic/30843124a4577ca3e53a.png"
+          },
+          {
+            "hash": "a90f6d28c0b889cc582df4a7013c3dd7fa421280b3fcd5063acc780971cb3daf",
+            "url": "/vendor/synty/library/textures/generic/af1c33fc0d90e85d3566.png"
+          },
+          {
+            "hash": "3c57856be0e4f67044cce18d20f8a6e409cd9cf737e4fc6c2f8da940435c40b6",
+            "url": "/vendor/synty/library/textures/goblin-war-camp/1520369f13ff6de25051.png"
+          },
+          {
+            "hash": "932e2b565e09a4e9f8e947f2c22759015e7a4f0889151f46e7c4d6508fe7eb46",
+            "url": "/vendor/synty/library/textures/goblin-war-camp/2535bfcbadaaab97ba00.png"
+          },
+          {
+            "hash": "0884a08127542f18166d9ec047285357cd7116fd54dcfbc41537134bc2bc1947",
+            "url": "/vendor/synty/library/textures/goblin-war-camp/e3294ce5cefda9cf098e.png"
+          },
+          {
+            "hash": "b44238ae8471bc4bdbc8eb7d35da7505b50fc42abe5f2511f01d0f966a415b72",
+            "url": "/vendor/synty/library/textures/viking-realm/6550c35630c9b0f19d2b.png"
+          },
+          {
+            "hash": "4c2aaca565cccab2ab17f10c0eb925d1af9e515578de18d15b3f4433d921fb43",
+            "url": "/vendor/synty/library/textures/viking-realm/78f85969ff3b6ca92544.png"
+          }
+        ]
+      }
+    },
+    "39a28c338a7771a36a3201f0fe915e7c65ed4c61e55071674f936cb2e3e32156": {
+      "url": "/vendor/lighting/39a28c338a7771a36a3201f0fe915e7c65ed4c61e55071674f936cb2e3e32156.json",
+      "area": "graveyard-ruins",
+      "surfaces": "projected",
+      "shelterRestored": false,
+      "preparation": {
+        "key": "b9f6fc00d9cf8c76d9b082d817ec9a00aa3c25d668aa4c716be1dbf54b25e386",
+        "sources": [
+          {
+            "hash": "ed743f355b202a109df32868c4534e9c8b35e89914b60a6c7c57d596055b2b0d",
+            "url": "/assets/textures/environment/ground/earth-normal.png"
+          },
+          {
+            "hash": "06818cf717beee2f862fdef4f8647acc677cbdc84bf9025289250c2edf6a66fc",
+            "url": "/assets/textures/environment/ground/earth-surface.png"
+          },
+          {
+            "hash": "2e5a04a42b5c0d03b439848a2b0b35a496a35efee69f1f8f90c87a63a538d259",
+            "url": "/assets/textures/environment/ground/litter-normal.png"
+          },
+          {
+            "hash": "f44b36fcbb57953fa5b97fe8add79f56178ae575435b6920a3c478a8aebe66f5",
+            "url": "/assets/textures/environment/ground/litter-surface.png"
+          },
+          {
+            "hash": "27880fa22e081504f6f17d987d90d8b2d8cdf6cb1e4f8c07f0856e59066d3b69",
+            "url": "/assets/textures/environment/ground/rocky-soil-normal.png"
+          },
+          {
+            "hash": "00d1808a061d88bb984f82f0fc08c8c38b53bbf40d98d21b2b2d3bf2decc717b",
+            "url": "/assets/textures/environment/ground/rocky-soil-surface.png"
+          },
+          {
+            "hash": "b1cf87d3c87c0851989a17558e52fb6a5cf3358fc868f3a2b255d411ad07fdb9",
+            "url": "/assets/textures/environment/ground/stone-v1-normal.png"
+          },
+          {
+            "hash": "de5a6fa39417de289ac6426a7400abb23aa68756cc72ee409df560790f71e089",
+            "url": "/assets/textures/environment/ground/stone-v1-surface.png"
+          },
+          {
+            "hash": "098be3e985e7859c2f79f9ed7711f380c52cf72ba4ba52ddf837db121c376807",
+            "url": "/assets/textures/environment/showcase/earth-v2.png"
+          },
+          {
+            "hash": "2ee3ac419c6575655be2b298dab5dd2c87d46c61356b64a3a66f2c5cdff1b80e",
+            "url": "/assets/textures/environment/showcase/litter-v2.png"
+          },
+          {
+            "hash": "4b2c632ee78e80e9bf90fc637a512877284b57fbb0e702dbe458d33de75fd084",
+            "url": "/assets/textures/environment/showcase/rocky-soil-v2.png"
+          },
+          {
+            "hash": "88cd0eeaf052f61456c37ed381d7c5b8a5dc45f91fd7178654ad5ce76a0a8e10",
+            "url": "/assets/textures/environment/stone-v1.png"
+          },
+          {
+            "hash": "3f7b81d96b3a4c1164790935bc2a4df583cedd8427a0daaaf98fb62cd15ee147",
+            "url": "/vendor/synty/environment/props-sm-prop-campfire-01.glb"
+          },
+          {
+            "hash": "2ca548625b76c76a74afec827e95f27a0a66aef3436940f85582b6b63f0b0bca",
+            "url": "/vendor/synty/library/models/ashen-veil/forest_birch_copper.glb"
+          },
+          {
+            "hash": "ec4c399d4cc05710b62f519281b54a715752dc210224f6a2af1d2bc3e65b9216",
+            "url": "/vendor/synty/library/models/ashen-veil/forest_rock_small.glb"
+          },
+          {
+            "hash": "48a4815fa3a2097e5a43258de5423e9c3f50a033f3e535037cb6014fe201901e",
+            "url": "/vendor/synty/library/models/goblin-war-camp/dfb7ef2fb047acbe8394.glb"
+          },
+          {
+            "hash": "623cfb5b2ebece05fa854aa49918fb4c702a473fcf5c04a5b0280d1a20a2a1b5",
+            "url": "/vendor/synty/library/models/goblin-war-camp/e135210c330d11c17b16.glb"
           },
           {
             "hash": "3c57856be0e4f67044cce18d20f8a6e409cd9cf737e4fc6c2f8da940435c40b6",
@@ -399,13 +439,13 @@
         ]
       }
     },
-    "1c020ce7b4614c210c7a0153d2b05d2de2f5589f62df0c84a60e4e4f6d2e4331": {
-      "url": "/vendor/lighting/1c020ce7b4614c210c7a0153d2b05d2de2f5589f62df0c84a60e4e4f6d2e4331.json",
+    "b1383ae092847ea91a5519059efeb6378b42d3acdbe985e498e3dd7d7ceb62f6": {
+      "url": "/vendor/lighting/b1383ae092847ea91a5519059efeb6378b42d3acdbe985e498e3dd7d7ceb62f6.json",
       "area": "homestead",
       "surfaces": "projected",
-      "shelterRestored": true,
+      "shelterRestored": false,
       "preparation": {
-        "key": "5ca469f723b6d7ee01a608acebb60eca192fbad3494fe90fd36d3459cfe35baa",
+        "key": "9b22d94b9cad38c83a72c4bef5702cc03f881d0100692300b050637119b72037",
         "sources": [
           {
             "hash": "ed743f355b202a109df32868c4534e9c8b35e89914b60a6c7c57d596055b2b0d",
@@ -456,60 +496,64 @@
             "url": "/assets/textures/environment/stone-v1.png"
           },
           {
-            "hash": "71d50155fd6bd8cd87525d1555bedec852b405bce8ed19da10ae22e7dc96b4e3",
-            "url": "/vendor/synty/environment/props-sm-prop-bedroll-02.glb"
-          },
-          {
             "hash": "3f7b81d96b3a4c1164790935bc2a4df583cedd8427a0daaaf98fb62cd15ee147",
             "url": "/vendor/synty/environment/props-sm-prop-campfire-01.glb"
           },
           {
-            "hash": "5e7e49507f07e3c92dce3254f161383761da885942ed5682273b6d04f067306c",
-            "url": "/vendor/synty/environment/sm-gen-env-log-02.glb"
+            "hash": "3543535691309fcefaa72cbdfef3dcec6d4930b15021cc09c31e6e6cfdb3ed2f",
+            "url": "/vendor/synty/library/models/ashen-veil-lights/light_hanging_iron_lantern.glb"
           },
           {
-            "hash": "933c006b350034aba0f99ec69ad802b1c4ee49b99498f90f3dc956c25141d115",
-            "url": "/vendor/synty/library/models/ashen-veil-lights/light_tabletop_lantern.glb"
+            "hash": "640bde613a08b2ebf7c71376e72d797b95ebe8ff70d638433751973956bef3b5",
+            "url": "/vendor/synty/library/models/ashen-veil-lights/light_wooden_lantern_post.glb"
           },
           {
-            "hash": "f88b2d92a10c8b00ea4fb848a5e8e17953121b9f0a4c458201cc750bddba3e5a",
-            "url": "/vendor/synty/library/models/ashen-veil/forest_autumn_shrub.glb"
-          },
-          {
-            "hash": "7ca42e596e4296dfa02700e7617ce8d0c590819a0aa5317f2dc4980df520f229",
-            "url": "/vendor/synty/library/models/ashen-veil/forest_rock_large.glb"
+            "hash": "2ca548625b76c76a74afec827e95f27a0a66aef3436940f85582b6b63f0b0bca",
+            "url": "/vendor/synty/library/models/ashen-veil/forest_birch_copper.glb"
           },
           {
             "hash": "23f2f3d31a04c36c0b28b160300e01323dc31a75b2e23fed284873c5f00b096c",
             "url": "/vendor/synty/library/models/ashen-veil/prop_flask_health.glb"
           },
           {
-            "hash": "f0936534b4057701f0ed75f79a4198759fe8563a7fed16c1815e7ba7bbf260ef",
-            "url": "/vendor/synty/library/models/autumn-atlas/tree_golden_larch.glb"
-          },
-          {
-            "hash": "368a0bbe5ac6f0530b8cd1ae5ac72f0241c7c362aa785200f9493c0e29ec96f8",
-            "url": "/vendor/synty/library/models/autumn-atlas/understory_copper_bracken.glb"
+            "hash": "e6785eb429dc0e0b8a413bf2ddf8d02fed61f432856ec8a6ff3f90456a3f82f8",
+            "url": "/vendor/synty/library/models/autumn-atlas/understory_sword_fern.glb"
           },
           {
             "hash": "73cd7e9d436fef844300f333bfdcfc8c76961e199fcc7bff7f9dfe7414c56e26",
             "url": "/vendor/synty/library/models/generic/208830e280d9ce7666f6.glb"
           },
           {
-            "hash": "f331231e63bc0af1acc2ab6652d71044a37fde3c373e63f264fb312b5f032221",
-            "url": "/vendor/synty/library/models/generic/28ef6c08f5bacc238511.glb"
+            "hash": "97ac3af53adc76dbe633f75c57bf5fa3d80006e2573bf631048c8822b11188c5",
+            "url": "/vendor/synty/library/models/generic/45fd189d75987e912311.glb"
           },
           {
-            "hash": "b315b2f2875c17b8a841253888deaf22980843f519280b6d4f7f4b9d99ab748f",
-            "url": "/vendor/synty/library/models/goblin-war-camp/2071c80f5a9fcb212933.glb"
+            "hash": "be365a2b2b6336058d835d6ca26ffc9c5f150c1b3e68c3bb678847e509ef6f45",
+            "url": "/vendor/synty/library/models/generic/6e132df74331d5c7c0aa.glb"
           },
           {
-            "hash": "dc1d355cf93f8ca357f5ed7703ee73e8f2b48a79e7272e715a35b247d2b094e5",
-            "url": "/vendor/synty/library/models/goblin-war-camp/bc198f5728a1e9e28cb7.glb"
+            "hash": "8f522020decb25ade4f121b2f89cb120e3a895f2689af7dcf400c2866d5ccee8",
+            "url": "/vendor/synty/library/models/generic/96432045b55421391430.glb"
+          },
+          {
+            "hash": "e04a3ecb84144027a97403ff1d74c40c53b914fda95b774be99b838a1d2db8d2",
+            "url": "/vendor/synty/library/models/goblin-war-camp/714a26e62c3f97867d44.glb"
           },
           {
             "hash": "e0c840aae3acc6df7ee339e4e2af34ea90f581844c98ab03503291925d305184",
             "url": "/vendor/synty/library/models/gothic-lootables/crate_single.glb"
+          },
+          {
+            "hash": "0f49b36fe7ced25b4960ce8c973c8aca288e4acc67d7fe7a5d06c02cea42cae9",
+            "url": "/vendor/synty/library/models/lantern-original/iron-anvil.glb"
+          },
+          {
+            "hash": "e6644441d206ce9997c0f50dc24a142c44690a9f31a6e7d3958d60e747bdcd5c",
+            "url": "/vendor/synty/library/models/viking-realm/0592eaadcdd4f83e163e.glb"
+          },
+          {
+            "hash": "7a56f995aad544becb2ab28fedbc316f6f5f6dddd710e5efa57c1b4e1238636f",
+            "url": "/vendor/synty/library/models/viking-realm/804a5aa703aca5ec45ac.glb"
           },
           {
             "hash": "fb6eea4cbdd6d86962739d0bc384fdc605fba7651745c1fd950e1f031eece3f1",
@@ -534,6 +578,14 @@
           {
             "hash": "0884a08127542f18166d9ec047285357cd7116fd54dcfbc41537134bc2bc1947",
             "url": "/vendor/synty/library/textures/goblin-war-camp/e3294ce5cefda9cf098e.png"
+          },
+          {
+            "hash": "b44238ae8471bc4bdbc8eb7d35da7505b50fc42abe5f2511f01d0f966a415b72",
+            "url": "/vendor/synty/library/textures/viking-realm/6550c35630c9b0f19d2b.png"
+          },
+          {
+            "hash": "4c2aaca565cccab2ab17f10c0eb925d1af9e515578de18d15b3f4433d921fb43",
+            "url": "/vendor/synty/library/textures/viking-realm/78f85969ff3b6ca92544.png"
           }
         ]
       }

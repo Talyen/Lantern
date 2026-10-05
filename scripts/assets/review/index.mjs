@@ -28,7 +28,7 @@ async function sourceData(cwd, revision) {
   return { areas, surfaces: await json('assets/textures/environment/manifest.json'), characters: await json('assets/playable-characters.json'), selection: await json('assets/library-selection.json') };
 }
 /** Static ownership includes conditional fallbacks and potential player equipment, never a live save snapshot. */
-export function resolveUses(data, equipment = itemDefinitions) {
+export function resolveUses(data, equipment = itemDefinitions, tools = gatheringToolAssets) {
   const uses = [];
   const emit = (ref, scene, owner, role, appearance = true) => {
     if (!ref) return;
@@ -61,7 +61,7 @@ export function resolveUses(data, equipment = itemDefinitions) {
     // Player loadouts are save-driven: every supported model may be equipped in every playable area.
     for (const [item, definition] of Object.entries(equipment)) emit({ libraryId: definition.asset }, area, `player:${item}`, 'Player equipment (potential)', false);
     emit({ libraryId: arrowAsset }, area, 'projectiles', 'Arrow (potential)', false);
-    for (const [tool, libraryId] of Object.entries(gatheringToolAssets)) emit({ libraryId }, area, `gathering:${tool}`, 'Gathering tool', false);
+    for (const [tool, libraryId] of Object.entries(tools)) emit({ libraryId }, area, `gathering:${tool}`, 'Gathering tool', false);
   }
   return uses;
 }
@@ -236,17 +236,24 @@ export async function changedUses(cwd, base) {
   const oldData = await sourceData(cwd, base);
   // Equipment is TypeScript-owned; use the same historical definitions without rewriting tracked files.
   let oldEquipment = itemDefinitions;
+  let oldTools = gatheringToolAssets;
   const before = await git(['show', `${base}:src/gameplay/equipment.ts`], cwd);
   const now = await readFile(resolve(cwd, 'src/gameplay/equipment.ts'), 'utf8');
   if (before !== now) {
     const { mkdtemp, writeFile, rm } = await import('node:fs/promises');
     const { tmpdir } = await import('node:os'); const { pathToFileURL } = await import('node:url');
     const directory = await mkdtemp(resolve(tmpdir(), 'lantern-review-equipment-'));
-    try { const path = resolve(directory, 'equipment.ts'); await writeFile(path, before); oldEquipment = (await import(pathToFileURL(path).href)).itemDefinitions; }
+    try {
+      const path = resolve(directory, 'equipment.ts'); await writeFile(path, before);
+      const historical = await import(pathToFileURL(path).href);
+      oldEquipment = historical.itemDefinitions;
+      // Before shared tool identities, these were the fixed gathering attachments.
+      oldTools = historical.gatheringToolAssets ?? { axe: 'generic:model:sm-gen-wep-axe-01', pickaxe: 'generic:model:sm-gen-wep-pickaxe-01' };
+    }
     finally { await rm(directory, { recursive: true }); }
   }
   const key = use => JSON.stringify([use.scene, use.owner, use.role, use.reference]);
-  const previous = new Set(resolveUses(oldData, oldEquipment).map(key));
+  const previous = new Set(resolveUses(oldData, oldEquipment, oldTools).map(key));
   const added = new Set(current.refs.filter(use => !previous.has(key(use))).map(key));
   const rows = current.assets.filter(row => row.uses.some(use => added.has(key(use))));
   const issues = await reviewBlockers(current, rows);
