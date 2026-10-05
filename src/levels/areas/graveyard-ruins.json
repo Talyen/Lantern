@@ -1964,6 +1964,27 @@
       },
       "castShadow": true,
       "receiveShadow": true
+    },
+    {
+      "id": "grass-p18-p7",
+      "position": [
+        9.164709767093882,
+        0,
+        3.9772474834462628
+      ],
+      "yaw": 2.760309333163348,
+      "height": 0.42,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "asset": {
+        "libraryId": "autumn-atlas:model:grass-arching-straw"
+      },
+      "decoration": true,
+      "castShadow": false,
+      "receiveShadow": true
     }
   ],
   "scatter": [],
@@ -2334,6 +2355,106 @@
         "yaw": 2.356194490192345
       },
       "heals": true
+    }
+  ],
+  "grassVariants": [
+    {
+      "asset": {
+        "libraryId": "autumn-atlas:model:grass-meadow-bent"
+      },
+      "weight": 30,
+      "height": [
+        0.18,
+        0.32
+      ]
+    },
+    {
+      "asset": {
+        "libraryId": "autumn-atlas:model:grass-bronze-sedge"
+      },
+      "weight": 50,
+      "height": [
+        0.22,
+        0.4
+      ]
+    },
+    {
+      "asset": {
+        "libraryId": "autumn-atlas:model:grass-arching-straw"
+      },
+      "weight": 20,
+      "height": [
+        0.4,
+        0.65
+      ]
+    }
+  ],
+  "grassLimit": 200,
+  "grass": [
+    {
+      "id": "grass-west-graves",
+      "center": [
+        -7.4,
+        -0.8
+      ],
+      "radii": [
+        3.4,
+        2.3
+      ],
+      "yaw": -0.5,
+      "clumpsPerM2": 0.4
+    },
+    {
+      "id": "grass-east-graves",
+      "center": [
+        9,
+        1.8
+      ],
+      "radii": [
+        2.6,
+        4.7
+      ],
+      "yaw": -0.7,
+      "clumpsPerM2": 0.5
+    },
+    {
+      "id": "grass-south-graves",
+      "center": [
+        0.7,
+        8.3
+      ],
+      "radii": [
+        5,
+        2.2
+      ],
+      "yaw": -0.35,
+      "clumpsPerM2": 0.4
+    },
+    {
+      "id": "grass-chapel-edge",
+      "center": [
+        -3.8,
+        -10.4
+      ],
+      "radii": [
+        2.5,
+        3.2
+      ],
+      "yaw": 0.35,
+      "clumpsPerM2": 0.3
+    },
+    {
+      "id": "grass-north-edge",
+      "center": [
+        9.6,
+        -11.7
+      ],
+      "radii": [
+        2.6,
+        3.1
+      ],
+      "yaw": 0.6,
+      "clumpsPerM2": 0.35
     }
   ]
 }

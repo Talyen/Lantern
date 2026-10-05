@@ -17,6 +17,7 @@ import { assetLibrary, type AssetInstance } from '../assets/asset-library';
 import { updateAssetLods } from '../rendering/asset-lods';
 import { stoneSurface, stoneSurfaceRecipe } from '../rendering/stone-surface';
 import { createGrass } from '../rendering/grass';
+import { isGrassPlacement } from './grass';
 import { Vegetation } from '../rendering/vegetation';
 import { TreeFelling } from '../rendering/tree-felling';
 import { vegetationProfile } from './vegetation';
@@ -51,7 +52,7 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
   const ownedGeometry = new Set<THREE.BufferGeometry>(), ownedMaterial = new Set<THREE.Material>(), instances: AssetInstance[] = [];
   const sceneLeases: (() => void)[] = [];
   let disposed = false;
-  let grass: ReturnType<typeof createGrass> | undefined;
+  let grass: Awaited<ReturnType<typeof createGrass>> | undefined;
   const vegetation = new Vegetation();
   const animated = new Set<THREE.Object3D>();
   const interactables = new Map<string,THREE.Object3D>();
@@ -66,7 +67,7 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
   const portals: Portal[] = [];
   const missing: string[] = [], foliage: THREE.Object3D[] = [], fires: THREE.PointLight[] = []; let shadow: THREE.PointLight | null = null;
   try {
-    grass = createGrass(area, area.grass ?? [], vegetation); root.add(grass.root);
+    grass = await createGrass(area, vegetation); root.add(grass.root); missing.push(...grass.missing);
     for (const definition of area.effects.portals ?? []) {
       const portal = new Portal(definition, root); portals.push(portal); portal.root.userData.transient = true;
     }
@@ -212,7 +213,7 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
       const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(surface.positions, 3)); g.setIndex(surface.indices); g.computeVertexNormals(); ownedGeometry.add(g);
       const mesh = new THREE.Mesh(g, material({ kind: 'box', size: [], color: '#687273' })); mesh.receiveShadow = true; root.add(mesh);
     }
-    const props = [...area.props, ...generateDecoration(area)];
+    const props = [...area.props.filter(p => !isGrassPlacement(area, p)), ...generateDecoration(area)];
     const batches = new Map<string, Placement[]>();
     for (const p of props.filter(p => p.primitive)) {
       if (resources.some(n=>n.id===p.id)) { transform(new THREE.Mesh(geometry(p.primitive!), material(p.primitive!)), p); continue; }
@@ -352,7 +353,6 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
       effects.addVegetation(vegetation);
       treeFelling.activate(effects);
       effects.configureWeather(area, weatherShelters);
-      effects.addGrass(grass!);
       for (const model of foliage) effects.addFoliage(model);
       for (const water of area.effects.water) effects.addWater(root, ...water.position, water);
       for (const fire of area.effects.fires) if (root.getObjectByName(fire.id)) {
@@ -362,7 +362,7 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
         effects.addEmitter('sparks', new THREE.Vector3(fire.position[0], (recipe.emitterHeight) + .15, fire.position[1]), root, 4);
       }
     }
-    return { root, rainWetness, weatherShelters, area, missing, fires, portals, trees, interactables, resources, pickResource, setResourceState, vegetation, treeFelling, fellTree, get shadow() { return shadow; }, update, setChestOpened, setTreeState, treeHit, activate, dispose };
+    return { root, rainWetness, weatherShelters, area, missing, grass: grass.stats, fires, portals, trees, interactables, resources, pickResource, setResourceState, vegetation, treeFelling, fellTree, get shadow() { return shadow; }, update, setChestOpened, setTreeState, treeHit, activate, dispose };
   } catch (error) {
     // Texture callbacks can still be pending when another construction stage fails.
     await Promise.allSettled(textureReady);
@@ -371,7 +371,7 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
   function dispose(): void {
     if (disposed) return;
     disposed = true;
-    merchant?.dispose(); shelter?.dispose(); portals.forEach(p => p.dispose()); grass?.dispose(); vegetation.dispose(); treeFelling.dispose();
+    merchant?.dispose(); shelter?.dispose(); portals.forEach(p => p.dispose()); vegetation.dispose(); grass?.dispose(); treeFelling.dispose();
     root.removeFromParent();
     instances.forEach(i => i.release());
     disposeSceneInstances(root);

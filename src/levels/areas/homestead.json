@@ -2707,6 +2707,27 @@
       },
       "castShadow": true,
       "receiveShadow": true
+    },
+    {
+      "id": "grass-n11-n12",
+      "position": [
+        -5.117782068671659,
+        0,
+        -5.8242803666507825
+      ],
+      "yaw": 5.236173050162187,
+      "height": 0.44,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "asset": {
+        "libraryId": "autumn-atlas:model:grass-arching-straw"
+      },
+      "decoration": true,
+      "castShadow": false,
+      "receiveShadow": true
     }
   ],
   "scatter": [],
@@ -3590,14 +3611,17 @@
       "id": "grass-west",
       "center": [
         -10,
-        1
+        1.4
       ],
       "radii": [
-        4.8,
-        6.8
+        4.4,
+        6.6
       ],
       "yaw": -0.4,
-      "density": 200
+      "clumpsPerM2": 1.25,
+      "excludedIds": [
+        "grass-n23-n4"
+      ]
     },
     {
       "id": "grass-north",
@@ -3610,7 +3634,7 @@
         4.5
       ],
       "yaw": -0.3,
-      "density": 200
+      "clumpsPerM2": 1.1
     },
     {
       "id": "grass-east",
@@ -3623,7 +3647,7 @@
         7
       ],
       "yaw": 0.45,
-      "density": 200
+      "clumpsPerM2": 1
     },
     {
       "id": "grass-south",
@@ -3632,11 +3656,11 @@
         9
       ],
       "radii": [
-        6.5,
-        3.5
+        6.2,
+        3.1
       ],
       "yaw": 0.2,
-      "density": 200
+      "clumpsPerM2": 1.15
     }
   ],
   "shelter": {
@@ -3673,5 +3697,38 @@
       1.8,
       -3.1
     ]
-  }
+  },
+  "grassVariants": [
+    {
+      "asset": {
+        "libraryId": "autumn-atlas:model:grass-meadow-bent"
+      },
+      "weight": 60,
+      "height": [
+        0.18,
+        0.32
+      ]
+    },
+    {
+      "asset": {
+        "libraryId": "autumn-atlas:model:grass-bronze-sedge"
+      },
+      "weight": 30,
+      "height": [
+        0.22,
+        0.4
+      ]
+    },
+    {
+      "asset": {
+        "libraryId": "autumn-atlas:model:grass-arching-straw"
+      },
+      "weight": 10,
+      "height": [
+        0.4,
+        0.65
+      ]
+    }
+  ],
+  "grassLimit": 1000
 }

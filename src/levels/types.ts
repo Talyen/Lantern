@@ -1,7 +1,7 @@
 import type { RewardMetadata } from '../gameplay/economy';
 import type { ItemId } from '../gameplay/equipment';
 import type { EnemyId } from '../gameplay/encounter';
-import type { GrassPatch } from './grass';
+import type { GrassPatch, GrassVariant } from './grass';
 import type { LightingRecipe } from './lighting';
 import type { LocalLightRole } from './local-lighting';
 import type { Traversal } from '../gameplay/movement';
@@ -36,7 +36,7 @@ export type AreaDefinition = {
   envelope: { width: number; depth: number; apron: number; yaw: number; reference: { width: number; height: number; zoom: number }; screen: [number, number] };
   layout: EncounterLayout; traversal?: Traversal; seed: number; props: Placement[];
   scatter: { id: string; count: number; radius: [number, number]; primitive: Primitive; harvest?: Placement['harvest']; excludedIds: string[] }[];
-  grass?: GrassPatch[];
+  grass?: GrassPatch[]; grassVariants?: GrassVariant[]; grassLimit?: number;
   reserved: Region[]; gates: Gate[]; lighting: LightingRecipe;
   effects: { weather?: { kind: 'rain'; shelters?: RainShelter[] }; portals?: PortalDefinition[]; water: WaterDefinition[]; fires: { id: string; position: Point; asset: AssetRef; height: number; emitterHeight?: number; intensity?: number; role?: LocalLightRole; color?: string; distance?: number; shadow?: boolean }[] };
   views: { id: string; target: [number, number, number] }[];

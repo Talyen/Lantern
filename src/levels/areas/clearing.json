@@ -2666,6 +2666,27 @@
       },
       "castShadow": true,
       "receiveShadow": true
+    },
+    {
+      "id": "grass-n28-p7",
+      "position": [
+        -13.630238921497948,
+        0,
+        3.5642753730062395
+      ],
+      "yaw": 3.924199744842169,
+      "height": 0.48,
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "asset": {
+        "libraryId": "autumn-atlas:model:grass-arching-straw"
+      },
+      "decoration": true,
+      "castShadow": false,
+      "receiveShadow": true
     }
   ],
   "scatter": [],
@@ -3560,7 +3581,7 @@
         6
       ],
       "yaw": 0.2,
-      "density": 150
+      "clumpsPerM2": 1.15
     },
     {
       "id": "foreground-bank",
@@ -3569,11 +3590,11 @@
         12.9
       ],
       "radii": [
-        6,
-        3.3
+        5.6,
+        2.9
       ],
       "yaw": 0.5,
-      "density": 150
+      "clumpsPerM2": 1.25
     },
     {
       "id": "eastern-bank",
@@ -3586,7 +3607,7 @@
         5.8
       ],
       "yaw": -0.5,
-      "density": 150
+      "clumpsPerM2": 1.1
     },
     {
       "id": "camp-rear",
@@ -3599,7 +3620,7 @@
         2.8
       ],
       "yaw": 0.2,
-      "density": 150
+      "clumpsPerM2": 0.85
     },
     {
       "id": "camp-west",
@@ -3612,7 +3633,7 @@
         3
       ],
       "yaw": -0.3,
-      "density": 150
+      "clumpsPerM2": 0.9
     },
     {
       "id": "approach-undergrowth",
@@ -3621,11 +3642,11 @@
         5.5
       ],
       "radii": [
-        8,
-        7
+        7.5,
+        6.5
       ],
       "yaw": 0.4,
-      "density": 140
+      "clumpsPerM2": 1.1
     },
     {
       "id": "camp-east-edge",
@@ -3638,7 +3659,40 @@
         5
       ],
       "yaw": -0.3,
-      "density": 130
+      "clumpsPerM2": 0.9
     }
-  ]
+  ],
+  "grassVariants": [
+    {
+      "asset": {
+        "libraryId": "autumn-atlas:model:grass-meadow-bent"
+      },
+      "weight": 60,
+      "height": [
+        0.18,
+        0.32
+      ]
+    },
+    {
+      "asset": {
+        "libraryId": "autumn-atlas:model:grass-bronze-sedge"
+      },
+      "weight": 30,
+      "height": [
+        0.22,
+        0.4
+      ]
+    },
+    {
+      "asset": {
+        "libraryId": "autumn-atlas:model:grass-arching-straw"
+      },
+      "weight": 10,
+      "height": [
+        0.4,
+        0.65
+      ]
+    }
+  ],
+  "grassLimit": 1000
 }

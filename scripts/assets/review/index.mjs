@@ -47,6 +47,7 @@ export function resolveUses(data, equipment = itemDefinitions, tools = gathering
     uses.push({ reference, scene: scene?.id ?? null, sceneName: scene?.name ?? 'Shared gameplay', owner, role });
   };
   for (const area of data.areas) {
+    for (const variant of area.grassVariants ?? []) emit(variant.asset, area, 'grass-palette', 'Grass clumps', false);
     for (const prop of area.props) { emit(prop.asset, area, prop.id, 'Placement'); emit(prop.fallback, area, prop.id, 'Fallback'); }
     for (const fire of area.effects.fires) emit(fire.asset, area, fire.id, 'Fire');
     if (area.shelter) emit({ libraryId: 'generic:model:sm-gen-prop-chest-01' }, area, 'shelter-stash', 'Stash');

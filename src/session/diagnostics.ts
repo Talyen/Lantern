@@ -97,7 +97,7 @@ export class ClearingDiagnostics {
       interaction: { hover: hoveredInteraction?.key ?? null, approach: approach.worldKey },
       harvest: { chopping: gathering.choppingId, trees: active?.resources.map(tree => ({ ...tree, ...harvesting.state(currentArea.id, tree.id) })) },
       fluids: graphics?.effects.fluids.snapshot(),
-      vegetation: active?.vegetation.diagnostics(), treeFalls: active?.treeFelling.diagnostics(),
+      vegetation: active?.vegetation.diagnostics(), grass: active?.grass, treeFalls: active?.treeFelling.diagnostics(),
       adventure: {
         persistence: adventure.saveDiagnostics(), character: adventure.character, portal: adventure.portal, castRemaining: adventure.castRemaining,
         drops: adventure.session(currentArea.id).drops, chests: adventure.session(currentArea.id).chests,

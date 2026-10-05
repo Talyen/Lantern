@@ -1,3 +1,4 @@
+import { isGrassPlacement } from './grass.ts';
 import { resolveWorldFlame } from './local-lighting.ts';
 import type { ResolvedAreaDefinition } from './types';
 
@@ -6,7 +7,7 @@ export const lightingBakeVersion = 9;
 export type LightingPreparation = { key: string; sources: { url: string; hash: string }[] };
 export async function lightingPreparationKey(area: ResolvedAreaDefinition, surfaces: string, shelterRestored: boolean, three: string, recipes: unknown): Promise<string> {
   const { sun, environment, probes } = area.lighting;
-  const props = area.props.map(({ harvest, ...prop }) => ({ ...prop, ...(harvest ? { harvest: { kind: harvest.kind } } : {}) }));
+  const props = area.props.filter(p => !isGrassPlacement(area, p)).map(({ harvest, ...prop }) => ({ ...prop, ...(harvest ? { harvest: { kind: harvest.kind } } : {}) }));
   const scatter = area.scatter.map(({ harvest, ...entry }) => ({ ...entry, ...(harvest ? { harvest: { kind: harvest.kind } } : {}) }));
   const gates = area.gates.map(({ position, yaw, width, depth, arrival }) => ({ position, yaw, width, depth, arrival }));
   const payload = { version: lightingBakeVersion, three, recipes, surfaces, shelterRestored: !!area.shelter && shelterRestored,

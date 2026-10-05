@@ -1,18 +1,18 @@
 import * as THREE from 'three';
-import { createSurfaceMaterial } from './surface-detail';
-import { attribute, cos, cross, float, Fn, mix, modelWorldMatrix, modelWorldMatrixInverse, normalLocal, positionLocal, positionPrevious, sin, uniform, vec3, vec4 } from 'three/tsl';
-import { generateGrass, grassMask, grassCellSize, type GrassBlade, type GrassPatch } from '../levels/grass';
-import type { AreaDefinition } from '../levels/types';
+import { assetLibrary, type AssetInstance } from '../assets/asset-library';
+import { isMesh } from '../assets/resource-ownership';
+import { generateGrass, grassMask, grassCellSize, grassClearance, isGrassPlacement, type GrassFootprints } from '../levels/grass';
+import type { AreaDefinition, Placement } from '../levels/types';
 import { waterBankWetness } from '../levels/water';
 import type { Vegetation } from './vegetation';
 
-/** Shared across carpet cells; advanced by the area's existing paused effects clock. */
-export function createGrass(area: AreaDefinition, patches: GrassPatch[], vegetation: Vegetation) {
-  const root = new THREE.Group(); root.name = 'grass-carpets'; root.userData.transient = true;
-  const wetBanks = area.effects.water.length > 0;
+type Prototype = { bounds: THREE.Box3; meshes: THREE.Mesh[]; radiusPerHeight: number; height: number };
+
+/** One borrowed source per botanical type; only cell instance buffers belong to the area. */
+export async function createGrass(area: AreaDefinition, vegetation: Vegetation) {
+  const root = new THREE.Group(); root.name = 'grass-clumps'; root.userData.transient = true;
+  const patches = area.grass ?? [], wetBanks = area.effects.water.length > 0;
   const mask = patches.length || wetBanks ? grassMask(area, patches) : null;
-  // Preserve grass coverage byte-for-byte in red; green adds wet banks without
-  // another sampled-texture binding on the already-full ground material.
   let coverageData = mask?.data;
   if (mask && wetBanks) {
     coverageData = new Uint8Array(mask.data.length * 2);
@@ -26,102 +26,75 @@ export function createGrass(area: AreaDefinition, patches: GrassPatch[], vegetat
   const coverageTexture = mask && coverageData ? new THREE.DataTexture(coverageData, mask.resolution, mask.resolution, wetBanks ? THREE.RGFormat : THREE.RedFormat) : null;
   if (coverageTexture) { coverageTexture.minFilter = coverageTexture.magFilter = THREE.LinearFilter; coverageTexture.needsUpdate = true; }
   const coverage = mask && coverageTexture ? { texture: coverageTexture, min: mask.min, span: mask.span, wetBanks } : null;
-  const clock = uniform(0), previousClock = uniform(0), wind = uniform(new THREE.Vector3(.08, 0, .035)), previousWind = uniform(new THREE.Vector3(.08, 0, .035));
-  const bladeT = attribute('bladeT', 'float'), origin = attribute('grassOrigin', 'vec3'), world = attribute('grassWorld', 'vec2'), shape = attribute('grassShape', 'vec3'), blade = attribute('grassBlade', 'vec2');
-  const bend = attribute('grassBend', 'vec3');
-  const anchor = bladeT.mul(bladeT);
-  const wave = (time: typeof clock) => sin(world.x.mul(.55).add(world.y.mul(.32)).sub(time.mul(.8))).mul(.65)
-    .add(sin(world.y.mul(.91).sub(world.x.mul(.23)).sub(time.mul(.4))).mul(.25))
-    .add(sin(time.mul(1.1).add(shape.y)).mul(.1));
-  const material = createSurfaceMaterial({ roughness: .95, side: THREE.DoubleSide, vertexColors: false });
-  // Explicit geometry-owned attributes avoid r186's pass-local instance-matrix
-  // buffers and let every area replacement release the complete carpet allocation.
-  material.positionNode = Fn(() => {
-    const c = cos(blade.y), s = sin(blade.y);
-    const taper = bladeT.oneMinus().pow(bend.z);
-    const taperSlope = bladeT.oneMinus().max(.02).pow(bend.z.sub(1)).mul(bend.z).negate();
-    const scaled = vec3(positionLocal.x.mul(blade.x).mul(taper).add(anchor.mul(bend.x).mul(shape.x)),
-      bladeT.mul(shape.x), positionLocal.z.mul(blade.x).mul(taper).add(anchor.mul(bend.y).mul(shape.x)));
-    const rotate = (v: typeof scaled) => vec3(v.x.mul(c).add(v.z.mul(s)), v.y, v.z.mul(c).sub(v.x.mul(s)));
-    const point = rotate(scaled).add(origin).toVar();
-    const sway = wind.mul(shape.x).mul(wave(clock)).mul(1.5);
-    const root = modelWorldMatrix.mul(vec4(origin, 1)).xyz;
-    const push = modelWorldMatrixInverse.mul(vec4(vegetation.influence(root, float(0)).mul(shape.x).mul(.45), 0)).xyz;
-    const oldPush = modelWorldMatrixInverse.mul(vec4(vegetation.influence(root, float(0), true).mul(shape.x).mul(.45), 0)).xyz;
-    // Tangents follow taper, authored bend and current sway; folds stay lit as
-    // narrow ribbons rather than broad flat triangles, even while moving.
-    const across = vec3(1, 0, positionLocal.x.sign().mul(-.07));
-    const along = vec3(positionLocal.x.mul(blade.x).mul(taperSlope).add(bladeT.mul(2).mul(bend.x).mul(shape.x)),
-      shape.x, positionLocal.z.mul(blade.x).mul(taperSlope).add(bladeT.mul(2).mul(bend.y).mul(shape.x)));
-    normalLocal.assign(cross(rotate(across), rotate(along).add(sway.add(push).mul(bladeT).mul(2))).normalize());
-    positionPrevious.assign(point.add(previousWind.mul(shape.x).mul(anchor).mul(wave(previousClock)).mul(1.5)).add(oldPush.mul(anchor)));
-    return point.add(sway.add(push).mul(anchor));
-  })();
-  const rootColor = vec3(...new THREE.Color('#303624').toArray());
-  const green = vec3(...new THREE.Color('#576044').toArray()), straw = vec3(...new THREE.Color('#827653').toArray());
-  material.colorNode = mix(rootColor, mix(green, straw, shape.z), bladeT.smoothstep(.08, .92));
-  const positions: number[] = [], heights: number[] = [], indices: number[] = [];
-  const segments = 4;
-  for (let row = 0; row <= segments; row++) {
-    const t = row / segments;
-    for (let col = 0; col < 3; col++) {
-      positions.push((col - 1) * .5, t, col === 1 ? .035 : 0);
-      // A shallow fold gives each narrow ribbon two faces rather than one broad flat wedge.
-      heights.push(t);
-    }
-  }
-  for (let row = 0; row < segments; row++) for (let col = 0; col < 2; col++) {
-    const a = row * 3 + col, b = a + 3; indices.push(a, a + 1, b, a + 1, b + 1, b);
-  }
-  // Every cell uses the same immutable blade topology. Cell-specific instance
-  // attributes and bounds stay independent; the whole carpet retires together.
-  const bladeGeometry = new THREE.BufferGeometry();
-  bladeGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  bladeGeometry.setAttribute('bladeT', new THREE.Float32BufferAttribute(heights, 1));
-  bladeGeometry.setIndex(indices); bladeGeometry.computeVertexNormals();
-  const terrain = area.props.find(p => p.terrain && p.primitive?.kind === 'box');
-  const groundY = terrain ? terrain.position[1] + terrain.primitive!.size[1] * terrain.scale[1] / 2 : 0;
-  const blades = generateGrass(area, patches), cells = new Map<string, GrassBlade[]>();
-  for (const blade of blades) {
-    const key = `${Math.floor(blade.x / grassCellSize)},${Math.floor(blade.z / grassCellSize)}`;
-    const cell = cells.get(key) ?? []; cell.push(blade); cells.set(key, cell);
-  }
-  const geometry: THREE.InstancedBufferGeometry[] = [], meshes: THREE.Mesh[] = [];
-  const boundPoint = new THREE.Vector3();
-  for (const [key, cell] of cells) {
-    const [cx, cz] = key.split(',').map(Number), x = (cx + .5) * grassCellSize, z = (cz + .5) * grassCellSize;
-    const g = new THREE.InstancedBufferGeometry(); g.instanceCount = cell.length;
-    g.setAttribute('position', bladeGeometry.getAttribute('position'));
-    g.setAttribute('bladeT', bladeGeometry.getAttribute('bladeT'));
-    g.setAttribute('normal', bladeGeometry.getAttribute('normal'));
-    g.setIndex(bladeGeometry.index);
-    const origins = new Float32Array(cell.length * 3), shapes = new Float32Array(cell.length * 3), worlds = new Float32Array(cell.length * 2), blades = new Float32Array(cell.length * 2), bends = new Float32Array(cell.length * 3);
-    const mesh = new THREE.Mesh(g, material); mesh.name = `grass-cell-${key}`; mesh.position.set(x, 0, z); mesh.receiveShadow = true; mesh.castShadow = false;
-    // Cells keep fixed local placement; wind deforms vertices in the shared
-    // material. World matrices still follow any movement of the carpet/area.
-    mesh.updateMatrix(); mesh.matrixAutoUpdate = false;
-    const box = new THREE.Box3();
-    cell.forEach((blade, i) => {
-      // Root height follows the authored flat terrain; bury roots slightly to avoid floating blades.
-      const xyz = i * 3, xy = i * 2;
-      origins[xyz] = blade.x - x; origins[xyz + 1] = groundY - .004; origins[xyz + 2] = blade.z - z;
-      worlds[xy] = blade.x; worlds[xy + 1] = blade.z; blades[xy] = blade.width; blades[xy + 1] = blade.yaw;
-      box.expandByPoint(boundPoint.set(blade.x - x, groundY - .004, blade.z - z));
-      box.expandByPoint(boundPoint.set(blade.x - x, groundY + blade.height, blade.z - z));
-      bends[xyz] = blade.lean[0]; bends[xyz + 1] = blade.lean[1]; bends[xyz + 2] = blade.taper;
-      shapes[xyz] = blade.height; shapes[xyz + 1] = blade.phase; shapes[xyz + 2] = blade.shade;
-    });
-    g.setAttribute('grassOrigin', new THREE.InstancedBufferAttribute(origins, 3));
-    g.setAttribute('grassShape', new THREE.InstancedBufferAttribute(shapes, 3));
-    g.setAttribute('grassWorld', new THREE.InstancedBufferAttribute(worlds, 2));
-    g.setAttribute('grassBlade', new THREE.InstancedBufferAttribute(blades, 2));
-    g.setAttribute('grassBend', new THREE.InstancedBufferAttribute(bends, 3));
-    const maxHeight = Math.max(...cell.map(blade => blade.height));
-    g.boundingBox = box.expandByScalar(.32 + maxHeight * .45); g.boundingSphere = box.getBoundingSphere(new THREE.Sphere());
-    geometry.push(g); meshes.push(mesh); root.add(mesh);
-  }
-  root.userData.grass = { blades: blades.length, cells: cells.size };
+  const leases: AssetInstance[] = [];
+  const prototypes = new Map<string, Prototype>(), meshes: THREE.InstancedMesh[] = [], missing: string[] = [];
   let disposed = false;
-  return { root, coverage, update(time: number, direction: THREE.Vector3) { previousClock.value = clock.value; previousWind.value.copy(wind.value); clock.value = time; wind.value.copy(direction); }, dispose() { if (disposed) return; disposed = true; root.removeFromParent(); meshes.forEach(mesh => mesh.dispose()); geometry.forEach(g => g.dispose()); material.dispose(); coverageTexture?.dispose(); } };
+  function dispose() {
+    if (disposed) return; disposed = true;
+    root.removeFromParent(); meshes.forEach(mesh => mesh.dispose());
+    leases.forEach(instance => instance.release()); coverageTexture?.dispose();
+  }
+  try {
+    const ids = [...new Set((area.grassVariants ?? []).map(v => v.asset.libraryId))];
+    const loaded = await Promise.allSettled(ids.map(id => assetLibrary.loadAsset(id, { shadows: false })));
+    leases.push(...loaded.flatMap(result => result.status === 'fulfilled' ? [result.value] : []));
+    for (let i = 0; i < loaded.length; i++) {
+      const result = loaded[i];
+      if (result.status === 'rejected') { missing.push(`grass:${ids[i]}`); continue; }
+      const instance = result.value, sourceMeshes: THREE.Mesh[] = [];
+      instance.object.updateMatrixWorld(true);
+      const bounds = new THREE.Box3().setFromObject(instance.object), size = bounds.getSize(new THREE.Vector3());
+      instance.object.traverse(object => { if (isMesh(object)) sourceMeshes.push(object); });
+      if (size.y <= 0 || !sourceMeshes.length || sourceMeshes.some(mesh => mesh instanceof THREE.SkinnedMesh || (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).some(m => m.transparent))) {
+        instance.release(); missing.push(`grass:${ids[i]}: requires opaque static geometry`); continue;
+      }
+      const radiusPerHeight = Math.hypot(size.x, size.z) / (2 * size.y);
+      prototypes.set(ids[i], { bounds, meshes: sourceMeshes, radiusPerHeight, height: size.y });
+    }
+    const footprints: GrassFootprints = prototypes;
+    const manual = area.props.filter(p => isGrassPlacement(area, p));
+    const terrain = area.props.find(p => p.terrain && p.primitive?.kind === 'box');
+    const groundY = terrain ? terrain.position[1] + terrain.primitive!.size[1] * terrain.scale[1] / 2 : 0;
+    const generated = generateGrass(area, footprints);
+    const placements = [...generated, ...manual], manualIds = new Set(manual.map(p => p.id));
+    const cells = new Map<string, Placement[]>();
+    for (const placement of placements) {
+      const id = (placement.asset as { libraryId: string }).libraryId, prototype = prototypes.get(id);
+      if (!prototype) continue;
+      const radius = prototype.radiusPerHeight * (placement.height ?? prototype.height) * Math.max(placement.scale[0], placement.scale[2]);
+      if (manualIds.has(placement.id) && grassClearance(area, placement.position[0], placement.position[2], radius) === 0) {
+        missing.push(`grass:${placement.id}: footprint intersects protected ground`); continue;
+      }
+      const key = `${id}/${Math.floor(placement.position[0] / grassCellSize)},${Math.floor(placement.position[2] / grassCellSize)}`;
+      const cell = cells.get(key) ?? []; cell.push(placement); cells.set(key, cell);
+    }
+    let triangles = 0, clumps = 0;
+    const placementMatrix = new THREE.Matrix4(), normalization = new THREE.Matrix4(), transform = new THREE.Object3D();
+    for (const [key, cell] of cells) {
+      const prototype = prototypes.get((cell[0].asset as { libraryId: string }).libraryId)!;
+      const center = prototype.bounds.getCenter(new THREE.Vector3());
+      const x = (Math.floor(cell[0].position[0] / grassCellSize) + .5) * grassCellSize;
+      const z = (Math.floor(cell[0].position[2] / grassCellSize) + .5) * grassCellSize;
+      for (const source of prototype.meshes) {
+        const mesh = new THREE.InstancedMesh(source.geometry, source.material, cell.length);
+        mesh.name = `grass-cell:${key}`; mesh.position.set(x, 0, z);
+        mesh.receiveShadow = true; mesh.castShadow = false; mesh.userData.transient = true; mesh.userData.ids = cell.map(p => p.id);
+        for (let i = 0; i < cell.length; i++) {
+          const p = cell[i], scale = (p.height ?? prototype.height) / prototype.height;
+          normalization.makeScale(scale, scale, scale).multiply(new THREE.Matrix4().makeTranslation(-center.x, -prototype.bounds.min.y, -center.z));
+          transform.position.set(p.position[0] - x, (manualIds.has(p.id) ? p.position[1] : groundY) - .004, p.position[2] - z);
+          transform.rotation.set(0, p.yaw, 0); transform.scale.fromArray(p.scale); transform.updateMatrix();
+          placementMatrix.copy(transform.matrix).multiply(normalization).multiply(source.matrixWorld);
+          mesh.setMatrixAt(i, placementMatrix);
+        }
+        mesh.computeBoundingBox(); mesh.computeBoundingSphere(); root.add(mesh); meshes.push(mesh);
+        vegetation.describeInstances(mesh, 'soft', true);
+        triangles += (source.geometry.index?.count ?? source.geometry.getAttribute('position').count) / 3 * cell.length;
+      }
+      clumps += cell.length;
+    }
+    const stats = { clumps, generated: generated.length, manual: manual.length, cells: cells.size, draws: meshes.length, triangles, assets: ids };
+    root.userData.grass = stats;
+    return { root, coverage, missing, stats, dispose };
+  } catch (error) { dispose(); throw error; }
 }
-export type GrassCarpets = ReturnType<typeof createGrass>;

@@ -34,15 +34,16 @@ const grassArea: AreaDefinition = {
   props: [], gates: [], traversal: { obstacles: [] },
   reserved: [{ id: 'route', center: [0, 0], radius: .5, role: 'route' }],
 };
-const grassPatch: GrassPatch = { id: 'grass', center: [0, 0], radii: [2, 2], yaw: 0, density: 8 };
+const grassPatch: GrassPatch = { id: 'grass', center: [0, 0], radii: [2, 2], yaw: 0, clumpsPerM2: 1 };
 
 test('area validation rejects invalid grass, links, transforms and lighting', () => {
   const area = structuredClone(grassArea);
   area.grass = [structuredClone(grassPatch)];
+  area.grassVariants = [{ asset: { libraryId: 'autumn-atlas:model:grass-meadow-bent' }, weight: 1, height: [.18, .32] }];
   area.props = [{ id: 'marker', position: [4, 0, 4], yaw: 0, scale: [1, 1, 1], primitive: { kind: 'box', size: [1, 1, 1], color: '#514031' }, castShadow: false, receiveShadow: false }];
   area.gates = [{ id: 'gate', role: 'branch', position: [10, 0], yaw: 0, width: 2, depth: 2, arrival: { position: [7, 0], yaw: 0 }, destination: { area: area.id, gate: 'gate' } }];
   expect(validateAreas({ fixture: area })).toEqual([]);
-  area.grass[0].density = NaN;
+  area.grass[0].clumpsPerM2 = NaN;
   area.gates[0].destination.gate = 'missing'; area.props[0].position[0] = NaN;
   area.lighting.overrides = { fogNear: NaN, probes: { size: [36, -1, 36] } };
   const errors = validateAreas({ fixture: area }).join('\n');

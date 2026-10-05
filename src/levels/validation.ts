@@ -3,9 +3,10 @@ import { isItemId, weaponFamily } from '../gameplay/equipment.ts';
 import { resolveAreaLighting } from './lighting.ts';
 import { resolveLocalLight } from './local-lighting.ts';
 import { inReserved } from './decoration.ts';
+import { grassBudget, isGrassPlacement } from './grass.ts';
 import { boundaryDistance, insideGate } from '../gameplay/area.ts';
 import type { AreaDefinition, AssetRef } from './types.ts';
-export function assetReferences(area: AreaDefinition): AssetRef[] { return [...area.props.flatMap(p => [p.asset, p.fallback].filter((a): a is AssetRef => !!a)), ...area.effects.fires.map(f => f.asset), ...(area.shop ? [{url:area.shop.merchant.model}] : []), ...(area.shelter ? [{libraryId:'generic:model:sm-gen-prop-chest-01'}] : [])]; }
+export function assetReferences(area: AreaDefinition): AssetRef[] { return [...(area.grassVariants ?? []).map(v => v.asset), ...area.props.flatMap(p => [p.asset, p.fallback].filter((a): a is AssetRef => !!a)), ...area.effects.fires.map(f => f.asset), ...(area.shop ? [{url:area.shop.merchant.model}] : []), ...(area.shelter ? [{libraryId:'generic:model:sm-gen-prop-chest-01'}] : [])]; }
 export { inReserved, generateDecoration } from './decoration.ts';
 /** Validation is shared by live preview and Node tooling. Errors identify the area/object. */
 export function validateAreas(input: Record<string, AreaDefinition>): string[] {
@@ -174,8 +175,22 @@ export function validateAreas(input: Record<string, AreaDefinition>): string[] {
       }
       for (const patch of area.grass ?? []) {
         id(patch.id);
-        if (!finite(patch.center, 2) || !finite(patch.radii, 2) || patch.radii.some(r => r <= 0 || r > 20) || !finite([patch.yaw, patch.density]) || patch.density <= 0 || patch.density > 400 || boundaryDistance(boundary, patch.center) < 0) fail('invalid grass patch');
+        if (!finite(patch.center, 2) || !finite(patch.radii, 2) || patch.radii.some(r => r <= 0 || r > 20) || !finite([patch.yaw, patch.clumpsPerM2]) || patch.clumpsPerM2 <= 0 || patch.clumpsPerM2 > 4 || boundaryDistance(boundary, patch.center) < 0) fail('invalid grass patch');
+        if (patch.excludedIds !== undefined && (!Array.isArray(patch.excludedIds) || patch.excludedIds.some(value => typeof value !== 'string' || !/^grass-[np]\d+-[np]\d+$/.test(value)) || new Set(patch.excludedIds).size !== patch.excludedIds.length)) fail('invalid grass exclusions');
       }
+      const variants = area.grassVariants ?? [];
+      if (area.grass?.length && !variants.length) fail('grass regions require an asset palette');
+      const grassAssets = new Set<string>();
+      for (const variant of variants) {
+        owner = `${key}/grass-palette`;
+        if (!variant.asset?.libraryId || grassAssets.has(variant.asset.libraryId) || !Number.isFinite(variant.weight) || variant.weight <= 0 || !finite(variant.height, 2) || variant.height[0] <= 0 || variant.height[1] < variant.height[0] || variant.height[1] > 2) fail('invalid grass variant');
+        grassAssets.add(variant.asset?.libraryId);
+      }
+      const limit = area.grassLimit ?? grassBudget;
+      if (!Number.isInteger(limit) || limit < 1 || limit > (area.id === 'graveyard-ruins' ? 200 : grassBudget)) fail('invalid grass limit');
+      const manualGrass = area.props.filter(p => isGrassPlacement(area, p));
+      if (manualGrass.length > limit) fail('authored grass exceeds area limit');
+      if (manualGrass.some(p => p.primitive || p.harvest || p.visibility || p.fallback || p.scale.some(v => v <= 0))) fail('grass must be ordinary positive-scale cosmetic art');
       for (const gate of area.gates) {
         id(gate.id);
         if (!finite(gate.position, 2) || !finite(gate.arrival.position, 2) || !finite([gate.yaw, gate.arrival.yaw, gate.width, gate.depth]) || gate.width <= 0 || gate.depth <= 0) fail('invalid gate geometry');

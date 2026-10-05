@@ -1,6 +1,5 @@
 import { isMesh } from '../assets/resource-ownership';
 import * as THREE from 'three';
-import type { GrassCarpets } from './grass';
 import type { Vegetation, VegetationActor } from './vegetation';
 import { MeshStandardNodeMaterial } from 'three/webgpu';
 import { fsrComparison } from '../labs/fsr/settings';
@@ -61,7 +60,6 @@ export class CoreEffects {
   // Wind depends only on source material and local geometry bounds. Repeated
   // placements borrow one node graph; the area owns and retires it once.
   private readonly foliageMaterials = new Map<THREE.BufferGeometry, Map<THREE.Material, MeshStandardNodeMaterial>>();
-  private grass: GrassCarpets[] = [];
   private vegetation?: Vegetation;
   private texture: THREE.CanvasTexture;
   private weather: ParticleKind | null = null;
@@ -159,7 +157,6 @@ export class CoreEffects {
     this.waters.push(water); return water.mesh;
   }
 
-  addGrass(carpet: GrassCarpets): void { this.grass.push(carpet); carpet.update(this.time, this.wind.value); }
   addVegetation(vegetation: Vegetation): void { this.vegetation = vegetation; }
   setVegetationActors(actors: readonly VegetationActor[]): void { this.vegetation?.stage(actors); }
   resetVegetation(): void { this.vegetation?.reset(); }
@@ -201,11 +198,10 @@ export class CoreEffects {
     const actionDt = this.gameplayDelta ?? dt; this.gameplayDelta = undefined;
     this.previousClock.value = this.clock.value;
     this.previousWind.value.copy(this.wind.value);
-    if (this.paused || !this.enabled) { this.vegetation?.advance(0, this.time, this.wind.value); for (const carpet of this.grass) carpet.update(this.time, this.wind.value); return; }
+    if (this.paused || !this.enabled) { this.vegetation?.advance(0, this.time, this.wind.value); return; }
     dt = Math.min(dt, 0.05);
     this.time += dt; this.clock.value = this.time;
     this.vegetation?.advance(actionDt, this.time, this.wind.value);
-    for (const carpet of this.grass) carpet.update(this.time, this.wind.value);
     for (const emitter of this.emitters) {
       if (!this.atmosphericParticles && atmosphericKinds.has(emitter.kind)) continue;
       if (!this.visible(emitter.space)) continue;
@@ -252,7 +248,7 @@ export class CoreEffects {
     for (const materials of this.foliageMaterials.values()) for (const material of materials.values()) material.dispose();
     this.foliageMaterials.clear();
     for (const water of this.waters) water.dispose();
-    this.emitters.length = 0; this.foliage.length = 0; this.foliageMeshes.clear(); this.grass.length = 0; this.waters.length = 0; this.time = 0; this.clock.value = 0; this.previousClock.value = 0; this.clear();
+    this.emitters.length = 0; this.foliage.length = 0; this.foliageMeshes.clear(); this.waters.length = 0; this.time = 0; this.clock.value = 0; this.previousClock.value = 0; this.clear();
   }
   dispose(): void {
     if (this.disposed) return; this.disposed = true; this.rain.dispose(); this.fluids.dispose(); this.root.removeFromParent();
