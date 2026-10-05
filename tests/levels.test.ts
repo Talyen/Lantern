@@ -18,9 +18,6 @@ import { GateTravel } from '../src/gameplay/area';
 import { validateAreas } from '../src/levels/validation';
 import { treeDefinitions, traversalWithTrees } from '../src/levels/trees';
 import { Harvesting } from '../src/gameplay/harvesting';
-import type { GatheringTools } from '../src/rendering/gathering-tools';
-import type { GameAudio } from '../src/audio/audio';
-import type { MovementWorld } from '../src/gameplay/movement';
 const areas = { homestead, clearing, 'graveyard-ruins':graveyardRuins, 'graveyard-crypt':graveyardCrypt } as unknown as Record<string, AreaDefinition>;
 // Small area fixture for validation; no full authored scenery is needed.
 const grassArea: AreaDefinition = {
@@ -179,40 +176,35 @@ test('felling removes trunk collision and enemy detours, and regrowth restores b
 });
 
 
+// Retain the threat/cooldown protection at its numeric owner; no actor/audio mocks needed.
 test('gathering retries after attack cooldown and cancels a newly pursuing threat before contact', async () => {
-  const THREE = await import('three');
-  const { GatheringController } = await import('../src/session/gathering');
-  const { makeActor } = await import('../src/session/actors');
+  const { GatheringAction } = await import('../src/gameplay/gathering-action');
   const { createEncounter } = await import('../src/gameplay/encounter');
   const { Adventure } = await import('../src/gameplay/adventure');
   const state = createEncounter('playing', grassArea.layout), adventure = new Adventure();
   adventure.enter(state,grassArea);
   const node = {id:'tree',kind:'tree' as const,position:[0,0,1] as [number,number,number],radius:.2,level:1,baseYield:1,contacts:3};
-  const harvesting = new Harvesting(); harvesting.register(grassArea.id,[node]);
-  const actor = makeActor(new THREE.Scene(),state.player);
-  actor.mixer = new THREE.AnimationMixer(actor.root);
-  actor.actions.chop = actor.mixer.clipAction(new THREE.AnimationClip('chop',1,[]));
-  const tools = {show:vi.fn()} as unknown as GatheringTools;
-  const audio = {play:vi.fn()} as unknown as GameAudio;
-  const navigation = {resourceVisible:()=>true} as unknown as MovementWorld;
-  const gathering = new GatheringController(state,adventure,harvesting,actor,tools,audio,{area:()=>grassArea,instance:()=>undefined,navigation:()=>navigation,paused:()=>false});
-  state.attackCooldown = .1;
-  gathering.select(node); expect(gathering.choppingId).toBeNull();
-  state.attackCooldown = 0;
-  gathering.advance(.05); gathering.advance(.35);
-  expect(gathering.choppingId).toBe('tree');
-  expect(adventure.session().drops.map(drop=>[drop.item,drop.quantity])).toEqual([['wood',1]]);
-  gathering.cancel();
-  const unsafeArea = { ...grassArea, kind: 'encounter' as const };
-  const threatened = new GatheringController(state,adventure,harvesting,actor,tools,audio,{area:()=>unsafeArea,instance:()=>undefined,navigation:()=>navigation,paused:()=>false});
-  for (const enemy of Object.values(state.enemies)) { enemy.engaged = false; enemy.x = 30; enemy.z = 30; }
-  threatened.select(node);
-  Object.assign(state.enemies[state.enemyIds[0]], { hp: 200, home: { position: [30, 30], yaw: 0 }, engaged: true });
-  const drops = adventure.session().drops.length;
-  threatened.advance(.35);
-  expect(adventure.session().drops).toHaveLength(drops);
-  expect(threatened.target).toBeNull();
-  actor.mixer.stopAllAction();
+  adventure.harvesting.register(grassArea.id,[node]);
+  const context = {area:()=>grassArea,paused:()=>false,timing:()=>({duration:1,contact:.32}),visible:()=>true,setTreeFelled:()=>{}};
+  const gathering = new GatheringAction(state,adventure,context);
+  try {
+    state.attackCooldown = .1;
+    gathering.select(node); expect(gathering.choppingId).toBeNull();
+    state.attackCooldown = 0;
+    gathering.advance(.05); gathering.advance(.35);
+    expect(gathering.choppingId).toBe('tree');
+    expect(adventure.session().drops.map(drop=>[drop.item,drop.quantity])).toEqual([['wood',1]]);
+    gathering.cancel();
+    const unsafeArea = { ...grassArea, kind: 'encounter' as const };
+    const threatened = new GatheringAction(state,adventure,{...context,area:()=>unsafeArea});
+    for (const enemy of Object.values(state.enemies)) { enemy.engaged = false; enemy.x = 30; enemy.z = 30; }
+    threatened.select(node);
+    Object.assign(state.enemies[state.enemyIds[0]], { hp: 200, home: { position: [30, 30], yaw: 0 }, engaged: true });
+    const drops = adventure.session().drops.length;
+    threatened.advance(.35);
+    expect(adventure.session().drops).toHaveLength(drops);
+    expect(threatened.target).toBeNull();
+  } finally { adventure.closeSave(); }
 });
 
 

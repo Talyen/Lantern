@@ -1,64 +1,30 @@
-import type { Adventure } from '../gameplay/adventure';
-import { type Encounter } from '../gameplay/encounter';
-import { gatheringSafe, type Harvesting } from '../gameplay/harvesting';
+import type { Harvesting } from '../gameplay/harvesting';
+import type { GatheringAction, GatheringEvent } from '../gameplay/gathering-action';
 import type { MovementWorld } from '../gameplay/movement';
-import { gathering } from '../gameplay/skills';
 import type { AreaInstance } from '../levels/builder';
-import { resourceSkill, type ResourceDefinition } from '../levels/resources';
-import type { AreaDefinition } from '../levels/types';
+import type { ResourceDefinition } from '../levels/resources';
 import type { CoreEffects } from '../rendering/effects';
 import { Vector3 } from 'three';
 import type { GameAudio } from '../audio/audio';
 import type { GatheringTools } from '../rendering/gathering-tools';
-import { duration, play, type Actor } from './actors';
+import { play, type Actor } from './actors';
 
-type GatheringContext = {
-  area(): AreaDefinition;
-  instance(): AreaInstance | undefined;
-  navigation(): MovementWorld | undefined;
-  paused(): boolean;
-  effects?(): CoreEffects | undefined;
-};
-type Swing = { resource: ResourceDefinition; time: number; contacted: boolean };
-/** Coordinates gathering motions and contacts without changing equipped items. */
+type GatheringPresentation = { instance(): AreaInstance | undefined; effects(): Pick<CoreEffects, 'burst'> | undefined };
+/** Presents committed gathering events; numeric action state belongs to GatheringAction. */
 export class GatheringController {
-  private selected: ResourceDefinition | null = null;
-  private swing: Swing | null = null;
   private readonly contactPosition = new Vector3();
-
   constructor(
-    private readonly encounter: Encounter,
-    private readonly adventure: Adventure,
+    private readonly action: GatheringAction,
     private readonly harvesting: Harvesting,
     private readonly actor: Actor,
-    private readonly tools: GatheringTools,
-    private readonly audio: GameAudio,
-    private readonly context: GatheringContext,
+    private readonly tools: Pick<GatheringTools, 'show'>,
+    private readonly audio: Pick<GameAudio, 'play'>,
+    private readonly context: GatheringPresentation,
   ) {}
-
-  get target(): ResourceDefinition | null { return this.selected; }
-  get choppingId(): string | null { return this.swing?.resource.id ?? null; }
-
-  select(resource: ResourceDefinition): void {
-    this.selected = resource;
-    this.begin(resource);
-  }
-
-  cancel(releaseLock = true): void {
-    this.selected = null;
-    this.tools.show(null);
-    if (!this.swing) return;
-    this.swing = null;
-    if (releaseLock) this.encounter.player.lock = 0;
-    if (this.actor.current === 'chop' || this.actor.current === 'mine') play(this.actor, 'idle');
-  }
-
-  cancelIfInterrupted(movement: { x: number; z: number }, blocking: boolean): void {
-    if (this.selected && (blocking || Math.hypot(movement.x, movement.z) > 0 ||
-      this.encounter.player.hp <= 0 || !gatheringSafe(this.encounter, this.context.area().kind))) {
-      this.cancel();
-    }
-  }
+  get target(): ResourceDefinition | null { return this.action.target; }
+  get choppingId(): string | null { return this.action.choppingId; }
+  select(resource: ResourceDefinition): void { this.action.select(resource); }
+  cancel(releaseLock = true): void { this.action.cancel(releaseLock); }
 
   register(area: AreaInstance, navigation: MovementWorld): void {
     this.harvesting.register(area.area.id, area.resources);
@@ -69,82 +35,37 @@ export class GatheringController {
     }
   }
 
-  private visible(resource: ResourceDefinition): boolean {
-    const [x, y, z] = resource.position;
-    return !!this.context.navigation()?.resourceVisible(this.encounter.player, resource.id, { x, y, z });
-  }
-
-  private begin(resource: ResourceDefinition): void {
-    const { player, attackCooldown, dodgeRemaining } = this.encounter;
-    const motion = resource.kind === 'tree' ? 'chop' : 'mine';
-    if (this.context.paused() || this.swing || !gatheringSafe(this.encounter, this.context.area().kind) ||
-      player.lock > 0 || attackCooldown > 0 || dodgeRemaining > 0 || !this.actor.actions[motion]) return;
-    if (this.harvesting.distance(resource, [player.x, player.z]) > gathering.reach || !this.visible(resource)) return;
-
-    this.encounter.pending = null;
-    player.attackTime = -1;
-    this.encounter.blocking = false;
-    player.yaw = Math.atan2(resource.position[0] - player.x, resource.position[2] - player.z);
-    player.lock = duration(this.actor, motion);
-    this.swing = { resource, time: 0, contacted: false };
-    this.selected = resource;
-    this.tools.show(resource.kind);
-    this.actor.current = null;
-    play(this.actor, motion);
-    this.audio.play('chopSwing', player);
-  }
-
-  advance(dt: number): void {
-    const area = this.context.area();
-    const { player } = this.encounter;
-    // Combat advances before gathering contacts; a newly pursuing enemy must
-    // cancel this swing before it can award another resource.
-    if (this.selected && !gatheringSafe(this.encounter, area.kind)) this.cancel();
-    for (const change of this.adventure.takeResourceChanges()) {
-      if (change.areaId !== area.id) continue;
-      this.context.instance()?.setResourceState(change.id, false);
-      this.context.navigation()?.setTreeFelled(change.id, false);
-    }
-
-    const swing = this.swing;
-    if (!swing) {
-      if (this.selected) this.begin(this.selected);
-      return;
-    }
-    swing.time += dt;
-    const resource = swing.resource;
-    const motion = resource.kind === 'tree' ? 'chop' : 'mine';
-    const contactTime = motion === 'chop' ? this.actor.chopContact : this.actor.mineContact;
-    if (!swing.contacted && swing.time >= contactTime) {
-      swing.contacted = true;
-      if (!this.visible(resource)) { this.cancel(); return; }
-      const reward = this.harvesting.contact(area.id, resource.id, [player.x, player.z],
-        this.adventure.character.xp[resourceSkill(resource.kind)]);
-      if (!reward) { this.cancel(); return; }
-
-      const position = { x: resource.position[0], z: resource.position[2] };
-      this.audio.play(resource.kind === 'tree' ? 'chopHit' : 'equipmentLand', position);
-      this.contactPosition.set(position.x,resource.position[1]-.5,position.z);
-      this.context.effects?.()?.burst(resource.kind === 'tree' ? 'debris' : 'chips',this.contactPosition,resource.kind==='tree' ? 7 : 5);
-      this.adventure.grantHarvest(reward.item, reward.quantity, reward.skill, reward.xpPerUnit,
-        [position.x, position.z], { kind: 'resource', id: resource.id });
-      this.context.instance()?.treeHit(resource.id);
-      if (reward.felled) {
-        if (resource.kind === 'tree') this.context.instance()?.fellTree(resource.id, [player.x, player.z]);
-        else this.context.instance()?.setResourceState(resource.id, true);
-        this.context.navigation()?.setTreeFelled(resource.id, true);
-        if (resource.kind === 'tree') {
-          this.audio.play('woodCrack', position);
-          this.audio.play('treeFall', position);
+  present(events: GatheringEvent[]): void {
+    for (const event of events) {
+      switch (event.type) {
+        case 'start': {
+          const motion = event.resource.kind === 'tree' ? 'chop' : 'mine';
+          this.tools.show(event.resource.kind);
+          this.actor.current = null;
+          play(this.actor, motion);
+          this.audio.play('chopSwing', this.actor.root.position);
+          break;
+        }
+        case 'stop':
+          this.tools.show(null);
+          if (this.actor.current === 'chop' || this.actor.current === 'mine') play(this.actor, 'idle');
+          break;
+        case 'regrown': this.context.instance()?.setResourceState(event.id, false); break;
+        case 'contact': {
+          const { resource, felled, origin } = event;
+          const position = { x: resource.position[0], z: resource.position[2] };
+          this.audio.play(resource.kind === 'tree' ? 'chopHit' : 'equipmentLand', position);
+          this.contactPosition.set(position.x, resource.position[1] - .5, position.z);
+          this.context.effects()?.burst(resource.kind === 'tree' ? 'debris' : 'chips', this.contactPosition, resource.kind === 'tree' ? 7 : 5);
+          this.context.instance()?.treeHit(resource.id);
+          if (felled) {
+            if (resource.kind === 'tree') this.context.instance()?.fellTree(resource.id, origin);
+            else this.context.instance()?.setResourceState(resource.id, true);
+            if (resource.kind === 'tree') { this.audio.play('woodCrack', position); this.audio.play('treeFall', position); }
+          }
+          break;
         }
       }
-    }
-
-    if (swing.time >= duration(this.actor, motion)) {
-      this.swing = null;
-      player.lock = 0;
-      if (this.harvesting.state(area.id, resource.id)?.felled) this.cancel();
-      else this.begin(resource);
     }
   }
 }

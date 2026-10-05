@@ -41,6 +41,14 @@ export class FrameLoop {
     else this.requestFrame();
   }
 
+  /** Pause failed presentation and reject frame waits until explicit recovery resumes it. */
+  suspend(error: unknown): void {
+    this.setManual(true);
+    const failure = error instanceof Error ? error : new Error(String(error));
+    for (const waiter of this.waiters) waiter.reject(failure);
+    this.waiters.clear();
+  }
+
   invalidate(): void {
     this.settle = settlingFrames;
     this.requestFrame();
