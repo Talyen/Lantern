@@ -5,6 +5,7 @@
 (async () => {
   const io = window.lanternMixamoIO = { sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)) };
   const progress = window.lanternMixamoDownload = { stopped: false, status: 'Listing catalog', exported: 0, errors: [], stop() { this.stopped = true; } };
+  const downloadCharacters = true; // The collector substitutes --motions-only here.
   io.api = async (path, body) => {
     for (let attempt = 0; attempt < 7; attempt++) {
       if (progress.stopped) throw new Error('Download stopped');
@@ -83,7 +84,7 @@
   await io.send('/catalog', { provider: 'Mixamo', acquiredAt: new Date().toISOString(), animationRig: io.rig, motions, packs, characters, packMotions });
   const complete = new Set(__COMPLETED__);
   const todo = [...motions, ...packMotions].filter((motion) => !complete.has('Motion:' + motion.id));
-  progress.total = motions.length + packMotions.length + (__DOWNLOAD_CHARACTERS__ ? characters.length : 0);
+  progress.total = motions.length + packMotions.length + (downloadCharacters ? characters.length : 0);
   console.log('Lantern verified catalog: ' + motions.length + ' motions, ' + packs.length + ' packs (' + packMotions.length + ' members), ' + characters.length + ' characters');
   for (let i = 0; i < todo.length; i += 48) {
     const batch = todo.slice(i, i + 48);
@@ -94,7 +95,7 @@
     console.log('Lantern exported ' + progress.exported + '/' + todo.length + ' pending motions');
     await io.sleep(3000);
   }
-  for (const character of (__DOWNLOAD_CHARACTERS__ ? characters : [])) {
+  for (const character of (downloadCharacters ? characters : [])) {
     const key = 'Character:' + character.id;
     if (complete.has(key)) continue;
     progress.status = 'Exporting character: ' + character.name;

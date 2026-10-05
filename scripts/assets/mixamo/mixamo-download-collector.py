@@ -144,7 +144,7 @@ if __name__ == '__main__':
     state = ROOT / 'download-state.json'
     if state.exists(): STATE = json.loads(state.read_text())
     helper = (REPO / 'scripts/assets/mixamo/mixamo-browser-download.js').read_text().replace('__COMPLETED__', json.dumps([key for key, record in STATE['completed'].items() if (key.startswith('Character:') and not args.motions_only) or record.get('fps') == 60]))
-    helper = helper.replace('__DOWNLOAD_CHARACTERS__', json.dumps(not args.motions_only))
+    helper = helper.replace('const downloadCharacters = true;', 'const downloadCharacters = ' + json.dumps(not args.motions_only) + ';')
     (REPO / '.local/mixamo-download-console.js').write_text(helper)
     print('Console helper prepared at .local/mixamo-download-console.js', flush=True)
     if args.prepare_only: raise SystemExit(0)
