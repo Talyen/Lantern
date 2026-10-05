@@ -600,6 +600,11 @@ test('retention report is read-only and apply expires evidence pairs while prese
       await writeJSON(taskPath(ctx, id), { id, path: join(ctx.main, '.local/worktrees', id), status: id === 'active' ? 'working' : 'cleaned', cleanedAt: new Date(now - 8 * 86400000).toISOString(), assetIndex: { huge: 'old snapshot' } });
       if (id === 'live-browser') await writeJSON(join(archive, 'browser-history.json'), [{ closed: true, pid: process.pid, started: await processIdentity(process.pid), browserProcesses: [] }]);
     }
+    const bundle = join(ctx.main, '.local/agent-archives/old/desktop');
+    await mkdir(bundle); await symlink(join(ctx.main, 'shared.txt'), join(bundle, 'framework'));
+    const inventory = await pruneRetention(ctx, { now });
+    assert.deepEqual(inventory.errors, []);
+    assert.ok(inventory.protected.some(row => row.path === bundle && /symlink/.test(row.reason)));
     const report = await pruneRetention(ctx, { now, managedOnly: true });
     assert.equal(report.removed.length, 1);
     assert.equal(await readFile(join(ctx.main, '.local/agent-archives/old/captures/frame.png'), 'utf8'), 'image');

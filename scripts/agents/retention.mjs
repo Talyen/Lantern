@@ -284,7 +284,10 @@ export async function pruneRetention(ctx, { apply = false, sources = false, mana
         for (const entry of await readdir(archive)) {
           const path = join(archive, entry);
           if (managedOnly && !evidenceNames.includes(entry)) continue;
-          const files = await retentionFiles(path), bytes = files.reduce((sum, file) => sum + file.bytes, 0);
+          let files;
+          try { files = await retentionFiles(path); }
+          catch (error) { report.protected.push({ path, reason: error.message }); continue; }
+          const bytes = files.reduce((sum, file) => sum + file.bytes, 0);
           if (!evidenceNames.includes(entry) || pinned || entry === 'checks' && task.lastCheck?.inputs?.head === head) {
             report.protected.push({ path, bytes, reason: pinned ? 'pinned: ' + pinned : entry === 'checks' ? 'current validation evidence' : 'source or durable ownership metadata' }); continue;
           }

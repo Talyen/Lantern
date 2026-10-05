@@ -1,6 +1,6 @@
 # Quiet grid and clean hover: exact prompt
 
-Built-in ImageGen edit, October 2, 2026. Input: original [grid attempt](https://github.com/Talyen/Lantern/blob/21f7a73/Docs/ui/concepts/archive/inventory-layouts/08-grid-sketch.png), SHA-256 `e26ef25d86a025033577696537487b79e25309bf22634471bcf09999defa6ebb`. No licensed art.
+Built-in ImageGen edit, October 2, 2026. Input: original grid attempt (`08-grid-sketch.png`, recoverable from local Git commit `21f7a73` under `Docs/ui/concepts/archive/inventory-layouts/`), SHA-256 `e26ef25d86a025033577696537487b79e25309bf22634471bcf09999defa6ebb`. No licensed art.
 
 ```text
 Use case: ui-mockup. Original Lantern Inventory image correction; supplied image is original generated UI-only edit target.
