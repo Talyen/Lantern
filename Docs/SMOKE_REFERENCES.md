@@ -6,7 +6,7 @@ Persistence checks below use **application relaunch or page reload**. Developmen
 
 ## Optional targeted smoke references
 
-These references are the canonical browser review menu. Private smoke scripts from earlier forest, Homestead, HUD, camera, lighting, environment-art, DOF and renderer experiments are retired; their recorded evidence remains historical. Retired runnable copies are kept with `.retired` suffixes and a hash manifest under ignored `.local/test-archives/lean-tests/`; captures, reports and source archives stay in their original locations. Do not replay them as a regression suite or recreate a full gameplay script for each visual change. This menu is not an automated coverage backlog; new or materially rewritten UI/E2E tests must meet the [test admission policy](DEVELOPMENT_REFERENCE.md#testing-during-the-prototype-phase). `smoke:preview` checks built HTTP resources without launching a browser; neither sanity gate starts GPU rendering.
+These references are the canonical browser review menu. Private smoke scripts from earlier experiments are retired and removed after their current guidance is captured here. Do not replay them as a regression suite or recreate a full gameplay script for each visual change. This menu is not an automated coverage backlog; new or materially rewritten UI/E2E tests must meet the [test admission policy](DEVELOPMENT_REFERENCE.md#testing-during-the-prototype-phase). `smoke:preview` checks built HTTP resources without launching a browser; neither sanity gate starts GPU rendering.
 
 Choose the relevant portion for the changed behavior at normal settings, in one owned preview session. These flows are a reference menu, not a completion checklist. One short representative flow normally suffices:
 

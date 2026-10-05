@@ -10,7 +10,7 @@ Equipment is exclusively authored, with fixed properties and identities fitting 
 
 Improve skills by using them. Each sword/bow family has a free Basic, one Skill, and one Ultimate, assignable to six shared action slots. Start with the Skill; normal practice earns the most-used weapon's Ultimate with at least one encounter left to practice before the first boss, while the other weapon's Ultimate follows through further use. Further Sword and Bow proficiency unlocks alternate abilities and modest passive bonuses; characters remain flexible, with selected abilities and equipment defining combat style. There is no general player level for now, and proficiency does not gate equipment. Gathering and crafting begin with Woodcutting, Mining, and Smithing. Keep gathering to brief, worthwhile stops along adventure routes. The first complete slice proves combat and discovery, gathering, returning home, restoration, storage, automatic rested benefits, and repeat outings, including a handcrafted side encounter and the named boss, before broader world or skill expansion.
 
-Completed milestones retain their original acceptance context. Current owners describe today’s prototype; [implementation history](Docs/archive/IMPLEMENTATION_HISTORY.md) preserves dated reports. Unchecked items can have an implemented subset, described beside the milestone; acceptance paragraphs describe the complete target.
+Current owners describe today’s prototype; milestone acceptance targets remain explicit until evaluated. Unchecked items can have an implemented subset, described beside the milestone; acceptance paragraphs describe the complete target.
 
 ## Milestone 1 — First playable clearing
 
@@ -166,7 +166,7 @@ Acceptance: quit and continue after partially damaging an enemy, opening a chest
 
 ## Stylized water and weather
 
-The Clearing stream, carved bed/banks, wet ground, occasional shared outdoor showers, shelter exclusions and pooled crossing/rain feedback are implemented. [Area/water authoring](Docs/LEVEL_DESIGN.md#authored-precipitation-and-shallow-water) owns the current data contract; [reusable water surfaces](Docs/LEVEL_DESIGN.md#reusable-water-surfaces) owns level/depth/surface controls, grounded traversal and shared scene reflections. [Performance](Docs/archive/PERFORMANCE_HISTORY.md#woodland-stream-visual-correction--october-3-2026) records the successive visual corrections and their limited local evidence.
+The Clearing stream, carved bed/banks, wet ground, occasional shared outdoor showers, shelter exclusions and pooled crossing/rain feedback are implemented. [Area/water authoring](Docs/LEVEL_DESIGN.md#authored-precipitation-and-shallow-water) owns the current data contract; [reusable water surfaces](Docs/LEVEL_DESIGN.md#reusable-water-surfaces) owns level/depth/surface controls, grounded traversal and shared scene reflections. [Performance](Docs/PERFORMANCE.md) owns current measurement and acceptance requirements.
 
 Finish water as part of the weathered woodland composition: irregular shorelines, visible gravel shallows, dark deeper water and restrained moving highlights under Golden lighting. Characters, attacks and loot remain readable. Outdoor eligibility and shelter cover are authored per area; Homestead, Clearing and Graveyard Ruins share occasional showers, shelter-aware audio and gradual exposed-ground wetting/drying. Crypt remains sheltered. All areas inherit the shared sun direction.
 

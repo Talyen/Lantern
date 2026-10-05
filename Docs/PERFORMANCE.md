@@ -4,7 +4,7 @@ Ordinary feature work follows the [lean task workflow](DEVELOPMENT.md#working-al
 
 Use matched local measurements to judge changes; performance numbers are advisory, not CI gates. Browser resource smoke does not execute the renderer.
 
-[Performance history](archive/PERFORMANCE_HISTORY.md) preserves dated reports, former settings and their acceptance limits. Use [current graphics](GRAPHICS.md), [water authoring](LEVEL_DESIGN.md#reusable-water-surfaces) and source owners for today’s behavior. Historical measurements are not a current baseline.
+Use [current graphics](GRAPHICS.md), [water authoring](LEVEL_DESIGN.md#reusable-water-surfaces) and source owners for current behavior. Measure current authored areas on target hardware only when requested or warranted by an evidenced defect.
 
 ## Quality and performance acceptance
 
@@ -20,7 +20,7 @@ Do not confuse passes with duplicated work: a cheap depth/normal pass can be jus
 
 Lantern requires native WebGPU across gameplay, authoring and labs through the shared graph. FSR Temporal is the sole reconstruction method. Output matches the physical drawable viewport, and internal-resolution presets are evaluated against the frame budget. There is no reconstruction fallback; WebGPU/FSR startup failure produces an actionable error. Independent Shadow Quality and Particle Effects presets replace the overloaded quality setting. Atmosphere is simple profile distance fog; volumetric rendering is retired.
 
-Archived studies and initial authoring measurements include evidence from before the native WebGPU-only migration. WebGL comparisons, retired lab controls and former TAA defaults are historical evidence. When measurements are requested or an evidenced performance defect warrants them, re-measure current authored areas and comparison labs on target hardware before drawing performance conclusions.
+When measurements are requested or an evidenced performance defect warrants them, measure the current shared native pipeline and authored areas. Retired renderers and former settings are not acceptance baselines.
 
 ## Current measurement protocol
 
@@ -38,4 +38,4 @@ The current clearing has Graphics and Sound Options and a version-pinned r186 FS
 
 ## Unresolved validation limits
 
-Safari cold-start variability and target-platform acceptance remain unresolved; [Safari startup evidence](archive/PERFORMANCE_HISTORY.md#safari-world-startup--october-4-2026) and [native-output evidence](archive/PERFORMANCE_HISTORY.md#native-output-and-rapid-profiling--october-4-2026) record the observed limits. Prepared lighting and local checks do not establish 60 fps, release readiness or cross-platform performance. Investigate current failures against [.agents/FRICTION_LOG.md](../.agents/FRICTION_LOG.md); perform measurements only for an explicit request or evidenced defect.
+Safari cold-start variability, native-output frame targets and target-platform acceptance remain unresolved. Safari world entry has exceeded the host memory limit; the current investigation and retained evidence are owned by the friction log. Smaller-viewport Chromium samples and warmed reloads do not establish foreground Safari acceptance. Prepared lighting and local checks do not establish 60 fps, release readiness or cross-platform performance. Investigate current failures against [.agents/FRICTION_LOG.md](../.agents/FRICTION_LOG.md); perform measurements only for an explicit request or evidenced defect.

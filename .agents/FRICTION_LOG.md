@@ -8,7 +8,7 @@ Centralized intake for unresolved agent friction while working in Lantern. Keep 
 2. Check for an existing matching entry before adding a row to **Open**. Update its evidence or context rather than duplicating it. Describe expected versus actual behavior, with enough information to investigate. Link relevant owners or evidence when useful; keep credentials, licensed assets, and private source material out of tracked entries.
 3. Agents may proactively fix small, understood, reversible independent issues in their owned task when the cause and focused verification are clear. Leave broad, uncertain, or consequential changes open for a separate decision. Follow the [task workflow](../Docs/DEVELOPMENT.md#working-alongside-other-agents); preserve concurrent log entries during integration.
 4. Resolve an open entry only after fixing and verifying its cause. A workaround alone leaves it open with updated context. Put lasting guidance in the canonical document or tool.
-5. Move the resolved row and associated details to `friction-archive/YYYY.md`, using the year of resolution. Preserve the original entry date, replace the symptom with a concise fix and verification summary, and link to a commit or corrected owner. Adjust relative links for the archive location. Create the yearly archive only when needed, with a resolved-entries table and optional details, and add its link under **Archive** below.
+5. After verification, put lasting guidance in its canonical owner, remove the resolved row/details and release any associated evidence pins. Do not create a resolved-issue archive.
 
 ## Open
 
@@ -17,10 +17,6 @@ Centralized intake for unresolved agent friction while working in Lantern. Keep 
 | 2026-10-05 | One owned Clearing preview became unresponsive after author placement and a keyboard return cast. | The page was initially ready with default graphics. After Play, `placePlayer(-2.8, 2.8, 0)` and T, both Runtime.evaluate and Debugger.enable stopped responding; an OS stack sample showed the renderer main thread executing unsymbolized code. A fresh managed session without manual placement cast and entered the home portal successfully. Cause remains unverified; reproduce placement/input independently before changing navigation or rendering. The `area-transition-owner` task retains the stack sample with its captures. |
 | 2026-10-05 | An owned normal-settings Homestead entry stalled while loading the Viking table model. | `gameplay-presentation-boundary` preview remained at `area-assets` for several minutes with only `viking-realm:model:sm-prop-table-02` pending, no native compilation and no recorded errors. The model and both referenced PNGs returned HTTP 200 with complete bytes; AssetLibrary retained two pending promises. Cause is unverified. Inspect GLTF/image preparation before changing gameplay or adding timeouts; a loading screenshot is retained with the task evidence. |
 | 2026-10-05 | Safari reloads during world entry after exceeding its memory limit. | The local Safari log reports a 14,069 MB footprint, 12,136 MB after attempted relief, and `ExceededMemoryLimit`. An owned normal-settings Chromium Homestead entry at revision `a818adf8e3de` created about 4.1 GiB of GPU textures, including repeated named 4K atlases, and 260 overlapping native pipeline requests. Shader-node construction accounted for about 97% of the sampled retained allocation bytes during a repeat entry. See details below; unresolved evidence is retained with the `safari-memory-investigation` task. |
-
-## Archive
-
-[2026 resolutions](friction-archive/2026.md). Archives record history and are not required reading; search them when investigating recurring friction.
 
 ## Details
 

@@ -1,8 +1,8 @@
 # UI design decisions
 
-Use [the design system](../UI_DESIGN.md) for shared rules and [the workflow](WORKFLOW.md) for evidence. Update a decision when an answer or inspected prototype resolves it. Keep adopted, proposed and deferred decisions distinct. Dates below use the project owner's local date.
+Use [the design system](../UI_DESIGN.md) for shared rules and [the workflow](WORKFLOW.md) for evidence. Update a decision when an answer or inspected prototype resolves it. Keep adopted, proposed and deferred decisions distinct. Maintain current choices and unresolved questions rather than dated checkpoints.
 
-## Agreed direction — October 2, 2026
+## Agreed direction
 
 | Decision | Status | Basis and implication |
 | --- | --- | --- |
@@ -10,7 +10,6 @@ Use [the design system](../UI_DESIGN.md) for shared rules and [the workflow](WOR
 | Desktop keyboard/mouse first | Adopted by owner | Explicit choice; prioritize readable desktop interactions |
 | Plan gamepad and smaller windows | Adopted by owner | Include focus/back/alternate-operation design and compact layout studies; implementation/support remains outstanding |
 | A — Crafted instrument is the preferred material treatment | Adopted by owner | Explicit selection after reviewing A/B/C; fine brass and warmer detail; organization not approved |
-| Stay in design much longer; do not build the prototype | Historical; explicitly lifted for Inventory/stash | Explore many layout directions, information hierarchy, responsive compositions and flow/state studies; implementation waits for an explicit owner request |
 | Design from first principles; ask guiding questions with recommendations at every step | Explicit owner instruction | Prototype UI is rough/unintended; do not preserve its elements or flows as design requirements |
 | Illustrated paper doll with surrounding equipment slots | Adopted by owner | A person silhouette, not a rendered character model |
 | Consistent item artwork scale | Adopted by owner | Same scale in bag, equipment and carry; no enlarged inspection art or smaller equipped art |
@@ -64,38 +63,10 @@ Material identity is sufficiently established for layout studies. Ask guiding qu
 
 Touch/mobile, console certification, a new UI framework, general character levels, rarity tiers, quest trackers and minimaps are not implied by the design request. Shop and Sword/Bow proficiency already have gameplay/UI owners; refresh their current coverage before refinement. Smithing and future front-end screens receive design coverage when the [roadmap](../../ROADMAP.md) and their gameplay owners establish requirements. Concurrent work can advance those owners; refresh the catalog before implementing them.
 
-## Skills design checkpoint — October 2, 2026
+## Skills direction
 
-Owner selected [28 named tracks](concepts/skills-horizontal/BRIEF.md), with progress and the next useful unlock as the main purpose, inspectable planned tracks and independent future weapon/magic practice. The first round used grouped list/detail and an internal assignment strip; the later node redesign below supersedes that interaction/layout checkpoint.
+The [current Skills brief](concepts/skills-horizontal/BRIEF.md) owns category navigation, named tracks, horizontal major/minor progression and assignment. Available actions drag to the one actual action bar; empty slots provide the picker. Passives remain automatic. Current unlock schedules and rewards belong to [Progression](../PROGRESSION.md) and runtime owners.
 
-The owner requested original ImageGen mockups and variants. First-round studies are recoverable from Git history; use the active redesign below for current direction. Generated numbers/artifacts are not balance or behavior decisions; concept tasks change no runtime, saves, XP sources or abilities.
+## Loading and Smithing
 
-## Skills node redesign — October 2, 2026
-
-Owner selected an Inventory-sized Skills sheet, with larger ability nodes (Basics, Skills, Ultimates) and smaller passive-bonus nodes for every skill, a unique icon for each node, and hover information. The owner removed Assigned Abilities: drag available ability nodes to the actual bottom gameplay action bar, or click an empty slot to choose an available action. Passives are bonuses, not bar assignments. Keyboard focus/activation provides equivalent information and picker access.
-
-The owner initially proposed upward roots; that discarded gallery is recoverable from Git history and superseded by the selected horizontal design below. Representative passive content is illustrative; no new effects are adopted. The action bar stays outside the sheet; no duplicate in-panel strip.
-
-## Skills horizontal design and implementation — October 2, 2026
-
-Owner selected [the six-step left-to-right grouping](concepts/skills-horizontal/README.md) with two smaller passives between adjacent majors and authorized implementation. Category tabs are above; every skill in the active category fits simultaneously below. Combat/Magic show two Basics, two Skills and two Ultimates; Gathering/Crafting use generic Major/Minor placeholders. A level ruler marks 10/20/30/40/50 above the roots; no XP bar.
-
-Owner chose existing actions plus planned nodes, requested proposed thresholds and generic profession labels. Six future targets are provisionally 1/10/20/30/40/50 with intermediate pairs 3/6, 13/16, 23/26, 33/36, 43/46. Existing actions remain immediately available; these prospective targets do not gate them or activate undefined effects. Revision 8 records all 28 XP tracks without changing current XP sources. [The brief](concepts/skills-horizontal/BRIEF.md) records owners and acceptance.
-
-## Decision entry format
-
-For a consequential change, append a short dated entry with: question; adopted choice; owner/evidence; affected tokens/components/screens; remaining uncertainty. Link the exact prompt/concept or prototype evidence. Rewrite the active recommendation when it changes, rather than leaving conflicting prescriptions. Keep routine visual tuning beside the owning component instead of producing a decision entry for every pixel.
-
-## Loading screen — October 2, 2026
-
-The owner selected one stationary lantern with subtle flame variation for startup and travel. Longer travel preparation reveals the composition after 400ms; quick journeys use only the fade. Original artwork, DOM text, reduced-motion support and actionable recovery are adopted in [the loading brief](concepts/loading/README.md). No title menu, saved slots, invented percentages or minimum loading duration.
-
-## Live mastery progression — October 3, 2026
-
-The requested Sword/Bow mastery and Axe kit replace the October 2 placeholder availability for those tracks. Sword/Bow’s six major positions follow learning order (Basic I, Skill I, Basic II, Ultimate I, Skill II, Ultimate II); ten chronological passives use real automatic benefits. Axe has live Basic, Crushing Blow and earned Berserking nodes. Locked actions remain inspectable and assignment follows actual unlocks, with earned actions filling an empty slot safely. [Weapon mastery](../EQUIPMENT.md#sword-and-bow-mastery) and [the adopted brief](concepts/skills-horizontal/BRIEF.md#october-3-mastery-implementation) own values and behavior. Other undefined nodes retain proposed thresholds; complete-adventure pacing remains unevaluated.
-
-## Smithing — October 3, 2026
-
-Owner selected a starter profession offering predictable alternatives from existing item identities, an immediately available forge/anvil, additional Iron deposits split between Homestead and Clearing, raw material costs and level-unlocked recipes without discounts. Recipe knowledge stays outside Skills, whose starter major/minor nodes activate automatically and provide thematic practical benefits rather than XP or trivial duration bonuses.
-
-Selected [A — Workshop sheet](concepts/smithing/README.md): learned-only Forge list, Reclaim tab, left selection/right detail, level/XP header, no next recipe catalogue. Forging is two foreground seconds, cancellable without cost, consuming Bag/Stash materials with Bag-only output. Reclaim is immediate and permanent without confirmation or Undo, with matching guaranteed returns, a little XP, equipped exclusion and cleared selection. [Smithing](../SMITHING.md) records adopted tuning and owners. Original ImageGen concepts guide hierarchy; existing runtime item art and DOM controls supply the actual interface.
+The [loading brief](concepts/loading/README.md) owns the stationary lantern, delayed travel composition, actual readiness and accessible recovery. The [Workshop sheet](concepts/smithing/README.md) owns learned-only Forge/Reclaim organization; [Smithing](../SMITHING.md) owns raw-material costs, cancellation, Bag-only output and immediate permanent reclamation.

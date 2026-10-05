@@ -11,7 +11,10 @@ import { git, context, writeJSON, readJSON, readTask, currentTask, taskPath, tas
 import { startTask, finishTask, cleanupTask, recover, installedDependenciesMatch } from './workflow.mjs';
 import { acquire, childEnvironment, withResource, RESOURCE_LIMITS } from './resources.mjs';
 import { sessionPath, stopPreview, browserHistoryPath, recoverBrowsers } from './preview.mjs';
-import { retainSourceTree, restorePlayableSource, pruneRetention, sourceCloneBaseline } from './retention.mjs';
+import { retainSourceTree, restorePlayableSource, pruneRetention, sourceCloneBaseline, retainCurrentChecks } from './retention.mjs';
+
+import { selectCodexThreads, pruneCodex } from './codex-retention.mjs';
+import { assetIdentity } from './assets.mjs';
 
 import { checkStages } from '../check.mjs';
 
@@ -117,7 +120,7 @@ test('eight concurrent tasks land without lost work and cleanup preserves canoni
     await writeFile(join(done.path, '.local/animation-packs/source.fbx'), 'retained source');
     await cleanupTask(ctx, done);
     assert.equal(await readFile(join(ctx.main, '.local/animation-packs/source.fbx'), 'utf8'), 'retained source');
-    assert.equal((await readJSON(taskPath(ctx, 'alpha'))).status, 'cleaned');
+    assert.equal(await readJSON(taskPath(ctx, 'alpha'), null), null);
     assert.equal((await readJSON(taskPath(ctx, 'bravo'))).status, 'integrated');
   } finally { await ctx.dispose(); }
 });
@@ -585,7 +588,7 @@ test('retention restores an archive-only supplied collection before its task can
   } finally { await ctx.dispose(); }
 });
 
-test('retention report is read-only and apply expires evidence pairs while preserving pins, sources and active work', async () => {
+test('retention disposes completed evidence immediately while preserving pins, sources and active work', async () => {
   const ctx = await fixture();
   try {
     const now = Date.now();
@@ -604,7 +607,7 @@ test('retention report is read-only and apply expires evidence pairs while prese
     await mkdir(bundle); await symlink(join(ctx.main, 'shared.txt'), join(bundle, 'framework'));
     const inventory = await pruneRetention(ctx, { now });
     assert.deepEqual(inventory.errors, []);
-    assert.ok(inventory.protected.some(row => row.path === bundle && /symlink/.test(row.reason)));
+    assert.ok(inventory.unknown.some(row => row.path === bundle));
     const report = await pruneRetention(ctx, { now, managedOnly: true });
     assert.equal(report.removed.length, 1);
     assert.equal(await readFile(join(ctx.main, '.local/agent-archives/old/captures/frame.png'), 'utf8'), 'image');
@@ -614,6 +617,11 @@ test('retention report is read-only and apply expires evidence pairs while prese
     await assert.rejects(readFile(join(ctx.main, '.local/agent-archives/old/captures/frame.json')), { code: 'ENOENT' });
     assert.equal(await readFile(join(ctx.main, '.local/agent-archives/old/animation-packs/source.fbx'), 'utf8'), 'unique source');
     assert.equal((await readJSON(taskPath(ctx, 'old'))).assetIndex, undefined);
+    // Reviewed unknown content is removed externally; the source audit then permits final disposal.
+    await rm(bundle, { recursive: true });
+    await pruneRetention(ctx, { apply: true, sources: true, managedOnly: true });
+    assert.equal(await readJSON(taskPath(ctx, 'old'), null), null);
+    assert.equal(await readFile(join(ctx.main, '.local/animation-packs/source.fbx'), 'utf8'), 'unique source');
     for (const id of ['pinned', 'active', 'live-browser']) assert.equal(await readFile(join(ctx.main, '.local/agent-archives', id, 'captures/frame.png'), 'utf8'), 'image');
     await writeJSON(taskPath(ctx, 'recent'), { id: 'recent', path: join(ctx.main, '.local/worktrees/recent'), status: 'cleaned', cleanedAt: new Date(now).toISOString() });
     const recent = join(ctx.main, '.local/agent-archives/recent');
@@ -636,7 +644,65 @@ test('retention cleanup can finish from the checkout it removes', async () => {
     const { assetIdentity } = await import('./assets.mjs');
     await writeJSON(taskPath(ctx, id), { id, path, status: 'integrated', assetIndex: {}, candidate: await git(['rev-parse', 'HEAD'], ctx.main), mainAssetIdentity: assetIdentity({}) });
     await promisify(execFile)(process.execPath, ['scripts/agents/cli.mjs', 'cleanup', '--task', id], { cwd: path, timeout: 15000 });
-    assert.equal((await readJSON(taskPath(ctx, id))).status, 'cleaned');
+    assert.equal(await readJSON(taskPath(ctx, id), null), null);
     await assert.rejects(readFile(join(path, 'package.json')), { code: 'ENOENT' });
+  } finally { await ctx.dispose(); }
+});
+
+
+// Deletion changes are admitted because lost originals, stale check proofs and
+// cross-project conversation cascades cannot be recovered by ordinary sanity checks.
+test('current checks survive disposal and interrupted registration removal retries without history', async () => {
+  const ctx = await fixture();
+  try {
+    const head = await git(['rev-parse', 'HEAD'], ctx.main), checks = join(ctx.main, '.local/agent-archives/proof/checks');
+    const evidence = join(checks, 'current');
+    await writeJSON(join(evidence, 'inputs.json'), { head, mode: 'light', passed: true, signature: 'current', assets: assetIdentity({}) });
+    await writeJSON(join(evidence, 'summary.json'), [{ name: 'types', status: 'passed' }]);
+    await writeJSON(join(checks, 'cache.json'), { passed: true, key: 'proof', evidence });
+    const task = { id: 'proof', path: join(ctx.main, '.local/worktrees/proof'), status: 'cleaned', cleanedAt: new Date().toISOString() };
+    await writeJSON(taskPath(ctx, task.id), task);
+    await writeJSON(join(checks, '..', 'retained.json'), { task: task.id });
+    await retainCurrentChecks(ctx, task, checks);
+    const kept = await readJSON(join(ctx.main, '.local/checks/cache.json'));
+    assert.equal(kept.evidence, join(ctx.main, '.local/checks/current'));
+    await pruneRetention(ctx, { apply: true, managedOnly: true });
+    assert.equal(await readJSON(taskPath(ctx, task.id), null), null);
+    assert.equal((await readJSON(join(kept.evidence, 'inputs.json'))).signature, 'current');
+    // Simulate interruption after archive removal but before registration removal.
+    await writeJSON(taskPath(ctx, task.id), task);
+    await pruneRetention(ctx, { apply: true, managedOnly: true });
+    assert.equal(await readJSON(taskPath(ctx, task.id), null), null);
+    const second = await pruneRetention(ctx, { apply: true, managedOnly: true });
+    assert.equal(second.removed.length, 0);
+  } finally { await ctx.dispose(); }
+});
+
+test('Codex pruning protects open, pinned and unrelated descendants and rechecks before deletion', async () => {
+  const main = '/tmp/lantern';
+  const row = (id, extra = {}) => ({ id, cwd: main, archived: true, status: { type: 'notLoaded' }, ...extra });
+  const threads = [row('safe'), row('open', { archived: false }), row('pinned', { isPinned: true }), row('parent'), row('other', { parentThreadId: 'parent', cwd: '/tmp/another-project' }), row('issue')];
+  const pins = { issue: { reason: 'unresolved', owner: 'memory' } };
+  const selected = selectCodexThreads(main, threads, [], pins);
+  assert.deepEqual(selected.eligible.map(t => t.id), ['safe']);
+  assert.ok(selected.protected.some(t => t.id === 'parent' && t.blockingThread === 'other'));
+  const ctx = await fixture();
+  try {
+    const root = { ...row('safe'), cwd: ctx.main };
+    let checks = 0;
+    const deleted = [];
+    const connect = async () => ({ close() {}, async call(method, params) {
+      if (method === 'thread/loaded/list') return { data: [] };
+      if (method === 'thread/delete') { deleted.push(params.threadId); return {}; }
+      if (params.ancestorThreadId) return { data: [], nextCursor: null };
+      if (params.cwd && ++checks === 1) return { data: [], nextCursor: null }; // reopened during cleanup
+      return { data: params.archived ? [root] : [], nextCursor: null };
+    } });
+    const dry = await pruneCodex(ctx, { connect });
+    assert.equal(dry.eligible.length, 1); assert.deepEqual(deleted, []);
+    const changed = await pruneCodex(ctx, { apply: true, connect });
+    assert.equal(changed.removed.length, 0); assert.deepEqual(deleted, []);
+    const applied = await pruneCodex(ctx, { apply: true, connect });
+    assert.deepEqual(applied.removed.map(t => t.id), ['safe']); assert.deepEqual(deleted, ['safe']);
   } finally { await ctx.dispose(); }
 });

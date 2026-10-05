@@ -37,7 +37,7 @@ export async function statusReport(ctx, options) {
 export function formatStatus(report) {
   const lines = [
     `Main: ${report.main}`,
-    `Worktrees: ${report.capacity.used}/${report.capacity.limit}; ${report.freeGiB} GiB free; ${report.counts.cleaned} cleaned tasks (use --all for history)`,
+    `Worktrees: ${report.capacity.used}/${report.capacity.limit}; ${report.freeGiB} GiB free; ${report.counts.cleaned} completed tasks retained for cleanup or unresolved evidence`,
     `Current task: ${report.currentTask ?? '(main checkout)'}`,
     `Resources: ${report.leases.map(lease => `${lease.resource}: ${lease.task ? basename(lease.task) : 'unknown owner'} (PID ${lease.pid})`).join('; ') || 'none'}`,
     `Promotion: ${report.promotion ? `${report.promotion.task} @ ${report.promotion.candidate?.slice(0, 12) ?? 'pending'}` : 'none'}`,
@@ -46,10 +46,10 @@ export function formatStatus(report) {
     const check = task.lastCheck, revision = check?.revision ?? check?.inputs?.head;
     lines.push(`${task.id}${task.id === report.currentTask ? ' [current]' : ''}: ${task.status}; ${task.path}`);
     if (task.preview) lines.push(`  Preview: ${task.preview.url}`);
-    if (check) lines.push(`  Last check: ${revision?.slice(0, 12) ?? 'unknown revision'}; ${check.evidenceExpiredAt ? 'evidence expired under retention policy' : check.evidence}`);
+    if (check) lines.push(`  Last check: ${revision?.slice(0, 12) ?? 'unknown revision'}; ${check.evidenceExpiredAt ? 'evidence unavailable' : check.evidence}`);
     if (task.assetConflicts?.length) lines.push(`  Asset conflicts: ${task.assetConflicts.length}; use --task ${task.id} --json for paths`);
   }
   if (!report.tasks.length) lines.push('No tasks in this view.');
-  lines.push('Details: --json; one task: --task SLUG; complete history: --all --json');
+  lines.push('Details: --json; one task: --task SLUG; retained exceptions: --all --json');
   return lines.join('\n');
 }

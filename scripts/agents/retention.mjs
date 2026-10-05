@@ -1,12 +1,12 @@
-import { lstat, readdir, mkdir, rm, rmdir, rename, appendFile, open } from 'node:fs/promises';
+import { lstat, readdir, mkdir, rm, rmdir, rename, appendFile } from 'node:fs/promises';
 import { join, resolve, relative, dirname, sep } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { hashFile } from '../lib/assets.mjs';
 import { privateCopy, privateTree } from './copy.mjs';
-import { readJSON, writeJSON, readTask, saveTask, freeSpace, compactTask, processIdentity, git, liveLeases } from './state.mjs';
+import { readJSON, writeJSON, readTask, saveTask, taskPath, freeSpace, compactTask, processIdentity, git, liveLeases } from './state.mjs';
 import { acquire, withResource } from './resources.mjs';
 
-export const retentionPolicy = Object.freeze({ days: 7, bytes: 2 * 1024 ** 3 });
+export const retentionPolicy = Object.freeze({ days: 0, bytes: 0 });
 const sourceNames = ['animation-packs', 'synty-library'];
 const evidenceNames = ['checks', 'captures', 'level-design', 'inspection', 'preview.log'];
 const slug = /^[a-z][a-z0-9-]{0,47}$/;
@@ -185,32 +185,55 @@ export async function retainTaskSources(ctx, task) {
     for (const name of sourceNames) {
       const source = join(task.path, '.local', name);
       if (!await info(source)) continue;
-      // Keep the worktree intact until git removes it. Only unique versions enter history.
-      const canonical = join(ctx.main, '.local', name), archive = join(ctx.main, '.local/agent-archives', task.id, name);
+      // Keep the worktree intact until git removes it; originals belong to asset owners.
+      const canonical = join(ctx.main, '.local', name);
       const baseline = await readJSON(join(task.path, '.local/agents/source-baselines', name + '.json'), {});
       const report = await retainSourceTree(source, canonical, { apply: true, baseline });
-      for (const name of report.conflicts) {
-        const from = join(source, name), to = join(archive, name);
-        await safeRetentionPath(archive, to);
-        if (!await info(to)) await publishSource(from, to, new Map());
-        else {
-          const retained = await retainSourceTree(from, to);
-          if (retained.conflicts.length) throw new Error(`Different retained source exists: ${to}`);
-        }
-      }
-      if (report.conflicts.length) await writeJSON(join(archive, '..', name + '-retained.json'), report);
+      await preserveSourceConflicts(ctx, name, source, report.conflicts);
     }
   }, { ctx });
 }
 
-export function selectExpiredEvidence(candidates, { now = Date.now(), days = retentionPolicy.days, bytes = retentionPolicy.bytes } = {}) {
-  const ordered = [...candidates].sort((a, b) => a.completedAt - b.completedAt || a.path.localeCompare(b.path));
-  let remaining = ordered.reduce((sum, item) => sum + item.bytes, 0);
-  const selected = [];
-  for (const item of ordered) if (now - item.completedAt >= days * 86400000 || remaining > bytes) {
-    selected.push(item); remaining -= item.bytes;
+/** Content-addressed originals survive independently of the task that supplied them. */
+async function preserveSourceConflicts(ctx, collection, source, conflicts, remove = false) {
+  const cache = new Map();
+  for (const conflict of conflicts) for (const file of await retentionFiles(join(source, conflict))) {
+    const hash = await digest(file, cache);
+    const owner = join(ctx.main, '.local/source-replacements', collection, hash);
+    const target = join(owner, relative(source, file.path));
+    await safeRetentionPath(ctx.main, target);
+    const result = await retainSourceTree(file.path, target, { apply: true, removeDuplicates: remove, cache });
+    if (result.conflicts.length) throw new Error(`Source preservation differs: ${target}`);
   }
-  return { selected, remaining };
+  if (remove) await removeEmptyDirectories(source);
+}
+
+/** Preserve successful current-revision evidence before its task checkout/archive disappears. */
+export async function retainCurrentChecks(ctx, task, checks = join(task.path, '.local/checks')) {
+  return withResource('promotion', async () => {
+    const head = await git(['rev-parse', 'HEAD'], ctx.main);
+    const { assetIndex, assetIdentity } = await import('./assets.mjs');
+    let assets;
+    for (const mode of ['light', 'full']) {
+      const cacheName = mode === 'full' ? 'cache-full.json' : 'cache.json';
+      const cache = await readJSON(join(checks, cacheName), null);
+      const source = cache?.evidence ? join(checks, cache.evidence.split(sep).at(-1)) : null;
+      if (!cache?.passed || !source) continue;
+      await safeRetentionPath(checks, source);
+      const inputs = await readJSON(join(source, 'inputs.json'), null);
+      if (!inputs?.passed || inputs.head !== head || inputs.mode !== mode) continue;
+      assets ??= assetIdentity(await assetIndex(join(ctx.main, 'public/vendor')));
+      if (inputs.assets !== assets && !(task.candidate === head && task.mainAssetIdentity === assets && !(task.assetChangeCount ?? task.assetChanges?.length ?? 0))) continue;
+      const target = join(ctx.main, '.local/checks', source.split(sep).at(-1));
+      await safeRetentionPath(ctx.main, target);
+      const existing = await readJSON(join(target, 'inputs.json'), null);
+      if (!existing) await publishSource(source, target, new Map());
+      else if (existing.signature !== inputs.signature) throw new Error('Current check destination has different inputs; preserve both copies.');
+      const mainCache = await readJSON(join(ctx.main, '.local/checks', cacheName), null);
+      const mainInputs = mainCache?.evidence ? await readJSON(join(mainCache.evidence, 'inputs.json'), null) : null;
+      if (!mainInputs?.passed || mainInputs.head !== head || mainInputs.assets !== assets) await writeJSON(join(ctx.main, '.local/checks', cacheName), { ...cache, evidence: target });
+    }
+  }, { ctx });
 }
 
 async function verifiedClosedHistory(path) {
@@ -224,37 +247,30 @@ async function verifiedClosedHistory(path) {
 }
 
 /** Only known managed content is eligible. Unknown local files are inventory, never trash. */
-export async function pruneRetention(ctx, { apply = false, sources = false, managedOnly = false, now = Date.now(), budget = retentionPolicy.bytes, progress = () => {} } = {}) {
+export async function pruneRetention(ctx, { apply = false, sources = false, managedOnly = false, progress = () => {} } = {}) {
   const ownership = await acquire('retention', { ctx, tryOnly: managedOnly });
   if (!ownership) return { deferred: true, reason: 'Another retention operation owns cleanup.' };
   try {
-    const before = await freeSpace(ctx.main), report = { apply, policy: { ...retentionPolicy, bytes: budget }, beforeFreeBytes: before, compacted: [], removed: [], sourceReports: [], protected: [], unknown: [], errors: [] };
-    const archiveRoot = join(ctx.main, '.local/agent-archives'), candidates = [], cache = new Map(), versions = new Map(), protectedSources = new Set();
-    await safeRetentionPath(ctx.common, ctx.store);
-    await safeRetentionPath(ctx.main, archiveRoot);
-    const head = await git(['rev-parse', 'HEAD'], ctx.main);
+    const before = await freeSpace(ctx.main);
+    const report = { apply, policy: retentionPolicy, beforeFreeBytes: before, compacted: [], removed: [], sourceReports: [], protected: [], unknown: [], errors: [] };
+    const archiveRoot = join(ctx.main, '.local/agent-archives');
+    await safeRetentionPath(ctx.common, ctx.store); await safeRetentionPath(ctx.main, archiveRoot);
     const names = (await readdir(join(ctx.store, 'tasks')).catch(error => { if (error.code === 'ENOENT') return []; throw error; })).filter(name => name.endsWith('.json')).sort();
     const archives = await readdir(archiveRoot).catch(error => { if (error.code === 'ENOENT') return []; throw error; });
-    if (sources && apply) for (const id of archives) {
-      const archive = join(archiveRoot, id); await safeRetentionPath(archiveRoot, archive);
-      if (!(await info(archive))?.isDirectory()) continue;
-      for (const name of await readdir(archive)) if (/^(animation-packs|synty-library)-references\.jsonl$/.test(name)) {
-        const path = join(archive, name); await safeRetentionPath(archiveRoot, path);
-        const handle = await open(path);
-        try {
-          for await (const line of handle.readLines()) {
-            if (!line.trim()) continue;
-            const record = JSON.parse(line); await safeRetentionPath(archiveRoot, record.retained);
-            protectedSources.add(record.retained);
-          }
-        } finally { await handle.close(); }
-      }
-    }
     for (const id of archives) if (!names.includes(id + '.json')) report.unknown.push({ path: join(archiveRoot, id), reason: 'unregistered archive; preserved' });
+    async function discard(path, base) {
+      await safeRetentionPath(base, path);
+      const files = await retentionFiles(path), bytes = files.reduce((sum, file) => sum + file.bytes, 0);
+      if (apply) {
+        if (JSON.stringify(await retentionFiles(path)) !== JSON.stringify(files)) throw new Error(`Evidence changed; preserved: ${path}`);
+        await rm(path, { recursive: true, force: true });
+      }
+      report.removed.push({ path, bytes });
+    }
     for (const name of names) {
       const id = name.slice(0, -5);
       if (!slug.test(id)) { report.unknown.push(join(ctx.store, 'tasks', name)); continue; }
-      await safeRetentionPath(ctx.store, join(ctx.store, 'tasks', name));
+      await safeRetentionPath(ctx.store, taskPath(ctx, id));
       const task = await readTask(ctx, id);
       if (task?.status !== 'cleaned') { report.protected.push({ path: task?.path, reason: 'unfinished task' }); continue; }
       const lease = await acquire(`task-${id}`, { ctx, tryOnly: true });
@@ -262,37 +278,73 @@ export async function pruneRetention(ctx, { apply = false, sources = false, mana
       const archive = join(archiveRoot, id);
       try {
         await safeRetentionPath(archiveRoot, archive);
-        const retained = await readJSON(join(archive, 'retained.json'), null);
-        const completedAt = Date.parse(task.cleanedAt ?? task.integratedAt);
-        if (await info(task.path) || !Number.isFinite(completedAt) || !retained || retained.task !== id) {
+        const present = await info(archive), retained = await readJSON(join(archive, 'retained.json'), null);
+        if (await info(task.path) || !Number.isFinite(Date.parse(task.cleanedAt ?? task.integratedAt)) || present && retained?.task !== id) {
           report.protected.push({ path: archive, reason: 'missing completion/ownership evidence or remaining worktree' }); continue;
         }
+        const pin = retained?.pin || task.retentionPin;
+        if (pin) { report.protected.push({ path: archive, reason: 'unresolved evidence: ' + pin }); continue; }
         if (!await verifiedClosedHistory(join(archive, 'browser-history.json'))) {
           report.protected.push({ path: archive, reason: 'browser exit not verified' }); continue;
         }
-        if (sources && apply) await withResource('source-retention', async () => {
-          for (const collection of sourceNames) {
-            const source = join(archive, collection);
-            if (!await info(source)) continue;
-            progress(`Verifying sources: ${id}/${collection}`);
-            report.sourceReports.push(await retainSourceTree(source, join(ctx.main, '.local', collection), { apply: true, removeDuplicates: true, cache, versions, references: join(archive, collection + '-references.jsonl'), protectedSources, progress: value => progress(`${id}/${collection}: ${value.duplicateFiles} verified files`) }));
-          }
-        }, { ctx });
-        const compact = compactTask(task);
-        if (JSON.stringify(compact) !== JSON.stringify(task)) { report.compacted.push(id); if (apply) await saveTask(ctx, compact); }
-        const pinned = retained.pin || task.retentionPin;
-        for (const entry of await readdir(archive)) {
+        const entries = present ? await readdir(archive) : [];
+        if (apply && entries.includes('checks')) await retainCurrentChecks(ctx, task, join(archive, 'checks'));
+        const metadata = new Set(['retained.json', 'browser-history.json', ...sourceNames.flatMap(name => [name + '-retained.json', name + '-references.jsonl'])]);
+        let blocked = false;
+        for (const entry of entries) {
           const path = join(archive, entry);
-          if (managedOnly && !evidenceNames.includes(entry)) continue;
-          let files;
-          try { files = await retentionFiles(path); }
-          catch (error) { report.protected.push({ path, reason: error.message }); continue; }
-          const bytes = files.reduce((sum, file) => sum + file.bytes, 0);
-          if (!evidenceNames.includes(entry) || pinned || entry === 'checks' && task.lastCheck?.inputs?.head === head) {
-            report.protected.push({ path, bytes, reason: pinned ? 'pinned: ' + pinned : entry === 'checks' ? 'current validation evidence' : 'source or durable ownership metadata' }); continue;
+          if (sourceNames.includes(entry)) {
+            blocked = true;
+            if (!sources) { report.protected.push({ path, reason: 'source audit required: --sources' }); continue; }
+            await withResource('source-retention', async () => {
+              progress(`Verifying sources: ${id}/${entry}`);
+              const result = await retainSourceTree(path, join(ctx.main, '.local', entry), { apply, removeDuplicates: apply });
+              report.sourceReports.push(result);
+              if (apply) {
+                await preserveSourceConflicts(ctx, entry, path, result.conflicts, true);
+                if (await info(path)) report.protected.push({ path, reason: 'remaining source content' });
+              }
+            }, { ctx });
+            continue;
           }
-          candidates.push({ path, bytes, completedAt, files, task: compact });
+          if (metadata.has(entry)) continue;
+          if (!evidenceNames.includes(entry)) {
+            blocked = true;
+            report.unknown.push({ path, reason: 'unrecognized archive content; preserved' });
+            continue;
+          }
+          try {
+            if ((await readJSON(join(archive, 'retained.json'), null))?.pin || (await readTask(ctx, id))?.retentionPin) throw new Error('Evidence was pinned during cleanup; preserved.');
+            await discard(path, archiveRoot);
+          }
+          catch (error) { blocked = true; report.protected.push({ path, reason: error.message }); }
         }
+        // Source publication completes before metadata can disappear. A retry sees the
+        // surviving registration even if its archive was already removed.
+        if (apply && sources) blocked = (await readdir(archive).catch(error => { if (error.code === 'ENOENT') return []; throw error; })).some(entry => !metadata.has(entry));
+        if (blocked) {
+          const compact = compactTask(task);
+          if (apply && JSON.stringify(compact) !== JSON.stringify(task)) { await saveTask(ctx, compact); report.compacted.push(id); }
+          continue;
+        }
+        await withResource('promotion', async () => {
+          const current = await readTask(ctx, id);
+          if (current?.status !== 'cleaned' || current.retentionPin || (await readJSON(join(archive, 'retained.json'), null))?.pin || await info(current.path)) throw new Error('Task changed; preserve its registration.');
+          const branch = current.branch;
+          if (branch) {
+            if (branch !== `codex/${id}`) throw new Error('Unexpected task branch; preserved.');
+            const ref = await git(['rev-parse', '--verify', `refs/heads/${branch}`], ctx.main).catch(error => { if (error.cause?.code === 128) return null; throw error; });
+            if (ref) {
+              await git(['merge-base', '--is-ancestor', ref, 'main'], ctx.main);
+              if ((await git(['worktree', 'list', '--porcelain'], ctx.main)).includes(`branch refs/heads/${branch}\n`)) throw new Error('Task branch still has a worktree.');
+              if (apply) await git(['branch', '-d', branch], ctx.main);
+              report.removed.push({ branch, bytes: 0 });
+            }
+          }
+          for (const entry of entries.filter(entry => metadata.has(entry))) await discard(join(archive, entry), archiveRoot);
+          if (apply && await info(archive)) await rmdir(archive);
+          await discard(taskPath(ctx, id), ctx.store);
+        }, { ctx });
       } catch (error) { report.errors.push({ task: id, message: error.message }); }
       finally { await lease.release(); }
       progress(`Inspected ${id}`);
@@ -300,56 +352,18 @@ export async function pruneRetention(ctx, { apply = false, sources = false, mana
     const desktop = join(ctx.main, '.local/desktop');
     await safeRetentionPath(ctx.main, desktop);
     if (await info(desktop) && !(await liveLeases(ctx)).some(lease => lease.resource === 'heavy')) {
-      const current = await readJSON(join(desktop, 'candidate.json'), {});
+      const current = await readJSON(join(desktop, 'candidate.json'), {}), head = await git(['rev-parse', 'HEAD'], ctx.main);
       for (const entry of await readdir(desktop)) {
         const match = entry.match(/^lantern-web-([a-f0-9]{40})\.tar\.gz$/);
         if (!match || match[1] === head || match[1] === current.revision || await info(join(desktop, entry + '.pin'))) continue;
-        const path = join(desktop, entry), files = await retentionFiles(path);
-        candidates.push({ path, files, bytes: files.reduce((sum, file) => sum + file.bytes, 0), completedAt: Number((await info(path)).mtimeMs), desktop: true });
+        await withResource('desktop-retention', async () => {
+          if ((await liveLeases(ctx)).some(lease => lease.resource === 'heavy')) return;
+          await discard(join(desktop, entry), desktop);
+        }, { ctx });
       }
     }
-    const eviction = selectExpiredEvidence(candidates, { now, bytes: budget });
-    for (const item of eviction.selected) {
-      const lease = await acquire(item.desktop ? 'desktop-retention' : `task-${item.task.id}`, { ctx, tryOnly: true });
-      if (!lease) { report.errors.push({ path: item.path, message: 'Task operation owns its lock; preserved' }); continue; }
-      try {
-        if (apply) {
-          if (item.desktop) {
-            if ((await liveLeases(ctx)).some(lease => lease.resource === 'heavy')) { report.errors.push({ path: item.path, message: 'Heavy operation active; preserved' }); continue; }
-          } else {
-            const registered = await readTask(ctx, item.task.id);
-            if (registered?.status !== 'cleaned' || registered.retentionPin || await info(registered.path)) throw new Error('Task is no longer safely completed or was pinned.');
-          }
-          await safeRetentionPath(item.desktop ? desktop : archiveRoot, item.path);
-          const current = await retentionFiles(item.path);
-          if (JSON.stringify(current) !== JSON.stringify(item.files)) { report.errors.push({ path: item.path, message: 'Evidence changed; preserved' }); continue; }
-          // Persist expiration before removal so interruption never leaves a silent dangling reference.
-          if (!item.desktop) {
-            const retainedPath = join(dirname(item.path), 'retained.json'), retained = await readJSON(retainedPath);
-            if (retained.pin) { report.errors.push({ path: item.path, message: 'Evidence was pinned; preserved' }); continue; }
-            retained.expired ??= {}; retained.expired[item.path.split(sep).at(-1)] = new Date(now).toISOString();
-            await writeJSON(retainedPath, retained);
-          }
-          if (item.task && (item.task.lastCheck?.evidence?.startsWith(item.path + sep) || item.task.lastCheck?.evidence === item.path)) {
-            item.task.lastCheck.evidenceExpiredAt = new Date(now).toISOString(); await saveTask(ctx, item.task);
-          }
-          await rm(item.path, { recursive: true });
-        }
-        report.removed.push({ path: item.path, bytes: item.bytes });
-      } finally { await lease.release(); }
-    }
-    report.remainingEvidenceBytes = candidates.reduce((sum, item) => sum + item.bytes, 0) - report.removed.reduce((sum, item) => sum + item.bytes, 0);
-    const managed = new Set(['agent-archives', 'agents', 'worktrees', ...sourceNames, 'checks', 'build-public']);
-    if (!managedOnly) for (const name of [...managed].filter(name => name !== 'agent-archives').concat('source-replacements')) {
-      const path = join(ctx.main, '.local', name);
-      try {
-        await safeRetentionPath(ctx.main, path);
-        const files = await retentionFiles(path);
-        report.protected.push({ path, bytes: files.reduce((sum, file) => sum + file.bytes, 0), reason: 'canonical sources, active work, current staging or validation' });
-      } catch (error) { report.protected.push({ path, reason: error.message }); }
-    }
-    managed.add('source-replacements');
-    for (const name of managedOnly ? [] : await readdir(join(ctx.main, '.local')).catch(error => { if (error.code === 'ENOENT') return []; throw error; })) if (!managed.has(name)) {
+    const managed = new Set(['agent-archives', 'agents', 'worktrees', ...sourceNames, 'checks', 'build-public', 'source-replacements']);
+    if (!managedOnly) for (const name of await readdir(join(ctx.main, '.local'))) if (!managed.has(name)) {
       const path = join(ctx.main, '.local', name);
       try { const files = await retentionFiles(path); report.unknown.push({ path, bytes: files.reduce((sum, file) => sum + file.bytes, 0) }); }
       catch (error) { report.unknown.push({ path, reason: error.message }); }

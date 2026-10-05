@@ -8,7 +8,7 @@ One agent owns each private task worktree through local integration. Main stays 
 
 Integration installs changed locked dependencies on main before completing promotion. `npm run main:dev` also checks dependency readiness before starting or reusing the integrated preview.
 
-1. Run `npm run agent:start -- --task <slug>` from main before any edits, including documentation. Use the exact printed directory for every task command and edit. Registered tasks resume; archived slugs need a fresh name. Admission queues at capacity (`--no-wait` fails immediately).
+1. Run `npm run agent:start -- --task <slug>` from main before any edits, including documentation. Use the exact printed directory for every task command and edit. Registered tasks resume; retained completed slugs need a fresh name. Admission queues at capacity (`--no-wait` fails immediately).
 2. Implement the behavior and its blockers, preserving other tasks and private sources. Before tooling edits read [script conventions](DEVELOPMENT_REFERENCE.md#script-conventions); before preparing art read [resource rules](DEVELOPMENT_REFERENCE.md#private-assets-and-resource-use) and [asset preparation](ASSET_PREPARATION.md).
 3. After player-facing edits, start one owned normal-settings preview with `npm run agent:dev -- --browser`, inspect the result and exercise one changed interaction. `--author --area clearing` enables level tools; without `--browser` the source server uses no GPU-review slot. Close it with `npm run agent:dev -- --stop`. Documentation needs links/diff review; tooling needs one relevant observable outcome.
 4. Review the task diff. Put only reviewed repository-relative paths in an ignored JSON list, then run `npm run agent:finish -- --paths .local/reviewed-paths.json --message "describe the change"`. Finish commits, rebases, runs the change-aware sanity gate on the exact integration candidate and promotes locally. It stops the task preview; it does not push or create a PR.
@@ -27,7 +27,7 @@ Acceptance needs one relevant gameplay interaction, links/diff review for docume
 
 Screen and component design follows the [UI design system](UI_DESIGN.md) and [UI workflow](ui/WORKFLOW.md): a player-goal brief, original mockup when it answers a design question, functional DOM translation and focused visual/interaction refinement. Their screen/state coverage inventories describe design responsibilities, not automated test matrices.
 
-Report completed behavior, sanity validation and material limits. Checks/builds do not establish visual quality or cross-platform performance. The [command reference](DEVELOPMENT_REFERENCE.md#commands-and-handoff) owns detailed checks; [read-only tools](DEVELOPMENT_REFERENCE.md#read-only-agent-tools) owns bounded context, manifest/source inspection and saved diagnostics. Specialized guides are reached through [task routing](ARCHITECTURE.md#task-routing); historical migration evidence is [optional background](archive/TASK_WORKFLOW_2026-10-01.md).
+Report completed behavior, sanity validation and material limits. Checks/builds do not establish visual quality or cross-platform performance. The [command reference](DEVELOPMENT_REFERENCE.md#commands-and-handoff) owns detailed checks; [read-only tools](DEVELOPMENT_REFERENCE.md#read-only-agent-tools) owns bounded context, manifest/source inspection and saved diagnostics. Specialized guides are reached through [task routing](ARCHITECTURE.md#task-routing).
 
 ## Desktop candidates
 

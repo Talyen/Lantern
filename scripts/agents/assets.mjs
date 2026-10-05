@@ -4,8 +4,8 @@ import { join, resolve, relative, sep, basename } from 'node:path';
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { privateCopy, privateTree } from './copy.mjs';
-import { writeJSON, saveTask } from './state.mjs';
-import { retainTaskSources } from './retention.mjs';
+import { writeJSON, saveTask, readJSON } from './state.mjs';
+import { retainTaskSources, retainCurrentChecks } from './retention.mjs';
 export async function assetIndex(directory) {
   const result = {};
   async function walk(path) {
@@ -95,7 +95,11 @@ export async function prepareAssets(ctx, task, mainHead, resolved = []) {
 }
 export async function retainSources(ctx, task) {
   await retainTaskSources(ctx, task);
+  await retainCurrentChecks(ctx, task);
   const archive = join(ctx.main, '.local/agent-archives', task.id);
+  const retained = await readJSON(join(archive, 'retained.json'), {});
+  const pin = retained.pin || task.retentionPin;
+  if (!pin) return;
   const checks = join(task.path, '.local/checks');
   if (existsSync(checks)) {
     await privateTree(checks, join(archive, 'checks'));
@@ -111,5 +115,5 @@ export async function retainSources(ctx, task) {
   if (existsSync(inspection)) await privateTree(inspection, join(archive, 'inspection'));
   const views = join(task.path, '.local/level-design');
   if (existsSync(views)) await privateTree(views, join(archive, 'level-design'));
-  await writeJSON(join(ctx.main, '.local/agent-archives', task.id, 'retained.json'), { task: task.id, revision: task.candidate, retained: new Date().toISOString() });
+  await writeJSON(join(ctx.main, '.local/agent-archives', task.id, 'retained.json'), { ...retained, task: task.id, revision: task.candidate, pin });
 }

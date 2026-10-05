@@ -76,7 +76,6 @@ Agents use the [private task workflow](Docs/DEVELOPMENT.md#working-alongside-oth
 - [Library trials](Docs/LIBRARY_TRIALS.md): retained gameplay integrations and deferred alternatives.
 - [Performance](Docs/PERFORMANCE.md): matched measurements and historical art/renderer evidence.
 - [Roadmap](ROADMAP.md): current milestones and acceptance targets.
-- [Implementation history](Docs/archive/IMPLEMENTATION_HISTORY.md): dated implementation reports.
 - [Agent guide](AGENTS.md): working and testing rules.
 - [Third-party notices](THIRD_PARTY_NOTICES.md): source and asset provenance.
 

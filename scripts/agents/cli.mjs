@@ -8,6 +8,7 @@ import { statusReport, formatStatus } from './status.mjs';
 import { previewViewport } from './viewport.mjs';
 import { capturePreview } from './capture.mjs';
 import { pruneRetention } from './retention.mjs';
+import { pruneCodex } from './codex-retention.mjs';
 await cli(async () => {
   const options = {
     start: { '--task': 'value', '--no-wait': 'boolean' },
@@ -16,10 +17,10 @@ await cli(async () => {
     sources: { '--task': 'value', '--sources': 'value' },
     status: { '--all': 'boolean', '--task': 'value', '--json': 'boolean' }, cleanup: { '--task': 'value' }, main: { '--stop': 'boolean', '--browser': 'boolean', '--viewport': 'value', '--dpr': 'value' },
     capture: { '--task': 'value', '--output': 'value' },
-    prune: { '--apply': 'boolean', '--sources': 'boolean' },
+    prune: { '--apply': 'boolean', '--sources': 'boolean', '--codex': 'boolean' },
   };
   const { command: operation, args } = parseCommand(process.argv.slice(2), options);
-  if (args['--help']) { console.log('Agent workflow: start --task SLUG [--no-wait]; dev [--browser] [--author] [--area ID] [--lab ID] [--viewport WIDTHxHEIGHT] [--dpr NUMBER] [--stop]; finish [--paths JSON_FILE] [--message TEXT] [--resolved-assets JSON_FILE]; sources --sources animation-packs,synty-library; status [--all | --task SLUG] [--json]; cleanup [--task SLUG]; main [--browser] [--viewport WIDTHxHEIGHT] [--dpr NUMBER] [--stop]; capture --output PNG; prune [--apply] [--sources].'); return; }
+  if (args['--help']) { console.log('Agent workflow: start --task SLUG [--no-wait]; dev [--browser] [--author] [--area ID] [--lab ID] [--viewport WIDTHxHEIGHT] [--dpr NUMBER] [--stop]; finish [--paths JSON_FILE] [--message TEXT] [--resolved-assets JSON_FILE]; sources --sources animation-packs,synty-library; status [--all | --task SLUG] [--json]; cleanup [--task SLUG]; main [--browser] [--viewport WIDTHxHEIGHT] [--dpr NUMBER] [--stop]; capture --output PNG; prune [--apply] [--sources] [--codex].'); return; }
   if (operation === 'start' && !args['--task']) throw new UsageError('agent:start requires --task SLUG.');
   const viewportOptions = { viewport: args['--viewport'], dpr: args['--dpr'] };
   if (operation === 'dev' || operation === 'main') {
@@ -30,7 +31,9 @@ await cli(async () => {
   const ctx = await context();
   if (operation === 'prune') {
     const report = await pruneRetention(ctx, { apply: !!args['--apply'], sources: !!args['--sources'], progress: message => console.error(message) });
+    if (args['--codex']) report.codex = await pruneCodex(ctx, { apply: !!args['--apply'] });
     console.log(JSON.stringify(report, null, 2));
+    if (report.codex?.errors.length) throw new Error('Codex pruning preserved unresolved entries; inspect the report.');
     if (args['--apply'] && report.errors.length) throw new Error(`Pruning preserved ${report.errors.length} unresolved entries; inspect the report and retry after repair.`);
   } else if (operation === 'start') {
     const task = await startTask(ctx, args['--task'], { wait: !args['--no-wait'] });
@@ -48,6 +51,7 @@ await cli(async () => {
     else console.log((await startPreview(ctx.main, { main: true, browser: !!args['--browser'], ...viewportOptions })).url);
   } else {
     const task = args['--task'] ? await readTask(ctx, args['--task']) : await currentTask(ctx);
+    if (!task && operation === 'cleanup') { console.log('No retained registration remains for this task.'); return; }
     if (!task) throw new Error('Unknown task');
     if (operation === 'dev') {
       if (args['--stop']) await stopPreview(task.path);

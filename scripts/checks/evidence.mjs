@@ -48,13 +48,13 @@ export async function runCheckStages(stages, directory) {
   return { summary, failed };
 }
 
-/** Keep failures and the last successful evidence for each validation mode. */
+/** A successful check supersedes prior success and resolved failures in its mode. */
 export async function pruneSuccessfulEvidence(directory, mode) {
   const parent = resolve(directory, '..');
   for (const entry of await readdir(parent, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
     const old = join(parent, entry.name);
     const previous = await readJSON(join(old, 'inputs.json'), null);
-    if (old !== directory && previous?.passed && previous.mode === mode) await rm(old, { recursive: true, force: true });
+    if (old !== directory && previous?.mode === mode) await rm(old, { recursive: true, force: true });
   }
 }
