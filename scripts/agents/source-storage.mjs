@@ -10,6 +10,7 @@ async function exists(path) {
   try { await lstat(path); return true; } catch (error) { if (error.code === 'ENOENT') return false; throw error; }
 }
 const identity = value => `${value.size}:${value.mtimeNs}:${value.ctimeNs}:${value.ino}`;
+const contentIdentity = value => value.split(':').filter((_, index) => index !== 2).join(':');
 async function emptyDirectories(path) {
   if (!await exists(path) || !(await lstat(path)).isDirectory()) return;
   for (const name of await readdir(path)) await emptyDirectories(join(path, name));
@@ -110,11 +111,19 @@ export async function migrateSourceTree(source, destination, journal, { apply = 
   for (const row of rows) {
     await safeRetentionPath(source, row.source);
     await safeRetentionPath(dirname(journal), row.destination);
-    if (identity(await lstat(row.source, { bigint: true })) !== row.sourceIdentity
-      || identity(await lstat(row.destination, { bigint: true })) !== row.destinationIdentity
-      || await hashFile(row.source) !== row.sha256 || await hashFile(row.destination) !== row.sha256) throw new Error(`Source changed or retained hash mismatch; preserve local original: ${row.source}`);
-    if (identity(await lstat(row.source, { bigint: true })) !== row.sourceIdentity
-      || identity(await lstat(row.destination, { bigint: true })) !== row.destinationIdentity) throw new Error(`Source changed during final verification: ${row.source}`);
+    let stable = false;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const beforeSource = identity(await lstat(row.source, { bigint: true }));
+      const beforeDestination = identity(await lstat(row.destination, { bigint: true }));
+      // ctime can change without modifying bytes (including removal of legacy
+      // aliases). Keep inode/size/mtime checks and reread both complete digests.
+      if (contentIdentity(beforeSource) !== contentIdentity(row.sourceIdentity)
+        || contentIdentity(beforeDestination) !== contentIdentity(row.destinationIdentity)
+        || await hashFile(row.source) !== row.sha256 || await hashFile(row.destination) !== row.sha256) throw new Error(`Source changed or retained hash mismatch; preserve local original: ${row.source}`);
+      if (identity(await lstat(row.source, { bigint: true })) === beforeSource
+        && identity(await lstat(row.destination, { bigint: true })) === beforeDestination) { stable = true; break; }
+    }
+    if (!stable) throw new Error(`Source changed during final verification: ${row.source}`);
     await rm(row.source);
   }
   await emptyDirectories(source);

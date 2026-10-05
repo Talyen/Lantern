@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, writeFile, rm, readdir } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, writeFile, rm, readdir, chmod } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { migrateSourceTree, retrieveSources } from './source-storage.mjs';
@@ -67,6 +67,19 @@ for (const changed of ['source', 'destination']) test(`migration preserves local
     await assert.rejects(migrateSourceTree(source, target, ctx.journal, { apply: true,
       beforeRemove: () => writeFile(join(changed === 'source' ? source : target, 'original.zip'), 'damaged!') }), /changed|mismatch/);
     assert.equal(await readFile(join(source, 'original.zip'), 'utf8'), changed === 'source' ? 'damaged!' : 'original');
+  } finally { await ctx.dispose(); }
+});
+
+test('removal tolerates metadata-only updates only after matching current bytes and identities', async () => {
+  const ctx = await fixture();
+  try {
+    const source = join(ctx.main, '.local/animation-packs'), target = join(ctx.assetSourceRoot, 'animation-packs');
+    await write(join(source, 'original.zip'), 'original');
+    const result = await migrateSourceTree(source, target, ctx.journal, { apply: true,
+      beforeRemove: async () => { await chmod(join(source, 'original.zip'), 0o600); await chmod(join(target, 'original.zip'), 0o600); } });
+    assert.equal(result.movedFiles, 1);
+    assert.equal(await readFile(join(target, 'original.zip'), 'utf8'), 'original');
+    await assert.rejects(readFile(join(source, 'original.zip')), { code: 'ENOENT' });
   } finally { await ctx.dispose(); }
 });
 
