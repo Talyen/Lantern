@@ -16,8 +16,9 @@ import { validatePreparedLighting } from './prepared-lighting.mjs';
 for (const areaId of ['homestead', 'blockout']) test(`${areaId} lighting validates sources and capture inputs without rewriting evidence`, async () => {
   const fixture = await mkdtemp(resolve(tmpdir(), 'lantern-lighting-'));
   try {
-    for (const directory of ['assets', 'src/levels/areas', 'public/vendor/lighting']) await mkdir(resolve(fixture, directory), { recursive: true });
-    for (const file of ['lighting-preparation.ts', 'lighting.ts', 'lighting-preset.ts', 'local-lighting.ts']) await copyFile(resolve(root, 'src/levels', file), resolve(fixture, 'src/levels', file));
+    for (const directory of ['assets', 'src/levels/areas', 'src/gameplay', 'public/vendor/lighting']) await mkdir(resolve(fixture, directory), { recursive: true });
+    for (const file of ['lighting-preparation.ts', 'lighting.ts', 'lighting-preset.ts', 'local-lighting.ts', 'grass.ts', 'water.ts', 'decoration.ts', 'ground-paths.ts']) await copyFile(resolve(root, 'src/levels', file), resolve(fixture, 'src/levels', file));
+    await copyFile(resolve(root, 'src/gameplay/area.ts'), resolve(fixture, 'src/gameplay/area.ts'));
     const area = JSON.parse(await readFile(resolve(root, `src/levels/areas/${areaId}.json`), 'utf8'));
     const recipes = JSON.parse(await readFile(resolve(root, 'assets/material-recipes.json'), 'utf8'));
     const areaPath = resolve(fixture, `src/levels/areas/${areaId}.json`), sourcePath = resolve(fixture, 'public/vendor/source.glb');
