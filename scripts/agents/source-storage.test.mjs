@@ -4,7 +4,7 @@ import { mkdtemp, mkdir, readFile, writeFile, rm, readdir } from 'node:fs/promis
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { migrateSourceTree, retrieveSources } from './source-storage.mjs';
-import { retainTaskSources } from './retention.mjs';
+import { retainTaskSources, retainSourceTree } from './retention.mjs';
 import { writeJSON } from './state.mjs';
 
 // These fixtures protect original files from loss during corruption, interruption
@@ -19,6 +19,22 @@ async function fixture() {
     journal: join(assetSourceRoot, 'migration-inventory.jsonl'), dispose: () => rm(directory, { recursive: true, force: true }) };
 }
 async function write(path, text) { await mkdir(join(path, '..'), { recursive: true }); await writeFile(path, text); }
+
+test('publication recovers a verified pending copy and preserves a differing interrupted copy', async () => {
+  const ctx = await fixture();
+  try {
+    const source = join(ctx.main, '.local/animation-packs'), target = join(ctx.assetSourceRoot, 'animation-packs');
+    await write(join(source, 'master.blend'), 'master');
+    const differing = target + '.retaining-first', matching = target + '.retaining-second';
+    await write(join(differing, 'master.blend'), 'earlier interrupted master');
+    await write(join(matching, 'master.blend'), 'master');
+    await retainSourceTree(source, target, { apply: true });
+    assert.equal(await readFile(join(target, 'master.blend'), 'utf8'), 'master');
+    assert.equal(await readFile(join(differing, 'master.blend'), 'utf8'), 'earlier interrupted master');
+    await assert.rejects(readFile(join(matching, 'master.blend')), { code: 'ENOENT' });
+    assert.equal(await readFile(join(source, 'master.blend'), 'utf8'), 'master');
+  } finally { await ctx.dispose(); }
+});
 
 test('migration retains differing masters, inventories both destinations and retries after interruption', async () => {
   const ctx = await fixture();

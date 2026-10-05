@@ -1,5 +1,5 @@
 import { lstat, readdir, mkdir, rm, rmdir, rename, appendFile } from 'node:fs/promises';
-import { join, resolve, relative, dirname, sep } from 'node:path';
+import { join, resolve, relative, dirname, basename, sep } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { hashFile } from '../lib/assets.mjs';
 import { privateCopy, privateTree } from './copy.mjs';
@@ -50,10 +50,19 @@ export async function retentionFiles(base) {
 }
 
 async function digest(file, cache) {
-  const key = file.path + ':' + file.identity;
+  let key = file.path + ':' + file.identity;
   if (!cache.has(key)) {
     const hash = await hashFile(file.path);
-    if (stamp(await info(file.path)) !== file.identity) throw new Error(`Source changed during verification: ${file.path}`);
+    const after = stamp(await info(file.path));
+    if (after !== file.identity) {
+      const [size, mtime, , inode] = file.identity.split(':');
+      const [nextSize, nextMtime, , nextInode] = after.split(':');
+      // Metadata-only changes still require an identical second digest and a
+      // completely stable identity through that read. Content/identity changes fail.
+      if (size !== nextSize || mtime !== nextMtime || inode !== nextInode
+        || await hashFile(file.path) !== hash || stamp(await info(file.path)) !== after) throw new Error(`Source changed during verification: ${file.path}`);
+      file.identity = after; key = file.path + ':' + after;
+    }
     cache.set(key, hash);
   }
   return cache.get(key);
@@ -69,19 +78,31 @@ async function removeEmptyDirectories(path) {
 /** Missing source subtrees are cloned atomically and verified before publication. */
 async function publishSource(source, target, cache) {
   await safeRetentionPath(dirname(target), target);
-  const temporary = target + '.retaining-' + randomUUID();
   const value = await info(source);
   const before = await retentionFiles(source);
   await mkdir(dirname(target), { recursive: true });
+  async function matches(copy) {
+    const copied = await retentionFiles(copy);
+    if (before.length !== copied.length) return false;
+    for (let index = 0; index < before.length; index++) {
+      if (relative(source, before[index].path) !== relative(copy, copied[index].path)
+        || await digest(before[index], cache) !== await digest(copied[index], cache)) return false;
+    }
+    return true;
+  }
+  const prefix = basename(target) + '.retaining-';
+  for (const name of (await readdir(dirname(target))).filter(name => name.startsWith(prefix)).sort()) {
+    const pending = join(dirname(target), name);
+    if (await matches(pending)) {
+      if (await info(target)) throw new Error(`Canonical source appeared during retention: ${target}`);
+      await rename(pending, target); return;
+    }
+  }
+  const temporary = target + '.retaining-' + randomUUID();
   if (value.isDirectory()) await privateTree(source, temporary);
   else await privateCopy(source, temporary);
   try {
-    const copied = await retentionFiles(temporary);
-    if (before.length !== copied.length) throw new Error(`Source copy is incomplete: ${source}`);
-    for (let index = 0; index < before.length; index++) {
-      if (relative(source, before[index].path) !== relative(temporary, copied[index].path)
-        || await digest(before[index], cache) !== await digest(copied[index], cache)) throw new Error(`Source copy differs: ${source}`);
-    }
+    if (!await matches(temporary)) throw new Error(`Source copy differs or is incomplete: ${source}`);
     if (await info(target)) throw new Error(`Canonical source appeared during retention: ${target}`);
     await rename(temporary, target);
   } catch (error) {
