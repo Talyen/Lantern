@@ -192,7 +192,7 @@ fn main(@builtin(global_invocation_id) gid : vec3u) {
     var reactivity = 0.0;
     if (hasFlag(FLAG_REACTIVE)) {
         let rdim = vec2i(textureDimensions(reactiveMask));
-        reactivity = clamp(textureLoad(reactiveMask, clamp(renderCoord, vec2i(0), rdim - 1), 0).r, 0.0, 1.0);
+        reactivity = clamp(textureLoad(reactiveMask, clamp(renderCoord, vec2i(0), rdim - 1), 0).r, 0.0, 0.9);
     }
 
     //* Current Frame Upsample (jitter-aware Lanczos2)
@@ -209,11 +209,19 @@ fn main(@builtin(global_invocation_id) gid : vec3u) {
     var boxMin = vec3f(1.0e5);
     var boxMax = vec3f(-1.0e5);
 
+    // Separable kernel: each axis weight is shared by three taps. Clamp the
+    // coordinates first, preserving the original repeated edge samples.
+    var wx : array<f32, 3>;
+    var wy : array<f32, 3>;
+    for (var i = 0; i < 3; i++) {
+        let coord = clamp(baseTexel + vec2i(i - 1), vec2i(0), maxCoord);
+        wx[i] = lanczos2(srcPos.x - f32(coord.x));
+        wy[i] = lanczos2(srcPos.y - f32(coord.y));
+    }
     for (var y = -1; y <= 1; y++) {
         for (var x = -1; x <= 1; x++) {
             let coord = clamp(baseTexel + vec2i(x, y), vec2i(0), maxCoord);
-            let d = srcPos - vec2f(coord);
-            let w = lanczos2(d.x) * lanczos2(d.y);
+            let w = wx[x + 1] * wy[y + 1];
             let c = tonemapInvertible(textureLoad(inputColor, coord, 0).rgb * exposure);
             colorSum += c * w;
             weightSum += w;
@@ -249,18 +257,21 @@ fn main(@builtin(global_invocation_id) gid : vec3u) {
 
     var history = sampleHistoryCatmullRom(prevUV);
 
-    //* Host Pre-Exposure Delta (FSR3's DeltaPreExposure)
-    // If the app changed the pre-exposure baked into its render since last
-    // frame, the reprojected history is in the old brightness domain and would
-    // read as a full-screen shading change — ratio-correct it in linear space.
-    // Without a preExposureTexture input both texels publish 1.0 and this is
-    // skipped, leaving the pass bit-identical. Conditioning exposure is
-    // deliberately not corrected here: it adapts smoothly by design.
-    let hostPrev = textureLoad(exposurePrevTex, vec2i(0), 0).b;
+    // History stores invertible-tonemapped color multiplied by the PREVIOUS
+    // conditioning exposure. Bring it into the current domain before clipping
+    // or blending, including any host pre-exposure baked into the source.
+    let previousInfo = textureLoad(exposurePrevTex, vec2i(0), 0);
     var hostRatio = 1.0;
-    if (hostPrev > 1.0e-4 && frameInfo.b > 1.0e-4) { hostRatio = frameInfo.b / hostPrev; }
-    if (abs(hostRatio - 1.0) > 1.0e-3) {
-        history = vec4f(tonemapInvertible(tonemapInvert(history.rgb) * hostRatio), history.a);
+    if (previousInfo.b > 1.0e-4 && frameInfo.b > 1.0e-4) {
+        hostRatio = frameInfo.b / previousInfo.b;
+    }
+    var conditioningRatio = 1.0;
+    if (previousInfo.r > 1.0e-4 && exposure > 1.0e-4) {
+        conditioningRatio = exposure / previousInfo.r;
+    }
+    let historyRatio = hostRatio * conditioningRatio;
+    if (historyRatio != 1.0) {
+        history = vec4f(tonemapInvertible(tonemapInvert(history.rgb) * historyRatio), history.a);
     }
 
     var sampleCount = history.a * C.maxAccumulation;

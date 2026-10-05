@@ -3,10 +3,11 @@ import type { Node, NodeBuilder, OrthographicCamera, PerspectiveCamera, TextureN
 import { OnAfterRenderPipeline, OnBeforeRenderPipeline, nodeObject, velocity } from 'three/tsl';
 import { fsrComparison } from '../labs/fsr/settings';
 import accumulationShader from './fsr-accumulate.wgsl?raw';
+import exposureShader from './fsr-exposure.wgsl?raw';
 
 // Pinned to @pmndrs/upscaler 0.2: reuse its pass bindings, dispatch, textures
-// and history lifecycle, replacing only the accumulation policy. Fail startup
-// if that private boundary changes; the shared pipeline reports startup failure.
+// and history lifecycle, replacing accumulation and the exposure reduction.
+// Fail startup if that private boundary changes; the shared pipeline reports it.
 // three's r186 declarations omit native device methods. Describe only the
 // compiler boundary this adapter consumes without adding a runtime dependency.
 type FSRShaderModule = { getCompilationInfo(): Promise<{ messages: { type: string; message: string }[] }> };
@@ -20,18 +21,26 @@ function prepareStableHistory(upscaler: Upscaler, device: FSRDevice): Promise<vo
   const existing = historyPreparations.get(upscaler);
   if (existing) return existing;
   const preparation = (async () => {
-    const pass = Reflect.get(upscaler, '_accumulatePass') as { metadata?: { shaderKey?: string }; pipeline?: unknown } | undefined;
-    if (pass?.metadata?.shaderKey !== 'baseline:accumulate' || !pass.pipeline) {
-      throw new Error('FSR history integration needs updating.');
-    }
-    const module = device.createShaderModule({ label: 'Lantern.FSR.accumulate', code: accumulationShader });
-    const info = await module.getCompilationInfo();
-    const errors = info.messages.filter(message => message.type === 'error');
-    if (errors.length) throw new Error(errors.map(message => message.message).join('\n'));
-    const pipeline = await device.createComputePipelineAsync({
-      label: 'Lantern.FSR.accumulate', layout: 'auto', compute: { module, entryPoint: 'main' },
+    const passes = [
+      { property: '_accumulatePass', key: 'baseline:accumulate', label: 'Lantern.FSR.accumulate', code: accumulationShader },
+      { property: '_exposurePass', key: 'baseline:exposure', label: 'Lantern.FSR.exposure', code: exposureShader },
+    ].map(descriptor => {
+      const pass = Reflect.get(upscaler, descriptor.property) as { metadata?: { shaderKey?: string }; pipeline?: unknown } | undefined;
+      if (pass?.metadata?.shaderKey !== descriptor.key || !pass.pipeline) {
+        throw new Error('FSR history integration needs updating.');
+      }
+      return { ...descriptor, pass };
     });
-    Reflect.set(pass, 'pipeline', pipeline);
+    // Prepare both before replacing either: a failed shader never leaves a
+    // partially adapted graph marked ready.
+    const pipelines = await Promise.all(passes.map(async ({ label, code }) => {
+      const module = device.createShaderModule({ label, code });
+      const info = await module.getCompilationInfo();
+      const errors = info.messages.filter(message => message.type === 'error');
+      if (errors.length) throw new Error(errors.map(message => message.message).join('\n'));
+      return device.createComputePipelineAsync({ label, layout: 'auto', compute: { module, entryPoint: 'main' } });
+    }));
+    passes.forEach(({ pass }, index) => Reflect.set(pass, 'pipeline', pipelines[index]));
   })();
   historyPreparations.set(upscaler, preparation);
   return preparation;

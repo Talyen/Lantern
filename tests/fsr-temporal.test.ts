@@ -15,6 +15,7 @@ vi.mock('@pmndrs/upscaler', () => ({
   UpscalerNode: class extends Node {
     upscaler = {
       _accumulatePass: { metadata: { shaderKey: 'baseline:accumulate' }, pipeline: {} },
+      _exposurePass: { metadata: { shaderKey: 'baseline:exposure' }, pipeline: {} },
       unjitteredProjectionMatrix: new Matrix4(),
       beginFrame(camera: OrthographicCamera) {
         camera.updateProjectionMatrix();
@@ -66,4 +67,19 @@ test('preparation cleanup and cached graph switches never turn stationary raster
     velocity.setProjectionMatrix(null);
     hooks.before.length = hooks.after.length = 0;
   }
+});
+
+// A dependency-boundary change must stop startup before either adapted pipeline
+// is installed; type checks and the normal native probe cannot exercise this.
+test('an incompatible exposure pass fails startup before preparing replacement shaders', async () => {
+  const camera = new OrthographicCamera(-1, 1, 1, -1, .1, 10);
+  const input = new Node() as TextureNode, graph = fsrTemporal(input, input, input, camera, input, 1);
+  Reflect.set(graph.upscaler!, '_exposurePass', { metadata: { shaderKey: 'changed:exposure' }, pipeline: {} });
+  const device = { createShaderModule: vi.fn(), createComputePipelineAsync: vi.fn() };
+  try {
+    graph.setup({ context: { renderPipeline: {}, renderPipelineState: { viewOffsetOwner: null } }, renderer: { backend: { device } } } as unknown as NodeBuilder);
+    await graph.historyReady();
+    expect(graph.startupError).toBeInstanceOf(Error);
+    expect(device.createShaderModule).not.toHaveBeenCalled();
+  } finally { velocity.setProjectionMatrix(null); hooks.before.length = hooks.after.length = 0; }
 });

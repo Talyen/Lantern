@@ -7,6 +7,7 @@ import { defaults } from '../../rendering/graphics-settings';
 import { createSurfaceMaterial, prepareSurfaceMaterial, surfaceBias } from '../../rendering/surface-detail';
 import { lightingPreset } from '../../levels/lighting-preset';
 import { resetMaterialCalibration } from '../../rendering/material-calibration';
+import { runFsrExposureProbe } from '../fsr/exposure-probe';
 
 type Sampler = { maxAnisotropy?: number; magFilter?: string; minFilter?: string; mipmapFilter?: string };
 type Device = { createSampler(descriptor: Sampler): unknown; queue: { onSubmittedWorkDone(): Promise<void> } };
@@ -99,7 +100,9 @@ export async function runMaterialProbe() {
       }
       finally { pipeline.dispose(); mesh.dispose(); geometry.dispose(); material.dispose(); [normal, albedo, data].forEach(map => map.dispose()); sky?.dispose(); }
     }
+    const fsrExposure = await runFsrExposureProbe(renderer);
     const checks = {
+      fsrExposureDomain: fsrExposure.passed,
       aoDirectEmissionPreserved: difference(interior(images['ao-direct'].rgba), interior(images['ao-direct-reference'].rgba)).maximum <= 1 && difference(images['ao-direct'].rgba, images['ao-direct-reference'].rgba).mean < .3,
       aoClearcoatPreserved: difference(interior(images['ao-coat'].rgba), interior(images['ao-coat-reference'].rgba)).maximum <= 1 && difference(images['ao-coat'].rgba, images['ao-coat-reference'].rgba).mean < .3,
       enclosureDiffuseOwned: difference(images['env-diffuse'].rgba, images['env-diffuse-owned'].rgba).mean > 5,
@@ -119,6 +122,6 @@ export async function runMaterialProbe() {
       metallicHighlightsPreserved: difference(images['highlight-metal'].rgba, images['highlight-metal-reference'].rgba).maximum <= 1,
       smoothHighlightsPreserved: difference(images['highlight-smooth'].rgba, images['highlight-smooth-reference'].rgba).maximum <= 1,
     };
-    return { passed: Object.values(checks).every(Boolean), checks, images: Object.fromEntries(Object.entries(images).map(([name, image]) => [name, image.png])) };
+    return { passed: Object.values(checks).every(Boolean), checks, fsrExposure, images: Object.fromEntries(Object.entries(images).map(([name, image]) => [name, image.png])) };
   } finally { device.createSampler = original; await renderer.dispose(); mount.remove(); }
 }

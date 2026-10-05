@@ -47,7 +47,6 @@ class PipelineGraph {
   private focusRange = uniform(16);
   private bloomStrength = uniform(0.8);
   private fsr: FSRNode | null = null;
-  private reactiveTexture: ReturnType<typeof rtt> | null = null;
   private scenePass: ReturnType<typeof pass> | null = null;
   private settings!: GraphicsSettings;
   private scale = 1;
@@ -106,8 +105,8 @@ class PipelineGraph {
     const color = scenePass.getTextureNode('output');
     const depth = scenePass.getTextureNode('depth');
     // Materialize composite color at scene resolution, never implicitly at output size.
-    const sceneTexture = (node: Node, scalar = false): TextureNode => {
-      const texture = rtt(node, null, null, { resolutionScale: this.scale, depthBuffer: false, ...(scalar ? { format: RedFormat } : {}) });
+    const sceneTexture = (node: Node): TextureNode => {
+      const texture = rtt(node, null, null, { resolutionScale: this.scale, depthBuffer: false });
       this.resources.push(texture); this.sceneResources.push(texture);
       return texture;
     };
@@ -130,9 +129,10 @@ class PipelineGraph {
     }
     // Source-over coverage is authored by the same visible fragments. It keeps
     // particles/transparency responsive without shading the opaque world again.
-    const reactive = sceneTexture(vec4(scenePass.getTextureNode('coverage').r.clamp(0, .9)), true);
-    this.reactiveTexture = reactive as ReturnType<typeof rtt>;
-    const temporal = fsrTemporal(sceneTexture(beauty), depth, scenePass.getTextureNode('velocity'), this.camera, reactive, 1 / this.scale, (x, y, width, height) => {
+    // Clamp coverage in accumulation; consume the MRT directly without a copy.
+    const reactive = scenePass.getTextureNode('coverage');
+    const source = settings.ao > 0 || settings.outlines ? sceneTexture(beauty) : color;
+    const temporal = fsrTemporal(source, depth, scenePass.getTextureNode('velocity'), this.camera, reactive, 1 / this.scale, (x, y, width, height) => {
       this.depthJitter.value.set(x, y); this.depthTexel.value.set(1 / width, 1 / height);
     });
     this.fsr = temporal;
@@ -299,7 +299,7 @@ class PipelineGraph {
   diagnostics() {
     const rt = this.scenePass?.renderTarget;
     return { comparisonPreset, textureDepth: this.settings.textureDepth, materialMipBias: this.materialMipBias.value, materialAnisotropy: 16, ready: this.prepared, method: 'fsr-temporal', outlines: this.settings.outlines, outlineStage: this.settings.outlines ? 'pre-fsr' : 'off', sceneAttachments: rt?.textures.length ?? 0,
-      sceneAttachmentBytes: rt ? rt.textures.reduce((sum, map) => sum + rt.width * rt.height * (map.format === RedFormat ? 1 : map.format === RGFormat ? 2 : 4) * (map.type === HalfFloatType ? 2 : map.type === FloatType ? 4 : 1), 0) : 0, reactiveSource: 'fragment-coverage', worldPasses: 1 + this.reflections.size, aoStage: this.settings.ao > 0 ? 'indirect-diffuse-pre-fsr' : 'off', aoNormals: 'beauty-depth', aoRadius: aoContactRecipe.radius, reflectionPasses: this.reflections.size, outputPixelRatio: this.renderer.getPixelRatio(), dof: this.settings.dof, dofStage: this.settings.dof === 'off' ? 'off' : 'far-background-half-resolution',
+      sceneAttachmentBytes: rt ? rt.textures.reduce((sum, map) => sum + rt.width * rt.height * (map.format === RedFormat ? 1 : map.format === RGFormat ? 2 : 4) * (map.type === HalfFloatType ? 2 : map.type === FloatType ? 4 : 1), 0) : 0, reactiveSource: 'fragment-coverage', fsrInputCopies: (this.settings.ao > 0 ? 1 : 0) + (this.settings.outlines ? 1 : 0), worldPasses: 1 + this.reflections.size, aoStage: this.settings.ao > 0 ? 'indirect-diffuse-pre-fsr' : 'off', aoNormals: 'beauty-depth', aoRadius: aoContactRecipe.radius, reflectionPasses: this.reflections.size, outputPixelRatio: this.renderer.getPixelRatio(), dof: this.settings.dof, dofStage: this.settings.dof === 'off' ? 'off' : 'far-background-half-resolution',
       sceneWidth: rt?.width ?? 0, sceneHeight: rt?.height ?? 0,
       outputWidth: this.renderer.domElement.width, outputHeight: this.renderer.domElement.height,
       reconstructionScale: this.scale, cpuRenderMs: this.cpuRenderMs, renderedFrames: this.successfulFrames,
@@ -310,13 +310,13 @@ class PipelineGraph {
   }
 
   async comparisonInputs() {
-    if (!fsrComparison || !this.scenePass || !this.reactiveTexture) throw new Error('FSR inputs require an authoring comparison.');
-    const targets = [this.scenePass.renderTarget, this.reactiveTexture.renderTarget];
+    if (!fsrComparison || !this.scenePass) throw new Error('FSR inputs require an authoring comparison.');
+    const targets = [this.scenePass.renderTarget, this.scenePass.renderTarget];
     const images: Record<string, { png: string; maximum: number; mean: number }> = {};
     for (let i = 0; i < targets.length; i++) {
       const target = targets[i]; if (!target) throw new Error('Comparison target is unavailable.');
-      const attachment = i === 0 ? target.textures.findIndex(texture => texture.name === 'velocity') : 0;
-      if (attachment < 0) throw new Error('Velocity attachment is unavailable.');
+      const attachment = target.textures.findIndex(texture => texture.name === (i === 0 ? 'velocity' : 'coverage'));
+      if (attachment < 0) throw new Error('FSR input attachment is unavailable.');
       const bytes = await this.renderer.readRenderTargetPixelsAsync(target, 0, 0, target.width, target.height, attachment);
       const channels = bytes.length / (target.width * target.height);
       const canvas = document.createElement('canvas'); canvas.width = target.width; canvas.height = target.height;
@@ -324,7 +324,7 @@ class PipelineGraph {
       let maximum = 0, sum = 0;
       for (let p = 0; p < target.width * target.height; p++) {
         const read = (channel: number) => bytes instanceof Uint16Array ? DataUtils.fromHalfFloat(bytes[p * channels + channel]) : Number(bytes[p * channels + channel]);
-        const x = read(0), y = i === 0 ? read(1) : 0, magnitude = Math.hypot(x, y);
+        const x = i === 0 ? read(0) : Math.max(0, Math.min(.9, read(0))), y = i === 0 ? read(1) : 0, magnitude = Math.hypot(x, y);
         maximum = Math.max(maximum, magnitude); sum += magnitude;
         pixels.data.set(i === 0 ? [128 + x * 10000, 128 + y * 10000, 128, 255] : [x * 255, x * 255, x * 255, 255], p * 4);
       }
@@ -387,7 +387,7 @@ class PipelineGraph {
     // keyed by those target contexts. Release just this graph's native bindings.
     this.releaseBindings(this.resources);
     this.resources.forEach((node) => node.dispose()); this.reflections.clear(); this.resources = []; this.sceneResources = [];
-    this.contactAO = null; this.fsr = null; this.reactiveTexture = null; this.scenePass = null; this.successfulFrames = 0;
+    this.contactAO = null; this.fsr = null; this.scenePass = null; this.successfulFrames = 0;
     this.post.dispose(); this.post = new RenderPipeline(this.renderer);
   }
   dispose(): void { this.release(); this.post.dispose(); }
