@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { git, readJSON } from '../../agents/state.mjs';
 import { hashFile, assetPath, readGlb } from '../../lib/assets.mjs';
 import { root } from '../../lib/cli.mjs';
-import { itemDefinitions, arrowAsset } from '../../../src/gameplay/equipment.ts';
+import { itemDefinitions, arrowAsset, gatheringToolAssets } from '../../../src/gameplay/equipment.ts';
 import { appearanceId, emptyReviews, parseReviews, effectiveReview, reviewDecision } from '../../../src/assets/asset-review.ts';
 
 export const reviewsPath = cwd => resolve(cwd, 'assets/asset-reviews.json');
@@ -61,7 +61,7 @@ export function resolveUses(data, equipment = itemDefinitions) {
     // Player loadouts are save-driven: every supported model may be equipped in every playable area.
     for (const [item, definition] of Object.entries(equipment)) emit({ libraryId: definition.asset }, area, `player:${item}`, 'Player equipment (potential)', false);
     emit({ libraryId: arrowAsset }, area, 'projectiles', 'Arrow (potential)', false);
-    for (const tool of ['axe', 'pickaxe']) emit({ libraryId: `generic:model:sm-gen-wep-${tool}-01` }, area, `gathering:${tool}`, 'Gathering tool', false);
+    for (const [tool, libraryId] of Object.entries(gatheringToolAssets)) emit({ libraryId }, area, `gathering:${tool}`, 'Gathering tool', false);
   }
   return uses;
 }

@@ -1,6 +1,6 @@
 # Smithing
 
-Smithing is a small, predictable profession supporting equipment choices and returning home. The Homestead anvil opens it from the start; shelter restoration remains a separate optional upgrade. The existing converted forge/anvil and two additional Iron deposits are reused art, not new model or texture preparation.
+Smithing is a small, predictable profession supporting equipment choices and returning home. The Homestead anvil opens it from the start; shelter restoration remains a separate optional upgrade. After asset review, the workshop uses an unreviewed original iron anvil and converted furnace. The two additional Iron deposits retain their existing art and interactions.
 
 ## Recipes and progression
 

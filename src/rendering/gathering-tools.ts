@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { assetLibrary, type AssetInstance } from '../assets/asset-library';
-import { itemDefinitions } from '../gameplay/equipment';
+import { gatheringToolAssets, itemDefinitions } from '../gameplay/equipment';
 import { markOutline } from './outlines';
 import type { Equipment } from './equipment';
 import type { ResourceKind } from '../levels/resources';
@@ -13,7 +13,7 @@ export class GatheringTools {
     const socket = this.actor.getObjectByName('Hand_R');
     if (!socket) throw new Error('Gathering hand is unavailable.');
     try {
-      for (const [tool,asset,length] of [['axe','generic:model:sm-gen-wep-axe-01',itemDefinitions.axe.length],['pickaxe','generic:model:sm-gen-wep-pickaxe-01',.85]] as const) {
+      for (const [tool,asset,length] of [['axe',gatheringToolAssets.axe,itemDefinitions.axe.length],['pickaxe',gatheringToolAssets.pickaxe,.85]] as const) {
         const instance = await assetLibrary.loadAsset(asset), grip = new THREE.Group();
         this.tools.set(tool,{instance,grip});
         const object = instance.object, size = new THREE.Box3().setFromObject(object).getSize(new THREE.Vector3());

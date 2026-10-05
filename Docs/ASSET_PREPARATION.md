@@ -14,6 +14,8 @@ See [character preview](CHARACTERS.md) for the complete model gallery, `npm run 
 
 Synty/Mixamo sources, receipts, catalog metadata and hashes stay under `.local/`. Exported vendor art stays under `public/vendor/`, entirely ignored. Never send Synty files, textures or renders to ImageGen. Original text-prompted surfaces in `assets/textures/` are projected/baked locally.
 
+The original iron anvil is prepared with `node scripts/agents/run.mjs --resource heavy -- node scripts/assets/original/smithing-anvil.mjs`. Its [geometry recipe](../scripts/assets/original/smithing-anvil.mjs) uses no licensed inputs, writes the private `lantern-original:model:iron-anvil` library entry and never approves it. Completed deletion exclusions prevent regeneration.
+
 ### Required playable character and motions
 
 The playable roster is owner-supplied **B1 Adventurer** (player, 1.72 m), **Goblin D Shareyko** (Clearing enemies, 1.45 m), and Synty Generic **Skeleton 01** (graveyard enemies, 1.8 m), with Mixamo clips independently baked to each rig. `assets/playable-characters.json` owns their source IDs, model URLs and heights. Each has its own compatible catalog and base combat motions plus directional/weapon actions and a player-only dodge; selected clips load lazily. The [animation review](ANIMATIONS.md) owns source selection and visual evidence. Scenery and the broader character gallery remain optional.

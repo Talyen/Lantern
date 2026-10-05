@@ -12,7 +12,7 @@ type ItemDefinition = { name: string; asset: string; hands: 1 | 2; hand: 'Hand_R
 const handDefinitions: Record<Weapon | 'shield', ItemDefinition> = {
   axe: { name: 'Axe', asset: 'goblin-war-camp:model:weapons-sm-wep-axe-02', hands: 1, hand: 'Hand_R', length: .74, grip: { position: [0, .075, .015], rotation: [0, 0, -Math.PI / 2] } },
   sword: { name: 'Sword', asset: 'goblin-war-camp:model:weapons-sm-wep-sword-01', hands: 1, hand: 'Hand_R', length: .94, grip: { position: [0, .075, .015], rotation: [0, 0, -Math.PI / 2] } },
-  shield: { name: 'Shield', asset: 'goblin-war-camp:model:weapons-sm-wep-shield-02', hands: 1, hand: 'Hand_L', length: .58, grip: { position: [.015, .08, .015], rotation: [3.11647, .08135, 1.53998] } },
+  shield: { name: 'Shield', asset: 'goblin-war-camp:model:weapons-sm-wep-shield-03', hands: 1, hand: 'Hand_L', length: .58, grip: { position: [.015, .08, .015], rotation: [3.11647, .08135, 1.53998] } },
   // Synty bows lie in YZ. Align that plane with the draw; the generic grip faced it across the shot.
   bow: { name: 'Bow', asset: 'goblin-war-camp:model:weapons-sm-wep-bow-02', hands: 2, hand: 'Hand_L', length: 1.1, grip: { position: [0, .08, .01], rotation: [-104 * Math.PI / 180, 0, -Math.PI / 2] } },
   staff: { name: 'Staff', asset: 'goblin-war-camp:model:weapons-sm-wep-staff-01', hands: 2, hand: 'Hand_L', length: 1.65, grip: { position: [0, .075, .015], rotation: [-2.01924, .20718, .32637] } },
@@ -22,6 +22,9 @@ export const itemDefinitions: Record<HandItem,ItemDefinition> = {
   'iron-broadsword': {...handDefinitions.sword,name:'Iron Broadsword',asset:'goblin-war-camp:model:weapons-sm-wep-sword-02',length:1.06},
   'yew-longbow': {...handDefinitions.bow,name:'Yew Longbow',asset:'goblin-war-camp:model:weapons-sm-wep-bow-01',length:1.25},
 };
+
+/** Presentation-only tools share identity with review usage and the armory. */
+export const gatheringToolAssets = { axe: 'generic:model:sm-gen-wep-axe-01', pickaxe: 'hearthsteel:model:pickaxe' } as const;
 
 export type Bonuses = Partial<Record<'armor' | 'health' | 'mana' | 'manaRegen' | 'damage' | 'attackRate' | 'moveSpeed', number>>;
 export type SalvageReturns = Partial<Record<'iron' | 'wood' | 'gold',number>>;

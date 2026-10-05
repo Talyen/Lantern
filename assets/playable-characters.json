@@ -7,7 +7,7 @@
     "sourceId": "owner-b1-adventurer",
     "source": ".local/animation-packs/Protagonists/b1/source/B1_Adventurer_Rigged.glb",
     "lanternNode": "character-lantern",
-    "lanternModel": "/vendor/synty/library/models/ashen-veil-lights/light_tabletop_lantern.glb"
+    "lanternModel": "/vendor/synty/library/models/ashen-veil-lights/light_hanging_iron_lantern.glb"
   },
   "enemy": {
     "name": "Goblin D Shareyko",

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { AssetLibrary } from '../../assets/asset-library';
-import { itemDefinitions } from '../../gameplay/equipment';
+import { gatheringToolAssets, itemDefinitions } from '../../gameplay/equipment';
 import type { HandItem } from '../../gameplay/equipment';
 
 export const asterfallLibrary = new AssetLibrary('/vendor/asterfall/catalog.json');
@@ -9,7 +9,7 @@ export type ArmoryWeapon = keyof typeof weaponNames;
 export const counterparts: Partial<Record<ArmoryWeapon, string>> = {
   sword: itemDefinitions.sword.asset, axe: itemDefinitions.axe.asset, bow: itemDefinitions.bow.asset,
   shield: itemDefinitions.shield.asset, staff: itemDefinitions.staff.asset,
-  pickaxe: 'generic:model:sm-gen-wep-pickaxe-01', greathammer: 'viking-realm:model:sm-wep-hammer-01',
+  pickaxe: gatheringToolAssets.pickaxe, greathammer: 'viking-realm:model:sm-wep-hammer-01',
 };
 /** Lab-only model definitions preserve gameplay identities and authored attachment pivots. */
 export async function armoryDefinitions(authored: boolean): Promise<typeof itemDefinitions> {
