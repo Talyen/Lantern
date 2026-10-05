@@ -10,6 +10,7 @@ import type { CoreEffects } from './effects';
 import { type GraphicsSettings } from './graphics-settings';
 import type { WebGPURenderer } from 'three/webgpu';
 import { WebGPUPipeline } from './webgpu-pipeline';
+import { previewGraphicsView, renderPreview } from './preview-graphics';
 import { LocalShadows } from './local-shadows';
 
 export type GraphicsContext = {
@@ -63,6 +64,9 @@ export class Graphics {
   }
   async comparisonInputs() { if (!this.gpuPipeline) throw new Error('Graphics is not ready.'); return this.gpuPipeline.comparisonInputs(); }
   async ready() { await this.gpuPipeline?.ready(); }
+  previewGraphics(ready: boolean) {
+    return this.gpuPipeline ? previewGraphicsView({ id: 'game', renderer: this.ctx.renderer, camera: this.ctx.camera, pipeline: this.gpuPipeline, settings: this.appliedSettings ?? this.settings, ready: ready && !this.disposed }) : undefined;
+  }
   pipelineDiagnostics() { return this.gpuPipeline?.diagnostics(); }
   get preparingSettings(): boolean { return this.gpuPipeline?.preparing ?? false; }
   resetMeasurements(): void { this.intervals = []; this.cpuSubmissionTimes = []; this.shadowTrackingTimes = []; this.lastFrame = 0; }
@@ -220,7 +224,7 @@ export class Graphics {
     this.shadowTrackingMs = performance.now() - shadowStart;
     this.fitLights();
     const submissionStart = performance.now();
-    const rendered = this.gpuPipeline?.render() ?? false;
+    const rendered = this.gpuPipeline ? renderPreview(this.ctx.renderer, this.gpuPipeline) : false;
     if (rendered) {
       this.cpuSubmissionTimes.push(performance.now() - submissionStart); this.shadowTrackingTimes.push(this.shadowTrackingMs);
       if (this.cpuSubmissionTimes.length > 180) { this.cpuSubmissionTimes.shift(); this.shadowTrackingTimes.shift(); }

@@ -9,6 +9,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createRenderer } from '../../rendering/renderer';
 import { resizeDisplay } from '../../rendering/display-resolution';
 import { WebGPUPipeline } from '../../rendering/webgpu-pipeline';
+import { attachPreviewGraphics, renderPreview, previewGraphicsView } from '../../rendering/preview-graphics';
 import { FrameLoop } from '../../session/frame-loop';
 import { resolveLighting } from '../../levels/lighting';
 import { AreaLightingResources } from '../../rendering/area-lighting';
@@ -30,7 +31,7 @@ type Clip = MotionClip & { mappedBones?: number; auditRole?: string };
 type Pack = Omit<MotionPack, 'clips'> & { license?: string; url?: string; clips: Clip[] };
 type Catalog = Omit<MotionCatalog, 'packs'> & { character: string; characterLabel: string; motion: string; packs: Pack[] };
 type Favorite = { pack: string; clip: string };
-type Lane = { group: THREE.Group; rig: RigId; rigLoading: boolean; weaponSource: HTMLSelectElement; weaponScale: HTMLSelectElement; catalog?: Catalog; source?: THREE.Group; equipment?: Equipment; lantern?: PlayerLantern; tools?: GatheringTools; loadout: Loadout; model?: THREE.Group; mixer?: THREE.AnimationMixer; action?: THREE.AnimationAction; clip?: Clip; pack?: Pack; generation: number; rigSelect: HTMLSelectElement; loadoutSelect: HTMLSelectElement; packSelect: HTMLSelectElement; clipSelect: HTMLSelectElement; search: HTMLInputElement; info: HTMLElement; favorite: HTMLButtonElement; timing: HTMLElement };
+type Lane = { group: THREE.Group; rig: RigId; rigLoading: boolean; previewLoading?: boolean; error?: string; weaponSource: HTMLSelectElement; weaponScale: HTMLSelectElement; catalog?: Catalog; source?: THREE.Group; equipment?: Equipment; lantern?: PlayerLantern; tools?: GatheringTools; loadout: Loadout; model?: THREE.Group; mixer?: THREE.AnimationMixer; action?: THREE.AnimationAction; clip?: Clip; pack?: Pack; generation: number; rigSelect: HTMLSelectElement; loadoutSelect: HTMLSelectElement; packSelect: HTMLSelectElement; clipSelect: HTMLSelectElement; search: HTMLInputElement; info: HTMLElement; favorite: HTMLButtonElement; timing: HTMLElement };
 const loadouts: Record<string, Loadout> = { axe: { main: 'axe', off: null }, 'axe-shield': { main: 'axe', off: 'shield' }, sword: { main: 'sword', off: null }, 'sword-shield': { main: 'sword', off: 'shield' }, bow: { main: 'bow', off: null }, staff: { main: 'staff', off: null } };
 const loadoutNames: Record<string, string> = { axe: 'Axe', 'axe-shield': 'Axe + Shield', sword: 'Sword', 'sword-shield': 'Sword + Shield', bow: 'Bow', staff: 'Staff' };
 document.title = 'Lantern — Animations';
@@ -227,9 +228,10 @@ function resetPlayback(): void { resetHistories(); seconds = 0; progress = 0; ap
 function previewFailed(error: unknown): void { console.error('Unable to update animation preview.', error); }
 async function selectClip(lane: Lane): Promise<void> {
   const generation = ++lane.generation;
+  lane.previewLoading = true; lane.error = undefined;
   lane.favorite.disabled = true; updatePlaybackControls();
   const clip = lane.pack?.clips.find((c) => c.id === lane.clipSelect.value);
-  if (!clip || !lane.source) { clearLane(lane); updateTiming(lane); lane.info.textContent = 'No compatible motions in this category.'; resetPlayback(); updatePlaybackControls(); return; }
+  if (!clip || !lane.source) { lane.previewLoading = false; clearLane(lane); updateTiming(lane); lane.info.textContent = 'No compatible motions in this category.'; resetPlayback(); updatePlaybackControls(); return; }
   lane.info.textContent = 'Loading motion…';
   let equipment: Equipment | undefined;
   let lantern: PlayerLantern | undefined;
@@ -275,8 +277,8 @@ async function selectClip(lane: Lane): Promise<void> {
     lantern?.dispose();
     equipment?.dispose();
     if (model && model !== lane.model) disposeSceneInstances(model, { skeletons: true });
-    if (generation === lane.generation) lane.info.textContent = `Preview unavailable: ${String(error)}`;
-  }
+    if (generation === lane.generation) { lane.error = String(error); lane.info.textContent = `Preview unavailable: ${lane.error}`; }
+  } finally { if (generation === lane.generation) lane.previewLoading = false; }
 }
 async function fillClips(lane: Lane, preferred?: string): Promise<void> {
   if (lane.rigLoading) return;
@@ -297,7 +299,7 @@ async function fillClips(lane: Lane, preferred?: string): Promise<void> {
 }
 async function selectRig(lane: Lane, rig: RigId): Promise<void> {
   const generation = ++lane.generation;
-  lane.rigLoading = true; lane.info.textContent = 'Loading character…';
+  lane.error = undefined; lane.rigLoading = true; lane.info.textContent = 'Loading character…';
   lane.rigSelect.disabled = lane.loadoutSelect.disabled = lane.packSelect.disabled = lane.clipSelect.disabled = lane.search.disabled = true;
   try {
     const gameplayCatalog = await getMotionCatalog(rig) as Catalog;
@@ -318,7 +320,7 @@ async function selectRig(lane: Lane, rig: RigId): Promise<void> {
     lane.packSelect.value = 'mixamo'; lane.packSelect.disabled = false;
     await fillClips(lane, catalog.defaults.attack);
     updateStatus();
-  } catch (error) { if (generation === lane.generation) { lane.rigSelect.value = lane.rig; lane.info.textContent = String(error); } }
+  } catch (error) { if (generation === lane.generation) { lane.rigSelect.value = lane.rig; lane.error = String(error); lane.info.textContent = lane.error; } }
   finally { lane.rigLoading = false; lane.rigSelect.disabled = lane.loadoutSelect.disabled = lane.search.disabled = false; }
 }
 async function selectLoadout(lane: Lane, key: string): Promise<void> {
@@ -440,7 +442,7 @@ function renderFrame(delta: number): boolean {
   for (const [index, preview] of previews.entries()) {
     if (!visibleLane(index)) continue;
     preview.camera.copy(camera);
-    if (!preview.pipeline.render()) rendered = false;
+    if (!renderPreview(preview.renderer, preview.pipeline)) rendered = false;
     preview.renderer.domElement.dataset.graphics = JSON.stringify({ renderer: 'webgpu', settings, pipeline: preview.pipeline.diagnostics() });
   }
   return rendered;
@@ -475,3 +477,8 @@ const diagnostics = {
   snapshot: () => ({ display, playing, seconds, progress, lanes: lanes.map(lane => ({ rig: lane.rig, weaponSource: lane.weaponSource.value, weaponScale: lane.weaponScale.value, loadout: lane.loadout, clip: lane.clip?.id, duration: lane.action?.getClip().duration, time: lane.action?.time, marker: lane.clip?.contact, clips: lane.catalog?.packs.flatMap(pack => pack.clips.map(clip => ({ id: clip.id, category: clip.category, contact: clip.contact, auditRole: clip.auditRole }))), equipment: lane.equipment?.diagnostics(), lantern: lane.lantern?.diagnostics(), error: lane.info.textContent })) }),
 };
 (window as Window & { lanternAnimations?: typeof diagnostics }).lanternAnimations = diagnostics;
+
+attachPreviewGraphics(() => previews.map((preview, index) => previewGraphicsView({
+  id: index ? 'b' : 'a', subject: `${lanes[index].rig}:${lanes[index].clip?.id}:${lanes[index].generation}`,
+  ...preview, settings, ready: !disposed && !!lanes[index].model && !lanes[index].rigLoading && !lanes[index].previewLoading, error: lanes[index].error,
+})));

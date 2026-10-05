@@ -1,3 +1,4 @@
+import { attachPreviewGraphics, type PreviewGraphicsView } from '../rendering/preview-graphics';
 import type { ClearingSnapshot } from '../session/diagnostics';
 import { isLine } from '../assets/resource-ownership';
 import * as THREE from 'three';
@@ -9,8 +10,9 @@ import { setMaterialCalibration, resetMaterialCalibration, materialCalibration }
 import { calibrationStrengths, type CalibrationFamily } from '../rendering/material-recipes';
 type Diagnostics = Pick<ClearingSnapshot, 'area' | 'revision' | 'renderedRevision' | 'ready' | 'errors' | 'missing' | 'contentHash' | 'camera' | 'renderedFrames' | 'phase' | 'updateMs' | 'objects' | 'resources' | 'graphics'>;
 type Appearance = { shelterRestored?: boolean; lantern: boolean; surfaces: SurfaceMode };
-type Context = { invalidate(): void; resetMaterials(): void; resetMeasurements(): void; measurements(): unknown; exportLighting(this: void): Promise<PreparedProbeBake>; lighting(this: void): unknown; appearance(this: void): Appearance; setAppearance(appearance: { surfaces?: SurfaceMode; lantern?: boolean; shelterRestored?: boolean }): Promise<boolean>; scene: THREE.Scene; camera: THREE.OrthographicCamera; renderer: { domElement: HTMLCanvasElement }; definitions(): Record<string, AreaDefinition>; area(): AreaDefinition; encounter: Encounter; changeArea(id: string): Promise<boolean>; restart(this: void): void; inspect(): boolean; waitFrames(count?: number): Promise<void>; setFrozen(value: boolean): void; setView(id: string): void; diagnostics(): Diagnostics };
+type Context = { previewGraphics(): PreviewGraphicsView | undefined; invalidate(): void; resetMaterials(): void; resetMeasurements(): void; measurements(): unknown; exportLighting(this: void): Promise<PreparedProbeBake>; lighting(this: void): unknown; appearance(this: void): Appearance; setAppearance(appearance: { surfaces?: SurfaceMode; lantern?: boolean; shelterRestored?: boolean }): Promise<boolean>; scene: THREE.Scene; camera: THREE.OrthographicCamera; renderer: { domElement: HTMLCanvasElement }; definitions(): Record<string, AreaDefinition>; area(): AreaDefinition; encounter: Encounter; changeArea(id: string): Promise<boolean>; restart(this: void): void; inspect(): boolean; waitFrames(count?: number): Promise<void>; setFrozen(value: boolean): void; setView(id: string): void; diagnostics(): Diagnostics };
 export function attachAuthoring(ctx: Context) {
+  attachPreviewGraphics(() => { const view = ctx.previewGraphics(); return view ? [view] : []; });
   const runtimeId = crypto.randomUUID();
   const diagnostics = () => ({ ...ctx.diagnostics(), runtimeId });
   const panel = document.createElement('aside'); panel.dataset.authoring = 'levels'; panel.style.cssText = 'position:fixed;left:12px;top:12px;z-index:100;background:#172326ee;color:#eee;padding:8px;border-radius:6px;font:12px system-ui;max-width:360px';

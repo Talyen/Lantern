@@ -58,6 +58,28 @@ Set a repository-local override with `git config --local lantern.maxWorktrees 12
 
 Local/private-asset operations require 20 GiB available disk; admission waits at the configured worktree limit. Asset-free CI with no private vendor/source directories uses a 1 GiB reserve, since [standard hosted runners](https://docs.github.com/en/actions/reference/runners/github-hosted-runners) advertise 14 GB storage. CI containing private inputs retains the 20 GiB reserve. If disk space or task slots are exhausted, the agent runs `agent:status`, cleans completed tasks with `agent:cleanup`, and retries without asking the user to manage resources. Preserve unfinished tasks and source archives. Cleanup retains successful/failure check evidence and preview logs alongside private sources in `.local/agent-archives/<slug>/`. Staging and production public files also use native clones. Successful check evidence replaces older successful evidence; failure evidence is retained. Captures replace the same task/view output rather than collecting a settings matrix.
 
+## Preview resolution and capture evidence
+
+Managed browser previews start at **1920 × 1080 CSS pixels, density 1**. `agent:dev --browser` and `main:dev --browser` accept `--viewport WIDTHxHEIGHT` and `--dpr NUMBER`; dimensions must be positive integers and density must be positive and finite. Server-only previews and manually opened browser windows retain their own sizes. The preview record keeps requested and observed dimensions, verified before browser startup reports ready.
+
+```sh
+npm run agent:dev -- --browser --lab animations
+npm run agent:capture -- --output .local/agents/captures/animation-review.png
+# For a different starting size, stop this task's preview first.
+npm run agent:dev -- --stop
+npm run agent:dev -- --browser --lab assets --viewport 1280x800 --dpr 2
+```
+
+Reusing a running preview preserves its current viewport and density. Explicit overrides that differ from its observed dimensions require stopping and restarting that owned preview. Never resize another task's browser or the user's play window. CDP inspection and capture preserve density; direct `agent-browser eval` can reset emulated density, so use the shared owned-browser connection when reviewing density overrides.
+
+The browser viewport contains the whole page in CSS pixels. Each visible tool canvas occupies only its available layout area; comparison views divide that area. Physical output is the canvas CSS size multiplied by pixel density. FSR determines the smaller internal scene buffers from that output. Animation, asset review, character and weapon tools retain their existing cameras, FSR choices and effect settings.
+
+These tools expose read-only `window.lanternPreviewGraphics.diagnostics()` in development, including viewport/density and each view's visibility, camera type, CSS/output/internal dimensions, settings and readiness. Level authoring exposes the same evidence. Diagnostics never resize, render, change preferences or advance playback.
+
+`agent:capture` attaches only to the current task's verified managed browser and borrows its existing GPU lease. It writes an unscaled viewport PNG plus adjacent JSON with capture time, route and actual graphics evidence for every visible lane. The command rejects unready views, rendering errors, changes to route/selection/settings/dimensions during capture, mismatched PNG dimensions and existing output files. Capture files remain private under ignored `.local/`. Character and level capture manifests also retain resolution evidence; existing character image-return APIs remain unchanged.
+
+Use this command for documented review screenshots. Raw browser screenshots remain available but do not establish which resolution/settings were inspected. Image evidence supports visual review; it does not establish performance or that temporal artifacts are resolved.
+
 ## Read-only agent tools
 
 `agent:context` reads the canonical [routing table](ARCHITECTURE.md#task-routing) and current Git state; it does not cache a second owner map. Without `--topic`, it lists topics. `--json` returns structured output. `--include-docs` reads the routed sections; `--consumers` lists direct literal relative imports, re-exports and `require` consumers with file/line locations. It does not infer aliases, computed imports or transitive consumers. Dirty paths are limited to 20 with an omitted count; use `git status --short` for the complete inventory before editing/staging.
@@ -139,7 +161,8 @@ Choose one single-view command for ordinary review. Only `--all` creates a conta
 | `npm run check` | Change-aware sanity checks; no ordinary production build |
 | `npm run check:full` | Complete CI gate; requested local use requires `-- --allow-local` |
 | `npm run agent:start` / `agent:finish` | Private task creation and automatic local integration |
-| `npm run agent:dev` / `main:dev` | Private and integrated previews |
+| `npm run agent:dev` / `main:dev` | Private and integrated previews; [resolution options](#preview-resolution-and-capture-evidence) |
+| `npm run agent:capture -- --output .local/agents/captures/review.png` | Owned preview PNG and resolution evidence |
 | `npm run agent:status` / `agent:cleanup` | Lifecycle/resource inspection and safe cleanup |
 | `npm run agent:sources` | Explicitly clone only the private source directories needed by an asset task |
 | `npm run agent:context` / `agent:inspect` / `agent:source` / `agent:diagnostics` | Bounded read-only routing, manifests, source and saved check failures; [tool reference](#read-only-agent-tools) |

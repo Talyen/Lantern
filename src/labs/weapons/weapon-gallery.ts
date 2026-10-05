@@ -4,6 +4,8 @@ import { MeshStandardNodeMaterial } from 'three/webgpu';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { assetLibrary, type AssetInstance } from '../../assets/asset-library';
 import { createRenderer } from '../../rendering/renderer';
+import { resizeDisplay } from '../../rendering/display-resolution';
+import { attachPreviewGraphics, renderPreview, previewGraphicsView } from '../../rendering/preview-graphics';
 import { WebGPUPipeline } from '../../rendering/webgpu-pipeline';
 import { AreaLightingResources } from '../../rendering/area-lighting';
 import { applyShadowQuality } from '../../rendering/quality-presets';
@@ -36,13 +38,13 @@ const camera = new THREE.PerspectiveCamera(33, 1, .05, 50);
 camera.position.set(0, .8, 4);
 const controls = new OrbitControls(camera, app.querySelector<HTMLElement>('.weapon-stages'));
 controls.target.set(0, .8, 0); controls.enableDamping = true; controls.minDistance = .25; controls.maxDistance = 14;
-let disposed = false, generation = 0;
+let disposed = false, generation = 0, loading = false, previewError = '';
 type Lane = { scene: THREE.Scene; mount: HTMLDivElement; renderer: Awaited<ReturnType<typeof createRenderer>>; camera: THREE.PerspectiveCamera; lighting: AreaLightingResources; pipeline: WebGPUPipeline; floor: THREE.Mesh<THREE.PlaneGeometry, MeshStandardNodeMaterial>; instance?: AssetInstance };
 const lanes: Lane[] = [];
 for (const index of [0, 1]) {
   const mount = element<HTMLDivElement>(`weapon-stage-${index}`);
   const renderer = await createRenderer(mount);
-  renderer.setSize(mount.clientWidth, mount.clientHeight);
+  resizeDisplay(renderer, Math.max(1, mount.clientWidth), Math.max(1, mount.clientHeight));
   const scene = new THREE.Scene(); scene.background = new THREE.Color(look.background);
   scene.fog = new THREE.Fog(look.background, look.fogNear, look.fogFar);
   const lighting = new AreaLightingResources(renderer);
@@ -58,7 +60,7 @@ for (const index of [0, 1]) {
 }
 function reset(): void { lanes.forEach(lane => lane.pipeline.resetHistory()); }
 function resize(): void {
-  for (const lane of lanes) { lane.renderer.setSize(lane.mount.clientWidth, lane.mount.clientHeight); lane.pipeline.resize(); }
+  for (const lane of lanes) { resizeDisplay(lane.renderer, Math.max(1, lane.mount.clientWidth), Math.max(1, lane.mount.clientHeight)); lane.pipeline.resize(); }
   camera.aspect = lanes[0].mount.clientWidth / lanes[0].mount.clientHeight; camera.updateProjectionMatrix(); reset();
 }
 function bounds(): THREE.Box3 {
@@ -85,12 +87,14 @@ function pose(instance: AssetInstance, length?: number): void {
 }
 async function refresh(): Promise<void> {
   const request = ++generation, weapon = kind.value as ArmoryWeapon, counterpart = current.value;
+  loading = true; previewError = '';
   status.textContent = 'Loading comparison…';
   const results = await Promise.allSettled([counterpart ? assetLibrary.loadAsset(counterpart) : Promise.resolve(undefined), asterfallLibrary.loadAsset(`asterfall:${weapon}`)]);
+  if (request === generation) loading = false;
   const loaded = results.map(result => result.status === 'fulfilled' ? result.value : undefined);
   if (disposed || request !== generation || results.some(result => result.status === 'rejected')) {
     loaded.forEach(instance => instance?.release());
-    if (!disposed && request === generation) { const failure = results.find(result => result.status === 'rejected'); status.textContent = `Unable to load comparison. ${failure?.status === 'rejected' ? String(failure.reason) : ''} Run npm run assets:import-asterfall if the new pack is missing.`; }
+    if (!disposed && request === generation) { const failure = results.find(result => result.status === 'rejected'); previewError = String(failure?.status === 'rejected' ? failure.reason : 'Comparison cancelled'); status.textContent = `Unable to load comparison. ${failure?.status === 'rejected' ? String(failure.reason) : ''} Run npm run assets:import-asterfall if the new pack is missing.`; }
     return;
   }
   try {
@@ -108,7 +112,7 @@ async function refresh(): Promise<void> {
     }
     status.textContent = `${weaponNames[weapon]} · ${scale.value === 'authored' ? 'Authored size' : length ? 'Matched size' : 'Authored size (no comparison size available)'}${counterpart ? '' : ' · No counterpart selected'}`;
     fit();
-  } catch (error) { loaded.forEach(instance => instance?.release()); status.textContent = String(error); }
+  } catch (error) { loaded.forEach(instance => instance?.release()); previewError = String(error); status.textContent = previewError; }
 }
 function defaultCounterpart(): void { current.value = counterparts[kind.value as ArmoryWeapon] ?? ''; }
 kind.addEventListener('change', () => { defaultCounterpart(); void refresh().catch((error: unknown) => { status.textContent = String(error); }); });
@@ -119,16 +123,22 @@ view.addEventListener('change', () => {
   const direction = view.value === 'side' ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 0, view.value === 'back' ? -1 : 1);
   camera.position.copy(controls.target).addScaledVector(direction, distance); controls.update(); reset();
 });
+const observer = new ResizeObserver(resize); lanes.forEach(lane => observer.observe(lane.mount));
 window.addEventListener('resize', resize);
 window.addEventListener('pagehide', () => {
-  disposed = true; generation++; controls.dispose();
+  disposed = true; generation++; observer.disconnect(); controls.dispose();
   lanes.forEach(lane => { lane.instance?.release(); lane.floor.geometry.dispose(); lane.floor.material.dispose(); lane.pipeline.dispose(); lane.lighting.dispose(); void lane.renderer.dispose().catch(console.error); });
   void Promise.all([assetLibrary.dispose(), asterfallLibrary.dispose()]).catch(console.error);
 }, { once: true });
 function tick(): void {
   if (disposed) return;
   controls.update();
-  for (const lane of lanes) { lane.camera.copy(camera); lane.pipeline.render(); }
+  for (const lane of lanes) { lane.camera.copy(camera); renderPreview(lane.renderer, lane.pipeline); }
   requestAnimationFrame(tick);
 }
 resize(); defaultCounterpart(); tick(); await refresh();
+
+attachPreviewGraphics(() => lanes.map((lane, index) => previewGraphicsView({
+  id: String(index), subject: `${lane.instance?.asset.id}:${generation}`, ...lane, settings,
+  ready: !disposed && !loading, error: previewError,
+})));

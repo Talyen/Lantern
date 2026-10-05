@@ -11,6 +11,7 @@ import { resizeDisplay } from '../../rendering/display-resolution';
 import { AreaLightingResources } from '../../rendering/area-lighting';
 import { resolveLighting } from '../../levels/lighting';
 import { WebGPUPipeline } from '../../rendering/webgpu-pipeline';
+import { attachPreviewGraphics, renderPreview, previewGraphicsView, previewGraphicsDiagnostics } from '../../rendering/preview-graphics';
 import { defaults } from '../../rendering/graphics-settings';
 import { markOutline } from '../../rendering/outlines';
 import './character-gallery.css';
@@ -185,7 +186,7 @@ function render(now: number): void {
     if (capturing && stage.index !== 0) continue;
     stage.camera.position.copy(camera.position); stage.camera.quaternion.copy(camera.quaternion); stage.focus.copy(controls.target);
     if (playing) stage.mixer?.update(dt * Number(speed.value));
-    try { if (stage.pipeline.render()) stage.completedFrames++; } catch (error) { stage.error = `Graphics unavailable: ${String(error)}`; refreshCaption(stage.index); disposed = true; return; }
+    try { if (renderPreview(stage.renderer, stage.pipeline)) stage.completedFrames++; } catch (error) { stage.error = `Graphics unavailable: ${String(error)}`; refreshCaption(stage.index); disposed = true; return; }
   }
   requestAnimationFrame(render);
 }
@@ -195,7 +196,13 @@ const first = catalog.characters.find(row => row.name === 'Paladin J Nordstrom')
 const second = catalog.characters.find(row => row.name === 'Goblin D Shareyko') ?? catalog.characters[1];
 await Promise.all([first && select(0, first.id), second && select(1, second.id)]);
 // Local capture tooling uses the same rendered scene and rig checks as the gallery.
+let captureGraphics: ReturnType<typeof previewGraphicsDiagnostics> | undefined;
+const viewGraphics = (stage: typeof stages[number]) => previewGraphicsView({
+  id: String(stage.index), subject: `${stage.character?.id}:${stage.generation}:${stage.motionGeneration}`, ...stage, settings,
+  ready: !disposed && !!stage.model, error: stage.error,
+});
 const bridge = {
+  captureEvidence: () => captureGraphics,
   catalog: () => catalog,
   diagnostics: () => stages.map(stage => ({ id: stage.character?.id, error: stage.error, motion: motion.value, animated: !!stage.action, ...stage.pipeline.diagnostics() })),
   select,
@@ -210,8 +217,11 @@ const bridge = {
       if (stage.error) throw new Error(stage.error);
       return !disposed && stage.generation === generation && stage.motionGeneration === motionGeneration;
     })) throw new Error('Character capture was cancelled.');
+    captureGraphics = previewGraphicsDiagnostics([viewGraphics(stage)]);
     return stage.renderer.domElement.toDataURL('image/png');
   },
 };
 if (import.meta.env.DEV) Object.assign(window, { lanternCharacters: bridge });
 window.addEventListener('pagehide', () => { disposed = true; observer.disconnect(); window.removeEventListener('resize', resize); controls.dispose(); for (const stage of stages) { stage.generation++; stage.release(); stage.pipeline.dispose(); stage.lighting.dispose(); disposeSceneResources(stage.scene); void stage.renderer.dispose().catch((error: unknown) => console.error('Unable to release graphics.', error)); } }, { once: true });
+
+attachPreviewGraphics(() => stages.map(viewGraphics));

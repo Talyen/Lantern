@@ -641,7 +641,7 @@ try {
   if (!await changeArea({ kind: 'travel', area: currentArea.id, spawn: explicitArea ? undefined : resumed.spawn })) throw new Error('Initial area could not be prepared.');
   if (import.meta.env.DEV && renderQuery.get('author') === 'levels') {
     const { attachAuthoring } = await import('../levels/authoring');
-    const authoring = attachAuthoring({ invalidate: invalidateFrame, scene, camera, renderer, definitions: () => definitions, area: () => currentArea, encounter,
+    const authoring = attachAuthoring({ previewGraphics: () => graphics.previewGraphics(diagnostics().ready), invalidate: invalidateFrame, scene, camera, renderer, definitions: () => definitions, area: () => currentArea, encounter,
       resetMaterials: () => graphics.resetHistory(),
       resetMeasurements: () => graphics.resetMeasurements(), measurements: () => graphics.measurements(),
       exportLighting: () => graphics.exportLighting(), lighting: () => graphics.lightingDiagnostics(),

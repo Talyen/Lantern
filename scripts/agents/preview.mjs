@@ -9,6 +9,8 @@ import { pathToFileURL } from 'node:url';
 import { createHash, randomUUID } from 'node:crypto';
 import { context, readJSON, writeJSON, processIdentity } from './state.mjs';
 import { acquire } from './resources.mjs';
+import { ownedBrowser, viewportExpression } from './browser.mjs';
+import { previewViewport } from './viewport.mjs';
 import { run, root } from '../lib/cli.mjs';
 export const sessionPath = cwd => join(cwd, '.local/agents/preview.json');
 export const browserHistoryPath = cwd => join(cwd, '.local/agents/browser-history.json');
@@ -83,10 +85,21 @@ export async function stopPreview(cwd) {
   }
   throw new Error('Owned preview did not stop; inspect its log.');
 }
-export async function startPreview(cwd, { main = false, browser = false, author = false, area = 'clearing', lab = null } = {}) {
+export async function startPreview(cwd, { main = false, browser = false, author = false, area = 'clearing', lab = null, viewport, dpr } = {}) {
+  const requestedViewport = browser ? previewViewport(viewport, dpr) : null;
+  if (!browser && (viewport !== undefined || dpr !== undefined)) throw new Error('Viewport overrides require --browser.');
   const existing = await livePreview(cwd);
   if (existing) {
     if (browser !== existing.browser || author !== existing.author || lab !== (existing.lab ?? null)) throw new Error('Preview mode differs; run agent:dev --stop before changing it.');
+    if (browser) {
+      const connection = await ownedBrowser(existing);
+      try {
+        const observedViewport = await connection.evaluate(viewportExpression);
+        if (viewport !== undefined && (observedViewport.width !== requestedViewport.width || observedViewport.height !== requestedViewport.height)
+          || dpr !== undefined && observedViewport.dpr !== requestedViewport.dpr) throw new Error('Preview dimensions differ; run agent:dev --stop before changing them.');
+        return { ...existing, observedViewport };
+      } finally { await connection.close(); }
+    }
     return existing;
   }
   const previous = await readJSON(sessionPath(cwd), null);
@@ -94,7 +107,7 @@ export async function startPreview(cwd, { main = false, browser = false, author 
   const token = randomUUID(), directory = join(cwd, '.local/agents');
   await mkdir(directory, { recursive: true });
   const log = await open(join(directory, 'preview.log'), 'w');
-  const child = spawn(process.execPath, [resolve(root, 'scripts/agents/preview.mjs'), '--serve'], { cwd, env: { ...process.env, LANTERN_PREVIEW: JSON.stringify({ main, browser, author, area, lab, token }), LANTERN_LEASES: '{}', LANTERN_LEVEL_SESSION: token }, detached: true, stdio: ['ignore', log.fd, log.fd] });
+  const child = spawn(process.execPath, [resolve(root, 'scripts/agents/preview.mjs'), '--serve'], { cwd, env: { ...process.env, LANTERN_PREVIEW: JSON.stringify({ main, browser, author, area, lab, token, requestedViewport }), LANTERN_LEASES: '{}', LANTERN_LEVEL_SESSION: token }, detached: true, stdio: ['ignore', log.fd, log.fd] });
   child.unref(); await log.close();
   const identity = await processIdentity(child.pid);
   let interrupted = false, reportedWaiting = false;
@@ -122,7 +135,7 @@ async function serve() {
   const trackedGroups = new Map();
   let browserScan = Promise.resolve();
   const record = { pid: process.pid, started: await processIdentity(process.pid), token: options.token,
-    session, renderer: 'webgpu', browser: options.browser, author: options.author, lab: options.lab ?? null, status: 'starting', ready: false };
+    session, renderer: 'webgpu', browser: options.browser, author: options.author, lab: options.lab ?? null, status: 'starting', ready: false, requestedViewport: options.requestedViewport, observedViewport: null };
   const trackBrowser = () => {
     browserScan = browserScan.catch(() => {}).then(async () => {
       let changed = false;
@@ -197,6 +210,15 @@ async function serve() {
       try { await run('agent-browser', ['--session', session, '--headed', 'false', '--webgpu', 'open', options.lab ? `${url}/?lab=${encodeURIComponent(options.lab)}` : `${url}/?area=${encodeURIComponent(options.area)}${options.author ? '&author=levels' : ''}`]); }
       finally { await trackBrowser(); }
       if (!trackedGroups.size) throw new Error('Browser opened without a verifiable owned process group; inspect preview.log.');
+      const { width, height, dpr } = options.requestedViewport;
+      // The browser daemon retains these metrics across inspection connections.
+      // A temporary CDP emulation override can disappear when its session detaches.
+      await run('agent-browser', ['--session', session, '--headed', 'false', 'set', 'viewport', String(width), String(height), String(dpr)]);
+      const connection = await ownedBrowser(record);
+      try {
+        record.observedViewport = await connection.evaluate(viewportExpression);
+        if (JSON.stringify(record.observedViewport) !== JSON.stringify(options.requestedViewport)) throw new Error('Browser did not apply requested preview dimensions.');
+      } finally { await connection.close(); }
     }
     record.ready = true; await writeJSON(sessionPath(cwd), record);
     if (options.author) await writeJSON(join(cwd, '.local/level-design/session.json'), record);

@@ -3,7 +3,9 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { cli, parseArgs, root, run, integer, UsageError } from '../../lib/cli.mjs';
 import { livePreview, startPreview, stopPreview } from '../../agents/preview.mjs';
-import { browser, evaluate } from '../../levels/common.mjs';
+import { browser } from '../../levels/common.mjs';
+import { ownedBrowser } from '../../agents/browser.mjs';
+import { captureScreenshot, pngSize } from '../../agents/capture.mjs';
 await cli(async () => {
   const args = parseArgs(process.argv.slice(2), { '--limit': 'value', '--motions': 'boolean', '--family': 'value', '--character': 'value', '--all': 'boolean' });
   if (args['--help']) { console.log('Usage: npm run characters:capture -- --character ID | --all [--limit N] [--motions] [--family NAME]\nExports roster thumbnails/contact sheets; --motions also captures idle/run/attack review sheets.'); return; }
@@ -20,22 +22,31 @@ await cli(async () => {
   const existing = await livePreview(root);
   const state = await startPreview(root, { browser: true, lab: 'characters' });
   const captures = [];
+  let connection;
   try {
-    await browser(state, ['set', 'viewport', '1200', '900']);
-    await evaluate(state, `(async()=>{for(let i=0;i<300;i++){if(window.lanternCharacters)return true;const e=document.querySelector('[data-render-error]');if(e)throw new Error(e.dataset.renderError);await new Promise(r=>setTimeout(r,50));}throw new Error('Gallery startup failed');})()`);
+    connection = await ownedBrowser(state);
+    const evaluate = expression => connection.evaluate(expression);
+    await evaluate(`(async()=>{for(let i=0;i<300;i++){if(window.lanternCharacters)return true;const e=document.querySelector('[data-render-error]');if(e)throw new Error(e.dataset.renderError);await new Promise(r=>setTimeout(r,50));}throw new Error('Gallery startup failed');})()`);
     await browser(state, ['snapshot', '-i']);
-    await browser(state, ['screenshot', 'body', resolve(directory, 'gallery-startup.png')]);
+    await captureScreenshot(connection, resolve(directory, 'gallery-startup.png'), { overwrite: true });
     // Gut check the real route before starting the batch.
-    if (await evaluate(state, `!!document.querySelector('vite-error-overlay')`) || !(await evaluate(state, `document.title.includes('Characters')`))) throw new Error('Gallery browser verification failed');
+    if (await evaluate(`!!document.querySelector('vite-error-overlay')`) || !(await evaluate(`document.title.includes('Characters')`))) throw new Error('Gallery browser verification failed');
+    const takeCharacter = async (id, role = 'static', seconds = 0) => {
+      const { image, graphics } = await evaluate(`(async()=>{const image=await window.lanternCharacters.capture(${JSON.stringify(id)},${JSON.stringify(role)},${seconds});return {image,graphics:window.lanternCharacters.captureEvidence()};})()`);
+      const pixels = Buffer.from(image.split(',')[1], 'base64');
+      const size = pngSize(pixels), view = graphics?.views[0];
+      if (!view?.ready || size.width !== view.outputWidth || size.height !== view.outputHeight) throw new Error('Character image does not match its render evidence.');
+      return { pixels, graphics };
+    };
     for (const row of catalog.characters.filter(row => (!args['--family'] || row.family === args['--family']) && (!args['--character'] || row.id === args['--character'])).slice(0, Number(args['--limit']) || catalog.characters.length)) {
-      const image = await evaluate(state, `window.lanternCharacters.capture(${JSON.stringify(row.id)})`);
+      const { pixels, graphics } = await takeCharacter(row.id);
       const file = resolve(vendor, 'thumbnails', `${row.id}.png`);
-      await writeFile(file, Buffer.from(image.split(',')[1], 'base64'));
+      await writeFile(file, pixels);
       row.thumbnail = `/vendor/character-gallery/thumbnails/${row.id}.png`;
-      const capture = { id: row.id, name: row.name, family: row.family, image: file, motions: {}, diagnostics: await evaluate(state, 'window.lanternCharacters.diagnostics()[0]') };
+      const capture = { id: row.id, name: row.name, family: row.family, image: file, motions: {}, motionGraphics: {}, graphics, diagnostics: await evaluate('window.lanternCharacters.diagnostics()[0]') };
       if (args['--motions']) for (const [role, motion] of Object.entries(row.motions)) {
-        const image = await evaluate(state, `window.lanternCharacters.capture(${JSON.stringify(row.id)},${JSON.stringify(role)},${motion.duration * 0.45})`);
-        const file = resolve(directory, `${row.id}-${role}.png`); await writeFile(file, Buffer.from(image.split(',')[1], 'base64')); capture.motions[role] = file;
+        const { pixels, graphics } = await takeCharacter(row.id, role, motion.duration * 0.45);
+        const file = resolve(directory, `${row.id}-${role}.png`); await writeFile(file, pixels); capture.motions[role] = file; capture.motionGraphics[role] = graphics;
       }
       captures.push(capture); console.log(`Captured ${captures.length}: ${row.family} / ${row.name}`);
     }
@@ -47,5 +58,5 @@ await cli(async () => {
     await writeFile(resolve(directory, 'captures.json'), JSON.stringify({ expectedCount: catalog.expectedCount, captures: records, browserErrors: errors }, null, 2) + '\n');
     if (args['--all']) await run('python3', [resolve(root, 'scripts/assets/characters/contact-sheet.py'), directory]);
     console.log(`Character contact sheets: ${directory}`);
-  } finally { if (!existing) await stopPreview(root); }
+  } finally { await connection?.close(); if (!existing) await stopPreview(root); }
 });

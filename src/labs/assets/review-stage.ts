@@ -8,6 +8,7 @@ import { disposeSceneResources } from '../../assets/resource-ownership';
 import { createRenderer, waitForPresentedFrames } from '../../rendering/renderer';
 import { resizeDisplay } from '../../rendering/display-resolution';
 import { WebGPUPipeline } from '../../rendering/webgpu-pipeline';
+import { previewGraphicsView } from '../../rendering/preview-graphics';
 import { AreaLightingResources } from '../../rendering/area-lighting';
 import type { GraphicsSettings } from '../../rendering/graphics-settings';
 import { reviewGraphics } from './review-graphics';
@@ -23,6 +24,7 @@ export class ReviewStage {
   private camera: THREE.PerspectiveCamera | THREE.OrthographicCamera;
   private game: ReturnType<typeof createCamera>;
   private mode = 'game';
+  private viewPreparations = 0;
   private controls: OrbitControls;
   private renderer: Awaited<ReturnType<typeof createRenderer>>;
   private pipeline: WebGPUPipeline;
@@ -130,6 +132,7 @@ export class ReviewStage {
     } catch (error) { if (generation === this.generation) this.clear(); throw error; }
   }
   empty(): void { this.generation++; this.motionGeneration++; this.clear(); this.pool.unpin(); this.pipeline.resetHistory(); }
+  previewGraphics(ready: boolean) { return previewGraphicsView({ id: 'asset', subject: `${this.active?.asset.id}:${this.generation}:${this.mode}`, renderer: this.renderer, camera: this.camera, pipeline: this.pipeline, settings: this.settings, ready: ready && !this.disposed && !this.viewPreparations && !!this.object, error: this.renderError === undefined ? undefined : String(this.renderError) }); }
   diagnostics() { return { camera: this.mode === 'game' ? 'orthographic-game' : 'perspective-inspection', settings: this.settings, projection: this.camera.projectionMatrix.toArray(), cache: this.pool.diagnostics(), pipeline: this.pipeline.diagnostics() }; }
   async fit(): Promise<void> { if (this.mode === 'game') await this.view('orbit'); this.fitOrbit(); }
   private fitOrbit(): void {
@@ -141,21 +144,24 @@ export class ReviewStage {
     this.controls.target.copy(target); this.camera.position.copy(target).addScaledVector(direction, distance); this.controls.update(); this.pipeline.resetHistory();
   }
   async view(view: string): Promise<void> {
-    const game = view === 'game', key = game ? 'game' : 'orbit';
-    this.mode = view; this.controls.enabled = !game; this.camera = game ? this.game.camera : this.orbitCamera;
-    let pipeline = this.pipelines.get(key);
-    if (!pipeline) {
-      pipeline = new WebGPUPipeline(this.renderer, this.scene, this.camera, game ? this.game.controls.target : this.controls.target);
-      const look = resolveLighting(); pipeline.configure(this.settings, look.saturation ?? 1, look); this.pipelines.set(key, pipeline);
-      await pipeline.ready();
-    }
-    this.pipeline = pipeline;
-    if (game) this.game.resetFollow(new THREE.Vector3());
-    else {
-      const direction = view === 'side' ? new THREE.Vector3(1, 0, 0) : view === 'back' ? new THREE.Vector3(0, 0, -1) : view === 'front' ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3(1, .85, 1);
-      this.orbitCamera.position.copy(this.controls.target).addScaledVector(direction.normalize(), Math.max(1, this.orbitCamera.position.distanceTo(this.controls.target))); this.controls.update(); this.fitOrbit();
-    }
-    this.resize(); pipeline.resetHistory(); if (this.active) await this.warm(this.active);
+    this.viewPreparations++;
+    try {
+      const game = view === 'game', key = game ? 'game' : 'orbit';
+      this.mode = view; this.controls.enabled = !game; this.camera = game ? this.game.camera : this.orbitCamera;
+      let pipeline = this.pipelines.get(key);
+      if (!pipeline) {
+        pipeline = new WebGPUPipeline(this.renderer, this.scene, this.camera, game ? this.game.controls.target : this.controls.target);
+        const look = resolveLighting(); pipeline.configure(this.settings, look.saturation ?? 1, look); this.pipelines.set(key, pipeline);
+        await pipeline.ready();
+      }
+      this.pipeline = pipeline;
+      if (game) this.game.resetFollow(new THREE.Vector3());
+      else {
+        const direction = view === 'side' ? new THREE.Vector3(1, 0, 0) : view === 'back' ? new THREE.Vector3(0, 0, -1) : view === 'front' ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3(1, .85, 1);
+        this.orbitCamera.position.copy(this.controls.target).addScaledVector(direction.normalize(), Math.max(1, this.orbitCamera.position.distanceTo(this.controls.target))); this.controls.update(); this.fitOrbit();
+      }
+      this.resize(); pipeline.resetHistory(); if (this.active) await this.warm(this.active);
+    } finally { this.viewPreparations--; }
   }
   scaleReference(visible: boolean): void { this.reference.visible = visible; if (this.mode !== 'game') this.fitOrbit(); this.pipeline.resetHistory(); }
   async motion(asset: ReviewAsset, role: string): Promise<void> {

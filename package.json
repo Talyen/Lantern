@@ -37,6 +37,7 @@
     "lighting:bake": "node scripts/agents/run.mjs --resource gpu --reuse-preview -- node scripts/levels/bake-lighting.mjs",
     "check:full": "node scripts/check.mjs --full",
     "agent:start": "node scripts/agents/cli.mjs start",
+    "agent:capture": "node scripts/agents/cli.mjs capture",
     "agent:dev": "node scripts/agents/cli.mjs dev",
     "agent:finish": "node scripts/agents/cli.mjs finish",
     "agent:status": "node scripts/agents/cli.mjs status",

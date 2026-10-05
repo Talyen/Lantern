@@ -1,3 +1,4 @@
+import { attachPreviewGraphics } from '../../rendering/preview-graphics';
 import { parseJson, isRecord } from '../../data/json';
 import { parseReviewSnapshot, parseReviews, effectiveReview, reviewDecision, stateLabel, reviewCategories, reviewStates, type ReviewAsset, type ReviewAction, type ReviewSnapshot, type ReviewState } from '../../assets/asset-review';
 import { ReviewStage } from './review-stage';
@@ -282,3 +283,5 @@ try {
 if (!stopped) await reload().catch((error: unknown) => message(String(error), true));
 
 Object.assign(window, { lanternAssetReview: { diagnostics: () => ({ ready: previewReady, selected: selected?.id, pendingSaves: saves?.pending.length ?? 0, saveError: saves?.error, lastSelection, rendering: stage?.diagnostics() }), view: async (value: string) => { await stage?.view(value); el<HTMLSelectElement>('asset-view').value = value; el('review-view-caption').textContent = value === 'game' ? 'Game camera · saved graphics' : 'Drag to orbit · scroll to zoom'; preloadNext(); }, next: async () => { if (!selected || busy || mode !== 'queue') throw new Error('Queue is not ready.'); skipped.add(selected.id); const next = filtered()[0]; if (!next) throw new Error('No next asset.'); await choose(next); return lastSelection; } } });
+
+attachPreviewGraphics(() => stage ? [stage.previewGraphics(previewReady)] : []);
