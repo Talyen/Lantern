@@ -31,7 +31,7 @@ def save():
 
 def process(receipt):
     data = json.loads(receipt.read_text())
-    if data.get('session') != 'lantern-mixamo-full-library-v2': return
+    if data.get('session') != 'lantern-mixamo-full-library-v3-60fps': return
     path, body = data['path'], data['body']
     if path == '/catalog':
         with LOCK: STATE['catalog'] = body; save()
@@ -43,7 +43,7 @@ def process(receipt):
         key = str(body['key'])
         if not re.fullmatch(r'(Motion|Character|MotionPack):[\w-]+', key): raise ValueError('Invalid asset ID')
         with LOCK:
-            if key in STATE['completed']:
+            if key in STATE['completed'] and (key.startswith('Character:') or STATE['completed'][key].get('fps') == body.get('fps')):
                 receipt.unlink()
                 return
         kind, identity = key.split(':', 1)
@@ -56,10 +56,12 @@ def process(receipt):
         partial = destination / 'download.partial'
         archive_file = destination / 'source.zip'
         binary_file = destination / 'source.fbx'
-        if archive_file.exists() and zipfile.is_zipfile(archive_file):
+        cached = json.loads((destination / 'asset.json').read_text()) if (destination / 'asset.json').exists() else {}
+        reusable = kind == 'Character' or cached.get('fps') == body.get('fps')
+        if reusable and archive_file.exists() and zipfile.is_zipfile(archive_file):
             file = archive_file
             archive = True
-        elif binary_file.exists():
+        elif reusable and binary_file.exists():
             file = binary_file
             archive = False
         else:
@@ -79,7 +81,7 @@ def process(receipt):
                     if (entry.external_attr >> 16) & 0o170000 == 0o120000: raise ValueError('ZIP symlink not allowed')
                 source.extractall(destination / 'extracted')
         metadata = {k: v for k, v in body.items() if k != 'url'}
-        metadata.update({'file': str(file), 'bytes': file.stat().st_size, 'sha256': hashlib.sha256(file.read_bytes()).hexdigest()})
+        metadata.update({'file': str(file.relative_to(REPO)), 'bytes': file.stat().st_size, 'sha256': hashlib.sha256(file.read_bytes()).hexdigest()})
         (destination / 'asset.json').write_text(json.dumps(metadata, indent=2) + '\n')
         records = {key: metadata}
         if path == '/batch':
@@ -100,8 +102,10 @@ def process(receipt):
                 if len(matches) != 1: raise ValueError(f'Cannot identify batch motion {mid}; archive names: {[f.name for f in fbx_files][:6]}')
                 target = ROOT / 'Animations' / mid
                 target.mkdir(parents=True, exist_ok=True)
+                previous = json.loads((target / 'asset.json').read_text()) if (target / 'asset.json').exists() else {}
                 shutil.copy2(matches[0], target / 'source.fbx')
-                record = {'key': 'Motion:'+mid, 'type':'Motion', 'productId':mid, 'name':motion['name'], 'description':motion.get('description',''), 'sourcePackName':motion.get('sourcePackName'), 'sourcePackId':motion.get('sourcePackId'), 'batch':key, 'aliasOf':alias_of, 'file':str(target/'source.fbx'), 'bytes':(target/'source.fbx').stat().st_size, 'sha256':hashlib.sha256((target/'source.fbx').read_bytes()).hexdigest()}
+                record = {'key': 'Motion:'+mid, 'type':'Motion', 'productId':mid, 'name':motion['name'], 'description':motion.get('description',''), 'sourcePackName':motion.get('sourcePackName'), 'sourcePackId':motion.get('sourcePackId'), 'batch':key, 'fps':body['fps'], 'aliasOf':alias_of, 'file':str((target/'source.fbx').relative_to(REPO)), 'bytes':(target/'source.fbx').stat().st_size, 'sha256':hashlib.sha256((target/'source.fbx').read_bytes()).hexdigest()}
+                if previous.get('aliases'): record['aliases'] = previous['aliases']
                 (target/'asset.json').write_text(json.dumps(record,indent=2)+'\n')
                 records['Motion:'+mid] = record
         with LOCK:
@@ -131,6 +135,7 @@ def collect(receipt):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--downloads', type=Path, default=Path.home() / 'Downloads')
+    parser.add_argument('--motions-only', action='store_true', help='Acquire animations without downloading character models')
     parser.add_argument('--prepare-only', action='store_true')
     args = parser.parse_args()
     import os
@@ -138,7 +143,8 @@ if __name__ == '__main__':
     if not args.prepare_only: (REPO / '.local/mixamo-collector.pid').write_text(str(os.getpid()))
     state = ROOT / 'download-state.json'
     if state.exists(): STATE = json.loads(state.read_text())
-    helper = (REPO / 'scripts/assets/mixamo/mixamo-browser-download.js').read_text().replace('__COMPLETED__', json.dumps(list(STATE['completed'])))
+    helper = (REPO / 'scripts/assets/mixamo/mixamo-browser-download.js').read_text().replace('__COMPLETED__', json.dumps([key for key, record in STATE['completed'].items() if (key.startswith('Character:') and not args.motions_only) or record.get('fps') == 60]))
+    helper = helper.replace('__DOWNLOAD_CHARACTERS__', json.dumps(not args.motions_only))
     (REPO / '.local/mixamo-download-console.js').write_text(helper)
     print('Console helper prepared at .local/mixamo-download-console.js', flush=True)
     if args.prepare_only: raise SystemExit(0)

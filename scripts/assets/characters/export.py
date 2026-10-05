@@ -226,7 +226,7 @@ def main():
             published = [retained[identity] for identity in order]
         else:
             published = records
-        expected = len(rows)
+        expected = len(rows) + (len(set(retained) - {row['id'] for row in rows}) if selected else 0)
         write_json(OUTPUT / 'catalog.json', {'version': 1, 'expectedCount': expected, 'complete': len(published) == expected, 'characters': published})
     failed = [r for r in records if r['status'] != 'ready']
     print(f'Prepared {len(records)}/{len(rows)} characters; {len(failed)} unavailable.', flush=True)

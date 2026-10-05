@@ -350,7 +350,7 @@ for (const lane of lanes) {
 category.addEventListener('change', () => lanes.forEach(lane => { void fillClips(lane).catch(previewFailed); }));
 pause.addEventListener('click', () => { playing = !playing; pause.textContent = playing ? 'Pause' : 'Play'; frameLoop.invalidate(); });
 restart.addEventListener('click', resetPlayback);
-step.addEventListener('click', () => { playing = false; pause.textContent = 'Play'; seconds += 1 / 30; progress += 1 / (30 * referenceDuration()); if (loop.checked) progress %= 1; else progress = Math.min(1, progress); applyPose(); });
+step.addEventListener('click', () => { playing = false; pause.textContent = 'Play'; seconds += 1 / 60; progress += 1 / (60 * referenceDuration()); if (loop.checked) progress %= 1; else progress = Math.min(1, progress); applyPose(); });
 scrub.addEventListener('input', () => { playing = false; pause.textContent = 'Play'; progress = Number(scrub.value); seconds = progress * referenceDuration(); applyPose(); resetHistories(); });
 sync.addEventListener('change', resetPlayback);
 loop.addEventListener('change', resetPlayback);

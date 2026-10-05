@@ -50,7 +50,11 @@ def export(name, identity, config, motions_only=False):
             record = json.loads(metadata.read_text()) if metadata.exists() else {}
             title = record.get('name', path.stem)
             identity = hashlib.sha256((str(relative) + ':' + title).encode()).hexdigest()[:12]
-            clips.append({'id': identity, 'name': title, 'category': gallery.baker.category(title), 'source': str(path.relative_to(source_root)), 'description': record.get('description', ''), 'sourceHash': hashlib.sha256(path.read_bytes()).hexdigest()})
+            clip = {'id': identity, 'name': title, 'category': gallery.baker.category(title), 'source': str(path.relative_to(source_root)), 'description': record.get('description', ''), 'sourceHash': hashlib.sha256(path.read_bytes()).hexdigest()}
+            clips.append(clip)
+            # Acquisition preserves older pack IDs beside the canonical source.
+            for alias in record.get('aliases', []):
+                clips.append({**clip, **{key: alias[key] for key in ('id', 'name', 'category', 'description')}})
         gallery.write_json(source_index, {'version': 1, 'packs': [{'id': 'mixamo', 'label': 'Mixamo', 'license': 'Mixamo terms', 'url': 'https://www.mixamo.com/', 'clips': clips}]})
     source_catalog = json.loads(source_index.read_text())
     source_pack = next(p for p in source_catalog['packs'] if p['id'] == 'mixamo')

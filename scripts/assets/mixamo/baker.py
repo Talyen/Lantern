@@ -1,10 +1,12 @@
 """Shared local humanoid world-space baker used by playable and gallery exports.
 
-Sources stay private. Motion is sampled at 30 fps, retaining vertical hip motion.
+Sources stay private. Motion is sampled at 60 fps, retaining vertical hip motion.
 """
 import math
 import bpy
 from mathutils import Quaternion, Vector
+
+SAMPLE_RATE = 60
 
 
 def bone_map(rig):
@@ -80,7 +82,7 @@ def bake(target, source, original, name, output, mapping=None, sample_range=None
     start, end = sample_range or original.frame_range
     source_duration = (end - start) / fps
     duration = output_duration or source_duration
-    samples = max(1, round(duration * 30))
+    samples = max(1, round(duration * SAMPLE_RATE))
     target.animation_data_create()
     action = bpy.data.actions.new(name)
     target.animation_data.action = action
@@ -132,7 +134,7 @@ def bake(target, source, original, name, output, mapping=None, sample_range=None
         hp = target.pose.bones['Hips']
         hp.location = target.data.bones['Hips'].matrix_local.to_3x3().inverted() @ delta
         hp.keyframe_insert('location', frame=frame, group='Hips')
-    bpy.context.scene.render.fps = 30
+    bpy.context.scene.render.fps = SAMPLE_RATE
     bpy.context.scene.render.fps_base = 1
     bpy.context.scene.frame_start = 0
     bpy.context.scene.frame_end = samples
@@ -147,4 +149,4 @@ def bake(target, source, original, name, output, mapping=None, sample_range=None
     bpy.data.actions.remove(action)
     bpy.context.scene.render.fps = round(fps)
     travel = (hip_end - hip_start) * ratio
-    return {'duration': round(samples / 30, 4), 'sourceDuration': round(source_duration, 4), 'rootVelocity': [round(travel.x / duration, 4), round(-travel.y / duration, 4)], 'phaseOffset': round(left_heights.index(min(left_heights)) / samples, 4), 'mappedBones': len(mapping), 'bakeVersion': 5}
+    return {'duration': round(samples / SAMPLE_RATE, 4), 'sourceDuration': round(source_duration, 4), 'rootVelocity': [round(travel.x / duration, 4), round(-travel.y / duration, 4)], 'phaseOffset': round(left_heights.index(min(left_heights)) / samples, 4), 'mappedBones': len(mapping), 'sampleRate': SAMPLE_RATE, 'bakeVersion': 6}

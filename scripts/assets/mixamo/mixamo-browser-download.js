@@ -23,7 +23,7 @@
     throw new Error('Mixamo export service is busy; rerun to resume');
   };
   io.send = async (path, body) => {
-    const url = URL.createObjectURL(new Blob([JSON.stringify({ session: 'lantern-mixamo-full-library-v2', path, body })], { type: 'application/json' }));
+    const url = URL.createObjectURL(new Blob([JSON.stringify({ session: 'lantern-mixamo-full-library-v3-60fps', path, body })], { type: 'application/json' }));
     const link = document.createElement('a');
     link.href = url; link.download = 'lantern-mixamo-receipt-' + Date.now() + '-' + Math.random().toString(16).slice(2) + '.json';
     document.body.append(link); link.click(); link.remove();
@@ -60,14 +60,17 @@
   };
   io.batch = async (motions, name) => {
     const gms = [];
-    for (const motion of motions) {
-      const data = motion.gms_hash ? null : await io.api('/products/' + motion.id + '?similar=0&character_id=' + io.rig);
-      const config = motion.gms_hash || data.details.gms_hash;
-      gms.push({ name: motion.id, 'model-id': config['model-id'], mirror: false, trim: [0, 100], overdrive: 0, params: config.params.map((param) => param[1]).join(','), 'arm-space': 0, inplace: false });
+    // Product metadata is independent; export jobs must remain serial.
+    for (let i = 0; i < motions.length; i += 4) {
+      gms.push(...await Promise.all(motions.slice(i, i + 4).map(async (motion) => {
+        const data = motion.gms_hash ? null : await io.api('/products/' + motion.id + '?similar=0&character_id=' + io.rig);
+        const config = motion.gms_hash || data.details.gms_hash;
+        return { name: motion.id, 'model-id': config['model-id'], mirror: false, trim: [0, 100], overdrive: 0, params: config.params.map((param) => param[1]).join(','), 'arm-space': 0, inplace: false };
+      })));
     }
-    const job = await io.api('/animations/export', { character_id: io.rig, type: 'MotionPack', product_name: name, gms_hash: gms, preferences: { format: 'fbx7_2019', mesh_motionpack: 'no-character', fps: '30', reducekf: '0' } });
+    const job = await io.api('/animations/export', { character_id: io.rig, type: 'MotionPack', product_name: name, gms_hash: gms, preferences: { format: 'fbx7_2019', mesh_motionpack: 'no-character', fps: '60', reducekf: '0' } });
     const url = await io.monitor(job.uuid);
-    await io.send('/batch', { key: 'MotionPack:' + name, type: 'MotionPack', name, motions, url });
+    await io.send('/batch', { key: 'MotionPack:' + name, type: 'MotionPack', name, motions, fps: 60, url });
   };
   const motions = await io.list('Motion');
   const packs = await io.list('MotionPack');
@@ -80,18 +83,18 @@
   await io.send('/catalog', { provider: 'Mixamo', acquiredAt: new Date().toISOString(), animationRig: io.rig, motions, packs, characters, packMotions });
   const complete = new Set(__COMPLETED__);
   const todo = [...motions, ...packMotions].filter((motion) => !complete.has('Motion:' + motion.id));
-  progress.total = motions.length + packMotions.length + characters.length;
+  progress.total = motions.length + packMotions.length + (__DOWNLOAD_CHARACTERS__ ? characters.length : 0);
   console.log('Lantern verified catalog: ' + motions.length + ' motions, ' + packs.length + ' packs (' + packMotions.length + ' members), ' + characters.length + ' characters');
   for (let i = 0; i < todo.length; i += 48) {
     const batch = todo.slice(i, i + 48);
     const hash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(batch.map((m) => m.id).join(','))))).map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
     progress.status = 'Exporting motion batch ' + (Math.floor(i / 48) + 1) + '/' + Math.ceil(todo.length / 48);
-    await io.batch(batch, 'lantern-batch-' + hash);
+    await io.batch(batch, 'lantern-60fps-' + hash);
     progress.exported += batch.length;
     console.log('Lantern exported ' + progress.exported + '/' + todo.length + ' pending motions');
     await io.sleep(3000);
   }
-  for (const character of characters) {
+  for (const character of (__DOWNLOAD_CHARACTERS__ ? characters : [])) {
     const key = 'Character:' + character.id;
     if (complete.has(key)) continue;
     progress.status = 'Exporting character: ' + character.name;
