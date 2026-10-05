@@ -1,6 +1,6 @@
 import graveyardRuins from '../src/levels/areas/graveyard-ruins.json';
 import graveyardCrypt from '../src/levels/areas/graveyard-crypt.json';
-import type { WorldInteraction } from '../src/clearing/world-interactions';
+import type { WorldInteraction } from '../src/session/world-interactions';
 import type { Object3D } from 'three';
 import type { MovementWorld as MovementWorldType } from '../src/gameplay/movement';
 import type { NavigationGeometry } from '../src/gameplay/navigation';
@@ -59,7 +59,7 @@ test('arrival gate cannot immediately send the player back until its trigger is 
 });
 
 test('click approach finishes the last step into interaction range before discarding its route', async () => {
-  const { ClickApproach } = await import('../src/clearing/click-approach');
+  const { ClickApproach } = await import('../src/session/click-approach');
   const { Adventure } = await import('../src/gameplay/adventure');
   const { createEncounter } = await import('../src/gameplay/encounter');
   const encounter = createEncounter('playing', { ...grassArea.layout, player: { position: [0, -1.085], yaw: 0 } });
@@ -182,8 +182,8 @@ test('felling removes trunk collision and enemy detours, and regrowth restores b
 
 test('gathering retries after attack cooldown and cancels a newly pursuing threat before contact', async () => {
   const THREE = await import('three');
-  const { GatheringController } = await import('../src/clearing/gathering');
-  const { makeActor } = await import('../src/clearing/actors');
+  const { GatheringController } = await import('../src/session/gathering');
+  const { makeActor } = await import('../src/session/actors');
   const { createEncounter } = await import('../src/gameplay/encounter');
   const { Adventure } = await import('../src/gameplay/adventure');
   const state = createEncounter('playing', grassArea.layout), adventure = new Adventure();
@@ -218,7 +218,7 @@ test('gathering retries after attack cooldown and cancels a newly pursuing threa
 
 
 test('area candidates retain the active area and release failed, superseded and rejected preparations once', async () => {
-  const { prepareAreaCandidate } = await import('../src/clearing/area-candidate');
+  const { prepareAreaCandidate } = await import('../src/session/area-candidate');
   type Area = Awaited<ReturnType<typeof BuildArea>>;
   type World = MovementWorldType;
   type Lighting = PreparedLighting;
@@ -400,8 +400,8 @@ test('asset library waits for sibling assembly loads before releasing a failed p
 test('missing destination skeleton art retains the committed actors and reports the preparation action', async () => {
   const THREE=await import('three');
   const {GLTFLoader}=await import('three/addons/loaders/GLTFLoader.js');
-  const {EnemyActors}=await import('../src/clearing/enemy-actors');
-  const {makeActor}=await import('../src/clearing/actors');
+  const {EnemyActors}=await import('../src/session/enemy-actors');
+  const {makeActor}=await import('../src/session/actors');
   const {createEncounter}=await import('../src/gameplay/encounter');
   const state=createEncounter('playing',{...grassArea.layout,enemies:[{id:'guard',position:[1,1],yaw:0,kind:'raider',rig:'skeleton',loadout:{main:'sword',off:null}}]});
   const scene=new THREE.Scene(),player=makeActor(scene,state.player),actors={player};

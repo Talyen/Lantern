@@ -45,7 +45,7 @@ The native-only WebGPU pipeline and private-art boundaries remain owned by their
 
 | Decision | Recommendation | How to decide | Status |
 | --- | --- | --- | --- |
-| Material finish within selected A | Quiet reading surfaces, thin brass, selective iron joints; use B's calmer framing as a refinement reference | Refine [the selected Inventory concept](concepts/README.md) at actual use size; remove excessive glow/framing | Proposed refinement of adopted direction |
+| Material finish within selected A | Quiet reading surfaces, thin brass, selective iron joints; use B's calmer framing as a refinement reference | Refine [the selected Inventory concept](concepts/archive/inventory/README.md) at actual use size; remove excessive glow/framing | Proposed refinement of adopted direction |
 | Heading/reading typography | Pirata One for short headings, readable sans for controls and numbers | Inspect title, item name, long label and stat row at gameplay scale | Proposed |
 | Icon finish | Original painterly item/ability art with shared silhouette/padding/light; DOM text and code-owned state chrome | Compare several representative icons at actual slot size; respect licensed-art provenance | Proposed |
 | Split-panel detailed hierarchy | Refine chosen 40/60 panel at one item-art scale | Static art/slot/tooltip composition and responsive studies with guiding questions | Open within adopted family |
@@ -66,15 +66,15 @@ Touch/mobile, console certification, a new UI framework, general character level
 
 ## Skills design checkpoint — October 2, 2026
 
-Owner selected [28 named tracks](concepts/skills-nodes/BRIEF.md#roster), with progress and the next useful unlock as the main purpose, inspectable planned tracks and independent future weapon/magic practice. The first round used grouped list/detail and an internal assignment strip; the later node redesign below supersedes that interaction/layout checkpoint.
+Owner selected [28 named tracks](concepts/archive/skills-nodes/BRIEF.md#roster), with progress and the next useful unlock as the main purpose, inspectable planned tracks and independent future weapon/magic practice. The first round used grouped list/detail and an internal assignment strip; the later node redesign below supersedes that interaction/layout checkpoint.
 
-The owner requested original ImageGen mockups and variants. [First-round studies](concepts/skills/README.md) remain historical provenance; use the active redesign below for current direction. Generated numbers/artifacts are not balance or behavior decisions; concept tasks change no runtime, saves, XP sources or abilities.
+The owner requested original ImageGen mockups and variants. [First-round studies](concepts/archive/skills/README.md) remain historical provenance; use the active redesign below for current direction. Generated numbers/artifacts are not balance or behavior decisions; concept tasks change no runtime, saves, XP sources or abilities.
 
 ## Skills node redesign — October 2, 2026
 
 Owner selected an Inventory-sized Skills sheet, with larger ability nodes (Basics, Skills, Ultimates) and smaller passive-bonus nodes for every skill, a unique icon for each node, and hover information. The owner removed Assigned Abilities: drag available ability nodes to the actual bottom gameplay action bar, or click an empty slot to choose an available action. Passives are bonuses, not bar assignments. Keyboard focus/activation provides equivalent information and picker access.
 
-The owner initially proposed upward roots; [that gallery](concepts/skills-nodes/README.md) is superseded by the selected horizontal design below. Representative passive content is illustrative; no new effects are adopted. The action bar stays outside the sheet; no duplicate in-panel strip.
+The owner initially proposed upward roots; [that gallery](concepts/archive/skills-nodes/README.md) is superseded by the selected horizontal design below. Representative passive content is illustrative; no new effects are adopted. The action bar stays outside the sheet; no duplicate in-panel strip.
 
 ## Skills horizontal design and implementation — October 2, 2026
 

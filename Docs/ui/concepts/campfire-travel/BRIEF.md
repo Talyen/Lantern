@@ -16,6 +16,6 @@ The compact 360px panel sits 24px from the left edge, centered above the HUD, wi
 
 ## Owners and acceptance
 
-[Adventure menus](../../../../src/ui/adventure.ts) own the presentation and keyboard handling; [interaction actions](../../../../src/clearing/interaction-actions.ts) supply the source name and eligible choices. [Travel safety](../../../RUNTIME.md#travel-and-fire-safety), [shared styling](../../../../src/ui/game.css), the [UI design system](../../../UI_DESIGN.md) and [interaction feedback](../../../INTERACTION_FEEDBACK.md) retain their ownership.
+[Adventure menus](../../../../src/ui/adventure.ts) own the presentation and keyboard handling; [interaction actions](../../../../src/session/interaction-actions.ts) supply the source name and eligible choices. [Travel safety](../../../RUNTIME.md#travel-and-fire-safety), [shared styling](../../../../src/ui/game.css), the [UI design system](../../../UI_DESIGN.md) and [interaction feedback](../../../INTERACTION_FEEDBACK.md) retain their ownership.
 
 Inspect one owned normal-settings preview at 1280 × 800: character visibility, focused destination, cancellation/focus return, empty state and one successful campfire trip. Review the task diff and integration sanity gate. No new automated test or performance measurement is implied; platform/controller and whole-game accessibility acceptance remain separate.

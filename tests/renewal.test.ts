@@ -9,7 +9,7 @@ import { createEncounter, enemyMaxHealth } from '../src/gameplay/encounter';
 import { renewalSeconds } from '../src/gameplay/outing';
 import { resourceDefinitions } from '../src/levels/resources';
 import { areas } from '../src/levels/registry';
-import { RenewalVisibility } from '../src/clearing/renewal-visibility';
+import { RenewalVisibility } from '../src/session/renewal-visibility';
 
 const setup = (storage = memory()) => {
   const adventure = new Adventure(storage, () => 0);

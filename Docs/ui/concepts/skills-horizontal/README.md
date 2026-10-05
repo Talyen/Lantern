@@ -1,6 +1,6 @@
 # Skills — adopted horizontal progression
 
-October 2, 2026. The owner selected the six-step horizontal layout and authorized implementation. This round supersedes [upward-tree studies](../skills-nodes/README.md). [Screen/data brief](BRIEF.md) owns the selected structure and implementation scope.
+October 2, 2026. The owner selected the six-step horizontal layout and authorized implementation. This round supersedes [upward-tree studies](../archive/skills-nodes/README.md). [Screen/data brief](BRIEF.md) owns the selected structure and implementation scope.
 
 ## Locked direction
 

@@ -8,7 +8,7 @@ import { cli, parseArgs, root, isMain } from '../lib/cli.mjs';
 import { readState, browser, evaluate, ready } from './common.mjs';
 const execute = promisify(execFile);
 const presets = ['baseline','sharpness-0','sharpness-1','foliage-motion','reactive-coverage','mip-minus-half','mip-minus-one'];
-const owners = [...probeOwners,'src/rendering/webgpu-pipeline.ts','src/rendering/effects.ts','src/labs/fsr/settings.ts','src/labs/fsr/comparison.ts','src/labs/fsr/video.ts','src/clearing/clearing.ts','src/levels/authoring.ts','src/clearing/frame-loop.ts','src/rendering/graphics-settings.ts'];
+const owners = [...probeOwners,'src/rendering/webgpu-pipeline.ts','src/rendering/effects.ts','src/labs/fsr/settings.ts','src/labs/fsr/comparison.ts','src/labs/fsr/video.ts','src/session/session.ts','src/levels/authoring.ts','src/session/frame-loop.ts','src/rendering/graphics-settings.ts'];
 async function signature() { const hash = createHash('sha256'); for (const path of owners) { hash.update(path); hash.update(await readFile(resolve(root,path))); } return hash.digest('hex'); }
 if (isMain(import.meta.url)) await cli(async () => {
   const args = parseArgs(process.argv.slice(2), { '--preset':'value', '--output':'value', '--collect':'boolean' });

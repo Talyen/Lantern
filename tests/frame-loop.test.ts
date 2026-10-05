@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import { FrameLoop } from '../src/clearing/frame-loop';
+import { FrameLoop } from '../src/session/frame-loop';
 
 afterEach(() => vi.unstubAllGlobals());
 

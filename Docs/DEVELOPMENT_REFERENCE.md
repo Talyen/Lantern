@@ -79,9 +79,9 @@ Documentation content shares a default 12,000-character budget (`--max-chars` ac
 ```sh
 npm run agent:context -- --topic combat --include-docs --consumers
 npm run agent:context -- --doc Docs/RUNTIME.md#save-recovery
-npm run agent:source -- --file src/clearing/clearing.ts
-npm run agent:source -- --file src/clearing/clearing.ts --symbol updateGame
-npm run agent:source -- --file src/clearing/clearing.ts --start-line 1 --end-line 60
+npm run agent:source -- --file src/session/session.ts
+npm run agent:source -- --file src/session/session.ts --symbol createGameSession
+npm run agent:source -- --file src/session/session.ts --start-line 1 --end-line 60
 ```
 
 `agent:source` uses the installed TypeScript parser to list top-level TS/JS declarations and named class/interface members. Select a symbol (for example `Adventure.step`) or an exact line range to read its source. Default symbol pages contain 20 records; selected-source pages contain 100 complete lines. `--limit`, `--offset` and `--max-chars` bound output and report continuation. Offsets count records for lists and lines within selected spans. Overloads with the same name return their combined span. Source inspection excludes private/generated directories and changes no files.
@@ -127,7 +127,7 @@ Choose one single-view command for ordinary review. Only `--all` creates a conta
 | `npm run lint` | Managed ESLint, Ruff Python correctness and Stylelint CSS checks; no automatic fixes |
 | `npm test -- tests/encounter.test.ts` | Explicit focused test for a concrete failure; one local worker |
 | `npm test` | Full unit suite in CI (two workers); local full-suite use requires a user request |
-| `npm run docs:check` | Local links, heading fragments and npm command names in root Markdown, `Docs/` and `.agents/`, including archives |
+| `npm run docs:check` | Local links, heading fragments and npm command names in root Markdown, `Docs/`, `assets/` and `.agents/`, including archives |
 | `npm run levels:check` | Area definitions, gate links, library selections and optional-art warnings |
 | `npm run build` | Explicit asset/packaging validation or requested build readiness; typecheck, stage private runtime art, and build |
 | `npm run preview` | Serve the built renderer locally |

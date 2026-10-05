@@ -11,7 +11,7 @@ npm ci
 npm run dev
 ```
 
-Lantern requires native WebGPU with hardware acceleration on a supported browser/OS/GPU. Unsupported systems receive a startup error. Gameplay, authoring and animation comparison share one visual pipeline; FSR Temporal is the sole reconstruction method, with fixed 1× output density and independent resolution, shadow and particle quality controls.
+Lantern requires native WebGPU with hardware acceleration on a supported browser/OS/GPU. Unsupported systems receive a startup error. Gameplay, authoring and animation comparison share one visual pipeline; FSR Temporal is the sole reconstruction method, with output matching the drawable viewport in physical pixels and independent resolution, shadow and particle quality controls.
 
 Open Vite's printed local URL. New characters begin at Homestead; returning characters resume at their last safe campfire with full health and their saved outing intact. For a disposable development fixture, `/?author=levels&area=clearing` starts at the clearing's authored midpoint; use Play in the authoring controls to enable movement.
 
@@ -73,7 +73,8 @@ Agents use the [private task workflow](Docs/DEVELOPMENT.md#working-alongside-oth
 - [Desktop candidates](Docs/DESKTOP.md): packaging, diagnostic export and Windows acceptance.
 - [Library trials](Docs/LIBRARY_TRIALS.md): retained gameplay integrations and deferred alternatives.
 - [Performance](Docs/PERFORMANCE.md): matched measurements and historical art/renderer evidence.
-- [Roadmap](ROADMAP.md): milestone direction.
+- [Roadmap](ROADMAP.md): current milestones and acceptance targets.
+- [Implementation history](Docs/archive/IMPLEMENTATION_HISTORY.md): dated implementation reports.
 - [Agent guide](AGENTS.md): working and testing rules.
 - [Third-party notices](THIRD_PARTY_NOTICES.md): source and asset provenance.
 
@@ -83,6 +84,6 @@ Original Lantern code and content are source-available for noncommercial use und
 
 ## Source layout
 
-`src/clearing/` coordinates the playable encounter, actors, input and camera. `src/levels/` owns area definitions, scenery construction and authoring; `src/gameplay/` contains the browser-independent simulation; `src/rendering/` owns graphics; `src/ui/` owns menus and HUD. Shared asset loading and combat motions live in `src/assets/` and `src/animation/`. Animation and character comparison live in `src/labs/animations/` and `src/labs/characters/`. Asset preparation tools are grouped under `scripts/assets/`, and level-authoring tools under `scripts/levels/`; build and verification entry points remain in `scripts/`. See [architecture](Docs/ARCHITECTURE.md) for ownership and dependency boundaries.
+`src/session/` coordinates each selected adventure across areas, including actors, input and camera. `src/levels/` owns area definitions, scenery construction and authoring; `src/gameplay/` contains the browser-independent simulation; `src/rendering/` owns graphics; `src/ui/` owns menus and HUD. Shared asset loading and combat motions live in `src/assets/` and `src/animation/`. Animation and character comparison live in `src/labs/animations/` and `src/labs/characters/`. Asset preparation tools are grouped under `scripts/assets/`, and level-authoring tools under `scripts/levels/`; build and verification entry points remain in `scripts/`. See [architecture](Docs/ARCHITECTURE.md) for ownership and dependency boundaries.
 
 Character and animation comparison labs are development-only. Game builds stage referenced gameplay art and exclude the private gallery roster and retired surface experiments.

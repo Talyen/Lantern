@@ -30,7 +30,7 @@ Critique: the centered title has a clear lantern/name/action hierarchy; the cont
 
 ## Ownership and recovery
 
-[Application](../../../../src/application.ts), [front-end](../../../../src/ui/front-end.ts), [styles](../../../../src/ui/front-end.css), [store](../../../../src/gameplay/adventure-store.ts) and [session](../../../../src/clearing/clearing.ts) own the implementation. [Save recovery](../../../RUNTIME.md#save-recovery) owns the silent policy.
+[Application](../../../../src/application.ts), [front-end](../../../../src/ui/front-end.ts), [styles](../../../../src/ui/front-end.css), [store](../../../../src/gameplay/adventure-store.ts) and [session](../../../../src/session/session.ts) own the implementation. [Save recovery](../../../RUNTIME.md#save-recovery) owns the silent policy.
 
 Save errors are invisible. Valid backups recover automatically; writes retry while the latest per-slot snapshots remain in memory across Title and switching. Unknown/unreadable slots remain protected and failed Continue returns quietly to Play. Closing before successful persistence can lose pending changes. Graphics/art preparation failures still offer Retry/Back.
 

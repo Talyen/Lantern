@@ -4,7 +4,7 @@ import { AdventureStore, type SavedAdventure } from './gameplay/adventure-store'
 import { InputPreferences } from './input/bindings';
 import { createRenderer } from './rendering/renderer';
 import { disposeAreaCache } from './levels/builder';
-import { createGameSession, type GameSession } from './clearing/clearing';
+import { createGameSession, type GameSession } from './session/session';
 import { Options } from './ui/options';
 import { KeybindingsMenu } from './ui/keybindings';
 import { FrontEnd } from './ui/front-end';

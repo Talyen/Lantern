@@ -1,6 +1,6 @@
 # Inventory design brief
 
-Status: implementation authorized after concept review, October 2, 2026. [InventoryPanel](../../../../src/ui/inventory-panel.ts) now implements the preferred design; [styles](../../../../src/ui/inventory.css) and [art](../../../../src/ui/inventory-art.ts) own exact presentation values. Continue guiding questions for unresolved behavior and future screens.
+Status: implementation authorized after concept review, October 2, 2026. [InventoryPanel](../../../../../src/ui/inventory-panel.ts) now implements the preferred design; [styles](../../../../../src/ui/inventory.css) and [art](../../../../../src/ui/inventory-art.ts) own exact presentation values. Continue guiding questions for unresolved behavior and future screens.
 
 ## Player goal
 
@@ -18,7 +18,7 @@ Prioritize understanding the equipped loadout and quickly exchanging gear, with 
 
 ## Available data, not inherited UI requirements
 
-[Equipment catalog](../../../../src/gameplay/equipment.ts) and [inventory model](../../../../src/gameplay/inventory.ts) describe current items/properties/footprints. [Inventory controller](../../../../src/clearing/inventory.ts) and [adventure UI](../../../../src/ui/adventure.ts) show existing operations. Use this information to ground examples; do not preserve prototype UI or unintended behavior. Proposed changes to storage or gameplay rules are explicit questions.
+[Equipment catalog](../../../../../src/gameplay/equipment.ts) and [inventory model](../../../../../src/gameplay/inventory.ts) describe current items/properties/footprints. [Inventory controller](../../../../../src/session/inventory.ts) and [adventure UI](../../../../../src/ui/adventure.ts) show existing operations. Use this information to ground examples; do not preserve prototype UI or unintended behavior. Proposed changes to storage or gameplay rules are explicit questions.
 
 Representative examples: Sword 1×3, Bow 2×4, Shield/Mail 2×3, Guard Helm/Gloves/Boots 2×2, Ring/Amulet 1×1, Belt 2×1, supplies 1×1. Guard Helm has Armor +8. The original studies used 12×8 illustratively; implementation now retains the current 12×8 bag/stash model with one 48px artwork ruler. Concepts do not authorize changing storage capacity.
 

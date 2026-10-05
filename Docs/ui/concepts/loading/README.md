@@ -20,7 +20,7 @@ Critique: clear focal silhouette, quiet material treatment and enough breathing 
 
 ## Owners and inspection
 
-[Controller](../../../../src/ui/loading.ts), [styles](../../../../src/ui/loading.css), [HTML shell](../../../../index.html), [entry](../../../../src/entry.ts) and [coordinator](../../../../src/clearing/clearing.ts) own presentation and lifecycle. The existing frame loop propagates rendered-frame failures to readiness waiters.
+[Controller](../../../../src/ui/loading.ts), [styles](../../../../src/ui/loading.css), [HTML shell](../../../../index.html), [entry](../../../../src/entry.ts) and [coordinator](../../../../src/session/session.ts) own presentation and lifecycle. The existing frame loop propagates rendered-frame failures to readiness waiters.
 
 Inspected in one owned normal-settings native WebGPU/FSR preview: startup, 1280 × 800 composition, menu-shortcut suppression, stale operation protection, missing required character art, actual portal travel failure, Back to source, and Retry through delayed preparation to Homestead. Controlled failure/delay lived only in the inspection browser; no production delay or fixture route exists. Reduced-motion behavior and quick-transition suppression are inspected separately in that session. Full local suites, benchmarks and other platforms are outside this task.
 

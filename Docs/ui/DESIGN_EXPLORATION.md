@@ -2,7 +2,7 @@
 
 **Current phase:** Inventory/stash, Skills, orb-led HUD, shared loading and current-menu polish are implemented; [the screen catalog](SCREEN_CATALOG.md) tracks inspection and remaining design gaps. The earlier no-prototype hold was lifted for requested implementations. Continue first-principles design and focused guiding questions for unresolved surfaces; do not infer approval of new screen families.
 
-The owner prefers **A — Crafted instrument** for materials. That choice does **not** approve A's organizational layout. The original three-column organization was superseded by the adopted 40/60 split after multiple layout studies. See the [decision record](DESIGN_DECISIONS.md), [foundation](../UI_DESIGN.md), and [Inventory layout round](concepts/inventory-layouts/README.md).
+The owner prefers **A — Crafted instrument** for materials. That choice does **not** approve A's organizational layout. The original three-column organization was superseded by the adopted 40/60 split after multiple layout studies. See the [decision record](DESIGN_DECISIONS.md), [foundation](../UI_DESIGN.md), and [Inventory layout round](concepts/archive/inventory-layouts/README.md).
 
 The owner explicitly requested first-principles design rather than preserving prototype UI, with guiding questions and recommendations at every step. Treat source as an inventory of available data, not a template. Ask a few focused questions for the current decision, explain the recommendation, explore alternatives and incorporate the answer before the next consequential design choice.
 

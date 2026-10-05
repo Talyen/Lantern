@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { cameraOffset,desktopViewHeight } from '../../src/clearing/projection.ts';
+import { cameraOffset,desktopViewHeight } from '../../src/session/projection.ts';
 import { defaultCameraZoom } from '../../src/rendering/graphics-settings.ts';
 import { cli, parseArgs } from '../lib/cli.mjs';
 await cli(async()=>{

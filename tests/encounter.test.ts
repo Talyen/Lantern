@@ -297,7 +297,7 @@ test('ranged releases are timed, swept walls stop damage, and released arrows hi
 });
 
 test('a contact pose fully replaces a manually phased locomotion pose', async () => {
-  const THREE=await import('three'), {makeActor,attachCharacter,play,updateActor}=await import('../src/clearing/actors');
+  const THREE=await import('three'), {makeActor,attachCharacter,play,updateActor}=await import('../src/session/actors');
   const state=createEncounter('playing').player, actor=makeActor(new THREE.Scene(),state), model=new THREE.Group(), body=new THREE.Group(); body.name='body';
   const geometry=new THREE.BoxGeometry(1,1,1), material=new THREE.MeshBasicMaterial(); model.add(body,new THREE.Mesh(geometry,material));
   const clip=(name:string,x:number)=>new THREE.AnimationClip(name,1,[new THREE.VectorKeyframeTrack('body.position',[0,1],[x,0,0,x,0,0])]);

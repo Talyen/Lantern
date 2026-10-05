@@ -1,6 +1,6 @@
 # Skills node redesign brief
 
-**Superseded:** use [the adopted horizontal brief](../skills-horizontal/BRIEF.md). The upward direction, scrolling roots, XP display and profession Basic/Skill/Ultimate proposal below are historical.
+**Superseded:** use [the adopted horizontal brief](../../skills-horizontal/BRIEF.md). The upward direction, scrolling roots, XP display and profession Basic/Skill/Ultimate proposal below are historical.
 
 ## Scope and status
 
@@ -8,7 +8,7 @@ Active concept round requested October 2, 2026. Supersedes [first-round assignme
 
 Intended visible effect: an Inventory-sized charcoal sheet with distinctly larger illustrated ability nodes and smaller illustrated passive nodes, connected in a readable upward sequence. Restrained ivory/brass framing supports the icons without ornate card grids or an internal assignment section.
 
-Current runtime owners remain [combat UI](../../../../src/ui/combat.ts), [ability model](../../../../src/gameplay/abilities.ts), [skills](../../../../src/gameplay/skills.ts), [character](../../../../src/gameplay/character.ts) and [adventure](../../../../src/gameplay/adventure.ts). No runtime owner is changed in this concept task.
+Current runtime owners remain [combat UI](../../../../../src/ui/combat.ts), [ability model](../../../../../src/gameplay/abilities.ts), [skills](../../../../../src/gameplay/skills.ts), [character](../../../../../src/gameplay/character.ts) and [adventure](../../../../../src/gameplay/adventure.ts). No runtime owner is changed in this concept task.
 
 ## Roster
 

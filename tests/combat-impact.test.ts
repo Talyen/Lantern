@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { CombatImpact } from '../src/clearing/combat-impact';
+import { CombatImpact } from '../src/session/combat-impact';
 import { attack, createEncounter, stepEncounter, stepExploration, type EncounterEvent, type Timings } from '../src/gameplay/encounter';
 import { advanceProjectile } from '../src/gameplay/encounter-projectiles';
 

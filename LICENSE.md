@@ -32,4 +32,4 @@ identifier `CC-BY-NC-4.0`; the authoritative terms are the
 [official license deed](https://creativecommons.org/licenses/by-nc/4.0/) and
 [full legal code](https://creativecommons.org/licenses/by-nc/4.0/legalcode).
 Third-party material is governed by its own terms and is recorded in
-[THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md).
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

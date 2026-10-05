@@ -1,4 +1,4 @@
-import type { ClearingSnapshot } from '../clearing/diagnostics';
+import type { ClearingSnapshot } from '../session/diagnostics';
 import { isLine } from '../assets/resource-ownership';
 import * as THREE from 'three';
 import type { Encounter } from '../gameplay/encounter';

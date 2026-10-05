@@ -6,7 +6,7 @@ Lantern uses the finished Mixamo **Erika Archer** model as its single player app
 
 [The playable manifest](../assets/playable-characters.json) owns source identity, model URL, display height and compatible motion catalog. The player remains the same gameplay/save identity, so existing equipment, skills and adventure progress are retained.
 
-The earlier generated pair concepts and procedural male studies are retired experiments, not appearance requirements. Original concept files and private source archives remain preserved. Do not continue constructing replacement human meshes from those studies.
+The earlier generated pair concepts and procedural male studies are retired experiments, not appearance requirements. [Original concept files](../assets/archive/README.md#retired-protagonist-concepts) and private source archives remain preserved. Do not continue constructing replacement human meshes from those studies.
 
 ## Quiver and preparation
 

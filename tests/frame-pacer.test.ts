@@ -1,6 +1,6 @@
 import { expect, test, vi } from 'vitest';
 import { FramePacer } from '../src/rendering/frame-pacer';
-import { FrameLoop } from '../src/clearing/frame-loop';
+import { FrameLoop } from '../src/session/frame-loop';
 
 test('60 FPS cap stays near 60 across nominal and faster displays, then Unlimited allows every frame', () => {
   for (const displayHz of [59.94, 144]) {

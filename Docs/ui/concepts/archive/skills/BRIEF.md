@@ -1,12 +1,12 @@
 # Skills screen brief
 
-**Superseded first round:** use [the adopted horizontal brief](../skills-horizontal/BRIEF.md). The roster below remains selected; its internal assignment strip and earlier layout are historical.
+**Superseded first round:** use [the adopted horizontal brief](../../skills-horizontal/BRIEF.md). The roster below remains selected; its internal assignment strip and earlier layout are historical.
 
 ## Scope and status
 
 Concept exploration, requested October 2, 2026. Player goal: understand skill growth and the next useful benefit, then assign available combat abilities. Intended visible effect: a crafted charcoal sheet whose selected-skill progress leads, with restrained brass and original readable icons consistent with Inventory/Stash.
 
-Current source owners: [combat UI](../../../../src/ui/combat.ts), [skills](../../../../src/gameplay/skills.ts), [character state](../../../../src/gameplay/character.ts), [adventure](../../../../src/gameplay/adventure.ts). Direct consumers include menu-controller/input and harvesting. This task records original visual studies only.
+Current source owners: [combat UI](../../../../../src/ui/combat.ts), [skills](../../../../../src/gameplay/skills.ts), [character state](../../../../../src/gameplay/character.ts), [adventure](../../../../../src/gameplay/adventure.ts). Direct consumers include menu-controller/input and harvesting. This task records original visual studies only.
 
 ## Roster
 

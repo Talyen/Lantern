@@ -1,6 +1,6 @@
 # Inventory layout exploration — paper doll and spatial items
 
-Historical layout round, October 2, 2026. No prototype was built during this round; the owner subsequently authorized the refined Inventory/stash, now recorded in [the screen catalog](../../SCREEN_CATALOG.md). These studies use A — Crafted instrument materials. The owner preferred **#1 as closest: one large split panel, 40% equipment left / 60% inventory right, subtle outline glyphs in empty slots**. Detailed composition/hierarchy remains open. See the [brief](../inventory/BRIEF.md), [decisions](../../DESIGN_DECISIONS.md) and [exploration plan](../../DESIGN_EXPLORATION.md).
+Historical layout round, October 2, 2026. No prototype was built during this round; the owner subsequently authorized the refined Inventory/stash, now recorded in [the screen catalog](../../../SCREEN_CATALOG.md). These studies use A — Crafted instrument materials. The owner preferred **#1 as closest: one large split panel, 40% equipment left / 60% inventory right, subtle outline glyphs in empty slots**. Detailed composition/hierarchy remains open. See the [brief](../inventory/BRIEF.md), [decisions](../../../DESIGN_DECISIONS.md) and [exploration plan](../../../DESIGN_EXPLORATION.md).
 
 ## Constant design intent
 
@@ -77,7 +77,7 @@ The generated images explore that intent but do not establish exact cell geometr
 
 ## Provenance and next questions
 
-Built-in ImageGen on October 2, 2026. Layouts 1–4 were original text-only generations at 1672 × 941; edits 5–9 are 1671 × 941 and referenced only original generated UI images listed in their prompt records. No Synty/Mixamo art or private gameplay capture was supplied. All copies are unchanged and retained outside runtime/public imports. Original content follows the [project license](../../../../LICENSE.md).
+Built-in ImageGen on October 2, 2026. Layouts 1–4 were original text-only generations at 1672 × 941; edits 5–9 are 1671 × 941 and referenced only original generated UI images listed in their prompt records. No Synty/Mixamo art or private gameplay capture was supplied. All copies are unchanged and retained outside runtime/public imports. Original content follows the [project license](../../../../../LICENSE.md).
 
 | File | SHA-256 |
 | --- | --- |

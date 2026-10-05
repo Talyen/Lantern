@@ -2,11 +2,12 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone } from 'three/addons/utils/SkeletonUtils.js';
 import { createRenderer } from '../../rendering/renderer';
+import { resizeDisplay } from '../../rendering/display-resolution';
 import { Graphics } from '../../rendering/graphics';
 import { CoreEffects } from '../../rendering/effects';
 import { cameraDistanceMultipliers } from '../../rendering/graphics-settings';
 import { readSettings } from '../../rendering/graphics-settings';
-import { createCamera } from '../../clearing/camera';
+import { createCamera } from '../../session/camera';
 import { createWorld, buildArea, disposeAreaCache, type AreaInstance } from '../../levels/builder';
 import { resolveAreaLighting } from '../../levels/lighting';
 import { areas } from '../../levels/registry';
@@ -82,9 +83,9 @@ async function actor(source: THREE.Group, clips: THREE.AnimationClip[], location
   scene.add(root); return result;
 }
 async function initialize(): Promise<void> {
-  renderer = await createRenderer(mount); renderer.setPixelRatio(1);
+  renderer = await createRenderer(mount);
   cameraOwner = createCamera(renderer.domElement); cameraOwner.setDistance(readSettings().cameraDistance);
-  renderer.setSize(Math.max(1, mount.clientWidth), Math.max(1, mount.clientHeight)); cameraOwner.resize(mount.clientWidth, mount.clientHeight);
+  resizeDisplay(renderer, Math.max(1, mount.clientWidth), Math.max(1, mount.clientHeight)); cameraOwner.resize(mount.clientWidth, mount.clientHeight);
   const look = resolveAreaLighting(authored), settings = readSettings();
   const lighting = { definition: look, fires: [] as THREE.PointLight[], shadow: null as THREE.PointLight | null };
   graphics = new Graphics({ ...world, camera: cameraOwner.camera, renderer, controls: cameraOwner.controls, mount, invalidate() {}, lighting }, settings, ambientEffects);
@@ -119,7 +120,7 @@ async function initialize(): Promise<void> {
   status.textContent = 'Preparing Golden lighting…';
   await graphics.initialize(); graphics.commitLighting(await graphics.prepareLighting({ ...authored, lighting: look }, area.root));
   effects.resetParticles();
-  resize(); observer = new ResizeObserver(resize); observer.observe(mount);
+  resize(); observer = new ResizeObserver(resize); observer.observe(mount); window.addEventListener('resize', resize);
   replay.disabled = pause.disabled = timeline.disabled = false; status.hidden = true;
   renderPose();
   let last = performance.now(), settling = 64;
@@ -212,7 +213,7 @@ function setView(): void {
   const zoom = 1 / cameraDistanceMultipliers[readSettings().cameraDistance]; cameraOwner.restoreView({ target: target.toArray(), zoom: zoom * (closeView ? 1.2 : 1) });
   graphics?.resetHistory(); invalidate();
 }
-function resize(): void { if (!renderer || !cameraOwner) return; const width = Math.max(1, mount.clientWidth), height = Math.max(1, mount.clientHeight); renderer.setSize(width, height); cameraOwner.resize(width, height); graphics?.resize(); invalidate(); }
+function resize(): void { if (disposed || !renderer || !cameraOwner) return; const width = Math.max(1, mount.clientWidth), height = Math.max(1, mount.clientHeight); resizeDisplay(renderer, width, height); cameraOwner.resize(width, height); graphics?.resize(); invalidate(); }
 function failed(error: unknown): void { console.error(error); status.hidden = false; status.textContent = `Unable to prepare ability: ${String(error)}`; }
 replay.onclick = () => { seconds = 0; playing = true; pause.textContent = 'Pause'; graphics?.resetHistory(); renderPose(); invalidate(); };
 pause.onclick = () => { playing = !playing; pause.textContent = playing ? 'Pause' : 'Play'; invalidate(); };
@@ -224,7 +225,7 @@ window.addEventListener('keydown', event => { if (event.code === 'Space' && !eve
 let cleaned = false;
 async function cleanup(): Promise<void> {
   if (cleaned) return; cleaned = true;
-  observer?.disconnect(); cancelAnimationFrame(frame); audio.dispose();
+  observer?.disconnect(); window.removeEventListener('resize', resize); cancelAnimationFrame(frame); audio.dispose();
   for (const actor of [player, ...targets]) if (actor) { actor.lantern?.dispose(); actor.equipment.dispose(); actor.mixer.stopAllAction(); actor.mixer.uncacheRoot(actor.mixer.getRoot()); disposeSceneInstances(actor.root, { skeletons: true }); actor.root.removeFromParent(); }
   effects?.dispose(); graphics?.dispose(); area?.dispose(); cameraOwner?.controls.dispose(); sources.forEach(disposeSceneResources); await disposeAreaCache();
   await renderer?.dispose();

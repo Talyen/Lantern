@@ -7,6 +7,7 @@ import { MeshStandardNodeMaterial } from 'three/webgpu';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createRenderer, waitForPresentedFrames } from '../../rendering/renderer';
+import { resizeDisplay } from '../../rendering/display-resolution';
 import { AreaLightingResources } from '../../rendering/area-lighting';
 import { resolveLighting } from '../../levels/lighting';
 import { WebGPUPipeline } from '../../rendering/webgpu-pipeline';
@@ -64,8 +65,7 @@ const camera = new THREE.PerspectiveCamera(33, 1, 0.05, 100);
 const stages = await Promise.all([0, 1].map(async index => {
   const mount = el<HTMLDivElement>(`stage-${index}`);
   const renderer = await createRenderer(mount);
-  renderer.setPixelRatio(1);
-  renderer.setSize(mount.clientWidth, mount.clientHeight);
+  resizeDisplay(renderer, Math.max(1, mount.clientWidth), Math.max(1, mount.clientHeight));
   const lighting = new AreaLightingResources(renderer);
   const scene = new THREE.Scene(); scene.background = new THREE.Color(look.background); scene.fog = new THREE.Fog(look.background, look.fogNear, look.fogFar); scene.environment = lighting.environmentTexture(look); scene.environmentIntensity = look.environment!.intensity;
   scene.add(new THREE.HemisphereLight(look.ambient.sky, look.ambient.ground, look.ambient.intensity));
@@ -159,10 +159,12 @@ async function select(index: number, id: string): Promise<void> {
     stage.error = ''; stage.pipeline.resetHistory(); await applyMotion(index, generation); refreshCaption(index);
   } catch (error) { if (stage.generation === generation) { stage.error = `Model unavailable: ${String(error)}`; refreshCaption(index); } }
 }
-function resize(): void { for (const stage of stages) {
-  stage.renderer.setSize(stage.mount.clientWidth, stage.mount.clientHeight); stage.camera.aspect = stage.mount.clientWidth / stage.mount.clientHeight; stage.camera.updateProjectionMatrix(); stage.pipeline.resize();
+function resize(): void { if (disposed) return; for (const stage of stages) {
+  const width = Math.max(1, stage.mount.clientWidth), height = Math.max(1, stage.mount.clientHeight);
+  resizeDisplay(stage.renderer, width, height); stage.camera.aspect = width / height; stage.camera.updateProjectionMatrix(); stage.pipeline.resize();
 } }
 const observer = new ResizeObserver(resize); stages.forEach(stage => observer.observe(stage.mount));
+window.addEventListener('resize', resize); resize();
 search.addEventListener('input', drawList); family.addEventListener('change', drawList); favoritesOnly.addEventListener('change', drawList);
 el<HTMLSelectElement>('character-view').addEventListener('change', event => setView((event.target as HTMLSelectElement).value));
 motion.addEventListener('change', () => { for (const stage of stages) { stage.error = ''; void applyMotion(stage.index, stage.generation).catch(previewFailed); } });
@@ -212,4 +214,4 @@ const bridge = {
   },
 };
 if (import.meta.env.DEV) Object.assign(window, { lanternCharacters: bridge });
-window.addEventListener('pagehide', () => { disposed = true; observer.disconnect(); controls.dispose(); for (const stage of stages) { stage.generation++; stage.release(); stage.pipeline.dispose(); stage.lighting.dispose(); disposeSceneResources(stage.scene); void stage.renderer.dispose().catch((error: unknown) => console.error('Unable to release graphics.', error)); } }, { once: true });
+window.addEventListener('pagehide', () => { disposed = true; observer.disconnect(); window.removeEventListener('resize', resize); controls.dispose(); for (const stage of stages) { stage.generation++; stage.release(); stage.pipeline.dispose(); stage.lighting.dispose(); disposeSceneResources(stage.scene); void stage.renderer.dispose().catch((error: unknown) => console.error('Unable to release graphics.', error)); } }, { once: true });

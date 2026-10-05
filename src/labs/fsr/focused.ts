@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { MeshBasicNodeMaterial, MeshStandardNodeMaterial } from 'three/webgpu';
 import { createRenderer } from '../../rendering/renderer';
+import { resizeDisplay } from '../../rendering/display-resolution';
 import { WebGPUPipeline } from '../../rendering/webgpu-pipeline';
 import { resolveLighting } from '../../levels/lighting';
 import { defaults } from '../../rendering/graphics-settings';
@@ -57,7 +58,7 @@ function smokeBillboard() {
     map.needsUpdate=true;
   }};
 }
-function fixture(subject: Subject) {
+function fixture(subject: Subject, aspect: number) {
   const look = resolveLighting(), scene = new THREE.Scene(); scene.background = new THREE.Color(look.background);
   const ambient = new THREE.HemisphereLight(look.ambient.sky,look.ambient.ground,look.ambient.intensity);
   const sun = new THREE.DirectionalLight(look.sun.color,look.sun.intensity); sun.position.fromArray(look.sun.position); scene.add(ambient,sun);
@@ -67,12 +68,12 @@ function fixture(subject: Subject) {
   let time = 0;
   const target = new THREE.Vector3();
   if (subject === 'texture') {
-    camera = new THREE.PerspectiveCamera(40,16/9,.05,30); camera.position.set(0,1.5,2.6); target.set(0,0,-1); camera.lookAt(target);
+    camera = new THREE.PerspectiveCamera(40,aspect,.05,30); camera.position.set(0,1.5,2.6); target.set(0,0,-1); camera.lookAt(target);
     const map = weave(), material = new MeshStandardNodeMaterial({map,roughness:1}); prepareSurfaceMaterial(material);
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(8,12),material); floor.rotation.x = -Math.PI/2; scene.add(floor);
   } else {
     const span = subject === 'foliage' ? .48 : .9;
-    camera = subject === 'smoke' ? new THREE.PerspectiveCamera(35,16/9,.05,20) : new THREE.OrthographicCamera(-span*16/9/2,span*16/9/2,span/2,-span/2,.05,20);
+    camera = subject === 'smoke' ? new THREE.PerspectiveCamera(35,aspect,.05,20) : new THREE.OrthographicCamera(-span*aspect/2,span*aspect/2,span/2,-span/2,.05,20);
     target.set(0,subject === 'foliage' ? .77 : .12,0); camera.position.copy(target).add(new THREE.Vector3(0,0,subject === 'smoke' ? 1.5 : 3)); camera.lookAt(target);
     const backdrop = new THREE.Mesh(new THREE.PlaneGeometry(5,5),new MeshBasicNodeMaterial({color:subject === 'foliage' ? '#abae97' : '#707b7b'})); backdrop.position.set(0,.5,-.7); scene.add(backdrop);
     if (subject === 'foliage') { const plant = fern(); scene.add(plant); effects.addFoliage(plant); }
@@ -93,38 +94,46 @@ function fixture(subject: Subject) {
 }
 
 const mount = document.getElementById('scene')!;
-const renderer = await createRenderer(mount); renderer.setSize(1920,1080);
+const renderer = await createRenderer(mount);
 mount.style.cssText = 'position:fixed;inset:0;background:#15191e'; renderer.domElement.style.cssText = 'width:100%;height:100%';
 document.body.replaceChildren(mount);
 let running = false, progress = 'Ready';
+function resize(): void { resizeDisplay(renderer, Math.max(1, mount.clientWidth), Math.max(1, mount.clientHeight)); }
+const observer = new ResizeObserver(resize); observer.observe(mount); window.addEventListener('resize', resize); resize();
 async function capture(subject: Subject, candidate: boolean, record = true) {
   if (!subjects.includes(subject) || running) throw new Error('Unknown subject or another capture is running.');
+  resize();
+  const width = renderer.domElement.width, height = renderer.domElement.height, ratio = renderer.getPixelRatio();
+  function unchangedOutput(): void {
+    resize();
+    if (renderer.domElement.width !== width || renderer.domElement.height !== height || renderer.getPixelRatio() !== ratio) throw new Error('Display changed during capture. Keep the viewport and display density fixed and retry.');
+  }
   running = true; progress = 'Preparing';
   const preset = candidate ? subject === 'foliage' ? 'foliage-motion' : subject === 'smoke' ? 'reactive-coverage' : 'mip-minus-one' : 'baseline';
   selectComparisonPreset(preset); resetComparisonRandom();
-  const stage = fixture(subject), pipeline = new WebGPUPipeline(renderer,stage.scene,stage.camera,stage.target);
+  const stage = fixture(subject, width / height), pipeline = new WebGPUPipeline(renderer,stage.scene,stage.camera,stage.target);
   const settings = {...defaults(),upscaleQuality:'quality' as const,sharpness:.5,dof:'off' as const,ao:0,bloom:subject === 'smoke' ? .4 : 0,outlines:false};
   let video: ComparisonVideo | undefined;
   try {
     pipeline.configure(settings,stage.look.saturation ?? .84,stage.look); await pipeline.ready();
-    for (let i=0;i<120;i++) { await nextFrame(); resetComparisonRandom(74103+i); stage.advance(-1,1/60); pipeline.render(); }
+    for (let i=0;i<120;i++) { await nextFrame(); unchangedOutput(); resetComparisonRandom(74103+i); stage.advance(-1,1/60); pipeline.render(); }
     pipeline.resetHistory();
-    for (let i=0;i<64;i++) { await nextFrame(); stage.advance(-1,0); pipeline.render(); }
+    for (let i=0;i<64;i++) { await nextFrame(); unchangedOutput(); stage.advance(-1,0); pipeline.render(); }
     const images: Record<string,string> = {still:image(renderer.domElement)};
     const inputsBefore = await pipeline.comparisonInputs();
     const trace: {frame:number;camera:number[];target:number[];effects:ReturnType<CoreEffects['comparisonState']>}[] = [];
-    if (record) video = new ComparisonVideo(1920,1080);
+    if (record) video = new ComparisonVideo(width,height);
     for (let frame=0;frame<240;frame++) {
-      await nextFrame(); resetComparisonRandom(74223+frame); stage.advance(frame,1/60); pipeline.render(); progress = `Frame ${frame+1}/240`;
+      await nextFrame(); unchangedOutput(); resetComparisonRandom(74223+frame); stage.advance(frame,1/60); pipeline.render(); progress = `Frame ${frame+1}/240`;
       if ([0,60,120,180,239].includes(frame)) { images[`frame-${frame}`]=image(renderer.domElement); trace.push({frame,camera:stage.camera.position.toArray(),target:stage.target.toArray(),effects:stage.effects.comparisonState()}); }
       if (video) await video.frame(renderer.domElement,frame);
     }
     const inputsAfter = await pipeline.comparisonInputs(), clip = video ? await video.finish() : null;
     if (mount.dataset.renderError) throw new Error(mount.dataset.renderError);
     progress = 'Complete';
-    return {subject,candidate,preset:comparisonPreset,settings,pipeline:pipeline.diagnostics(),fixture:'Controlled close-up with original diagnostic geometry; smoke is a texture-animated diagnostic billboard with shipping color and dense .65 opacity in both versions; texture uses a synthetic weave',seed:74103,timestep:1/60,warmupFrames:120,settlingFrames:64,frames:240,seconds:4,trace,images,inputsBefore,inputsAfter,video:clip};
+    return {subject,candidate,output:{width,height,pixelRatio:ratio},preset:comparisonPreset,settings,pipeline:pipeline.diagnostics(),fixture:'Controlled close-up with original diagnostic geometry; smoke is a texture-animated diagnostic billboard with shipping color and dense .65 opacity in both versions; texture uses a synthetic weave',seed:74103,timestep:1/60,warmupFrames:120,settlingFrames:64,frames:240,seconds:4,trace,images,inputsBefore,inputsAfter,video:clip};
   } finally {video?.close();pipeline.dispose();stage.dispose();running=false;}
 }
 Object.assign(window,{lanternFsrFocused:{capture,status:()=>({running,progress,preset:comparisonPreset})}});
-window.addEventListener('pagehide',()=>{void renderer.dispose().catch((error:unknown)=>console.error(error));},{once:true});
+window.addEventListener('pagehide',()=>{observer.disconnect();window.removeEventListener('resize',resize);void renderer.dispose().catch((error:unknown)=>console.error(error));},{once:true});
 if (!fsrComparison) throw new Error('Focused examples require development comparison settings.');

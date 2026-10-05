@@ -10,7 +10,7 @@ await cli(async () => {
   const args = parseArgs(process.argv.slice(2));
   if (args['--help']) { console.log('Usage: npm run docs:check'); return; }
   await readRoutes();
-  const files = (await repositoryFiles()).filter(file => /^(?:[^/]+|(?:Docs|\.agents)\/.*)\.md$/.test(file)).map(file => resolve(root, file)).filter(existsSync);
+  const files = (await repositoryFiles()).filter(file => /^(?:[^/]+|(?:Docs|assets|\.agents)\/.*)\.md$/.test(file)).map(file => resolve(root, file)).filter(existsSync);
   const scripts = JSON.parse(await readFile(resolve(root, 'package.json'), 'utf8')).scripts;
   const errors = [];
   const headings = new Map();

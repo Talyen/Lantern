@@ -2,7 +2,7 @@ import { type OrthographicCamera, type Vector3 } from 'three';
 import type { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { Graphics } from '../../rendering/graphics';
 import { defaults } from '../../rendering/graphics-settings';
-import type { FrameLoop } from '../../clearing/frame-loop';
+import type { FrameLoop } from '../../session/frame-loop';
 import type { Encounter } from '../../gameplay/encounter';
 import { fsrComparison, comparisonPreset, comparisonPresets, selectComparisonPreset, resetComparisonRandom } from './settings';
 import { ComparisonVideo } from './video';

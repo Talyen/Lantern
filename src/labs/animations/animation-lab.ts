@@ -7,8 +7,9 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone } from 'three/addons/utils/SkeletonUtils.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createRenderer } from '../../rendering/renderer';
+import { resizeDisplay } from '../../rendering/display-resolution';
 import { WebGPUPipeline } from '../../rendering/webgpu-pipeline';
-import { FrameLoop } from '../../clearing/frame-loop';
+import { FrameLoop } from '../../session/frame-loop';
 import { resolveLighting } from '../../levels/lighting';
 import { AreaLightingResources } from '../../rendering/area-lighting';
 import { readSettings } from '../../rendering/graphics-settings';
@@ -133,8 +134,7 @@ const previews = lanes.map((lane, i) => {
   const laneCamera = camera.clone();
   const renderer = renderers[i];
   renderer.domElement.setAttribute('aria-label', `Animation comparison ${i === 0 ? 'A' : 'B'}`);
-  renderer.setPixelRatio(1);
-  renderer.setSize(canvas.clientWidth / 2, canvas.clientHeight);
+  resizeDisplay(renderer, Math.max(1, mounts[i].clientWidth || canvas.clientWidth / 2), Math.max(1, canvas.clientHeight));
   const lighting = new AreaLightingResources(renderer);
   laneScene.environment = lighting.environmentTexture(look); laneScene.environmentIntensity = look.environment!.intensity;
   const pipeline = new WebGPUPipeline(renderer, laneScene, laneCamera, controls.target);
@@ -149,11 +149,12 @@ const frameLoop = new FrameLoop({
   fpsLimit: () => 0, maxDeltaSeconds: .1,
   onPause() {}, render: renderFrame,
 });
+const observer = new ResizeObserver(resize);
 const resetHistories = () => { previews.forEach((preview) => preview.pipeline.resetHistory()); frameLoop.invalidate(); };
 controls.addEventListener('change', () => frameLoop.invalidate());
 document.addEventListener('visibilitychange', () => frameLoop.visibilityChanged());
 window.addEventListener('lanternvisibilitychange', () => frameLoop.visibilityChanged());
-window.addEventListener('pagehide', () => { disposed = true; frameLoop.dispose(); controls.dispose(); lanes.forEach(clearLane); void Promise.allSettled(characterCache.values()).then(results => results.forEach(result => { if (result.status === 'fulfilled') disposeSceneResources(result.value); })).catch((error: unknown) => console.error('Unable to release character models.', error)); void asterfallLibrary.dispose().catch((error: unknown) => console.error('Unable to release Asterfall assets.', error)); void assetLibrary.dispose().catch((error: unknown) => console.error('Unable to release lab assets.', error)); previews.forEach(({ pipeline, renderer, lighting }) => { pipeline.dispose(); lighting.dispose(); void renderer.dispose().catch((error: unknown) => console.error('Unable to release graphics.', error)); }); }, { once: true });
+window.addEventListener('pagehide', () => { disposed = true; observer.disconnect(); window.removeEventListener('resize', resize); frameLoop.dispose(); controls.dispose(); lanes.forEach(clearLane); void Promise.allSettled(characterCache.values()).then(results => results.forEach(result => { if (result.status === 'fulfilled') disposeSceneResources(result.value); })).catch((error: unknown) => console.error('Unable to release character models.', error)); void asterfallLibrary.dispose().catch((error: unknown) => console.error('Unable to release Asterfall assets.', error)); void assetLibrary.dispose().catch((error: unknown) => console.error('Unable to release lab assets.', error)); previews.forEach(({ pipeline, renderer, lighting }) => { pipeline.dispose(); lighting.dispose(); void renderer.dispose().catch((error: unknown) => console.error('Unable to release graphics.', error)); }); }, { once: true });
 const loader = new GLTFLoader();
 const characterCache = new Map<string, Promise<THREE.Group>>();
 function updatePlaybackControls(): void { updateStatus(); const disabled = !lanes.some((lane) => lane.action); pause.disabled = restart.disabled = step.disabled = scrub.disabled = disabled; }
@@ -360,11 +361,12 @@ el<HTMLSelectElement>('lab-view').addEventListener('change', (e) => {
   controls.target.set(0, 0.9, 0); controls.update(); resetHistories();
 });
 function resize(): void {
+  if (disposed) return;
   const h = Math.max(1, canvas.clientHeight), width = canvas.clientWidth / (display === 'compare' ? 2 : 1);
   camera.aspect = Math.max(1, width) / h; camera.updateProjectionMatrix();
   previews.forEach((preview, index) => {
     if (!visibleLane(index)) return;
-    preview.camera.copy(camera); preview.renderer.setSize(Math.max(1, mounts[index].clientWidth), h); preview.pipeline.resize();
+    preview.camera.copy(camera); resizeDisplay(preview.renderer, Math.max(1, mounts[index].clientWidth), h); preview.pipeline.resize();
   });
   frameLoop.invalidate();
 }
@@ -424,7 +426,8 @@ window.addEventListener('keydown', event => {
   if (event.code !== 'Space' || event.repeat || event.target instanceof HTMLElement && event.target.closest('input,select,button,textarea')) return;
   event.preventDefault(); pause.click();
 });
-new ResizeObserver(resize).observe(canvas); resize();
+observer.observe(canvas);
+window.addEventListener('resize', resize); resize();
 function renderFrame(delta: number): boolean {
   const dt = delta * Number(speed.value);
   if (playing && lanes.some((l) => l.action)) {

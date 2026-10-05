@@ -6,11 +6,12 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import type { ReviewAsset } from '../../assets/asset-review';
 import { disposeSceneResources } from '../../assets/resource-ownership';
 import { createRenderer, waitForPresentedFrames } from '../../rendering/renderer';
+import { resizeDisplay } from '../../rendering/display-resolution';
 import { WebGPUPipeline } from '../../rendering/webgpu-pipeline';
 import { AreaLightingResources } from '../../rendering/area-lighting';
 import type { GraphicsSettings } from '../../rendering/graphics-settings';
 import { reviewGraphics } from './review-graphics';
-import { createCamera } from '../../clearing/camera';
+import { createCamera } from '../../session/camera';
 import { PreparedAssets, type PreparedReviewAsset } from './prepared-assets';
 import { applyShadowQuality } from '../../rendering/quality-presets';
 import { updateAssetLods } from '../../rendering/asset-lods';
@@ -45,6 +46,7 @@ export class ReviewStage {
   private renderError: unknown;
   private disposed = false;
   private observer: ResizeObserver;
+  private readonly onResize = () => this.resize();
   private lastTime = 0;
   private paused = false;
   private motionGeneration = 0;
@@ -69,11 +71,11 @@ export class ReviewStage {
     this.orbitCamera.position.set(4, 3, 5); this.controls.target.set(0, 1, 0);
     this.pipeline = new WebGPUPipeline(renderer, this.scene, this.camera, this.game.controls.target);
     applyShadowQuality(this.scene, settings.shadowQuality); this.pipeline.configure(settings, look.saturation ?? 1, look); this.pipelines.set('game', this.pipeline);
-    this.observer = new ResizeObserver(() => this.resize()); this.observer.observe(mount); this.resize();
+    this.observer = new ResizeObserver(() => this.resize()); this.observer.observe(mount); window.addEventListener('resize', this.onResize); this.resize();
   }
   static async create(mount: HTMLElement, onError: (error: unknown) => void): Promise<ReviewStage> {
     const settings = await reviewGraphics();
-    const renderer = await createRenderer(mount); renderer.setPixelRatio(1);
+    const renderer = await createRenderer(mount);
     const stage = new ReviewStage(mount, renderer, onError, settings);
     try { await stage.pipeline.ready(); stage.tick(0); return stage; }
     catch (error) { stage.dispose(); throw error; }
@@ -81,7 +83,7 @@ export class ReviewStage {
   private resize(): void {
     if (this.disposed) return;
     const width = Math.max(1, this.mount.clientWidth), height = Math.max(1, this.mount.clientHeight);
-    this.renderer.setSize(width, height); this.orbitCamera.aspect = width / height; this.orbitCamera.updateProjectionMatrix(); this.game.resize(width, height); for (const pipeline of this.pipelines.values()) pipeline.resize();
+    resizeDisplay(this.renderer, width, height); this.orbitCamera.aspect = width / height; this.orbitCamera.updateProjectionMatrix(); this.game.resize(width, height); for (const pipeline of this.pipelines.values()) pipeline.resize();
   }
   private clear(): void {
     this.mixer?.stopAllAction(); if (this.mixer) this.mixer.uncacheRoot(this.mixer.getRoot()); this.mixer = undefined;
@@ -183,7 +185,7 @@ export class ReviewStage {
   }
   dispose(): void {
     if (this.disposed) return;
-    this.disposed = true; this.generation++; cancelAnimationFrame(this.frame); this.observer.disconnect(); this.controls.dispose(); this.clear();
+    this.disposed = true; this.generation++; cancelAnimationFrame(this.frame); this.observer.disconnect(); window.removeEventListener('resize', this.onResize); this.controls.dispose(); this.clear();
     disposeSceneResources(this.reference); disposeSceneResources(this.floor); for (const pipeline of this.pipelines.values()) pipeline.dispose(); this.lighting.dispose(); this.sun.shadow.dispose();
     this.pool.dispose(); this.game.controls.dispose();
     this.renderer.dispose().catch(this.onError);

@@ -19,8 +19,8 @@ const field: AreaDefinition = { ...authoredField, layout: { ...authoredField.lay
 
 test('failed equipment preparation retains saved gear and releases the gate for a successful retry', async () => {
   const THREE = await import('three');
-  const { makeActor } = await import('../src/clearing/actors');
-  const { InventoryController } = await import('../src/clearing/inventory');
+  const { makeActor } = await import('../src/session/actors');
+  const { InventoryController } = await import('../src/session/inventory');
   const storage = memory(), adventure = new Adventure(storage), encounter = createEncounter('won');
   await adventure.prepareSave();
   const player = makeActor(new THREE.Scene(), encounter.player);
