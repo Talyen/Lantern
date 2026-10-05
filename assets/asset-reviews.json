@@ -180,6 +180,897 @@
       "fingerprint": "7812c9f6b6d8c5b1abd141e2067c132d8e59731a58035fb0a126172aaadd3319",
       "notes": "Owner requested a rough equivalent replacement for deleted scenery. Displayed and visually inspected using the shared native WebGPU/FSR asset lab; placement and interactions remain area-owned.",
       "updatedAt": "2026-10-04T23:16:33.193Z"
+    },
+    "goblin-war-camp:model:buildings-sm-bld-tent-small-04@area:clearing": {
+      "familyId": "goblin-war-camp:model:buildings-sm-bld-tent-small-04",
+      "url": "/vendor/synty/environment/clearing/buildings-sm-bld-tent-small-04.glb",
+      "name": "Bld Tent Small 04",
+      "state": "approved",
+      "fingerprint": "61efcd598e9f1b0e297956932123ea7dd5e28dc20f12559e6ac699c5a7559613",
+      "notes": "",
+      "updatedAt": "2026-10-04T20:21:49.058Z"
+    },
+    "goblin-war-camp:model:buildings-sm-bld-tent-small-04@gameplay": {
+      "familyId": "goblin-war-camp:model:buildings-sm-bld-tent-small-04",
+      "url": "/vendor/synty/environment/buildings-sm-bld-tent-small-04.glb",
+      "name": "Bld Tent Small 04",
+      "state": "approved",
+      "fingerprint": "b089df5f5a2766af2d6bc2750404aefc66b00257bc5308d48ebc80e5fa86cb50",
+      "notes": "",
+      "updatedAt": "2026-10-04T20:21:54.370Z"
+    },
+    "goblin-war-camp:model:buildings-sm-bld-tent-small-04@original": {
+      "familyId": "goblin-war-camp:model:buildings-sm-bld-tent-small-04",
+      "url": "/vendor/synty/library/models/goblin-war-camp/691724aeb2472e6ce078.glb",
+      "name": "Bld Tent Small 04",
+      "state": "approved",
+      "fingerprint": "0d258eeb35ac0723aaa9cdba8cc04935ab33f20030ea45532899c06b4c10b8a7",
+      "notes": "",
+      "updatedAt": "2026-10-04T20:22:09.973Z"
+    },
+    "goblin-war-camp:model:weapons-sm-wep-bow-01@original": {
+      "familyId": "goblin-war-camp:model:weapons-sm-wep-bow-01",
+      "url": "/vendor/synty/library/models/goblin-war-camp/378c4420c326919ffb58.glb",
+      "name": "Bow 01",
+      "state": "approved",
+      "fingerprint": "651b5783ddd3377ee04e6c189fdfc5c9bd8c7cfbf7a1bb89152aa9caf859fd29",
+      "notes": "",
+      "updatedAt": "2026-10-04T20:22:18.885Z"
+    },
+    "goblin-war-camp:model:weapons-sm-wep-bow-02@original": {
+      "familyId": "goblin-war-camp:model:weapons-sm-wep-bow-02",
+      "url": "/vendor/synty/library/models/goblin-war-camp/031ae8ca91882848fc15.glb",
+      "name": "Bow 02",
+      "state": "approved",
+      "fingerprint": "0905ed2096fba510c077bcbb697d1622adb77bd6a49e33051356ec2179deacf8",
+      "notes": "",
+      "updatedAt": "2026-10-04T20:22:25.011Z"
+    },
+    "generic:model:sm-gen-env-bush-01@area:clearing": {
+      "familyId": "generic:model:sm-gen-env-bush-01",
+      "url": "/vendor/synty/environment/clearing/sm-gen-env-bush-01.glb",
+      "name": "Bush 01",
+      "state": "denied",
+      "fingerprint": "3219560d4f04e29d9bfd4403adf337cfd09ac63b6837b58692b2a3b369dcaedb",
+      "notes": "",
+      "updatedAt": "2026-10-04T20:34:59.039Z"
+    },
+    "generic:model:sm-gen-env-bush-01@gameplay": {
+      "familyId": "generic:model:sm-gen-env-bush-01",
+      "url": "/vendor/synty/environment/sm-gen-env-bush-01.glb",
+      "name": "Bush 01",
+      "state": "delete-requested",
+      "fingerprint": "5a4fc1aa8e3e9592085a2bc1c1445834b73810eff63fef8ea780fe2618be4f7b",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:46:45.495Z"
+    },
+    "generic:model:sm-gen-env-bush-01@original": {
+      "familyId": "generic:model:sm-gen-env-bush-01",
+      "url": "/vendor/synty/library/models/generic/49e96016fb2ef6805e13.glb",
+      "name": "Bush 01",
+      "state": "delete-requested",
+      "fingerprint": "f03e53494b7b5793ec894a4bf91248b8ff3932e5b7e56a8795cba9ae424adbd0",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:46:54.285Z"
+    },
+    "alpine-mountain:model:props-sm-prop-campfire-01@area:clearing": {
+      "familyId": "alpine-mountain:model:props-sm-prop-campfire-01",
+      "url": "/vendor/synty/environment/clearing/props-sm-prop-campfire-01.glb",
+      "name": "Campfire 01",
+      "state": "approved",
+      "fingerprint": "c6c0d40ff829aef8f62e266ca7c93118db28631dec541cd88477ce388798ee52",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:47:01.451Z"
+    },
+    "alpine-mountain:model:props-sm-prop-campfire-01@gameplay": {
+      "familyId": "alpine-mountain:model:props-sm-prop-campfire-01",
+      "url": "/vendor/synty/environment/props-sm-prop-campfire-01.glb",
+      "name": "Campfire 01",
+      "state": "approved",
+      "fingerprint": "aa6a44dde9794327ad90d8968cd96ce767450a0b04a48bcfb605fc1020aca406",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:48:08.202Z"
+    },
+    "alpine-mountain:model:props-sm-prop-campfire-01@original": {
+      "familyId": "alpine-mountain:model:props-sm-prop-campfire-01",
+      "url": "/vendor/synty/library/models/alpine-mountain/222ea5b64819f271293c.glb",
+      "name": "Campfire 01",
+      "state": "approved",
+      "fingerprint": "030855fbd695dd8469560a080ac33d0fe3e1e66f63990d75c9f84fb5aab015cb",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:48:15.285Z"
+    },
+    "generic:model:sm-gen-prop-chest-01@original": {
+      "familyId": "generic:model:sm-gen-prop-chest-01",
+      "url": "/vendor/synty/library/models/generic/208830e280d9ce7666f6.glb",
+      "name": "Chest 01",
+      "state": "approved",
+      "fingerprint": "475c0ebfd43ad08e88c01d50154ddcc556d744d13382b1f3d8faf3d8fda07a41",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:48:36.576Z"
+    },
+    "/vendor/synty/chest.glb@area:clearing": {
+      "familyId": "/vendor/synty/chest.glb",
+      "url": "/vendor/synty/environment/clearing/chest.glb",
+      "name": "chest.glb",
+      "state": "delete-requested",
+      "fingerprint": "fde0903631d0e77b41d64e511b0c8255bfa179f3f45852e6539159a1e09215bd",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:48:45.058Z"
+    },
+    "/vendor/synty/chest.glb@gameplay": {
+      "familyId": "/vendor/synty/chest.glb",
+      "url": "/vendor/synty/environment/chest.glb",
+      "name": "chest.glb",
+      "state": "delete-requested",
+      "fingerprint": "f8ed7d765f023802e938c966c787279de05eea26d91102a9b52d533b4a79d5e1",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:48:51.560Z"
+    },
+    "goblin-war-camp:model:props-sm-prop-crate-01@area:clearing": {
+      "familyId": "goblin-war-camp:model:props-sm-prop-crate-01",
+      "url": "/vendor/synty/environment/clearing/props-sm-prop-crate-01.glb",
+      "name": "Crate 01",
+      "state": "delete-requested",
+      "fingerprint": "535059e909556407cba6011efe2e367fa9b13dce6f6f5e79fd7b54a3874ec191",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:49:05.410Z"
+    },
+    "goblin-war-camp:model:props-sm-prop-crate-01@gameplay": {
+      "familyId": "goblin-war-camp:model:props-sm-prop-crate-01",
+      "url": "/vendor/synty/environment/props-sm-prop-crate-01.glb",
+      "name": "Crate 01",
+      "state": "delete-requested",
+      "fingerprint": "2dd5e59280a786e6a03784342acce5d563db66e5a48cd74ba0c0c1f3bf00a5e1",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:49:13.679Z"
+    },
+    "generic:model:sm-gen-prop-crate-01@original": {
+      "familyId": "generic:model:sm-gen-prop-crate-01",
+      "url": "/vendor/synty/library/models/generic/7d0ccb315078e165975f.glb",
+      "name": "Crate 01",
+      "state": "delete-requested",
+      "fingerprint": "6fc58a5e19ac726026275a947bd5da4b32c798ea75aeeac65c181720f42d0ec3",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:49:25.903Z"
+    },
+    "goblin-war-camp:model:props-sm-prop-crate-01@original": {
+      "familyId": "goblin-war-camp:model:props-sm-prop-crate-01",
+      "url": "/vendor/synty/library/models/goblin-war-camp/6a1380168d00e29f4166.glb",
+      "name": "Crate 01",
+      "state": "delete-requested",
+      "fingerprint": "d90cf6389522dab9517588f40a33e9b5df2803fdcda6b8eec5af0eb656a6dc27",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:49:37.551Z"
+    },
+    "character:mixamo-d0496a75-08b9-4f4e-9f1d-f65820323cc2@gameplay": {
+      "familyId": "character:mixamo-d0496a75-08b9-4f4e-9f1d-f65820323cc2",
+      "url": "/vendor/characters/erika/authored-playable.glb",
+      "name": "Erika Archer",
+      "state": "approved",
+      "fingerprint": "eb4be25d158480e78d9c4005a2d72fafab03ca5d2abd2194f36e71c7a17a6c54",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:49:55.057Z"
+    },
+    "generic:model:sm-gen-env-fern-01@area:clearing": {
+      "familyId": "generic:model:sm-gen-env-fern-01",
+      "url": "/vendor/synty/environment/clearing/sm-gen-env-fern-01.glb",
+      "name": "Fern 01",
+      "state": "delete-requested",
+      "fingerprint": "6a2414f2e7d9417efee9a46b1ad3c3db0380c4d2d9c9341858de96c92a0e9029",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:50:17.492Z"
+    },
+    "generic:model:sm-gen-env-fern-01@gameplay": {
+      "familyId": "generic:model:sm-gen-env-fern-01",
+      "url": "/vendor/synty/environment/sm-gen-env-fern-01.glb",
+      "name": "Fern 01",
+      "state": "delete-requested",
+      "fingerprint": "1b27898d242b801504c7a190fe05eca785ca7458d1d47f6756480be06980e587",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:50:29.450Z"
+    },
+    "generic:model:sm-gen-env-fern-01@original": {
+      "familyId": "generic:model:sm-gen-env-fern-01",
+      "url": "/vendor/synty/library/models/generic/25b318bc53291cd8710d.glb",
+      "name": "Fern 01",
+      "state": "delete-requested",
+      "fingerprint": "9ee6dfa319908ced5ec35631a19b06a68cdbb35d54a2d006d718ca26211a296d",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:50:38.331Z"
+    },
+    "character:mixamo-130a335c-bbdb-492f-971f-8faab0616b6e@gameplay": {
+      "familyId": "character:mixamo-130a335c-bbdb-492f-971f-8faab0616b6e",
+      "url": "/vendor/characters/goblin/authored-playable.glb",
+      "name": "Goblin D Shareyko",
+      "state": "approved",
+      "fingerprint": "45e49aaa00e4a9bd4c4ed026c6f6b83e6e89552c60ee8aa62a7a59db6927df73",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:50:47.616Z"
+    },
+    "viking-realm:model:sm-prop-lantern-01@gameplay": {
+      "familyId": "viking-realm:model:sm-prop-lantern-01",
+      "url": "/vendor/synty/environment/sm-prop-lantern-01.glb",
+      "name": "Lantern 01",
+      "state": "delete-requested",
+      "fingerprint": "69410da59fc5ebc762e0e180479f27391afcfc01e80ea1b5fdfaf2b75e8385fb",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:50:56.877Z"
+    },
+    "viking-realm:model:sm-prop-lantern-01@original": {
+      "familyId": "viking-realm:model:sm-prop-lantern-01",
+      "url": "/vendor/synty/library/models/viking-realm/fc952e8e9cf6b122c2f5.glb",
+      "name": "Lantern 01",
+      "state": "delete-requested",
+      "fingerprint": "02f5c05acbed102546a6dccabd21efda6dc5ad2e9a9f5abcaa9900950a586142",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:51:05.696Z"
+    },
+    "generic:model:sm-gen-env-log-02@area:clearing": {
+      "familyId": "generic:model:sm-gen-env-log-02",
+      "url": "/vendor/synty/environment/clearing/sm-gen-env-log-02.glb",
+      "name": "Log 02",
+      "state": "approved",
+      "fingerprint": "5ac1c8f6d006de0ada6febdca2da0d65670cd83045dbc75d16c5b27c3d270dbe",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:51:15.590Z"
+    },
+    "generic:model:sm-gen-env-log-02@gameplay": {
+      "familyId": "generic:model:sm-gen-env-log-02",
+      "url": "/vendor/synty/environment/sm-gen-env-log-02.glb",
+      "name": "Log 02",
+      "state": "approved",
+      "fingerprint": "bc7a41de8f22ffe888d89d564896fc1c9d02212a291ad195912ec68c01dd9654",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:51:24.416Z"
+    },
+    "generic:model:sm-gen-env-log-02@original": {
+      "familyId": "generic:model:sm-gen-env-log-02",
+      "url": "/vendor/synty/library/models/generic/52daf91de76de0f5b5e6.glb",
+      "name": "Log 02",
+      "state": "approved",
+      "fingerprint": "13cb1800ea5df66f2265cea68c139a8494867b6fa3f7ab98f787248174d2e28f",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:51:33.111Z"
+    },
+    "generic:model:sm-gen-wep-pickaxe-01@original": {
+      "familyId": "generic:model:sm-gen-wep-pickaxe-01",
+      "url": "/vendor/synty/library/models/generic/07cd1fe26477a8a7772d.glb",
+      "name": "Pickaxe 01",
+      "state": "approved",
+      "fingerprint": "f66215540ed4fd324221f930222fab498381b22e521d861a06fe916c75a538f4",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:51:41.522Z"
+    },
+    "/vendor/synty/art-lab/rock-painterly.glb@gameplay": {
+      "familyId": "/vendor/synty/art-lab/rock-painterly.glb",
+      "url": "/vendor/synty/environment/cliff-rock.glb",
+      "name": "rock painterly.glb",
+      "state": "delete-requested",
+      "fingerprint": "b2a3373182853efe139cb794a34a46ec99fc13e44bc791cabd6b66b98a1fe1a7",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:51:49.835Z"
+    },
+    "/vendor/synty/art-lab/rock-painterly.glb@area:clearing": {
+      "familyId": "/vendor/synty/art-lab/rock-painterly.glb",
+      "url": "/vendor/synty/environment/clearing/cliff-rock.glb",
+      "name": "rock painterly.glb",
+      "state": "delete-requested",
+      "fingerprint": "acc8717699db0b0dc3057676d02f5904da549749246654b492ae8339105dee1e",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:51:58.818Z"
+    },
+    "/vendor/synty/art-lab/rock-painterly.glb@/vendor/synty/art-lab/rock-painterly.glb": {
+      "familyId": "/vendor/synty/art-lab/rock-painterly.glb",
+      "url": "/vendor/synty/art-lab/rock-painterly.glb",
+      "name": "rock painterly.glb",
+      "state": "delete-requested",
+      "fingerprint": "876ac17386851d9a0b321504263be32a93a71ac9fee6bf1df7e9dbf2c54ca728",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:52:07.559Z"
+    },
+    "goblin-war-camp:model:weapons-sm-wep-sword-01@original": {
+      "familyId": "goblin-war-camp:model:weapons-sm-wep-sword-01",
+      "url": "/vendor/synty/library/models/goblin-war-camp/06afbd806356838140bb.glb",
+      "name": "Sword 01",
+      "state": "approved",
+      "fingerprint": "2b56c6fba819c20fd494f77863241b408203ece014fd657efa88d8bf844ecd25",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:52:17.766Z"
+    },
+    "goblin-war-camp:model:weapons-sm-wep-shield-02@original": {
+      "familyId": "goblin-war-camp:model:weapons-sm-wep-shield-02",
+      "url": "/vendor/synty/library/models/goblin-war-camp/7c9b9d6cf18bec189ad9.glb",
+      "name": "Shield 02",
+      "state": "approved",
+      "fingerprint": "04df691ef825231a43b5e6b32ae485457a32ad22dd9cb800b189fe0af6a53ca3",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:52:48.061Z"
+    },
+    "goblin-war-camp:model:weapons-sm-wep-staff-01@original": {
+      "familyId": "goblin-war-camp:model:weapons-sm-wep-staff-01",
+      "url": "/vendor/synty/library/models/goblin-war-camp/f48f1e32e5aeb9156ba0.glb",
+      "name": "Staff 01",
+      "state": "approved",
+      "fingerprint": "3f68bb5e0335cb8cc781c9daed7a5b2bb5d9495d4d16a083fde1eb28a9daa471",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:53:09.199Z"
+    },
+    "goblin-war-camp:model:weapons-sm-wep-sword-02@original": {
+      "familyId": "goblin-war-camp:model:weapons-sm-wep-sword-02",
+      "url": "/vendor/synty/library/models/goblin-war-camp/bc92f2af4b7a6a2ae6c1.glb",
+      "name": "Sword 02",
+      "state": "approved",
+      "fingerprint": "32672d3acb1c22e02e1e98e4d4fddb614c09afbb89036022dcff526bd59546c8",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:53:33.131Z"
+    },
+    "generic:model:sm-gen-env-tree-pine-01@area:clearing": {
+      "familyId": "generic:model:sm-gen-env-tree-pine-01",
+      "url": "/vendor/synty/environment/clearing/sm-gen-env-tree-pine-01.glb",
+      "name": "Tree Pine 01",
+      "state": "delete-requested",
+      "fingerprint": "859e4b573736ba642f84b0a691fecbe54b6d5557d600d1506678f6af8c65a9d1",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:53:42.596Z"
+    },
+    "generic:model:sm-gen-env-tree-pine-01@gameplay": {
+      "familyId": "generic:model:sm-gen-env-tree-pine-01",
+      "url": "/vendor/synty/environment/sm-gen-env-tree-pine-01.glb",
+      "name": "Tree Pine 01",
+      "state": "delete-requested",
+      "fingerprint": "f615177661b7da8e07c461081d738fc7593afb2e8500b2064e61fb0cb2f203df",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:54:02.774Z"
+    },
+    "generic:model:sm-gen-env-tree-pine-01@original": {
+      "familyId": "generic:model:sm-gen-env-tree-pine-01",
+      "url": "/vendor/synty/library/models/generic/5c44419b487324850134.glb",
+      "name": "Tree Pine 01",
+      "state": "delete-requested",
+      "fingerprint": "38d6f213f9c509319bb6919d09e6332d6c69f9a664635472bb9b8fc127849d3f",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:54:27.882Z"
+    },
+    "generic:model:sm-gen-env-tree-pine-02@area:clearing": {
+      "familyId": "generic:model:sm-gen-env-tree-pine-02",
+      "url": "/vendor/synty/environment/clearing/sm-gen-env-tree-pine-02.glb",
+      "name": "Tree Pine 02",
+      "state": "delete-requested",
+      "fingerprint": "df86175d50b988fcb494c506110b2372483fa3bc9735a3b0629c0b993ecade81",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:54:54.462Z"
+    },
+    "generic:model:sm-gen-env-tree-pine-02@gameplay": {
+      "familyId": "generic:model:sm-gen-env-tree-pine-02",
+      "url": "/vendor/synty/environment/sm-gen-env-tree-pine-02.glb",
+      "name": "Tree Pine 02",
+      "state": "delete-requested",
+      "fingerprint": "db4ac862100631d9e8cd89b58a13c62e4b72cfc46ddadd143f8b40bee86e30e9",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:55:05.741Z"
+    },
+    "generic:model:sm-gen-env-tree-pine-02@original": {
+      "familyId": "generic:model:sm-gen-env-tree-pine-02",
+      "url": "/vendor/synty/library/models/generic/3f85c3b70142c873fe15.glb",
+      "name": "Tree Pine 02",
+      "state": "delete-requested",
+      "fingerprint": "8466561315869517af7a16f07ed28a7b5512536fa1166a7bb0fb22d15a7865e6",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:55:17.413Z"
+    },
+    "generic:model:sm-gen-env-tree-pine-03@area:clearing": {
+      "familyId": "generic:model:sm-gen-env-tree-pine-03",
+      "url": "/vendor/synty/environment/clearing/sm-gen-env-tree-pine-03.glb",
+      "name": "Tree Pine 03",
+      "state": "delete-requested",
+      "fingerprint": "1e8948757e58efc8fdf0118b7b0ecd45db23bee48de2390a6ee46cb11ed948ff",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:55:28.963Z"
+    },
+    "generic:model:sm-gen-env-tree-pine-03@gameplay": {
+      "familyId": "generic:model:sm-gen-env-tree-pine-03",
+      "url": "/vendor/synty/environment/sm-gen-env-tree-pine-03.glb",
+      "name": "Tree Pine 03",
+      "state": "delete-requested",
+      "fingerprint": "fe2936ae73ed015831094d4a2e6c5ca43747247686a0b7e7bfe33d6069d46b7d",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:55:40.610Z"
+    },
+    "generic:model:sm-gen-env-tree-pine-03@original": {
+      "familyId": "generic:model:sm-gen-env-tree-pine-03",
+      "url": "/vendor/synty/library/models/generic/7791ebcc58644c0e03b8.glb",
+      "name": "Tree Pine 03",
+      "state": "delete-requested",
+      "fingerprint": "cd5f39b3360aa056ac0a2b5975b3bd559e28e8a679ffa498ecee784e4620ba5c",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:55:51.476Z"
+    },
+    "character:mixamo-5fb4b535-034a-4011-af3b-2880391547a5@merchant": {
+      "familyId": "character:mixamo-5fb4b535-034a-4011-af3b-2880391547a5",
+      "url": "/vendor/characters/merchant/model.glb",
+      "name": "Peasant Man",
+      "state": "approved",
+      "fingerprint": "bc826930cc7ab69dc0ff59a44eb8f06c22f9618ffb71a954e83ae290b61aee2a",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:56:00.048Z"
+    },
+    "generic:model:sm-gen-prop-potion-01@original": {
+      "familyId": "generic:model:sm-gen-prop-potion-01",
+      "url": "/vendor/synty/library/models/generic/248e4f8fb3b2cda4ea33.glb",
+      "name": "Potion 01",
+      "state": "delete-requested",
+      "fingerprint": "b468827330d6a8963af1246581bbcc397b0cdbbb593470c1cdeee95e7f98d4fe",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:56:08.635Z"
+    },
+    "generic:model:sm-gen-env-rock-04@gameplay": {
+      "familyId": "generic:model:sm-gen-env-rock-04",
+      "url": "/vendor/synty/environment/sm-gen-env-rock-04.glb",
+      "name": "Rock 04",
+      "state": "delete-requested",
+      "fingerprint": "3fd1ae375192dce843b647208ff082755350c1bf1eb8b78c36cacd699a7ea49b",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:56:17.392Z"
+    },
+    "generic:model:sm-gen-env-rock-04@original": {
+      "familyId": "generic:model:sm-gen-env-rock-04",
+      "url": "/vendor/synty/library/models/generic/742ffdf826fd0950ab06.glb",
+      "name": "Rock 04",
+      "state": "delete-requested",
+      "fingerprint": "719b3ca65115f6ef9f6d689900945963c85655a4074a193e8ed91b1a1c1e8e45",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:56:27.552Z"
+    },
+    "generic:model:sm-gen-prop-table-01@original": {
+      "familyId": "generic:model:sm-gen-prop-table-01",
+      "url": "/vendor/synty/library/models/generic/28ef6c08f5bacc238511.glb",
+      "name": "Table 01",
+      "state": "approved",
+      "fingerprint": "33b3804cd229ece08a3d9dd9a5ff3afb37b58046e3b43f6a94330084a17255e7",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:56:37.628Z"
+    },
+    "generic:model:sm-gen-env-rock-01@original": {
+      "familyId": "generic:model:sm-gen-env-rock-01",
+      "url": "/vendor/synty/library/models/generic/826986cee91b0be12922.glb",
+      "name": "Rock 01",
+      "state": "delete-requested",
+      "fingerprint": "1e4a59ebdfbda98e05533e9edbdb399b900a363148ac563170b36866b96c7f98",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:56:48.281Z"
+    },
+    "goblin-war-camp:model:props-sm-prop-ruins-archway-01@original": {
+      "familyId": "goblin-war-camp:model:props-sm-prop-ruins-archway-01",
+      "url": "/vendor/synty/library/models/goblin-war-camp/dfb7ef2fb047acbe8394.glb",
+      "name": "Ruins Archway 01",
+      "state": "approved",
+      "fingerprint": "7d93f726d9cc833e63d6e2e5cb25e693a6394fd8a93209b240c52ec98e5929ee",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:57:05.329Z"
+    },
+    "goblin-war-camp:model:props-sm-prop-ruins-pillar-01@original": {
+      "familyId": "goblin-war-camp:model:props-sm-prop-ruins-pillar-01",
+      "url": "/vendor/synty/library/models/goblin-war-camp/2bcd53ab8a311056b9ca.glb",
+      "name": "Ruins Pillar 01",
+      "state": "approved",
+      "fingerprint": "6d15ec0374db910b2f9957c12acea84c638cb427bb09b7dacdf7cb8fa6bacf63",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:57:17.922Z"
+    },
+    "character:synty-generic-sm_gen_chr_skeleton_01@gameplay": {
+      "familyId": "character:synty-generic-sm_gen_chr_skeleton_01",
+      "url": "/vendor/characters/skeleton/authored-playable.glb",
+      "name": "Skeleton 01",
+      "state": "approved",
+      "fingerprint": "dc15dc453d3869b148325163f97ef3a4414d11b6d8864148d91486db90eed899",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:57:30.119Z"
+    },
+    "goblin-war-camp:model:props-sm-prop-torch-02@original": {
+      "familyId": "goblin-war-camp:model:props-sm-prop-torch-02",
+      "url": "/vendor/synty/library/models/goblin-war-camp/69d42c09a1c384ca4e40.glb",
+      "name": "Torch 02",
+      "state": "approved",
+      "fingerprint": "07784fb9abe48ee5872276cfc06e03f1f4f07add15e3e74959446618bab4f601",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:57:41.117Z"
+    },
+    "silent-roads:model:story-abandoned-camp@original": {
+      "familyId": "silent-roads:model:story-abandoned-camp",
+      "url": "/vendor/synty/library/models/silent-roads/story_abandoned_camp.glb",
+      "name": "Abandoned camp remains",
+      "state": "approved",
+      "fingerprint": "1aef677e9543bd66b731041e5649e924ceb68d63516ebfe741bfdf23dbb2685d",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:57:51.974Z"
+    },
+    "silent-roads:model:story-expedition-bundle@original": {
+      "familyId": "silent-roads:model:story-expedition-bundle",
+      "url": "/vendor/synty/library/models/silent-roads/story_expedition_bundle.glb",
+      "name": "Abandoned expedition bundle",
+      "state": "approved",
+      "fingerprint": "42fed242fa22c0e8062b206151e8f3d7d6307fdc2a507cb24cbf1249d5052f5a",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:58:02.745Z"
+    },
+    "gothic-staff:model:abbot-crozier@original": {
+      "familyId": "gothic-staff:model:abbot-crozier",
+      "url": "/vendor/synty/library/models/gothic-staff/abbot_crozier.glb",
+      "name": "Abbot Crozier",
+      "state": "approved",
+      "fingerprint": "c418d235d6a8d0d387db48fdce9f5a854c66a86bf0d85e645bcf6f323bead1b2",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:58:11.992Z"
+    },
+    "character:mixamo-4ebecd82-580e-49f2-8181-b9643ecd9509@gallery": {
+      "familyId": "character:mixamo-4ebecd82-580e-49f2-8181-b9643ecd9509",
+      "url": "/vendor/character-gallery/mixamo-4ebecd82-580e-49f2-8181-b9643ecd9509/model.glb",
+      "name": "Abe",
+      "state": "delete-requested",
+      "fingerprint": "1f4ef2c705eabab7e12322c6b4df8f2b9b11c272b77e049a109483bb8a21d986",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:58:26.851Z"
+    },
+    "shops:assembly:assets-synty-polygonshops-prefabs-props-sm-prop-ad-screen-01@original": {
+      "familyId": "shops:assembly:assets-synty-polygonshops-prefabs-props-sm-prop-ad-screen-01",
+      "url": "/vendor/synty/library/assemblies/shops/20de991e5743b4e02b9b7ef3e2c59b1b65c3a36b0b16ba3e9645680f875a65e6.json",
+      "name": "Ad Screen 01",
+      "state": "delete-requested",
+      "fingerprint": "3181cfd8654cb8baee89cabf0cfa73d0439c1527f9ff3a7958c3d14da7b524c4",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:58:36.153Z"
+    },
+    "shops:model:sm-prop-ad-screen-01@original": {
+      "familyId": "shops:model:sm-prop-ad-screen-01",
+      "url": "/vendor/synty/library/models/shops/c42d000e0fc631fb5179.glb",
+      "name": "Ad Screen 01",
+      "state": "delete-requested",
+      "fingerprint": "bc3172235060a70a4bfd4937f52c7e397528b08002297442c6338ee1f9364697",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:58:45.328Z"
+    },
+    "character:mixamo-8277608f-32da-42ee-b967-7c052ceb37d4@gallery": {
+      "familyId": "character:mixamo-8277608f-32da-42ee-b967-7c052ceb37d4",
+      "url": "/vendor/character-gallery/mixamo-8277608f-32da-42ee-b967-7c052ceb37d4/model.glb",
+      "name": "Adam",
+      "state": "delete-requested",
+      "fingerprint": "295ac18e14cfe5a5ff2d3ba98c40caa79794c6235e94332d0536af493c0a4f48",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:58:53.840Z"
+    },
+    "alpine-mountain:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-01@original": {
+      "familyId": "alpine-mountain:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-01",
+      "url": "/vendor/synty/library/assemblies/alpine-mountain/25ad4a47a5d69740201b0defcea26dfcb20141b045ac13a8c51c785df69d686a.json",
+      "name": "Aircon 01",
+      "state": "delete-requested",
+      "fingerprint": "3568b3813973d758774b506ceb8aaa75184c46379ad8920eedd68a10bffe8166",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:59:02.232Z"
+    },
+    "generic:model:sm-gen-prop-aircon-01@original": {
+      "familyId": "generic:model:sm-gen-prop-aircon-01",
+      "url": "/vendor/synty/library/models/generic/41a22dea631af273792f.glb",
+      "name": "Aircon 01",
+      "state": "delete-requested",
+      "fingerprint": "7ecdb65ade1da6f686358e4a73bdd8855414e71f8429366a62a767e1c4cc559c",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:59:10.696Z"
+    },
+    "goblin-war-camp:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-01@original": {
+      "familyId": "goblin-war-camp:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-01",
+      "url": "/vendor/synty/library/assemblies/goblin-war-camp/5f51699677516de36352078edf2856b9e677581509c3ef5c430d1b8a4e95917a.json",
+      "name": "Aircon 01",
+      "state": "delete-requested",
+      "fingerprint": "8f82faf0b350bd00bb8e16a0606d6de8997ac6733359e9097c467f07618d6450",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:59:19.238Z"
+    },
+    "particle-fx:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-01@original": {
+      "familyId": "particle-fx:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-01",
+      "url": "/vendor/synty/library/assemblies/particle-fx/c1e71341815961e005727adb0c1ad4ef6cb6b4286f7eeec5761e0eba8a91cdc4.json",
+      "name": "Aircon 01",
+      "state": "delete-requested",
+      "fingerprint": "d89d41fbe198ad8209387b29161bf1f06283a38077879f49871e5403d9f4aa4d",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:59:31.239Z"
+    },
+    "prototype:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-01@original": {
+      "familyId": "prototype:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-01",
+      "url": "/vendor/synty/library/assemblies/prototype/0fe8a74e674dfb94572fb695d7e42feeebce16255f6a69af803332f49201fc14.json",
+      "name": "Aircon 01",
+      "state": "delete-requested",
+      "fingerprint": "1031db357ace35683a1f1b7c37573ddca0037d5ab065054b6f1d7d835506e178",
+      "notes": "",
+      "updatedAt": "2026-10-04T21:59:47.120Z"
+    },
+    "shops:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-01@original": {
+      "familyId": "shops:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-01",
+      "url": "/vendor/synty/library/assemblies/shops/39af9105ac1e71bc154c6108bc3ed1c994b73e3a234be38da98bf7a64297dd29.json",
+      "name": "Aircon 01",
+      "state": "delete-requested",
+      "fingerprint": "faf5b9d404704e8a6b8ec7693dd5be2acf6fbf58af3ee1a306fcb30bed3f3319",
+      "notes": "",
+      "updatedAt": "2026-10-04T22:00:15.517Z"
+    },
+    "viking-realm:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-01@original": {
+      "familyId": "viking-realm:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-01",
+      "url": "/vendor/synty/library/assemblies/viking-realm/5b5f60ad63809db4d044dcd8fc8a085c3101088b021e70f87907756fd57c6397.json",
+      "name": "Aircon 01",
+      "state": "delete-requested",
+      "fingerprint": "1bdc48b04078477b5045c27fcc9fd3fd77a083eaedca500f591df53ea0ce3652",
+      "notes": "",
+      "updatedAt": "2026-10-04T22:00:39.465Z"
+    },
+    "alpine-mountain:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-02@original": {
+      "familyId": "alpine-mountain:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-02",
+      "url": "/vendor/synty/library/assemblies/alpine-mountain/78e3f98b3f3bfa11918d788a53317ccdf59e9b4f8e0ffa18d1b2a8115a1fddce.json",
+      "name": "Aircon 02",
+      "state": "delete-requested",
+      "fingerprint": "d498e9afaa86f2f90c92a71a6d67fab1044a35daf758db44e26ec6d5013b7672",
+      "notes": "",
+      "updatedAt": "2026-10-04T22:00:57.660Z"
+    },
+    "generic:model:sm-gen-prop-aircon-02@original": {
+      "familyId": "generic:model:sm-gen-prop-aircon-02",
+      "url": "/vendor/synty/library/models/generic/277ac2b5bffef6994bd8.glb",
+      "name": "Aircon 02",
+      "state": "delete-requested",
+      "fingerprint": "55236d7209d407c5df2536129d18e131271e3661272f1d94760094bc0c916ed3",
+      "notes": "",
+      "updatedAt": "2026-10-04T22:01:09.892Z"
+    },
+    "goblin-war-camp:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-02@original": {
+      "familyId": "goblin-war-camp:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-02",
+      "url": "/vendor/synty/library/assemblies/goblin-war-camp/c7b8bf4c4f30ef2c501432e78af9c1dc75b461ab709097e3ab0865b4afe7a3c8.json",
+      "name": "Aircon 02",
+      "state": "delete-requested",
+      "fingerprint": "e8c2ca78aa5f44116c9cb90c6efe7b6a704571cf2b9d965dd857f985d8aed160",
+      "notes": "",
+      "updatedAt": "2026-10-04T22:01:24.728Z"
+    },
+    "particle-fx:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-02@original": {
+      "familyId": "particle-fx:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-02",
+      "url": "/vendor/synty/library/assemblies/particle-fx/3bdf28a324ed545f2bf512080f4c06e673b0d2ed7ecc5062fcb4d94bcb1b136c.json",
+      "name": "Aircon 02",
+      "state": "delete-requested",
+      "fingerprint": "ed222f6f1160a0742cb73ebaad122413b613c4d093c1a9ccc2fbd6436c98e0e4",
+      "notes": "",
+      "updatedAt": "2026-10-04T22:01:53.014Z"
+    },
+    "prototype:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-02@original": {
+      "familyId": "prototype:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-02",
+      "url": "/vendor/synty/library/assemblies/prototype/79ffb39707f93eba33e01e88171eed3029063811f56724e2a5d82bfc248d7bf5.json",
+      "name": "Aircon 02",
+      "state": "delete-requested",
+      "fingerprint": "5d34341abbf6514712bc7ef61d7ca04087d805295119d3b08b54193c628f7b89",
+      "notes": "",
+      "updatedAt": "2026-10-04T22:02:05.159Z"
+    },
+    "shops:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-02@original": {
+      "familyId": "shops:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-02",
+      "url": "/vendor/synty/library/assemblies/shops/d1c989f04b11d7a2a601594c6a9e66a839b352763efafc4ecea57ef88c059859.json",
+      "name": "Aircon 02",
+      "state": "delete-requested",
+      "fingerprint": "747af1d66d3aa33bded6daa8b88c079d4b1abccee960315a748ba8b617b0ea18",
+      "notes": "",
+      "updatedAt": "2026-10-04T22:02:14.898Z"
+    },
+    "viking-realm:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-02@original": {
+      "familyId": "viking-realm:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-02",
+      "url": "/vendor/synty/library/assemblies/viking-realm/6f58007e459dc2a52b87695aa1247cab5deb375807cacaed1172585636de20be.json",
+      "name": "Aircon 02",
+      "state": "delete-requested",
+      "fingerprint": "eb2de7aab7b31bb220ed82d1b7e3f050e6938ec48f05d274f5013dd070ec3dda",
+      "notes": "",
+      "updatedAt": "2026-10-04T22:02:24.180Z"
+    },
+    "alpine-mountain:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-roof-01@original": {
+      "familyId": "alpine-mountain:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-roof-01",
+      "url": "/vendor/synty/library/assemblies/alpine-mountain/953fed02ca946f7fd7a4e087238bdb7921b2cb26f6d57e2f22b81c7fb2a48f46.json",
+      "name": "Aircon Roof 01",
+      "state": "delete-requested",
+      "fingerprint": "0658a34bb8bd71f38c1489895249d0e7a994805c38ccfe6c3c01ec9f9619b14f",
+      "notes": "",
+      "updatedAt": "2026-10-04T22:02:33.638Z"
+    },
+    "generic:model:sm-gen-prop-aircon-roof-01@original": {
+      "familyId": "generic:model:sm-gen-prop-aircon-roof-01",
+      "url": "/vendor/synty/library/models/generic/77068c508303d51993f7.glb",
+      "name": "Aircon Roof 01",
+      "state": "delete-requested",
+      "fingerprint": "bebe788f2c1753f03199f515b09eb1b7bd532bbb17d2b25ecdf47fb6b5025b45",
+      "notes": "",
+      "updatedAt": "2026-10-04T22:02:43.867Z"
+    },
+    "goblin-war-camp:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-roof-01@original": {
+      "familyId": "goblin-war-camp:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-roof-01",
+      "url": "/vendor/synty/library/assemblies/goblin-war-camp/9fa1265fea104c898fd1e3703753db19e8c52fd62348a4d08b032c4a8c559872.json",
+      "name": "Aircon Roof 01",
+      "state": "delete-requested",
+      "fingerprint": "617e5e6b711e91ff6eb46f0030c0e9f9eace25df6bde8a03971a092ec67c26e3",
+      "notes": "",
+      "updatedAt": "2026-10-04T22:02:52.908Z"
+    },
+    "particle-fx:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-roof-01@original": {
+      "familyId": "particle-fx:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-roof-01",
+      "url": "/vendor/synty/library/assemblies/particle-fx/94448cb6bcdfaf937b0b82f6abe7c4bbad9bec59e8229c81e28be67c1a5c26e6.json",
+      "name": "Aircon Roof 01",
+      "state": "delete-requested",
+      "fingerprint": "1be393a80f2231c17f4b7cd391da59680f2108adb49c3eb5a570e1da839327a4",
+      "notes": "",
+      "updatedAt": "2026-10-04T22:03:02.709Z"
+    },
+    "prototype:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-roof-01@original": {
+      "familyId": "prototype:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-roof-01",
+      "url": "/vendor/synty/library/assemblies/prototype/425583c15c522a9a40ad1a2cf4a4621f246db890c4a3035bfe91289d88de4511.json",
+      "name": "Aircon Roof 01",
+      "state": "delete-requested",
+      "fingerprint": "41ec15225769195f0dc0ca3939bd46a520d8ee5c1ee088ad4171883e541f84f6",
+      "notes": "",
+      "updatedAt": "2026-10-04T22:03:12.278Z"
+    },
+    "shops:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-roof-01@original": {
+      "familyId": "shops:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-roof-01",
+      "url": "/vendor/synty/library/assemblies/shops/5eb1ed9c5504e7b7c1979c3fcb645fb96a1400ffbc698297f1280277b24950b3.json",
+      "name": "Aircon Roof 01",
+      "state": "delete-requested",
+      "fingerprint": "c901e9564c1c7964b0ef2b80c9fd27aa2359b1398ec2008528ef630976e41da6",
+      "notes": "",
+      "updatedAt": "2026-10-04T22:03:22.189Z"
+    },
+    "viking-realm:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-roof-01@original": {
+      "familyId": "viking-realm:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-roof-01",
+      "url": "/vendor/synty/library/assemblies/viking-realm/59b9a51910760e7e008fc9968c48c3d144a6aba14e04a8626b5054ef7b62779b.json",
+      "name": "Aircon Roof 01",
+      "state": "delete-requested",
+      "fingerprint": "fd262c84e3b9de17152065b1c832427f6c42fa8decb738a7ed1ac8b678846b92",
+      "notes": "",
+      "updatedAt": "2026-10-04T22:03:34.436Z"
+    },
+    "alpine-mountain:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-roof-02@original": {
+      "familyId": "alpine-mountain:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-roof-02",
+      "url": "/vendor/synty/library/assemblies/alpine-mountain/3dac5385d438433f8123369e207033cf129cd7fdd5c29f5858bc864f8f76516b.json",
+      "name": "Aircon Roof 02",
+      "state": "delete-requested",
+      "fingerprint": "329f88b467606b0f392bf6de0015fa75fbbfd1cb85fa314a3e9db707d3522707",
+      "notes": "",
+      "updatedAt": "2026-10-04T22:03:44.142Z"
+    },
+    "generic:model:sm-gen-prop-aircon-roof-02@original": {
+      "familyId": "generic:model:sm-gen-prop-aircon-roof-02",
+      "url": "/vendor/synty/library/models/generic/b449bb1f48a536e73a62.glb",
+      "name": "Aircon Roof 02",
+      "state": "delete-requested",
+      "fingerprint": "f2ee758ad253844010e98e3dcfe9aa0b1fdef698bcfa666e4909a565abfc7e5d",
+      "notes": "",
+      "updatedAt": "2026-10-04T22:03:53.423Z"
+    },
+    "goblin-war-camp:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-roof-02@original": {
+      "familyId": "goblin-war-camp:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-roof-02",
+      "url": "/vendor/synty/library/assemblies/goblin-war-camp/9774d4ad27d43926bf5ef98bc728d56e62f0901f0f08afe803df6782bc80ba4f.json",
+      "name": "Aircon Roof 02",
+      "state": "delete-requested",
+      "fingerprint": "0e8b61179c9ec077e2ac88ba34261bfb8eccc1af8df10b0e3edf6ddf8a218a5b",
+      "notes": "",
+      "updatedAt": "2026-10-04T22:04:02.373Z"
+    },
+    "particle-fx:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-roof-02@original": {
+      "familyId": "particle-fx:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-roof-02",
+      "url": "/vendor/synty/library/assemblies/particle-fx/c9b65793320084b28b3f4a3d0e10231e9d0616455db456231c9655e7cb32df32.json",
+      "name": "Aircon Roof 02",
+      "state": "delete-requested",
+      "fingerprint": "c972cfeb83f0541b492b647ca1cf2234f94406f703ca7a8eb55e1d2f3d062111",
+      "notes": "",
+      "updatedAt": "2026-10-04T22:04:22.208Z"
+    },
+    "prototype:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-roof-02@original": {
+      "familyId": "prototype:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-roof-02",
+      "url": "/vendor/synty/library/assemblies/prototype/7faa493456c4d76a3209601b3fb718b3b993185e8e7d2ed69c49c41629554c2a.json",
+      "name": "Aircon Roof 02",
+      "state": "delete-requested",
+      "fingerprint": "4a4f04f5e182a361e8e15aca60f6f443f0973e2fa19ac41fb59b20e9a2091e6c",
+      "notes": "",
+      "updatedAt": "2026-10-04T22:04:35.518Z"
+    },
+    "shops:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-roof-02@original": {
+      "familyId": "shops:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-roof-02",
+      "url": "/vendor/synty/library/assemblies/shops/67d325b57e1577dc3ebd9114b8c3b7ce05c3a7766299718d24d7ac40e7624bb9.json",
+      "name": "Aircon Roof 02",
+      "state": "delete-requested",
+      "fingerprint": "dc9b5c09b372222c8eee22c05fe0c9ad03875e0a4adf7300f4a0eb609b6c579f",
+      "notes": "",
+      "updatedAt": "2026-10-04T22:04:47.521Z"
+    },
+    "viking-realm:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-roof-02@original": {
+      "familyId": "viking-realm:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-roof-02",
+      "url": "/vendor/synty/library/assemblies/viking-realm/dc16aead1893629ef5a43ae4fdaf0abf486577ddfcc9a5c61e1d6675116e1807.json",
+      "name": "Aircon Roof 02",
+      "state": "delete-requested",
+      "fingerprint": "254f51d37ee937b6c04eb8beb93c0d635192fa22be2b3f870023cf8075e01dcf",
+      "notes": "",
+      "updatedAt": "2026-10-04T22:04:59.205Z"
+    },
+    "alpine-mountain:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-roof-03@original": {
+      "familyId": "alpine-mountain:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-roof-03",
+      "url": "/vendor/synty/library/assemblies/alpine-mountain/33747035b1928ffbdf96f8ccc846e61a58dd2c38ded24213b0e524af091abaf7.json",
+      "name": "Aircon Roof 03",
+      "state": "delete-requested",
+      "fingerprint": "2d1b2fb268dd978982deede35af2a171936766af993a7ccfa0f03451ca85c505",
+      "notes": "",
+      "updatedAt": "2026-10-04T22:05:09.256Z"
+    },
+    "generic:model:sm-gen-prop-aircon-roof-03@original": {
+      "familyId": "generic:model:sm-gen-prop-aircon-roof-03",
+      "url": "/vendor/synty/library/models/generic/ad9985e0a87b1762416b.glb",
+      "name": "Aircon Roof 03",
+      "state": "delete-requested",
+      "fingerprint": "027d7633404e60b7e4ad5b73987a9831fe4019c10ae5f376f6e200eefd044fae",
+      "notes": "",
+      "updatedAt": "2026-10-04T22:05:19.061Z"
+    },
+    "goblin-war-camp:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-roof-03@original": {
+      "familyId": "goblin-war-camp:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-roof-03",
+      "url": "/vendor/synty/library/assemblies/goblin-war-camp/899bdd25932997b43df58d224737249f0e5d45544938473d04daec054deb6391.json",
+      "name": "Aircon Roof 03",
+      "state": "delete-requested",
+      "fingerprint": "7b32a3dd8f7cd4cb76975a777316de30b51c66250317e216ab66e17bc328ed59",
+      "notes": "",
+      "updatedAt": "2026-10-04T22:05:28.395Z"
+    },
+    "particle-fx:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-roof-03@original": {
+      "familyId": "particle-fx:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-roof-03",
+      "url": "/vendor/synty/library/assemblies/particle-fx/a5252285deb4ed36453825643e273362a808a86874a0b4cfb3d68f6161e73e8b.json",
+      "name": "Aircon Roof 03",
+      "state": "delete-requested",
+      "fingerprint": "c8136ab5aa9fd48fa6a10ef52990243f200faa6bc5788347ae07ef62364c2678",
+      "notes": "",
+      "updatedAt": "2026-10-04T22:05:37.790Z"
+    },
+    "prototype:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-roof-03@original": {
+      "familyId": "prototype:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-roof-03",
+      "url": "/vendor/synty/library/assemblies/prototype/ce652317e92deb851507eaf9431b23b3e8f269128ce08d5af4952333472c2033.json",
+      "name": "Aircon Roof 03",
+      "state": "delete-requested",
+      "fingerprint": "02f3e8f020af6e8799cae5835000c110e52c429d74756a6ed6d94003455ce610",
+      "notes": "",
+      "updatedAt": "2026-10-04T22:05:47.125Z"
+    },
+    "shops:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-roof-03@original": {
+      "familyId": "shops:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-roof-03",
+      "url": "/vendor/synty/library/assemblies/shops/8ce3215843e77f2ff6f76c4030b776b070cf85be49d523e2bbef471cf880b013.json",
+      "name": "Aircon Roof 03",
+      "state": "delete-requested",
+      "fingerprint": "ff26396350bd0192145fefad9f1e8e3e101c2620b8ed64a1d22d0645e0faee67",
+      "notes": "",
+      "updatedAt": "2026-10-04T22:05:56.455Z"
+    },
+    "viking-realm:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-roof-03@original": {
+      "familyId": "viking-realm:assembly:assets-synty-polygongeneric-prefabs-props-sm-gen-prop-aircon-roof-03",
+      "url": "/vendor/synty/library/assemblies/viking-realm/66a49853b456eaabc44fe6c96e7403abc3577840351c3ce2e2116c7c77a78afc.json",
+      "name": "Aircon Roof 03",
+      "state": "delete-requested",
+      "fingerprint": "51387bdab3b9e8d63e9d2c5764e4e786cd4a1dec42f2dba327f46e2997ef50bd",
+      "notes": "",
+      "updatedAt": "2026-10-04T22:06:06.212Z"
+    },
+    "shops:assembly:assets-synty-polygonshops-prefabs-props-sm-prop-airconditioner-01@original": {
+      "familyId": "shops:assembly:assets-synty-polygonshops-prefabs-props-sm-prop-airconditioner-01",
+      "url": "/vendor/synty/library/assemblies/shops/3711f95aa58f9c039ef97ad2008787cb2709908f36e9d52a6848957677894480.json",
+      "name": "Airconditioner 01",
+      "state": "delete-requested",
+      "fingerprint": "e85ed15ca8ee04833c70f0195f71ccb445ced9ca4f6c1fa375d69071fc63077b",
+      "notes": "",
+      "updatedAt": "2026-10-04T22:06:16.763Z"
+    },
+    "shops:model:sm-prop-airconditioner-01@original": {
+      "familyId": "shops:model:sm-prop-airconditioner-01",
+      "url": "/vendor/synty/library/models/shops/bc34674d0b32826d30c0.glb",
+      "name": "Airconditioner 01",
+      "state": "delete-requested",
+      "fingerprint": "b87d56c949e1978da477becbc3dcf946a65e7034609844d1ef1c64979374ea79",
+      "notes": "",
+      "updatedAt": "2026-10-04T22:06:27.402Z"
     }
   },
   "familyDenials": {},
