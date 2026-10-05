@@ -12,6 +12,7 @@ export function checkStages(files, args = {}) {
   const css = full || !files.length || lintSetup || files.some(name => name.endsWith('.css') || name === 'stylelint.config.js');
   const lintPolicy = full || files.some(name => /^eslint\//.test(name) || ['eslint.config.js', 'scripts/check-rendering.mjs', 'scripts/lint.mjs', 'ruff.config.json', 'stylelint.config.js'].includes(name));
   const materials = full || files.some(name => /^src\/(?:assets\/(?:material-validation|environment-surfaces|asset-library)|rendering\/(?:surface-detail|material-|stone-surface|woodland-ground))|^scripts\/assets\/surfaces\/|^assets\/(?:material-recipes|textures\/environment)/.test(name));
+  const preparedLighting = files.some(name => ['scripts/levels/prepared-lighting.mjs', 'scripts/levels/prepared-lighting.test.mjs', 'src/levels/lighting-preparation.ts', 'scripts/assets/stage-library-build.mjs'].includes(name));
   const nativeMaterials = files.some(name => probeOwners.includes(name));
   return [
     ...(!docsOnly || full ? [['rendering', node, ['scripts/check-rendering.mjs']]] : []),
@@ -25,6 +26,7 @@ export function checkStages(files, args = {}) {
     ...(full ? [['asset-review-store', node, ['--test', 'scripts/assets/review/store.test.mjs']]] : []),
     ...(full ? [['workflow', node, ['--test', 'scripts/agents/workflow.test.mjs']]] : []),
     ...(full ? [['tests', node, ['node_modules/vitest/vitest.mjs', 'run']]] : []),
+    ...(preparedLighting ? [['prepared-lighting-contract', node, ['--test', 'scripts/levels/prepared-lighting.test.mjs']]] : []),
     ...(levels ? [['levels', node, ['scripts/levels/check.mjs', ...(args['--base'] ? ['--base', args['--base']] : [])]]] : []),
     ...(materials ? [['materials', node, ['scripts/assets/surfaces/validate.mjs']]] : []),
     ...(materials ? [['material-contract', node, ['--test', 'scripts/assets/surfaces/validate.test.mjs']]] : []),

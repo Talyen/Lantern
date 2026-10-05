@@ -1,3 +1,4 @@
+import { resizeDisplay } from './display-resolution';
 import { isMesh } from '../assets/resource-ownership';
 import { applyShadowQuality } from './quality-presets';
 import { AreaLightingResources, type PreparedLighting } from './area-lighting';
@@ -58,6 +59,12 @@ export class Graphics {
   pipelineDiagnostics() { return this.gpuPipeline?.diagnostics(); }
   get preparingSettings(): boolean { return this.gpuPipeline?.preparing ?? false; }
   resetMeasurements(): void { this.intervals = []; this.lastFrame = 0; }
+  measurements() {
+    const sorted = [...this.intervals].sort((a, b) => a - b);
+    return { settings: this.settings, samples: [...this.intervals], pipeline: this.gpuPipeline?.diagnostics() ?? { method: 'fsr-temporal', sceneWidth: this.ctx.renderer.domElement.width, sceneHeight: this.ctx.renderer.domElement.height, outputWidth: this.ctx.renderer.domElement.width, outputHeight: this.ctx.renderer.domElement.height }, renderer: 'webgpu', median: sorted.length ? sorted[Math.floor(sorted.length / 2)] : null, p95: sorted.length ? sorted[Math.floor(sorted.length * 0.95)] : null,
+        width: this.ctx.renderer.domElement.width, height: this.ctx.renderer.domElement.height, cameraOffset: this.ctx.camera.position.clone().sub(this.ctx.controls.target).toArray(), camera: this.ctx.camera.position.toArray(), zoom: this.ctx.camera.zoom,
+        fireShadow: { enabled: this.ctx.lighting.shadow?.castShadow, map: !!this.ctx.lighting.shadow?.shadow.map, intensity: this.ctx.lighting.shadow?.intensity }, environment: this.ctx.scene.environmentIntensity, lighting: this.areaLighting.diagnostics() };
+  }
   async initialize(): Promise<void> {
     this.gpuPipeline = new WebGPUPipeline(this.ctx.renderer, this.ctx.scene, this.ctx.camera, this.ctx.controls.target);
     this.applyNow(0);
@@ -112,7 +119,7 @@ export class Graphics {
     if (previous?.weatherEffects !== s.weatherEffects) this.effects.setWeatherEffects(s.weatherEffects);
     if (previous?.atmosphericParticles !== s.atmosphericParticles) this.effects.setAtmosphericParticles(s.atmosphericParticles);
     if (!previous) {
-      renderer.setPixelRatio(1); renderer.toneMapping = THREE.NoToneMapping; renderer.toneMappingExposure = 1;
+      renderer.toneMapping = THREE.NoToneMapping; renderer.toneMappingExposure = 1;
       this.effects.setWeather(null); this.resize();
     }
     this.gpuPipeline?.update(s, look.saturation ?? .84, look);
@@ -125,8 +132,7 @@ export class Graphics {
   resetHistory(): void { this.gpuPipeline?.resetHistory(); this.ctx.invalidate(); }
   resize(): void {
     const mount = this.ctx.mount;
-    const canvas = this.ctx.renderer.domElement;
-    if (canvas.width !== mount.clientWidth || canvas.height !== mount.clientHeight) this.ctx.renderer.setSize(mount.clientWidth, mount.clientHeight);
+    resizeDisplay(this.ctx.renderer, mount.clientWidth, mount.clientHeight);
     this.gpuPipeline?.resize();
   }
 
@@ -172,15 +178,15 @@ export class Graphics {
   render(dt: number, paused: boolean): boolean {
     if (this.preparingLighting || this.gpuPipeline?.preparing) return false;
     this.fitLights();
-    const now = performance.now(); if (this.lastFrame) this.intervals.push(now - this.lastFrame); this.lastFrame = now; if (this.intervals.length > 180) this.intervals.shift();
+    const now = performance.now();
     if (!paused) this.time += dt;
     this.ctx.lighting.fires.forEach((light, i) => { light.intensity = Number(light.userData.baseIntensity ?? 9) * (.65 + this.settings.warmth * .5) * (1 + Math.sin(this.time * 3.3 + i * 1.7) * Number(light.userData.flicker ?? .025) + Math.sin(this.time * 7.1 + i) * Number(light.userData.flicker ?? .025) * .6); });
     this.effects.paused = paused; this.effects.update(dt);
     const rendered = this.gpuPipeline?.render() ?? false;
-    if (now - this.statsAt > 500 && this.intervals.length >= 30 && (!this.gpuPipeline || this.gpuPipeline.diagnostics().ready)) { const sorted = [...this.intervals].sort((a, b) => a - b);
-      this.ctx.renderer.domElement.dataset.graphics = JSON.stringify({ settings: this.settings, samples: [...this.intervals], pipeline: this.gpuPipeline?.diagnostics() ?? { method: 'fsr-temporal', sceneWidth: this.ctx.renderer.domElement.width, sceneHeight: this.ctx.renderer.domElement.height, outputWidth: this.ctx.renderer.domElement.width, outputHeight: this.ctx.renderer.domElement.height }, renderer: 'webgpu', median: sorted[Math.floor(sorted.length / 2)], p95: sorted[Math.floor(sorted.length * 0.95)],
-        width: this.ctx.renderer.domElement.width, height: this.ctx.renderer.domElement.height, cameraOffset: this.ctx.camera.position.clone().sub(this.ctx.controls.target).toArray(), camera: this.ctx.camera.position.toArray(), zoom: this.ctx.camera.zoom,
-        fireShadow: { enabled: this.ctx.lighting.shadow?.castShadow, map: !!this.ctx.lighting.shadow?.shadow.map, intensity: this.ctx.lighting.shadow?.intensity }, environment: this.ctx.scene.environmentIntensity, lighting: this.areaLighting.diagnostics() }); this.statsAt = now; }
+    if (rendered) { if (this.lastFrame) this.intervals.push(now - this.lastFrame); this.lastFrame = now; if (this.intervals.length > 180) this.intervals.shift(); }
+    if (now - this.statsAt > 500 && this.intervals.length >= 30 && (!this.gpuPipeline || this.gpuPipeline.diagnostics().ready)) {
+      this.ctx.renderer.domElement.dataset.graphics = JSON.stringify(this.measurements()); this.statsAt = now;
+    }
     return rendered;
   }
 }

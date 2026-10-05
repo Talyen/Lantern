@@ -1,9 +1,10 @@
+import { syncDisplayResolution } from './display-resolution';
 import { renderNativeFrame, preparingNativeFrame } from './renderer';
 import { ACESFilmicToneMapping, RedFormat, CustomBlending, OneFactor, OneMinusSrcAlphaFactor, DataUtils, RenderPipeline, BlendMode, NormalBlending, Color, Vector2, Vector3, Vector4, Matrix4, Plane, type Node, type OrthographicCamera, type PerspectiveCamera, type Scene, type WebGPURenderer, type TextureNode, type QuadMesh, type Texture } from 'three/webgpu';
 import { Fn, context, dot, float, mix, mrt, normalView, orthographicDepthToViewZ, perspectiveDepthToViewZ, output, pass, rtt, screenUV, smoothstep, toneMapping, uniform, uv, vec2, vec3, vec4, velocity, positionWorld, select } from 'three/tsl';
 import { ao } from 'three/addons/tsl/display/GTAONode.js';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
-import { dof } from 'three/addons/tsl/display/DepthOfFieldNode.js';
+import { gaussianBlur } from 'three/addons/tsl/display/GaussianBlurNode.js';
 import type { AreaLighting } from '../levels/types';
 import { fsrComparison, comparisonPreset } from '../labs/fsr/settings';
 import { fsrTemporal } from './fsr-temporal';
@@ -15,8 +16,8 @@ import { outlinedColor, outlineStrength } from './outlines';
 type FSRNode = ReturnType<typeof fsrTemporal>;
 // Restrained focus profiles, applied to the stabilized output. Focus distance continues to track the camera target.
 const depthOfFieldPresets = {
-  soft: { focusRange: 24, bokeh: 0.8 },
-  cinematic: { focusRange: 16, bokeh: 1.6 },
+  soft: { focusRange: 10, bokeh: 0.65 },
+  cinematic: { focusRange: 6, bokeh: 1.15 },
 } as const;
 /** Shared scene inputs; exactly one temporal resolve owns each pipeline's jitter. */
 class PipelineGraph {
@@ -47,6 +48,7 @@ class PipelineGraph {
   private outputSize = new Vector2();
   private focusPoint = new Vector3();
   private successfulFrames = 0;
+  private cpuRenderMs = 0;
   private prepared = false;
   private generation = 0;
   private preparation: Promise<void> = Promise.resolve();
@@ -78,20 +80,16 @@ class PipelineGraph {
     const surfaceContext = { materialMipBias: this.materialMipBias, textureDepth: settings.textureDepth,
       waterReflection: (height: number, distortion: Node<'vec2'>) => this.waterReflection(height, distortion) };
     scenePass.contextNode = context(surfaceContext);
-    const sceneMRT = settings.outlines ? mrt({ output, velocity, outline: vec4(outlineStrength(), 0, 0, output.a) }) : mrt({ output, velocity });
+    const coverage = Fn(builder => builder.material.transparent || builder.material.alphaHash ? vec4(output.a, 0, 0, output.a) : vec4(0))();
+    const sceneMRT = mrt({ output, velocity, coverage,
+      ...(settings.outlines ? { outline: vec4(outlineStrength(), 0, 0, output.a) } : {}) });
+    sceneMRT.setClearColor('coverage', 0, 0);
+    const coverageBlend = new BlendMode(CustomBlending);
+    coverageBlend.blendSrc = OneFactor; coverageBlend.blendDst = OneMinusSrcAlphaFactor;
+    sceneMRT.setBlendMode('coverage', coverageBlend);
     if (settings.outlines) {
       sceneMRT.setClearColor('outline', 0, 0);
-      // Transparent effects soften the mask by their actual opacity instead of erasing whole quads.
       sceneMRT.setBlendMode('outline', new BlendMode(NormalBlending));
-    }
-    if (fsrComparison?.reactiveCoverage) {
-      // Premultiplied source-over alpha coverage; opaque surfaces write zero.
-      // Per-fragment output alpha retains maps, cutouts and point-sprite falloff.
-      const coverage = Fn(builder => builder.material.transparent ? vec4(output.a, 0, 0, output.a) : vec4(0))();
-      sceneMRT.outputNodes.coverage = coverage;
-      sceneMRT.setClearColor('coverage', 0, 0);
-      const blend = new BlendMode(CustomBlending); blend.blendSrc = OneFactor; blend.blendDst = OneMinusSrcAlphaFactor;
-      sceneMRT.setBlendMode('coverage', blend);
     }
     scenePass.setMRT(sceneMRT);
     this.scenePass = scenePass;
@@ -123,15 +121,9 @@ class PipelineGraph {
       scenePass.contextNode = context({ ...surfaceContext, getAO: (materialAO: Node<'float'> | null) =>
         mix(float(1), contact.getTextureNode().sample(screenUV).r, this.aoStrength).mul(materialAO ?? float(1)) });
     }
-    // PassNode's opaque filter avoids touching scene visibility or materials.
-    const opaque = pass(this.scene, this.camera, { samples: 0 });
-    opaque.transparent = false; opaque.setResolutionScale(this.scale);
-    opaque.contextNode = scenePass.contextNode;
-    this.resources.push(opaque); this.sceneResources.push(opaque);
-    // Compare raw, matched-domain colors, not AO/DOF-treated final color.
-    const difference = color.rgb.sub(opaque.getTextureNode('output').rgb).abs();
-    const rawReactive = dot(difference, vec3(1 / 3)).mul(2).clamp(0, 1);
-    const reactive = sceneTexture(vec4(fsrComparison?.reactiveCoverage ? rawReactive.max(scenePass.getTextureNode('coverage').r).clamp(0, .9) : rawReactive), true);
+    // Source-over coverage is authored by the same visible fragments. It keeps
+    // particles/transparency responsive without shading the opaque world again.
+    const reactive = sceneTexture(vec4(scenePass.getTextureNode('coverage').r.clamp(0, .9)), true);
     this.reactiveTexture = reactive as ReturnType<typeof rtt>;
     const temporal = fsrTemporal(sceneTexture(beauty), depth, scenePass.getTextureNode('velocity'), this.camera, reactive, 1 / this.scale, (x, y, width, height) => {
       this.depthJitter.value.set(x, y); this.depthTexel.value.set(1 / width, 1 / height);
@@ -161,8 +153,13 @@ class PipelineGraph {
       })();
       // DOF reads scene depth through viewZ; this full-screen copy owns color only.
       const resolved = rtt(beauty, null, null, { depthBuffer: false }); this.resources.push(resolved);
-      const soft = dof(resolved, viewZ, this.focus, this.focusRange, this.bokeh);
-      this.resources.push(soft); beauty = vec4(soft as unknown as Node<'vec4'>);
+      const far = smoothstep(this.focus.add(4), this.focus.add(4).add(this.focusRange), viewZ.negate());
+      const farColor = rtt(vec4(resolved.rgb.mul(far), far), null, null, { depthBuffer: false });
+      const soft = gaussianBlur(farColor, vec2(this.bokeh), 2, { resolutionScale: .5 });
+      // Normalize masked colour: foreground silhouettes never bleed into the
+      // background blur, and interactive ground/actors retain the crisp resolve.
+      this.resources.push(farColor, soft);
+      beauty = vec4(mix(resolved.rgb, soft.rgb.div(soft.a.max(.0001)), far), resolved.a);
     }
     if (settings.bloom > 0) {
       const glow = bloom(beauty, 1, 0.85, 1.1); glow.smoothWidth.value = 0.2;
@@ -273,6 +270,7 @@ class PipelineGraph {
   }
 
   resize(): void {
+    syncDisplayResolution(this.renderer);
     this.renderer.getDrawingBufferSize(this.outputSize);
     const key = `${this.outputSize.x}x${this.outputSize.y}`;
     if (this.renderer.domElement.dataset.pipelineSize !== key) {
@@ -283,14 +281,14 @@ class PipelineGraph {
 
   diagnostics() {
     const rt = this.scenePass?.renderTarget;
-    return { comparisonPreset, textureDepth: this.settings.textureDepth, materialMipBias: this.materialMipBias.value, materialAnisotropy: 16, ready: this.prepared, method: 'fsr-temporal', outlines: this.settings.outlines, outlineStage: this.settings.outlines ? 'pre-fsr' : 'off', sceneAttachments: rt?.textures.length ?? 0, dof: this.settings.dof, dofStage: 'resolved-output',
+    return { comparisonPreset, textureDepth: this.settings.textureDepth, materialMipBias: this.materialMipBias.value, materialAnisotropy: 16, ready: this.prepared, method: 'fsr-temporal', outlines: this.settings.outlines, outlineStage: this.settings.outlines ? 'pre-fsr' : 'off', sceneAttachments: rt?.textures.length ?? 0, reactiveSource: 'fragment-coverage', worldPasses: 1 + (this.settings.ao > 0 ? 1 : 0) + this.reflections.size, reflectionPasses: this.reflections.size, outputPixelRatio: this.renderer.getPixelRatio(), dof: this.settings.dof, dofStage: this.settings.dof === 'off' ? 'off' : 'far-background-half-resolution',
       sceneWidth: rt?.width ?? 0, sceneHeight: rt?.height ?? 0,
       outputWidth: this.renderer.domElement.width, outputHeight: this.renderer.domElement.height,
-      reconstructionScale: this.scale, renderedFrames: this.successfulFrames,
+      reconstructionScale: this.scale, cpuRenderMs: this.cpuRenderMs, renderedFrames: this.successfulFrames,
       sampleOffset: this.fsr?.lastSampleOffset ?? null, cameraOffsetCleared: !this.camera.view?.enabled,
       unjitteredMotionProjection: !!this.fsr?.upscaler && velocity.projectionMatrix === this.fsr.upscaler.unjitteredProjectionMatrix,
       gpuTimings: this.fsr?.upscaler ? Object.fromEntries(this.fsr.upscaler.gpuTimings) : null,
-      gpuTimingScope: this.fsr ? 'FSR compute only; excludes scene, opaque pass and post effects' : null };
+      gpuTimingScope: this.fsr ? 'FSR compute only; excludes scene and post effects' : null };
   }
 
   async comparisonInputs() {
@@ -333,7 +331,10 @@ class PipelineGraph {
     const toneMappingMode = this.renderer.toneMapping;
     const outputColorSpace = this.renderer.outputColorSpace;
     try {
-      if (!renderNativeFrame(this.renderer, () => this.post.render())) { this.resetHistory(); return false; }
+      const start = performance.now();
+      const rendered = renderNativeFrame(this.renderer, () => this.post.render());
+      this.cpuRenderMs = performance.now() - start;
+      if (!rendered) { this.resetHistory(); return false; }
       this.successfulFrames++;
       const canvas = this.renderer.domElement, scene = this.scenePass!.renderTarget;
       const resolution = `${scene.width}×${scene.height} → ${canvas.width}×${canvas.height}`;
@@ -433,6 +434,6 @@ export class WebGPUPipeline {
   resize(): void { this.active?.resize(); }
   diagnostics() { return { ...(this.active?.diagnostics() ?? { ready: false, method: 'fsr-temporal', renderedFrames: 0 }), preparing: this.preparing, retainedGraphs: this.cache.size }; }
   async comparisonInputs() { if (!this.active) throw new Error('Pipeline is not ready.'); return this.active.comparisonInputs(); }
-  render(): boolean { return !this.queue.busy && (this.active?.render() ?? false); }
+  render(): boolean { if (syncDisplayResolution(this.renderer)) this.resize(); return !this.queue.busy && (this.active?.render() ?? false); }
   dispose(): void { this.disposed = true; this.queue.dispose(); this.cache.forEach(graph => graph.dispose()); this.cache.clear(); this.active = null; }
 }

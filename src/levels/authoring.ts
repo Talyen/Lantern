@@ -8,8 +8,8 @@ import type { AreaDefinition } from './types';
 import { setMaterialCalibration, resetMaterialCalibration, materialCalibration } from '../rendering/material-calibration';
 import { calibrationStrengths, type CalibrationFamily } from '../rendering/material-recipes';
 type Diagnostics = Pick<ClearingSnapshot, 'area' | 'revision' | 'renderedRevision' | 'ready' | 'errors' | 'missing' | 'contentHash' | 'camera' | 'renderedFrames' | 'phase' | 'updateMs' | 'objects' | 'resources' | 'graphics'>;
-type Appearance = { lantern: boolean; surfaces: SurfaceMode };
-type Context = { invalidate(): void; resetMaterials(): void; exportLighting(this: void): Promise<PreparedProbeBake>; lighting(this: void): unknown; appearance(this: void): Appearance; setAppearance(appearance: { surfaces?: SurfaceMode; lantern?: boolean }): Promise<boolean>; scene: THREE.Scene; camera: THREE.OrthographicCamera; renderer: { domElement: HTMLCanvasElement }; definitions(): Record<string, AreaDefinition>; area(): AreaDefinition; encounter: Encounter; changeArea(id: string): Promise<boolean>; restart(this: void): void; inspect(): boolean; waitFrames(count?: number): Promise<void>; setFrozen(value: boolean): void; setView(id: string): void; diagnostics(): Diagnostics };
+type Appearance = { shelterRestored?: boolean; lantern: boolean; surfaces: SurfaceMode };
+type Context = { invalidate(): void; resetMaterials(): void; resetMeasurements(): void; measurements(): unknown; exportLighting(this: void): Promise<PreparedProbeBake>; lighting(this: void): unknown; appearance(this: void): Appearance; setAppearance(appearance: { surfaces?: SurfaceMode; lantern?: boolean; shelterRestored?: boolean }): Promise<boolean>; scene: THREE.Scene; camera: THREE.OrthographicCamera; renderer: { domElement: HTMLCanvasElement }; definitions(): Record<string, AreaDefinition>; area(): AreaDefinition; encounter: Encounter; changeArea(id: string): Promise<boolean>; restart(this: void): void; inspect(): boolean; waitFrames(count?: number): Promise<void>; setFrozen(value: boolean): void; setView(id: string): void; diagnostics(): Diagnostics };
 export function attachAuthoring(ctx: Context) {
   const runtimeId = crypto.randomUUID();
   const diagnostics = () => ({ ...ctx.diagnostics(), runtimeId });
@@ -71,8 +71,9 @@ export function attachAuthoring(ctx: Context) {
   panel.querySelector<HTMLInputElement>('[data-lantern]')!.onchange = event => { void setLantern((event.target as HTMLInputElement).checked).catch(appearanceFailed); };
   const bridge = {
     setMaterialCalibration: compare, materialCalibration,
+    setShelterRestored: (value: boolean) => ctx.setAppearance({ shelterRestored: value }),
     setSurfaces, setLantern, appearance: ctx.appearance, lighting: ctx.lighting, exportLighting: ctx.exportLighting,
-    diagnostics, restart: ctx.restart, inspect,
+    diagnostics, restart: ctx.restart, inspect, resetMeasurements: () => ctx.resetMeasurements(), measurements: () => ctx.measurements(),
     area: () => ctx.area(),
     selectArea: async(id:string) => {const result=await ctx.changeArea(id);setView(selectedView);return result;},
     setView, freeze,

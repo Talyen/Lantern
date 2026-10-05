@@ -6,7 +6,7 @@ import { SceneCache } from '../assets/scene-cache';
 import { disposeSceneInstances, isMesh } from '../assets/resource-ownership';
 import { MeshStandardNodeMaterial, type Node } from 'three/webgpu';
 import { createSurfaceMaterial } from '../rendering/surface-detail';
-import { texture, mix, vec2, vec3, positionWorld, color, sin, smoothstep } from 'three/tsl';
+import { texture, mix, vec2, positionWorld, color, sin, smoothstep } from 'three/tsl';
 import environmentManifest from '../../assets/textures/environment/manifest.json';
 import * as THREE from 'three';
 import { sceneryLoader as loader, disposeSceneryLoader } from '../assets/scenery-loader';
@@ -38,7 +38,7 @@ export function createWorld() {
   scene.add(ambient, sun, sun.target); return { scene, ambient, sun };
 }
 export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode = 'projected', shelterRestored = false) {
-  const root = new THREE.Group(); root.name = area.id; root.userData.surfaceMode = surfaceMode;
+  const root = new THREE.Group(); root.name = area.id; root.userData.surfaceMode = surfaceMode; root.userData.shelterRestored = shelterRestored;
   const lightingSources = new Set<string>(), textureReady: Promise<void>[] = [];
   root.userData.lightingSources = [];
   const lightingProcedural: unknown[] = [];
@@ -104,15 +104,15 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
         const recipe = woodlandGroundRecipeFor(area.id);
         const paths = p.paths ?? [];
         lightingProcedural.push({ woodlandMaterial: recipe, patches, ...(paths.length ? { paths } : {}) });
-        const surface = woodlandMaterial(groundMap, patches, recipe, paths, bankWetness);
+        const boundary = area.layout.boundary;
+        const points = boundary.kind === 'circle' ? [[boundary.center[0] - boundary.radius - 2, boundary.center[1] - boundary.radius - 2], [boundary.center[0] + boundary.radius + 2, boundary.center[1] + boundary.radius + 2]] : boundary.points;
+        const min: [number, number] = [Math.min(...points.map(point => point[0])) - 2, Math.min(...points.map(point => point[1])) - 2];
+        const span: [number, number] = [Math.max(...points.map(point => point[0])) - min[0] + 2, Math.max(...points.map(point => point[1])) - min[1] + 2];
+        const surface = woodlandMaterial(groundMap, patches, recipe, paths, bankWetness, { min, span });
+        ownedTextures.add(surface.coverageMap); Object.assign(m, { groundCoverageMap: surface.coverageMap });
         m.colorNode = surface.color; m.normalNode = surface.normal; m.roughnessNode = surface.roughness; m.aoNode = surface.cavity;
-        if (grass?.coverage) {
-          m.map = grass.coverage.texture;
-          const coverage = coverageField!.r;
-          const grassSoil = { color: '#454833', strength: .18 };
-          lightingProcedural.push({ grassSoil });
-          m.colorNode = mix(m.colorNode, vec3(...new THREE.Color(grassSoil.color).toArray()), coverage.mul(grassSoil.strength));
-        }
+        // Grass receives actual baked/local contact lighting. Avoid a second
+        // sampled soil tint that adds muddiness and another shader texture slot.
       }
       return m;
     };

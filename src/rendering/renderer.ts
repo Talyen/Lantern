@@ -1,3 +1,4 @@
+import { displayPixelRatio, watchDisplayResolution } from './display-resolution';
 import { recordFailure } from '../diagnostics/report';
 import { prepareSceneryLoader } from '../assets/scenery-loader';
 import * as THREE from 'three';
@@ -74,7 +75,7 @@ export async function createRenderer(mount: HTMLElement): Promise<WebGPURenderer
     recordFailure('gpu-device-lost', message);
   }).catch((error: unknown) => recordFailure('gpu-device-lost', error));
   prepareSceneryLoader(renderer);
-  renderer.setPixelRatio(1);
+  watchDisplayResolution(); renderer.setPixelRatio(displayPixelRatio());
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace;

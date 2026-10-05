@@ -42,7 +42,7 @@ const lanes: Lane[] = [];
 for (const index of [0, 1]) {
   const mount = element<HTMLDivElement>(`weapon-stage-${index}`);
   const renderer = await createRenderer(mount);
-  renderer.setPixelRatio(1); renderer.setSize(mount.clientWidth, mount.clientHeight);
+  renderer.setSize(mount.clientWidth, mount.clientHeight);
   const scene = new THREE.Scene(); scene.background = new THREE.Color(look.background);
   scene.fog = new THREE.Fog(look.background, look.fogNear, look.fogFar);
   const lighting = new AreaLightingResources(renderer);

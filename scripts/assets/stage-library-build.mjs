@@ -1,3 +1,4 @@
+import { validatePreparedLighting } from '../levels/prepared-lighting.mjs';
 import { requireShippingApprovals } from './review/index.mjs';
 import { mkdir, rm, writeFile, stat } from 'node:fs/promises';
 import { resolve, relative } from 'node:path';
@@ -11,7 +12,7 @@ await cli(async () => {
   const { selection, selected, paths } = await gameplayAssets(source);
   // Source-only CI exports no private art and cannot certify its appearance.
   // Any staged private content still requires the complete shipping review.
-  if (paths.size) await requireShippingApprovals(root);
+  if (paths.size) { await requireShippingApprovals(root); await validatePreparedLighting(root, undefined, true); }
   const files = await inventory(source, ['vendor']);
   files.push(...await Promise.all([...paths].map(async path => ({ path: relative(source, path), bytes: (await stat(path)).size }))));
   rejectArchives(files);

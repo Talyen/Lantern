@@ -4,6 +4,16 @@ Lantern is a weathered, dangerous fantasy world with welcoming pools of amber li
 
 The player uses the finished Erika Archer appearance; selected art, bow-only quiver behavior and preparation acceptance belong to [protagonist appearance](PROTAGONISTS.md). Preserve authored character features before exploring color changes.
 
+## Quality and cost philosophy
+
+A sharp, stable gameplay image comes first. Preserve warm-grimdark atmosphere and painterly broad forms while reducing blur, aliasing, ghosting, noisy fine detail and muddy blending. Judge visual quality in motion at the normal gameplay camera, not only close-up stills. Future asset replacements should inherit reusable renderer and preparation improvements; do not invest in manual revisions of outgoing models and textures solely for performance.
+
+Every effect must justify its measured cost with a visible gameplay-scale benefit. Prefer clear lighting, value contrast, contact shadows and coherent material shapes before adding postprocessing or simulated micro-detail. Redesign or omit expensive effects with only small or moderate benefits. Multiple passes are legitimate tools, but repeated shading requires a specific reason. Better quality is allowed to use different algorithms and defaults; preserving an ineffective implementation is not the goal.
+
+Depth of field is selective: keep the player and interactive combat region sharp, use controlled background blur, and reject foreground halos or blurred cues. Outlines are optional readability tools, not a mandatory aesthetic; retain them only where they materially improve silhouettes. Sharpening must not disguise unstable reconstruction or amplify texture noise.
+
+[Graphics](GRAPHICS.md) owns physical output and FSR semantics; [Performance](PERFORMANCE.md#quality-and-performance-acceptance) owns budgets and comparisons.
+
 ## Palette and visual hierarchy
 
 | Role | Direction | Starting swatch |

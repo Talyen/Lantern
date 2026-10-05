@@ -15,25 +15,25 @@ Options contains Graphics and Sound, opens Keybindings, and pauses play while op
 | Weather Effects | On | On / Off |
 | Camera Shake | On | On / Off |
 | Resource Numbers | On | On / Off |
-| Outlines | On | On / Off |
-| Texture Depth | On | On / Off |
+| Outlines | Off | On / Off |
+| Texture Depth | Off | On / Off |
 | Frame rate limit | 60 in browsers; display-based in Electron | 60, 120, 144, 240, Unlimited |
 | Exposure | 1.25 | 0.5–2 |
 | Firelight | 0.85 | 0–1 |
 | Atmosphere | 0.70 | 0–1 |
-| Bloom | 0.40 | 0–1 |
-| Ambient occlusion | 0.65 | 0–1 |
-| Depth of field | Cinematic | Off, Soft, Cinematic |
+| Bloom | 0.25 | 0–1 |
+| Ambient occlusion | 0 | 0–1 |
+| Depth of field | Soft | Off, Soft, Cinematic |
 
-FSR Temporal is the sole reconstruction method. Output pixel ratio is always 1. Resolution Quality changes scene buffers without changing the window or display mode. The Scene → Output readout under Resolution Quality shows the actual scene-buffer and output dimensions, updating after a setting commits or the panel resizes. Native means the canvas’s CSS-pixel dimensions, not the monitor’s physical pixels; a small embedded browser panel therefore has a small output even at Native. Native uses 100% per axis, Quality uses 1/1.5, Balanced uses 1/1.7 and Performance uses 50%. Native WebGPU or FSR startup failure produces an actionable error; there is no renderer or reconstruction fallback. [Architecture](ARCHITECTURE.md#rendering-contract) owns this contract.
+FSR Temporal is the sole reconstruction method. Output uses the drawable viewport’s physical pixels (`CSS dimensions × devicePixelRatio`), following window resize, display density and browser zoom. Fullscreen therefore uses the monitor’s drawable resolution; a window uses its content area. Resolution Quality changes only internal scene buffers: Native uses 100% per axis, Quality 1/1.5, Balanced 1/1.7 and Performance 50%. The Scene → Output readout reports actual buffers. Recommend the best-looking mode that meets the frame budget; saved choices remain available. Native WebGPU or FSR startup failure produces an actionable error. [Architecture](ARCHITECTURE.md#rendering-contract) owns this contract.
 
 Shadow and particle quality are independent. Shadow quality changes map sizes while retaining authored light intensity and softness; fire shadows remain enabled. Particle Effects scales pool capacity, continuous emission and atmospheric density, preserving combat burst timing/counts. Atmospheric particles controls motes, smoke and embers, retaining flames, combat feedback, wind and water. Atmosphere adjusts preset distance fog; volume buffers, ray marching and bounded mist pockets are retired. Shared Golden lighting, local light recipes and explicit probe preparation belong to [Lighting](LIGHTING.md).
 
-DOF follows reconstructed FSR output with a jitter-corrected bilateral depth guide and camera-target focus. Soft uses focus range 24 and bokeh 0.8; Cinematic uses 16 and 1.6. Off bypasses DOF. Invalid or old numeric DOF values use Cinematic. The character gallery uses the shared reconstruction defaults with AO 0.30, bloom 0 and DOF Off for inspection.
+DOF follows reconstructed FSR output with a jitter-corrected bilateral depth guide and camera-target focus. It blurs only distant background, leaving the player and foreground sharp. Two half-resolution Gaussian passes use premultiplied far-background color/coverage to limit foreground color bleeding; Soft uses focus range 10 and bokeh 0.65, Cinematic 6 and 1.15. Off bypasses DOF. Invalid or old numeric modes use Soft. The character gallery retains AO 0.30, bloom 0 and DOF Off for inspection.
 
 Outlines applies stronger warm-charcoal contours to actors/equipment and quieter contours to known solid props, excluding terrain, plants, scatter and effects. Contours run before FSR and stay inside visible surfaces, using existing depth/motion rejection. Their footprint targets 1.7 output pixels, with a one-scene-texel minimum and smooth coverage. Inspect a changed silhouette in motion at normal settings; thin weapons, alternate resolutions and occlusion probes are targeted diagnostics. The visual treatment belongs to [Art Direction](ART_DIRECTION.md#optional-outlines).
 
-Material textures use fixed 16× anisotropic filtering and FSR-aware mip sampling with one additional finer mip: `clamp(log2(scene/output), −1, 0) − 1` (Quality approximately −1.585). This shared rule applies across gameplay, authoring and galleries at every resolution quality, with matching beauty/opaque-pass sampling. Foliage wind supplies its previous-frame deformation to FSR for steadier edges; authored wind animation stays the same. Texture Depth adds shallow parallax to suitable prepared ground, rock and bark regions. Off skips height searches while retaining normal maps, spatial roughness, restrained cavity shading and physical geometry. Both choices persist; fresh/reset selects On. Material ownership and preparation follow [Architecture](ARCHITECTURE.md#rendering-contract) and [Art Direction](ART_DIRECTION.md#materials-and-projection).
+Material textures use fixed 16× anisotropic filtering and FSR-aware mip sampling with one additional finer mip: `clamp(log2(scene/output), −1, 0) − 1` (Quality approximately −1.585). This shared rule applies across gameplay, authoring and galleries at every resolution quality, in the shared beauty pass. Foliage wind supplies its previous-frame deformation to FSR for steadier edges; authored wind animation stays the same. Texture Depth adds shallow parallax to suitable prepared ground, rock and bark regions. Off skips height searches while retaining normal maps, spatial roughness, restrained cavity shading and physical geometry. Both choices persist; fresh/reset selects Off. Material ownership and preparation follow [Architecture](ARCHITECTURE.md#rendering-contract) and [Art Direction](ART_DIRECTION.md#materials-and-projection).
 
 The surface adapter preserves texture transforms and uses the map's own coordinate frame for tangent-space normals when no authored tangents exist. Revalidate this boundary against the pinned three.js implementation on upgrades: a normal texture bound to a bake channel does not prove the derivative tangent frame uses that channel. Native resolution retains DOF; temporarily compare `?upscaleQuality=native&dof=off` when isolating material softness from lens blur, then inspect normal gameplay settings.
 
@@ -53,11 +53,11 @@ Comparison URLs override settings for the current load without saving them throu
 - `?outlines=off`
 - `?textureDepth=off`
 
-Explicitly editing a control saves that choice. Reset defaults restores graphics, sound and [Combat Text](UI_DESIGN.md#floating-combat-feedback) defaults; keybindings use their own editor and reset. Graphics uses `lantern.options.v1`, revision 8, preserving applicable existing preferences, including sharpening and the old quality-to-shadow/particle migration, while stripping retired fields. Rendering-method, render-scale and volumetric preferences/URLs are ignored.
+Explicitly editing a control saves that choice. Reset defaults restores graphics, sound and [Combat Text](UI_DESIGN.md#floating-combat-feedback) defaults; keybindings use their own editor and reset. Graphics uses `lantern.options.v1`, revision 9, preserving applicable existing preferences, including sharpening and the old quality-to-shadow/particle migration, while stripping retired fields. Rendering-method, render-scale and volumetric preferences/URLs are ignored.
 
 Controls update immediately and submit immutable snapshots once per presentation frame. Structural graph changes settle for 150 ms, flushing the latest choice on close. Preparation is serialized; gameplay pauses and the last image remains visible during compilation. Failed replacements retain the working graph with an actionable menu error. Resolution Quality resizes existing buffers; two recently used effect graphs are retained at most. HTML UI remains on the main thread, so cold preparation can still stall it.
 
-The renderer canvas's `data-graphics` JSON exposes recent frame intervals, scene/output dimensions, settings and FSR compute timings. Compute timings exclude scene rendering, the reactive opaque pass and later effects. Compare identical output buffers using [the performance protocol](PERFORMANCE.md#current-measurement-protocol).
+The renderer canvas's `data-graphics` JSON exposes recent frame intervals, scene/output dimensions, settings and FSR compute timings. Compute timings exclude scene rendering, later effects. Compare identical output buffers using [the performance protocol](PERFORMANCE.md#current-measurement-protocol).
 
 ## Runtime requirements
 

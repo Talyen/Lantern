@@ -1,3 +1,4 @@
+import { disposeRigArt } from './assets/rig-art';
 import { Adventure } from './gameplay/adventure';
 import { AdventureStore, type SavedAdventure } from './gameplay/adventure-store';
 import { InputPreferences } from './input/bindings';
@@ -95,7 +96,7 @@ window.addEventListener('pagehide', () => {
   closing = true;
   if (session && selected) store.save(selected.slot, selected.id, session.capture());
   store.close(); preferences.close(); audio.dispose();
-  void (async () => { await session?.dispose(); await disposeAreaCache(); await renderer.dispose(); })().catch((error: unknown) => console.error('Unable to release Lantern.', error));
+  void (async () => { await session?.dispose(); await disposeAreaCache(); await disposeRigArt(); await renderer.dispose(); })().catch((error: unknown) => console.error('Unable to release Lantern.', error));
 }, { once: true });
 
 // Explicit authoring/inspection keeps its disposable fixture world; normal play always selects a slot.

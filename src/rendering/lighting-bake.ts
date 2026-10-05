@@ -1,3 +1,4 @@
+import { lightingBakeVersion, type LightingPreparation } from '../levels/lighting-preparation';
 import { materialRecipes } from './material-recipes';
 import { isMesh, isTexture } from '../assets/resource-ownership';
 import * as THREE from 'three';
@@ -6,8 +7,8 @@ import type { LightProbeGrid } from 'three/addons/lighting/LightProbeGrid.js';
 import type { RenderTarget, WebGPURenderer } from 'three/webgpu';
 
 /** Increment when static shading or the pinned probe adapter changes. */
-export const lightingBakeVersion = 7;
-export type PreparedProbeBake = { version: number; three: string; signature: string; probes: ProbeLighting; dimensions: [number, number, number]; data: number[] };
+export { lightingBakeVersion } from '../levels/lighting-preparation';
+export type PreparedProbeBake = { version: number; three: string; signature: string; probes: ProbeLighting; dimensions: [number, number, number]; data: number[]; preparation?: LightingPreparation };
 
 /** Render inputs only: gameplay names, arrivals, enemies and rewards do not invalidate GI. */
 export async function lightingBakeSignature(area: ResolvedAreaDefinition, root: THREE.Group): Promise<string> {

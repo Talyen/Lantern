@@ -1,3 +1,4 @@
+import { loadRigArt } from '../assets/rig-art';
 import { RenewalVisibility } from './renewal-visibility';
 import { finishSubmittedFrame, resetNativeFrameCompilation } from '../rendering/renderer';
 import { AbilityEffects } from '../rendering/ability-effects';
@@ -8,7 +9,7 @@ import { recordFailure } from '../diagnostics/report';
 import { SmithingPanel } from '../ui/smithing-panel';
 import { ShopMenu } from '../ui/shop';
 import { ClearingDiagnostics } from './diagnostics';
-import { disposeSceneResources, sceneTextures } from '../assets/resource-ownership';
+import { disposeSceneInstances, sceneTextures } from '../assets/resource-ownership';
 import { resolveAreaLighting as lightingFor } from '../levels/lighting';
 import type { SurfaceMode } from '../assets/environment-surfaces';
 import type { AreaLighting } from '../levels/types';
@@ -183,7 +184,7 @@ const encounter = createEncounter('loading', currentArea.layout);
 const impact = new CombatImpact();
 releases.push(() => { impact.clear(); cameraOwner.clearShake(); });
 const player = makeActor(scene, encounter.player);
-releases.push(() => { player.mixer?.stopAllAction(); if (player.mixer) player.mixer.uncacheRoot(player.mixer.getRoot()); disposeSceneResources(player.root); });
+releases.push(() => { player.mixer?.stopAllAction(); if (player.mixer) player.mixer.uncacheRoot(player.mixer.getRoot()); disposeSceneInstances(player.root, { skeletons: true }); });
 const actors: Record<ActorId, Actor> = { player };
 const loader = new GLTFLoader();
 const approach = new ClickApproach(adventure, encounter);
@@ -607,7 +608,7 @@ if (import.meta.env.DEV) Object.assign(window, { lanternRenewal: {
 if (import.meta.env.DEV) releases.push(() => { Reflect.deleteProperty(window, 'lanternRenewal'); });
 try {
   loadingScreen.preparing(loadingScreen.current, 'Preparing character');
-  const character = await loader.loadAsync(characters.player.model);
+  const character = await loadRigArt(loader, characters.player.model);
   sceneTextures(character.scene);
   attachCharacter(player, character.scene, character.animations, characters.player.height);
   loadingScreen.preparing(loadingScreen.current, 'Preparing equipment');
@@ -642,9 +643,10 @@ try {
     const { attachAuthoring } = await import('../levels/authoring');
     const authoring = attachAuthoring({ invalidate: invalidateFrame, scene, camera, renderer, definitions: () => definitions, area: () => currentArea, encounter,
       resetMaterials: () => graphics.resetHistory(),
+      resetMeasurements: () => graphics.resetMeasurements(), measurements: () => graphics.measurements(),
       exportLighting: () => graphics.exportLighting(), lighting: () => graphics.lightingDiagnostics(),
       changeArea: id => changeArea({ kind: 'travel', area: id }), restart: reset, inspect: () => { inspect(); return inspecting; }, waitFrames, setFrozen: freezePreview, setView: previewView,
-      appearance: () => ({ lantern: lanternEnabled, surfaces: surfaceMode }),
+      appearance: () => ({ lantern: lanternEnabled, surfaces: surfaceMode, shelterRestored: Boolean(active?.root.userData.shelterRestored) }),
       setAppearance: changeAppearance,
       diagnostics,
     });
@@ -687,10 +689,10 @@ function previewView(id: string): void {
   cameraOwner.previewView(currentArea, id);
   graphics?.resetHistory();
 }
-async function changeAppearance(appearance: { surfaces?: SurfaceMode; lantern?: boolean }): Promise<boolean> {
-  if (appearance.lantern !== undefined && appearance.surfaces === undefined) { lanternEnabled = appearance.lantern; personalLantern?.setEnabled(lanternEnabled); return true; }
+async function changeAppearance(appearance: { surfaces?: SurfaceMode; lantern?: boolean; shelterRestored?: boolean }): Promise<boolean> {
+  if (appearance.lantern !== undefined && appearance.surfaces === undefined && appearance.shelterRestored === undefined) { lanternEnabled = appearance.lantern; personalLantern?.setEnabled(lanternEnabled); return true; }
   return changeArea({ kind: 'refresh', spawn: { position: [encounter.player.x, encounter.player.z], yaw: encounter.player.yaw },
-    appearance: { lantern: appearance.lantern ?? lanternEnabled, surfaces: appearance.surfaces ?? surfaceMode } });
+    appearance: { lantern: appearance.lantern ?? lanternEnabled, surfaces: appearance.surfaces ?? surfaceMode, shelterRestored: appearance.shelterRestored ?? Boolean(active?.root.userData.shelterRestored) } });
 }
 async function changeArea(change: AreaChange): Promise<boolean> {
   const id = change.kind === 'travel' ? change.area : currentArea.id;

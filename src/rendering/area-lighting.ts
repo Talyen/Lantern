@@ -1,3 +1,5 @@
+import { lightingPreparationKey, type LightingPreparation } from '../levels/lighting-preparation';
+import { materialRecipes } from './material-recipes';
 import { restoreBakeVisibility, includeCutawayShadows } from './cutaway';
 import { finishSubmittedFrame } from './renderer';
 import * as THREE from 'three';
@@ -10,22 +12,37 @@ import { decodeProbeBake, exportProbeBake, lightingBakeSignature, type PreparedP
 import bakeIndex from '../../assets/lighting-bakes.json';
 import { disposeSceneInstances } from '../assets/resource-ownership';
 
+type LightingPool = { environments: LightingCache<RenderTarget>; probes: LightingCache<ProbeResource>; pmrem: PMREMGenerator; pending: Promise<unknown> };
+const poolKey = Symbol.for('lantern.lightingPool');
+function lightingPool(renderer: WebGPURenderer): LightingPool {
+  const existing = Reflect.get(renderer, poolKey) as LightingPool | undefined;
+  if (existing) return existing;
+  const pool: LightingPool = {
+    environments: new LightingCache(lightingCacheBudgets.skies.entries, lightingCacheBudgets.skies.bytes, target => target.dispose()),
+    probes: new LightingCache(lightingCacheBudgets.probes.entries, lightingCacheBudgets.probes.bytes, item => { item.grid.dispose(); item.imported?.dispose(); }),
+    pmrem: new PMREMGenerator(renderer), pending: Promise.resolve(),
+  };
+  Reflect.set(renderer, poolKey, pool);
+  const dispose = renderer.dispose.bind(renderer);
+  renderer.dispose = async () => { await pool.pending; pool.probes.dispose(); pool.environments.dispose(); pool.pmrem.dispose(); await dispose(); };
+  return pool;
+}
 type ProbeResource = { grid: LightProbeGrid; imported?: THREE.Texture; prepared?: PreparedProbeBake; source: 'live' | 'prepared' };
-export type PreparedLighting = { environment: THREE.Texture | null; grid: LightProbeGrid | null; signature: string; probes?: ProbeLighting; release(): void; resource?: ProbeResource };
+export type PreparedLighting = { environment: THREE.Texture | null; grid: LightProbeGrid | null; signature: string; probes?: ProbeLighting; release(): void; resource?: ProbeResource; preparation: { key: string; sources: string[] } };
 /** Renderer-wide budgets, independent of the number of areas in the game. */
 export const lightingCacheBudgets = { skies: { entries: 8, bytes: 32 * 1024 * 1024 }, probes: { entries: 8, bytes: 16 * 1024 * 1024 } };
 export class AreaLightingResources {
-  private environments = new LightingCache<RenderTarget>(lightingCacheBudgets.skies.entries, lightingCacheBudgets.skies.bytes, target => target.dispose());
-  private probes = new LightingCache<ProbeResource>(lightingCacheBudgets.probes.entries, lightingCacheBudgets.probes.bytes, item => { item.grid.dispose(); item.imported?.dispose(); });
-  private pending: Promise<unknown> = Promise.resolve();
+  private pool: LightingPool;
+  private get environments() { return this.pool.environments; }
+  private get probes() { return this.pool.probes; }
   private active: PreparedLighting | null = null;
   private previewLease: { release(): void } | undefined;
   private disposed = false;
-  private pmrem: PMREMGenerator;
+  private get pmrem() { return this.pool.pmrem; }
   private stage = 'idle';
   private preparedFailure: string | null = null;
   constructor(private renderer: WebGPURenderer) {
-    this.pmrem = new PMREMGenerator(renderer);
+    this.pool = lightingPool(renderer);
     if (renderer.library.getLightNodeClass(LightProbeGrid) === null) renderer.library.addLight(LightProbeGridNode, LightProbeGrid);
   }
 
@@ -68,7 +85,7 @@ export class AreaLightingResources {
   }
 
   prepare(area: ResolvedAreaDefinition, root: THREE.Group): Promise<PreparedLighting> {
-    const result = this.pending.then(() => this.prepareResources(area, root)); this.pending = result.catch(() => {}); return result;
+    const result = this.pool.pending.then(() => this.prepareResources(area, root)); this.pool.pending = result.catch(() => {}); return result;
   }
   private async prepareResources(area: ResolvedAreaDefinition, root: THREE.Group): Promise<PreparedLighting> {
     if (this.disposed) throw new Error('Lighting resources are closed.');
@@ -77,20 +94,36 @@ export class AreaLightingResources {
     let probe: ReturnType<LightingCache<ProbeResource>['acquire']>;
     try {
       const spec = area.lighting.probes;
-      this.stage = this.renderer.domElement.dataset.lightingStage = 'fingerprint';
-      const signature = spec ? await lightingBakeSignature(area, root) : '';
+      this.stage = this.renderer.domElement.dataset.lightingStage = 'prepared-lookup';
+      const key = await lightingPreparationKey(area, String(root.userData.surfaceMode ?? 'projected'), Boolean(root.userData.shelterRestored), THREE.REVISION, materialRecipes);
+      const sources = [...new Set((root.userData.lightingSources as string[] ?? []).map(url => new URL(url, 'http://localhost').pathname))].sort();
+      const authoring = import.meta.env.DEV && new URLSearchParams(location.search).get('author') === 'levels';
+      const indexed = Object.entries(bakeIndex.bakes).find(([, value]) => {
+        const prepared = (value as { preparation?: LightingPreparation }).preparation;
+        // Production texture URLs are content-hashed by Vite. Staging verifies
+        // canonical source bytes; development also checks loaded URL identity.
+        return prepared?.key === key && (!import.meta.env.DEV || JSON.stringify(prepared.sources.map(item => item.url).sort()) === JSON.stringify(sources));
+      });
+      if (indexed && import.meta.env.DEV && !authoring) {
+        const check = await fetch(`/__prepared-lighting?signature=${indexed[0]}`).then(response => response.json()) as { valid: boolean; error?: string };
+        if (!check.valid) throw new Error(check.error ?? 'Prepared lighting needs refreshing.');
+      }
+      this.stage = this.renderer.domElement.dataset.lightingStage = authoring ? 'fingerprint' : 'prepared-load';
+      const signature = spec ? authoring ? await lightingBakeSignature(area, root) : indexed?.[0] ?? '' : '';
       if (this.disposed) throw new Error('Lighting resources are closed.');
       if (spec) {
         probe = this.probes.acquire(signature);
         if (!probe) {
           this.stage = this.renderer.domElement.dataset.lightingStage = 'prepared-load';
-          const resource = await this.loadPrepared(signature, spec) ?? await this.bake(area, root, sky?.value.texture ?? null);
+          let resource = signature ? await this.loadPrepared(signature, spec) : null;
+          if (!resource && !authoring) throw new Error(`Lighting for ${area.name} needs preparation. Prepare this area in the level authoring preview, then reload.`);
+          resource ??= await this.bake(area, root, sky?.value.texture ?? null);
           const [nx, ny, nz] = spec.resolution;
           probe = this.probes.insert(signature, resource, nx * ny * 7 * (nz + 2) * 8 * (resource.source === 'live' ? 2 : 1));
         }
       }
       return { environment: sky?.value.texture ?? null, grid: probe?.value.grid ?? null, signature, probes: spec,
-        resource: probe?.value, release: () => { sky?.release(); probe?.release(); } };
+        resource: probe?.value, preparation: { key, sources }, release: () => { sky?.release(); probe?.release(); } };
     } catch (error) { sky?.release(); probe?.release(); throw error; }
     finally { this.stage = this.renderer.domElement.dataset.lightingStage = 'idle'; }
   }
@@ -146,11 +179,12 @@ export class AreaLightingResources {
   async exportCurrent(): Promise<PreparedProbeBake> {
     const active = this.active;
     if (!active?.grid || !active.probes) throw new Error('This scene has no irradiance probes.');
-    return active.resource?.prepared ?? exportProbeBake(this.renderer, active.grid, active.probes, active.signature);
+    const value = active.resource?.prepared ?? await exportProbeBake(this.renderer, active.grid, active.probes, active.signature);
+    return { ...value, preparation: { key: active.preparation.key, sources: active.preparation.sources.map(url => ({ url, hash: '' })) } };
   }
   diagnostics() { return { stage: this.stage, skies: this.environments.stats(), probes: this.probes.stats(), signature: this.active?.signature, source: this.active?.resource?.source ?? 'none', preparedFailure: this.preparedFailure }; }
   dispose(): void {
     this.disposed = true; this.active?.grid?.removeFromParent(); this.active?.release(); this.previewLease?.release();
-    this.probes.dispose(); this.environments.dispose(); this.pmrem.dispose();
+    this.active = null; this.previewLease = undefined;
   }
 }

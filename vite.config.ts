@@ -1,3 +1,4 @@
+import { validatePreparedLighting } from './scripts/levels/prepared-lighting.mjs';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { defineConfig, type Plugin } from 'vite';
@@ -10,6 +11,10 @@ import { resolve, sep, extname } from 'node:path';
 function privateLibrary(): Plugin {
   return { name: 'lantern-private-library', configureServer(server) {
     const root = resolve('public/vendor');
+    server.middlewares.use('/__prepared-lighting', (request, response) => {
+      const signature = new URL(request.url ?? '', 'http://localhost').searchParams.get('signature');
+      void validatePreparedLighting(process.cwd(), signature ?? '').then(() => { response.setHeader('Content-Type', 'application/json'); response.end(JSON.stringify({ valid: true })); }, (error: unknown) => { response.setHeader('Content-Type', 'application/json'); response.end(JSON.stringify({ valid: false, error: String(error) })); });
+    });
     server.middlewares.use('/__level-owner', (_request, response) => { response.setHeader('Content-Type', 'application/json'); response.end(JSON.stringify({ token: process.env.LANTERN_LEVEL_SESSION ?? null })); });
     server.middlewares.use((request, response, next) => {
       void (async () => {
@@ -21,7 +26,9 @@ function privateLibrary(): Plugin {
         const file = await stat(path); if (!file.isFile()) { response.statusCode = 404; response.end(); return; }
         const mime: Record<string, string> = { '.ogg': 'audio/ogg', '.glb': 'model/gltf-binary', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg' };
         response.setHeader('Content-Type', mime[extname(path)] ?? 'application/octet-stream');
-        response.setHeader('Cache-Control', 'no-cache');
+        const etag = `"${file.size}-${file.mtimeMs}-${file.ctimeMs}"`;
+        response.setHeader('ETag', etag); response.setHeader('Cache-Control', 'no-cache');
+        if (request.headers['if-none-match'] === etag) { response.statusCode = 304; response.end(); return; }
         createReadStream(path).on('error', () => response.destroy()).pipe(response);
       } catch { response.statusCode = 404; response.end('Private vendor asset unavailable'); }
       })().catch(next);

@@ -7,7 +7,7 @@ await cli(async () => {
   if (!['heavy', 'gpu', 'checks'].includes(args['--resource']) || separator < 0 || !process.argv[separator + 1]) throw new Error('Specify a resource and literal command after --.');
   let measurement = {};
   if (args['--require-reason']) {
-    measurement = parseArgs(process.argv.slice(separator + 3), { '--area': 'value', '--reason': 'value', '--lab': 'value' });
+    measurement = parseArgs(process.argv.slice(separator + 3), { '--area': 'value', '--reason': 'value', '--lab': 'value', '--quick': 'boolean', '--dpr': 'value', '--viewport': 'value' });
     if (measurement['--lab'] && measurement['--lab'] !== 'assets') throw new Error('Only the assets lab supports selection measurement.');
     if (measurement['--help']) { await run(process.argv[separator + 1], process.argv.slice(separator + 2)); return; }
     if (!measurement['--reason']?.trim()) throw new Error('Performance measurement requires --reason with a specific user request or evidenced performance defect.');

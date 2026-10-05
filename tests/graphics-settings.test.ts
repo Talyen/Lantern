@@ -15,7 +15,7 @@ test('graphics migration and edits preserve saved choices beneath temporary URL 
     vi.stubGlobal('location', { search: '?dof=cinematic&sharpness=.8&outlines=on&atmosphericParticles=on' });
     expect(readSettings()).toMatchObject({ dof: 'cinematic', sharpness: .8, outlines: true, atmosphericParticles: true });
     expect(saved()).not.toHaveProperty('volumetricLighting');
-    expect(saved()).toMatchObject({ defaultsVersion, dof: 'off', sharpness: .3, outlines: false, atmosphericParticles: false, textureDepth: true, weatherEffects: false });
+    expect(saved()).toMatchObject({ defaultsVersion, dof: 'off', sharpness: .3, outlines: false, atmosphericParticles: false, textureDepth: false, weatherEffects: false });
     saveSettings({ ...readSettings(), exposure: 1.1 }, 'exposure');
     expect(saved()).toMatchObject({ exposure: 1.1, dof: 'off', sharpness: .3, outlines: false, atmosphericParticles: false });
     saveSettings({ ...readSettings(), atmosphericParticles: true }, 'atmosphericParticles');

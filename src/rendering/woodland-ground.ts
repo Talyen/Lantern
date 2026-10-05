@@ -1,5 +1,6 @@
+import { prepareGroundCoverage } from './ground-coverage';
 import type * as THREE from 'three';
-import { mix, vec2, vec3, float, dot, smoothstep, mx_noise_float, positionWorld, texture, dFdx, dFdy } from 'three/tsl';
+import { mix, vec2, vec3, float, smoothstep, mx_noise_float, positionWorld, texture, dFdx, dFdy } from 'three/tsl';
 import earthUrl from '../../assets/textures/environment/showcase/earth-v2.png?url';
 import litterUrl from '../../assets/textures/environment/showcase/litter-v2.png?url';
 import rockyUrl from '../../assets/textures/environment/showcase/rocky-soil-v2.png?url';
@@ -32,30 +33,12 @@ export function woodlandPatchWeight(patch: Pick<GroundPatch, 'center' | 'radius'
   return smoothstep(.35, 1, distance).oneMinus().mul(patch.strength);
 }
 /** One coherent projection per layer preserves individual painted features instead of double-image crossfades. */
-export function woodlandMaterial(load: (url: string, data: boolean) => THREE.Texture, patches: GroundPatch[], recipe: WoodlandGroundRecipe = woodlandGroundRecipe, paths: GroundPath[] = [], bankWetness?: Node<'float'>) {
-  let wet: Node<'float'> = bankWetness ?? float(0);
-  let litter: Node<'float'> = float(0), rocky: Node<'float'> = float(0), worn: Node<'float'> = float(0);
-  // Materialize each reduction step: a densely authored ground layer otherwise
-  // emits one deeply nested max()/min() expression that Safari cannot parse.
-  // Keep the existing operation order and every authored patch/path weight.
-  for (const patch of patches) {
-    const weight = woodlandPatchWeight(patch);
-    if (patch.wetness) wet = wet.max(weight.mul(patch.wetness)).toVar();
-    if (patch.layer === 'litter') litter = litter.max(weight).toVar();
-    else if (patch.layer === 'rocky-soil') rocky = rocky.max(weight).toVar();
-    else worn = worn.max(weight).toVar();
-  }
-  for (const path of paths) {
-    const point = positionWorld.xz;
-    let distance: Node<'float'> = float(1e5);
-    for (let i = 1; i < path.points.length; i++) {
-      const a = vec2(...path.points[i - 1]), delta = vec2(path.points[i][0] - path.points[i - 1][0], path.points[i][1] - path.points[i - 1][1]);
-      const t = dot(point.sub(a), delta).div(dot(delta, delta)).clamp(0, 1);
-      distance = distance.min(point.sub(a.add(delta.mul(t))).length()).toVar();
-    }
-    const edge = mx_noise_float(point.mul(.7)).mul(.1).add(mx_noise_float(point.mul(3.5)).mul(.025));
-    worn = worn.max(smoothstep(path.width * .36, path.width * .66, distance.add(edge)).oneMinus().mul(path.strength)).toVar();
-  }
+export function woodlandMaterial(load: (url: string, data: boolean) => THREE.Texture, patches: GroundPatch[], recipe: WoodlandGroundRecipe = woodlandGroundRecipe, paths: GroundPath[] = [], bankWetness?: Node<'float'>, bounds: { min: [number, number]; span: [number, number] } = { min: [-64, -64], span: [128, 128] }) {
+  const coverage = prepareGroundCoverage(patches, paths, bounds.min, bounds.span);
+  const weights = texture(coverage.map, positionWorld.xz.sub(vec2(...bounds.min)).div(vec2(...bounds.span)));
+  const wet: Node<'float'> = (bankWetness ?? float(0)).max(weights.a);
+  let litter: Node<'float'> = weights.r, rocky: Node<'float'> = weights.g;
+  const worn = weights.b;
   litter = litter.mul(worn.oneMinus()); rocky = rocky.mul(worn.oneMinus());
   const layer = (kind: GroundLayer, coverage: typeof litter) => {
     const coords = positionWorld.xz.mul(recipe.scales[kind]);
@@ -80,6 +63,7 @@ export function woodlandMaterial(load: (url: string, data: boolean) => THREE.Tex
   };
   const lw = weight(litter, leaves.field), rw = weight(rocky, stone.field).mul(lw.oneMinus());
   return {
+    coverageMap: coverage.map,
     color: mix(mix(earth.color, leaves.color, lw), stone.color, rw).mul(float(1).sub(wet.mul(.13))),
     normal: mix(mix(earth.normal, leaves.normal, lw), stone.normal, rw).normalize(),
     roughness: mix(mix(earth.field.g, leaves.field.g, lw), stone.field.g, rw).mul(float(1).sub(wet.mul(.48))),

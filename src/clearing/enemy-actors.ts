@@ -1,12 +1,11 @@
-import { cachedRequest } from '../data/cached-request';
+import { loadRigArt } from '../assets/rig-art';
 import * as THREE from 'three';
 import type { GLTF, GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import characters from '../../assets/playable-characters.json';
 import type { Encounter } from '../gameplay/encounter';
 import type { EnemyRig } from '../gameplay/area';
 import { loadEquipmentMotions } from '../animation/combat-animations';
-import { disposeSceneInstances, disposeSceneResources, sceneTextures } from '../assets/resource-ownership';
-import { prepareStandardMaterials } from '../rendering/surface-detail';
+import { disposeSceneInstances } from '../assets/resource-ownership';
 import { Equipment } from '../rendering/equipment';
 import { CasterVisuals } from '../rendering/projectiles';
 import { attachCharacter, makeActor, installMotions, type Actor } from './actors';
@@ -16,21 +15,13 @@ export type PreparedEnemies = { entries: Record<string, EnemyPresentation>; disp
 
 /** Area-owned actor instances borrow cached rig art; preparation never replaces the active actors. */
 export class EnemyActors {
-  private sources = new Map<string, Promise<GLTF>>();
   private active?: PreparedEnemies;
   private disposed = false;
   constructor(private scene: THREE.Scene, private loader: GLTFLoader, private actors: Record<string, Actor>) {}
 
   private source(rig: EnemyRig): Promise<GLTF> {
-    return cachedRequest(this.sources, rig, async () => {
-      try {
-        const gltf = await this.loader.loadAsync(characters[rig].model);
-        try { sceneTextures(gltf.scene); prepareStandardMaterials(gltf.scene); }
-        catch (error) { disposeSceneResources(gltf.scene); throw error; }
-        return gltf;
-      } catch (error) {
-        throw new Error(`Prepare ${characters[rig].name} with npm run assets:export-character. ${String(error)}`, { cause: error });
-      }
+    return loadRigArt(this.loader, characters[rig].model).catch((error: unknown) => {
+      throw new Error(`Prepare ${characters[rig].name} with npm run assets:export-character. ${String(error)}`, { cause: error });
     });
   }
 
@@ -80,7 +71,5 @@ export class EnemyActors {
   diagnostics() { return Object.fromEntries(Object.entries(this.active?.entries ?? {}).map(([id, entry]) => [id, entry.equipment.diagnostics()])); }
   dispose(): void {
     this.disposed = true; this.active?.dispose();
-    for (const source of this.sources.values()) void source.then(gltf => disposeSceneResources(gltf.scene)).catch(() => {});
-    this.sources.clear();
   }
 }

@@ -27,13 +27,13 @@ export type GraphicsSettings = {
 export const settingsKey = 'lantern.options.v1';
 export const defaults = (query = new URLSearchParams(typeof location === 'undefined' ? '' : location.search)): GraphicsSettings => ({ cameraDistance: 'default', upscaleQuality: 'quality', sharpness: 0.50, shadowQuality: 'high', particleQuality: 'high',
   fpsLimit: defaultFrameRate(Number(query.get('displayHz'))),
-  exposure: 1.25, warmth: 0.85, fog: 0.7, bloom: 0.4, ao: 0.65, dof: 'cinematic', cameraShake: true, resourceNumbers: true, weatherEffects: true, atmosphericParticles: true, outlines: true, textureDepth: true });
+  exposure: 1.25, warmth: 0.85, fog: 0.7, bloom: 0.25, ao: 0, dof: 'soft', cameraShake: true, resourceNumbers: true, weatherEffects: true, atmosphericParticles: true, outlines: false, textureDepth: false });
 export const ranges = {
   sharpness: [0, 1, 0.01],
   exposure: [0.5, 2, 0.01], warmth: [0, 1, 0.01], fog: [0, 1, 0.01], bloom: [0, 1, 0.01], ao: [0, 1, 0.01],
 } as const;
 export type NumericSetting = keyof typeof ranges;
-export const defaultsVersion = 8;
+export const defaultsVersion = 9;
 export type SavedSettings = Partial<GraphicsSettings> & { defaultsVersion?: number; quality?: 'laptop' | 'enhanced' };
 /** Apply this visual-default revision once; later player choices remain authoritative. */
 export function migrateSettings(value: unknown): GraphicsSettings {
