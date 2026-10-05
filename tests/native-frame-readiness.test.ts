@@ -1,4 +1,5 @@
 import { afterEach, expect, test, vi } from 'vitest';
+import type * as NativeGpu from 'three/webgpu';
 
 // Consequential regression: WebGPU can skip objects whose async pipelines are
 // pending. Such a submission must not reveal an incomplete world or hide errors.
@@ -11,7 +12,7 @@ const fixture = vi.hoisted(() => {
 });
 vi.mock('../src/assets/scenery-loader', () => ({ prepareSceneryLoader() {} }));
 vi.mock('../src/diagnostics/report', () => ({ recordFailure() {} }));
-vi.mock('three/webgpu', async importOriginal => ({ ...await importOriginal<typeof import('three/webgpu')>(), WebGPURenderer: class {
+vi.mock('three/webgpu', async importOriginal => ({ ...await importOriginal<typeof NativeGpu>(), WebGPURenderer: class {
   _getFallback = () => {};
   _initialized = true;
   library = { fromMaterial: (material: unknown) => material, lightNodes: new WeakMap() };
