@@ -3,7 +3,7 @@ import { homeArea, type Adventure } from '../gameplay/adventure';
 import type { Encounter } from '../gameplay/encounter';
 import type { AreaDefinition } from '../levels/types';
 import type { AdventureMenus } from '../ui/adventure';
-import type { AreaTravel } from './area-change';
+import type { AreaTravel, AreaChangeResult } from './area-change';
 import type { GatheringController } from './gathering';
 import { interactionError, type WorldInteraction } from './world-interactions';
 
@@ -11,7 +11,7 @@ type InteractionContext = {
   area(): AreaDefinition;
   definitions(): Record<string, AreaDefinition>;
   paused(): boolean;
-  changeArea(change: AreaTravel): Promise<boolean>;
+  changeArea(change: AreaTravel): Promise<AreaChangeResult>;
   syncAdventure(): void;
   openShop(): void;
   openSmithing(): void;
@@ -49,8 +49,8 @@ export class InteractionActions {
           name: fire.name,
           travel: () => {
             const allowed = () => adventure.canTravel(encounter, area, sourceFire, destination, fire);
-            if (allowed()) void context.changeArea({ kind: 'travel', area: destination.id, transition: true, spawn: fire.arrival, canCommit: allowed }).then(ok => {
-              if (ok) this.audio.play('fireTravel');
+            if (allowed()) void context.changeArea({ kind: 'travel', area: destination.id, transition: true, spawn: fire.arrival, canCommit: allowed }).then(result => {
+              if (result.status === 'committed' && result.readiness === 'ready') this.audio.play('fireTravel');
             }).catch(areaChangeFailed);
           },
         })));
@@ -60,19 +60,14 @@ export class InteractionActions {
         const link = adventure.portal;
         if (!link) return;
         if (area.id === homeArea) {
-          void context.changeArea({ kind: 'travel', area: link.area, transition: true, spawn: link.departure }).then(ok => {
-            if (!ok) return;
-            this.audio.play('portalPass');
-            if (adventure.portal === link) {
-              adventure.portal = null;
-              adventure.save();
-              context.syncAdventure();
-              this.audio.play('portalClose');
-            }
+          void context.changeArea({ kind: 'travel', area: link.area, transition: true, spawn: link.departure, consumePortal: link }).then(result => {
+            if (result.status !== 'committed') return;
+            context.syncAdventure();
+            if (result.readiness === 'ready') { this.audio.play('portalPass'); this.audio.play('portalClose'); }
           }).catch(areaChangeFailed);
         } else {
-          void context.changeArea({ kind: 'travel', area: homeArea, transition: true, spawn: context.definitions().homestead.portalArrival }).then(ok => {
-            if (ok) this.audio.play('portalPass');
+          void context.changeArea({ kind: 'travel', area: homeArea, transition: true, spawn: context.definitions().homestead.portalArrival }).then(result => {
+            if (result.status === 'committed' && result.readiness === 'ready') this.audio.play('portalPass');
           }).catch(areaChangeFailed);
         }
         break;

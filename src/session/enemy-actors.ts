@@ -17,6 +17,7 @@ export type PreparedEnemies = { entries: Record<string, EnemyPresentation>; disp
 export class EnemyActors {
   private active?: PreparedEnemies;
   private disposed = false;
+  private ownsActive = true;
   constructor(private scene: THREE.Scene, private loader: GLTFLoader, private actors: Record<string, Actor>) {}
 
   private source(rig: EnemyRig): Promise<GLTF> {
@@ -52,8 +53,9 @@ export class EnemyActors {
     return { entries, dispose };
   }
 
-  commit(next: PreparedEnemies): void {
-    this.active?.dispose();
+  commit(next: PreparedEnemies, borrowed = false): void {
+    if (this.ownsActive) this.active?.dispose();
+    this.ownsActive = !borrowed;
     for (const id of Object.keys(this.actors)) if (id !== 'player') delete this.actors[id];
     for (const [id, { actor, caster }] of Object.entries(next.entries)) {
       this.actors[id] = actor; this.scene.add(actor.root); caster?.attach(this.scene);
@@ -70,6 +72,7 @@ export class EnemyActors {
   }
   diagnostics() { return Object.fromEntries(Object.entries(this.active?.entries ?? {}).map(([id, entry]) => [id, entry.equipment.diagnostics()])); }
   dispose(): void {
-    this.disposed = true; this.active?.dispose();
+    this.disposed = true; if (this.ownsActive) this.active?.dispose();
+    this.active = undefined;
   }
 }

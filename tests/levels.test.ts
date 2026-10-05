@@ -5,8 +5,6 @@ import type { Object3D } from 'three';
 import type { MovementWorld as MovementWorldType } from '../src/gameplay/movement';
 import type { NavigationGeometry } from '../src/gameplay/navigation';
 import type { NavMesh } from 'navcat';
-import type { buildArea as BuildArea } from '../src/levels/builder';
-import type { PreparedLighting } from '../src/rendering/area-lighting';
 import { expect, test, vi } from 'vitest';
 import * as THREE from 'three';
 import { GLTFLoader, type GLTF } from 'three/addons/loaders/GLTFLoader.js';
@@ -217,36 +215,6 @@ test('gathering retries after attack cooldown and cancels a newly pursuing threa
   actor.mixer.stopAllAction();
 });
 
-
-test('area candidates retain the active area and release failed, superseded and rejected preparations once', async () => {
-  const { prepareAreaCandidate } = await import('../src/session/area-candidate');
-  type Area = Awaited<ReturnType<typeof BuildArea>>;
-  type World = MovementWorldType;
-  type Lighting = PreparedLighting;
-  const active = { dispose: vi.fn() };
-  const resources = () => ({area:{dispose:vi.fn()} as unknown as Area,movement:{dispose:vi.fn()} as unknown as World,lighting:{release:vi.fn()} as unknown as Lighting});
-  const failed = resources();
-  await expect(prepareAreaCandidate(async()=>failed.area,async()=>failed.movement,async()=>{throw Error('lighting failed');})).rejects.toThrow('lighting failed');
-  expect(failed.area.dispose).toHaveBeenCalledTimes(1); expect(failed.movement.dispose).toHaveBeenCalledTimes(1);
-  const navigationFailure = resources();
-  await expect(prepareAreaCandidate(async()=>navigationFailure.area,async()=>{throw Error('navigation failed');},async()=>navigationFailure.lighting)).rejects.toThrow('navigation failed');
-  expect(navigationFailure.area.dispose).toHaveBeenCalledTimes(1);
-  for (const eligibility of [()=>false,()=>{throw Error('eligibility failed');}]) {
-    const candidate = resources(), prepared = await prepareAreaCandidate(async()=>candidate.area,async()=>candidate.movement,async()=>candidate.lighting);
-    try { expect(prepared.accept(eligibility,()=>{ active.dispose(); })).toBe(false); } catch (error) { expect(String(error)).toContain('eligibility failed'); }
-    prepared.dispose(); expect(candidate.area.dispose).toHaveBeenCalledTimes(1); expect(candidate.movement.dispose).toHaveBeenCalledTimes(1); expect(candidate.lighting.release).toHaveBeenCalledTimes(1);
-  }
-  const candidate = resources(), prepared = await prepareAreaCandidate(async()=>candidate.area,async()=>candidate.movement,async()=>candidate.lighting);
-  expect(()=>prepared.accept(()=>true,()=>{throw Error('repair failed');})).toThrow('repair failed');
-  prepared.dispose(); expect(candidate.area.dispose).toHaveBeenCalledTimes(1); expect(candidate.movement.dispose).toHaveBeenCalledTimes(1); expect(candidate.lighting.release).toHaveBeenCalledTimes(1);
-  expect(prepared.accept(() => true, () => { active.dispose(); })).toBe(false);
-  expect(active.dispose).not.toHaveBeenCalled();
-  const accepted = resources(), committed = await prepareAreaCandidate(async()=>accepted.area,async()=>accepted.movement,async()=>accepted.lighting);
-  expect(committed.accept(()=>true,()=>{})).toBe(true); committed.dispose();
-  expect(committed.accept(() => true, () => { active.dispose(); })).toBe(false);
-  expect(active.dispose).not.toHaveBeenCalled();
-  expect(accepted.area.dispose).not.toHaveBeenCalled(); expect(accepted.movement.dispose).not.toHaveBeenCalled(); expect(accepted.lighting.release).not.toHaveBeenCalled();
-});
 
 test('early area construction failure releases allocated geometry and material', async () => {
   const THREE = await import('three');

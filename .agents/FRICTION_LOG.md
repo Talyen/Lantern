@@ -14,6 +14,7 @@ Centralized intake for unresolved agent friction while working in Lantern. Keep 
 
 | Date | Issue | Evidence and next action |
 | --- | --- | --- |
+| 2026-10-05 | One owned Clearing preview became unresponsive after author placement and a keyboard return cast. | The page was initially ready with default graphics. After Play, `placePlayer(-2.8, 2.8, 0)` and T, both Runtime.evaluate and Debugger.enable stopped responding; an OS stack sample showed the renderer main thread executing unsymbolized code. A fresh managed session without manual placement cast and entered the home portal successfully. Cause remains unverified; reproduce placement/input independently before changing navigation or rendering. The `area-transition-owner` task retains the stack sample with its captures. |
 | 2026-10-05 | Safari reloads during world entry after exceeding its memory limit. | The local Safari log reports a 14,069 MB footprint, 12,136 MB after attempted relief, and `ExceededMemoryLimit`. An owned normal-settings Chromium Homestead entry at revision `a818adf8e3de` created about 4.1 GiB of GPU textures, including repeated named 4K atlases, and 260 overlapping native pipeline requests. Shader-node construction accounted for about 97% of the sampled retained allocation bytes during a repeat entry. See details below; unresolved evidence is retained with the `safari-memory-investigation` task. |
 
 ## Archive

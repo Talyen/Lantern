@@ -40,6 +40,7 @@ export class AreaLightingResources {
   private active: PreparedLighting | null = null;
   private previewLease: { release(): void } | undefined;
   private disposed = false;
+  private ownsActive = true;
   private get pmrem() { return this.pool.pmrem; }
   private stage = 'idle';
   private preparedFailure: string | null = null;
@@ -227,8 +228,9 @@ export class AreaLightingResources {
     } finally { if (wetness) wetness.value = previousWetness!; sun.dispose(); flames.forEach(light => light.dispose()); disposeSceneInstances(scenery); captureMaterials.forEach(material => material.dispose()); }
   }
   updateFlame(warmth: number): void { this.active?.updateFlame(worldFirelightGain(warmth)); }
-  commit(scene: THREE.Scene, prepared: PreparedLighting): void {
-    this.active?.grid?.removeFromParent(); this.active?.release(); this.active = prepared;
+  commit(scene: THREE.Scene, prepared: PreparedLighting, borrowed = false): void {
+    this.active?.grid?.removeFromParent(); if (this.ownsActive) this.active?.release();
+    this.ownsActive = !borrowed; this.active = prepared;
     scene.environment = prepared.environment; if (prepared.grid) scene.add(prepared.grid);
   }
   async exportCurrent(): Promise<PreparedProbeBake> {
@@ -242,7 +244,7 @@ export class AreaLightingResources {
   }
   diagnostics() { return { stage: this.stage, skies: this.environments.stats(), probes: this.probes.stats(), signature: this.active?.signature, source: this.active?.resource?.source ?? 'none', preparedFailure: this.preparedFailure, components: this.active?.resource?.coefficients.flame ? 2 : 1, mixMs: this.active?.mixMs ?? 0 }; }
   dispose(): void {
-    this.disposed = true; this.active?.grid?.removeFromParent(); this.active?.release(); this.previewLease?.release();
+    this.disposed = true; this.active?.grid?.removeFromParent(); if (this.ownsActive) this.active?.release(); this.previewLease?.release();
     this.active = null; this.previewLease = undefined;
   }
 }

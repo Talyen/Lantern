@@ -93,7 +93,7 @@ export class Graphics {
   }
   exportLighting() { return this.areaLighting.exportCurrent(); }
   lightingDiagnostics() { return this.areaLighting.diagnostics(); }
-  commitLighting(prepared: PreparedLighting): void { prepared.updateFlame(worldFirelightGain(this.settings.warmth)); this.areaLighting.commit(this.ctx.scene, prepared); }
+  commitLighting(prepared: PreparedLighting, borrowed = false): void { prepared.updateFlame(worldFirelightGain(this.settings.warmth)); this.areaLighting.commit(this.ctx.scene, prepared, borrowed); }
   dispose(): void { this.disposed = true; cancelAnimationFrame(this.applyFrame); this.localShadows.dispose(); this.areaLighting.dispose(); this.ctx.scene.environment = null; this.effects.dispose(); this.gpuPipeline?.dispose(); }
   apply(settings: GraphicsSettings): void {
     this.pendingSettings = { ...settings };

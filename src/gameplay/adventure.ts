@@ -370,7 +370,7 @@ export class Adventure {
   }
 
   /** Call only after destination resources are ready; failed loads cannot change these states. */
-  enter(encounter: Encounter, area: AreaDefinition, arrival: ReturnSpawn = area.layout.player, recover = false): void {
+  enter(encounter: Encounter, area: AreaDefinition, arrival: ReturnSpawn = area.layout.player, recover = false, consumePortal?: PortalLink): void {
     const firstEntry = this.currentArea === null;
     const health = this.currentArea ? encounter.player.hp : null;
     if (this.currentArea) this.session().encounter = structuredClone(encounter);
@@ -394,7 +394,7 @@ export class Adventure {
     this.healing = null;
     this.atShelter = false;
     this.events = [];
-    if (recover) this.portal = null;
+    if (recover || consumePortal && this.portal === consumePortal) this.portal = null;
     this.nextRenewalAt = this.elapsed;
     this.renew(encounter, area, 0, true);
     this.save();
@@ -532,7 +532,7 @@ export class Adventure {
         } else this.nextRenewalAt = Math.min(this.nextRenewalAt, Math.max(this.elapsed + .5, state.renewAt));
       }
     }
-    if (changed) this.save();
+    if (changed && !arriving) this.save();
   }
 
   step(encounter: Encounter, area: AreaDefinition, dt: number): void {

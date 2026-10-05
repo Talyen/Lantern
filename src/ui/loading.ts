@@ -3,7 +3,7 @@ import './ui-tokens.css';
 import './loading.css';
 
 export type LoadingOperation = number;
-type Recovery = { retry(): void; back(): void; kind?: 'adventure' | 'travel' };
+type Recovery = { retry(): void; back?(): void; kind?: 'adventure' | 'travel' | 'presentation' };
 
 /** Presentation only: readiness and travel eligibility belong to the coordinator. */
 class LoadingScreen {
@@ -100,9 +100,11 @@ class LoadingScreen {
     this.pending = true;
     this.inert(true);
     this.root.dataset.state = 'error';
-    this.title.textContent = recovery ? recovery.kind === 'adventure' ? 'Unable to begin adventure' : 'Unable to travel' : 'Unable to load Lantern';
+    this.title.textContent = recovery ? recovery.kind === 'presentation' ? 'Unable to display area' : recovery.kind === 'adventure' ? 'Unable to begin adventure' : 'Unable to travel' : 'Unable to load Lantern';
     const detail = String(error);
-    this.status.textContent = /WebGPU|FSR|shader|graphics/i.test(detail)
+    this.status.textContent = recovery?.kind === 'presentation'
+      ? 'The area changed. Try preparing it again. If it keeps failing, reload or export a diagnostic report.'
+      : /WebGPU|FSR|shader|graphics/i.test(detail)
       ? 'Graphics preparation failed. Use a browser with native WebGPU and hardware acceleration enabled, update your graphics driver, then reload.'
       : /character|art|model|404|fetch/i.test(detail)
         ? 'Required game art could not be loaded. Check that the game files are installed and accessible, then try again.'
@@ -117,7 +119,8 @@ class LoadingScreen {
       return element;
     };
     const first = recovery ? button('Retry', () => recovery.retry()) : button('Reload', () => location.reload());
-    if (recovery) button('Back', () => recovery.back());
+    if (recovery?.back) button('Back', () => recovery.back?.());
+    else if (recovery) button('Reload', () => location.reload());
     this.actions.append(diagnosticExportButton());
     first.focus();
   }
