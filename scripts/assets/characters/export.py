@@ -87,12 +87,13 @@ def prepare(row, max_texture_size=1024):
     source = Path(row['source'])
     if source.suffix == '.glb':
         bpy.ops.import_scene.gltf(filepath=str(source))
-        keep = {row['node']}
-        if row['family'] == 'Synty Viking Realm':
-            keep.add('SM_Chr_Attach_Hair_02')
-        for obj in list(bpy.data.objects):
-            if obj.type == 'MESH' and obj.name not in keep:
-                bpy.data.objects.remove(obj, do_unlink=True)
+        if row.get('node'):
+            keep = {row['node']}
+            if row['family'] == 'Synty Viking Realm':
+                keep.add('SM_Chr_Attach_Hair_02')
+            for obj in list(bpy.data.objects):
+                if obj.type == 'MESH' and obj.name not in keep:
+                    bpy.data.objects.remove(obj, do_unlink=True)
     else:
         bpy.ops.import_scene.fbx(filepath=str(source), use_anim=False)
         # These legacy Mixamo FBXs use Phong reflection, not PBR metalness.

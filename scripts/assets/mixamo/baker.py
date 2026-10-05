@@ -4,7 +4,7 @@ Sources stay private. Motion is sampled at 60 fps, retaining vertical hip motion
 """
 import math
 import bpy
-from mathutils import Quaternion, Vector
+from mathutils import Matrix, Quaternion, Vector
 
 SAMPLE_RATE = 60
 
@@ -68,7 +68,7 @@ def category(name):
     return 'other'
 
 
-def bake(target, source, original, name, output, mapping=None, sample_range=None, output_duration=None):
+def bake(target, source, original, name, output, mapping=None, sample_range=None, output_duration=None, align_rest_pose=False):
     # Gallery consumers may omit optional fingers absent from their target rig.
     mapping = bone_map(source) if mapping is None else mapping
     missing_targets = set(mapping) - set(target.data.bones.keys())
@@ -92,6 +92,44 @@ def bake(target, source, original, name, output, mapping=None, sample_range=None
     # Object-space deltas are transformed through world space to handle FBX axis conventions.
     source_rest = {t: (source.matrix_world @ source.data.bones[s].matrix_local).to_quaternion() for t, s in mapping.items()}
     target_rest = {b.name: b.matrix_local.to_quaternion() for b in target.data.bones}
+    # B1 arrives in an A pose, while the motion library uses a T pose. Align
+    # anatomical bone directions before applying source motion; name matching
+    # alone otherwise folds its carrying arms inward and below the intended grip.
+    rest_alignment = {}
+    if align_rest_pose:
+        axis = Vector((0, 1, 0))
+
+        def palm_frame(rig, names, side):
+            def point(role):
+                return rig.matrix_world @ rig.data.bones[names[f'{role}_{side}']].head_local
+            forward = (point('Finger_01') - point('Hand')).normalized()
+            pinky = rig.matrix_world @ rig.data.bones[names[f'mixamorig:{"Left" if side == "L" else "Right"}HandPinky1']].head_local
+            width = point('IndexFinger_01') - pinky
+            normal = width.cross(forward).normalized()
+            return Matrix((forward.cross(normal).normalized(), forward, normal)).transposed().to_quaternion()
+
+        def foot_frame(direction):
+            forward = Vector((direction.x, direction.y, 0)).normalized()
+            up = Vector((0, 0, 1))
+            return Matrix((forward.cross(up), forward, up)).transposed().to_quaternion()
+
+        target_names = {name: name for name in target.data.bones.keys()}
+        for side, mix in [('L', 'Left'), ('R', 'Right')]:
+            for role in ['Shoulder', 'Elbow', 'UpperLeg', 'LowerLeg']:
+                bone = f'{role}_{side}'
+                rest_alignment[bone] = (tq @ target_rest[bone] @ axis).rotation_difference(source_rest[bone] @ axis)
+            # A bone's longitudinal axis cannot establish wrist roll. Use the
+            # actual middle/index/pinky palm plane and retain finger curl within it.
+            hand = palm_frame(source, mapping, side) @ palm_frame(target, target_names, side).inverted()
+            for bone in mapping:
+                if (bone.startswith(('Hand_', 'Thumb_', 'IndexFinger_', 'Finger_')) and bone.endswith(f'_{side}')) or bone.startswith(f'mixamorig:{mix}Hand'):
+                    rest_alignment[bone] = hand
+            ankle, ball = f'Ankle_{side}', f'Ball_{side}'
+            source_toe = source.data.bones[mapping[ball]]
+            source_forward = source.matrix_world.to_3x3() @ (source_toe.tail_local - source_toe.head_local)
+            target_forward = tw.to_3x3() @ (target.data.bones[ball].head_local - target.data.bones[ankle].head_local)
+            foot = foot_frame(source_forward) @ foot_frame(target_forward).inverted()
+            rest_alignment[ankle] = rest_alignment[ball] = foot
     source_hip_rest = source.matrix_world @ source.data.bones[mapping['Hips']].head_local
     target_hip_rest = tw @ target.data.bones['Hips'].head_local
     ratio = target_hip_rest.z / source_hip_rest.z if abs(source_hip_rest.z) > 0.01 else 1
@@ -112,6 +150,8 @@ def bake(target, source, original, name, output, mapping=None, sample_range=None
             if bone.name in mapping:
                 pose_world = (source.matrix_world @ source.pose.bones[mapping[bone.name]].matrix).to_quaternion()
                 delta_world = pose_world @ source_rest[bone.name].inverted()
+                if bone.name in rest_alignment:
+                    delta_world = delta_world @ rest_alignment[bone.name]
                 goal = tq.inverted() @ delta_world @ tq @ rest
             else:
                 goal = parent_pose @ parent_rest.inverted() @ rest

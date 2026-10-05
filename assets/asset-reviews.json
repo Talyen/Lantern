@@ -1071,6 +1071,15 @@
       "fingerprint": "b87d56c949e1978da477becbc3dcf946a65e7034609844d1ef1c64979374ea79",
       "notes": "",
       "updatedAt": "2026-10-04T22:06:27.402Z"
+    },
+    "character:owner-b1-adventurer@gameplay": {
+      "familyId": "character:owner-b1-adventurer",
+      "url": "/vendor/characters/b1/authored-playable.glb",
+      "name": "B1 Adventurer",
+      "state": "approved",
+      "fingerprint": "e57bb3b722db4ffb5f795af2df5fb75e88181acaeb178dafe342284370557410",
+      "notes": "Owner explicitly supplied and selected B1 Adventurer to replace Erika. Successfully displayed at gameplay scale in the owned native WebGPU/FSR Homestead preview; movement, Axe attack and dodge exercised. Actual-rig inspection covered Axe, Bow, Staff, Sword/Shield, running and authored lantern visibility. A-pose and wrist-frame mismatches were corrected. Source garment-clearance warnings and substantial model cost remain documented; this is appearance selection, not universal cloth or cross-platform performance certification.",
+      "updatedAt": "2026-10-05T04:54:49.880Z"
     }
   },
   "familyDenials": {},

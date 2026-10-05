@@ -22,7 +22,7 @@ export class Equipment {
     const loadout = normalizeLoadout(requested);
     const items = [loadout.main, loadout.off].filter((item): item is HandItem => item !== null);
     const sockets = items.map(item => {
-      const name = this.definitions[item].hand, socket = this.actor.getObjectByName(name);
+      const name = this.definitions[item].hand, socket = this.actor.getObjectByName(`equipment-socket-${name}`) ?? this.actor.getObjectByName(name);
       if (!socket) throw new Error(`Cannot equip ${this.definitions[item].name}: character hand is unavailable.`);
       return socket;
     });

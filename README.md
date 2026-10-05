@@ -36,7 +36,7 @@ Inventory, equipment, wallet/buyback, all skill XP, collected equipment claims, 
 
 Gather Wood, Stone and Iron to repair the Homestead shelter, unlock its stash and refresh Rested. See [gathering and shelter](Docs/GATHERING.md).
 
-The public repository contains source and original generated surface/UI art. Playable Erika Archer, Goblin and Skeleton art and their compatible Mixamo animations must be prepared privately; missing required character art produces an actionable import message. Optional scenery can be absent. See the [asset workflow](Docs/ASSET_PREPARATION.md).
+The public repository contains source and original generated surface/UI art. Playable B1 Adventurer, Goblin and Skeleton art and their compatible Mixamo animations must be prepared privately; missing required character art produces an actionable import message. Optional scenery can be absent. See the [asset workflow](Docs/ASSET_PREPARATION.md).
 
 ```sh
 npm run check       # change-aware local sanity gate
@@ -65,7 +65,7 @@ Agents use the [private task workflow](Docs/DEVELOPMENT.md#working-alongside-oth
 - [Loot](Docs/LOOT.md): inventory, physical drops, labels and pickup rules.
 - [Gathering and shelter](Docs/GATHERING.md): Woodcutting, Mining, restoration, stash and Rested.
 - [Combat and equipment](Docs/EQUIPMENT.md): authored gear, combat values, Sword/Bow mastery and the Axe kit.
-- [Protagonist appearance](Docs/PROTAGONISTS.md): selected Erika art, quiver and private preparation.
+- [Protagonist appearance](Docs/PROTAGONISTS.md): selected B1 art, rig and private preparation.
 - [Animations](Docs/ANIMATIONS.md): compatible profiles, action clocks and review evidence.
 - [Level design](Docs/LEVEL_DESIGN.md): area definitions, travel, and rapid visual authoring.
 - [Character preview](Docs/CHARACTERS.md): private roster preparation and model/motion comparison.

@@ -1,10 +1,12 @@
 {
   "player": {
-    "name": "Erika Archer",
-    "height": 1.8,
-    "catalog": "/vendor/characters/erika/catalog.json",
-    "model": "/vendor/characters/erika/authored-playable.glb",
-    "sourceId": "mixamo-d0496a75-08b9-4f4e-9f1d-f65820323cc2",
+    "name": "B1 Adventurer",
+    "height": 1.72,
+    "catalog": "/vendor/characters/b1/catalog.json",
+    "model": "/vendor/characters/b1/authored-playable.glb",
+    "sourceId": "owner-b1-adventurer",
+    "source": ".local/animation-packs/Protagonists/b1/source/B1_Adventurer_Rigged.glb",
+    "lanternNode": "character-lantern",
     "lanternModel": "/vendor/synty/library/models/ashen-veil-lights/light_tabletop_lantern.glb"
   },
   "enemy": {

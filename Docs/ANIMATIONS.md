@@ -1,6 +1,6 @@
 # Animation review and authoring
 
-Lantern uses Mixamo motions baked independently to Erika Archer, Goblin D Shareyko and the graveyard Skeleton rig. The original Paladin audit below remains historical source-selection evidence. Weapon models come from the converted Synty library. The aim is readable preparation, decisive contact, short recovery, and footwork that agrees with movement while the player faces the cursor.
+Lantern uses Mixamo motions baked independently to B1 Adventurer, Goblin D Shareyko and the graveyard Skeleton rig. Earlier Erika/Paladin reviews below retain their historical evidence; current B1 preparation and acceptance belong to [protagonist appearance](PROTAGONISTS.md). Weapon models come from the converted Synty library. The aim is readable preparation, decisive contact, short recovery, and footwork that agrees with movement while the player faces the cursor.
 
 This review records the original 17 prepared clips, the source-selection correction, and the new equipment profiles. Source inspection, actual-rig comparisons and native WebGPU gameplay checks establish the changes below. A compatible rig and a passing build do not establish good hand placement, convincing foot contact, or smooth transitions.
 
@@ -92,7 +92,7 @@ Drag to orbit, right-drag to pan and scroll for close inspection. Space toggles 
 
 The viewer uses the same native WebGPU/FSR pipeline and shared Golden lighting. Inspection disables lens blur and bloom, without changing saved gameplay graphics preferences. The optional **Player lantern** uses the gameplay belt attachment and owner-bounce recipe, follows the selected rig and changes no save data. Gathering previews use the gameplay temporary Axe/Pickaxe attachments and do not overwrite the Staff arm pose during chopping/mining. Hidden lanes retain their comparison state and are resized before rendering again.
 
-Erika is the sole player appearance, with authored geometry/UVs/textures and all compatible player profiles. Her original quiver/arrows appear only with committed Bow-family equipment. See [protagonist preparation and acceptance](PROTAGONISTS.md).
+B1 Adventurer is the sole player appearance, with her authored outfit, facial controls, lantern and all compatible player profiles. Her supplied outfit has no quiver; Bow still uses the existing equipment and compatible motion profile. See [protagonist preparation and acceptance](PROTAGONISTS.md).
 
 ## Comparison and acceptance evidence
 
@@ -133,7 +133,7 @@ Native review of the action-bar addition confirmed the Paladin Sweep and bow dra
 
 ## Ultimate motion and Synty effects study
 
-Open `/?lab=animations&study=ultimates` in an owned development preview. This is a development-only complete-sequence review on the actual Forest Clearing ground with three practice Goblins, Erika, gameplay's camera/graphics settings, and the shared Golden lighting/pipeline. It changes no character saves or rewards; its rain presentation is shared with gameplay.
+Open `/?lab=animations&study=ultimates` in an owned development preview. This is a development-only complete-sequence review on the actual Forest Clearing ground with three practice Goblins, the current player, gameplay's camera/graphics settings, and the shared Golden lighting/pipeline. It changes no character saves or rewards; its rain presentation is shared with gameplay.
 
 The current study keeps **Rain of Arrows** and reviews **Executioner's Strike** with optional Shield; Crescent Wave is set aside, no longer offered, and its motion is no longer loaded. Replay, pause, slow playback or scrub the sequence. Effects Off isolates character motion and practice reactions. Sound follows the existing mix and can be muted locally; seeking stays silent. Close view supports contact inspection; Gameplay view restores the saved distance. A sequence includes its effect tail and a quiet interval before looping. Hidden views suspend rendering and playback without catch-up.
 
