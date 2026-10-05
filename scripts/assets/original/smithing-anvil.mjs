@@ -10,7 +10,7 @@ import { readReviews } from '../review/index.mjs';
 await cli(async () => {
   const args = parseArgs(process.argv.slice(2));
   if (args['--help']) { console.log('Usage: node scripts/assets/original/smithing-anvil.mjs\nPrepare an original iron anvil in the private library. Does not approve it.'); return; }
-  const id = 'lantern-original:model:iron-anvil', url = '/vendor/original/iron-anvil.glb';
+  const id = 'lantern-original:model:iron-anvil', url = '/vendor/synty/library/models/lantern-original/iron-anvil.glb';
   const reviews = await readReviews(root);
   if (Object.values(reviews.deleted).some(row => row.familyId === id)) throw new Error('This anvil was deleted. Restore its exclusion explicitly before preparation.');
   const scene = new THREE.Group(); scene.name = 'Iron anvil';
