@@ -7,6 +7,7 @@ import { withResource } from './resources.mjs';
 import { statusReport, formatStatus } from './status.mjs';
 import { previewViewport } from './viewport.mjs';
 import { capturePreview } from './capture.mjs';
+import { pruneRetention } from './retention.mjs';
 await cli(async () => {
   const options = {
     start: { '--task': 'value', '--no-wait': 'boolean' },
@@ -15,9 +16,10 @@ await cli(async () => {
     sources: { '--task': 'value', '--sources': 'value' },
     status: { '--all': 'boolean', '--task': 'value', '--json': 'boolean' }, cleanup: { '--task': 'value' }, main: { '--stop': 'boolean', '--browser': 'boolean', '--viewport': 'value', '--dpr': 'value' },
     capture: { '--task': 'value', '--output': 'value' },
+    prune: { '--apply': 'boolean', '--sources': 'boolean' },
   };
   const { command: operation, args } = parseCommand(process.argv.slice(2), options);
-  if (args['--help']) { console.log('Agent workflow: start --task SLUG [--no-wait]; dev [--browser] [--author] [--area ID] [--lab ID] [--viewport WIDTHxHEIGHT] [--dpr NUMBER] [--stop]; finish [--paths JSON_FILE] [--message TEXT] [--resolved-assets JSON_FILE]; sources --sources animation-packs,synty-library; status [--all | --task SLUG] [--json]; cleanup [--task SLUG]; main [--browser] [--viewport WIDTHxHEIGHT] [--dpr NUMBER] [--stop]; capture --output PNG.'); return; }
+  if (args['--help']) { console.log('Agent workflow: start --task SLUG [--no-wait]; dev [--browser] [--author] [--area ID] [--lab ID] [--viewport WIDTHxHEIGHT] [--dpr NUMBER] [--stop]; finish [--paths JSON_FILE] [--message TEXT] [--resolved-assets JSON_FILE]; sources --sources animation-packs,synty-library; status [--all | --task SLUG] [--json]; cleanup [--task SLUG]; main [--browser] [--viewport WIDTHxHEIGHT] [--dpr NUMBER] [--stop]; capture --output PNG; prune [--apply] [--sources].'); return; }
   if (operation === 'start' && !args['--task']) throw new UsageError('agent:start requires --task SLUG.');
   const viewportOptions = { viewport: args['--viewport'], dpr: args['--dpr'] };
   if (operation === 'dev' || operation === 'main') {
@@ -26,7 +28,11 @@ await cli(async () => {
   }
   if (operation === 'capture' && !args['--output']) throw new UsageError('agent:capture requires --output PNG.');
   const ctx = await context();
-  if (operation === 'start') {
+  if (operation === 'prune') {
+    const report = await pruneRetention(ctx, { apply: !!args['--apply'], sources: !!args['--sources'], progress: message => console.error(message) });
+    console.log(JSON.stringify(report, null, 2));
+    if (args['--apply'] && report.errors.length) throw new Error(`Pruning preserved ${report.errors.length} unresolved entries; inspect the report and retry after repair.`);
+  } else if (operation === 'start') {
     const task = await startTask(ctx, args['--task'], { wait: !args['--no-wait'] });
     await ensureDependencies(task);
     console.log(`Task ${task.id}\nDirectory: ${task.path}\nSetup: ${task.setupMs} ms; available disk ${(await freeSpace(ctx.main) / 1024 ** 3).toFixed(1)} GiB (clone directory sizes are logical).`);

@@ -1,6 +1,6 @@
 # Skills — adopted horizontal progression
 
-October 2, 2026. The owner selected the six-step horizontal layout and authorized implementation. This round supersedes [upward-tree studies](../archive/skills-nodes/README.md). [Screen/data brief](BRIEF.md) owns the selected structure and implementation scope.
+October 2, 2026. The owner selected the six-step horizontal layout and authorized implementation. This supersedes the earlier upward-tree studies, recoverable from Git history. [Screen/data brief](BRIEF.md) owns the selected structure and implementation scope.
 
 ## Locked direction
 
@@ -14,33 +14,11 @@ Gathering and Crafting share the six-major/ten-minor layout but use generic Majo
 
 ![Six-step horizontal layout with all fourteen Combat skills](02-six-step-path-final.png)
 
-[Exact final correction](02-six-step-path-final-prompt.md). This has six large and ten small nodes; all fourteen Combat names appear exactly once. The source [first version](02-six-step-path.png) / [prompt](02-six-step-path-prompt.md) duplicated Staff; the [first correction](02-six-step-path-refined.png) / [prompt](02-six-step-path-refined-prompt.md) duplicated Wand. Those drafts are superseded.
+[Exact final correction](02-six-step-path-final-prompt.md). This has six large and ten small nodes; all fourteen Combat names appear exactly once. Earlier duplicate-label drafts remain in Git history.
 
-## Profession and interaction references
+## Profession and interaction decisions
 
-### Gathering
-
-![Gathering major/minor study](04-gathering-major-minor.png)
-
-[Exact prompt](04-gathering-major-minor-prompt.md). Six techniques and ten smaller icons demonstrate the shared layout. **Owner subsequently chose generic Major/Minor placeholders**, so technique labels are only an earlier proposal; the implemented screen uses Major 1–6 and Minor 1–10.
-
-### Crafting
-
-![Crafting major/minor study](05-crafting-major-minor.png)
-
-[Exact prompt](05-crafting-major-minor-prompt.md). Recipe groups are an earlier proposal, superseded by generic Major/Minor placeholders. Item/recipe identities, material effects and numerical bonuses are not adopted. Some repeated material icons need distinct final art.
-
-### Empty-slot picker
-
-![Action picker below the Skills sheet](06-empty-slot-picker.png)
-
-[Exact prompt](06-empty-slot-picker-prompt.md). Picker contains seven existing actions, no passive or future entries. It changes only its selected slot, preserving the other assignments. Generated duplicate navigation labels and unnecessary obscured level ticks are not implementation requirements.
-
-## Other composition studies
-
-- [Paired milestones](01-paired-milestones.png), [exact prompt](01-paired-milestones-prompt.md): six major and ten passive nodes, but duplicates Defense and shows an excessive blue hover rim. Superseded by six-step direction.
-- [Dual horizontal lanes](03-dual-horizontal-lanes.png), [exact prompt](03-dual-horizontal-lanes-prompt.md): generated only four major nodes, omitting Skills; extra unlabeled navigation icon. Rejected as incomplete.
-- [Original selected reference](reference-input.png), [provenance](reference-input-provenance.md): user-supplied original generated UI only, not licensed gameplay imagery.
+Gathering and Crafting use generic Major/Minor placeholders for undefined nodes. The empty-slot picker contains available actual actions and changes only its chosen slot. Rejected layouts and the input/correction chain are recoverable from Git history; the retained exact prompt records input/output hashes. Current unlocks, milestones and assignment behavior belong to the brief and runtime owners.
 
 ## Implementation checkpoint
 

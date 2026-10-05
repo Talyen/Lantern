@@ -9,33 +9,6 @@
       "inputs": [],
       "sha256": "d7ef9a24583923916ef98a2847a4ffcbe4b61d00a65dee719d521bbe96fc6c05",
       "status": "owner-selected"
-    },
-    {
-      "file": "forging.png",
-      "prompt": "forging-prompt.md",
-      "inputs": [
-        "workshop-sheet.png"
-      ],
-      "sha256": "0b4073c883d9304bfbe1579236d00ffc61b5eb27feedeb76b7b6eae6899fdd3e",
-      "status": "state-study"
-    },
-    {
-      "file": "bag-blocked.png",
-      "prompt": "bag-blocked-prompt.md",
-      "inputs": [
-        "workshop-sheet.png"
-      ],
-      "sha256": "cbd25f9b5afd854120954a574f0bdb3b6c9cc6ce83a9b7307cfd4e8b3ea5a985",
-      "status": "state-study"
-    },
-    {
-      "file": "reclamation.png",
-      "prompt": "reclamation-prompt.md",
-      "inputs": [
-        "workshop-sheet.png"
-      ],
-      "sha256": "72db4d764bbc2db8243cf864f660c4f099fc07d108b1db6c6e846231c824986e",
-      "status": "state-study"
     }
   ]
 }

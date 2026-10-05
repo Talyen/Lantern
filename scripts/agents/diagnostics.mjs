@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { stripVTControlCharacters } from 'node:util';
 import { cli, parseArgs, integer, UsageError } from '../lib/cli.mjs';
 import { budget, recordPage, recordWindow } from './read-text.mjs';
+import { readJSON } from './state.mjs';
 
 await cli(async () => {
   const args = parseArgs(process.argv.slice(2), { '--evidence': 'value', '--stage': 'value', '--offset': 'value', '--limit': 'value', '--max-chars': 'value' });
@@ -12,7 +13,14 @@ await cli(async () => {
   if (!args['--evidence']) throw new UsageError('Choose --evidence DIRECTORY from check output or agent:status.');
   // Evidence is explicitly supplied and resolves from the caller, including retained archives.
   const directory = resolve(args['--evidence']);
-  const summary = JSON.parse(await readFile(resolve(directory, 'summary.json'), 'utf8'));
+  let summary;
+  try { summary = JSON.parse(await readFile(resolve(directory, 'summary.json'), 'utf8')); }
+  catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+    const retained = await readJSON(resolve(directory, '../..', 'retained.json'), null);
+    if (!retained?.expired?.checks) throw error;
+    console.log(JSON.stringify({ evidence: directory, message: 'Check logs expired under the seven-day/2 GiB retention policy.', expiredAt: retained.expired.checks }, null, 2)); return;
+  }
   if (!Array.isArray(summary) || summary.some(item => !item || typeof item.name !== 'string' || typeof item.status !== 'string')) throw new Error('Invalid check summary.');
   if (!args['--stage']) {
     console.log(JSON.stringify({ evidence: directory, ...recordPage(summary.filter(item => item.status !== 'passed'), args) }, null, 2)); return;

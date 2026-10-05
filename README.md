@@ -63,6 +63,8 @@ Agents use the [private task workflow](Docs/DEVELOPMENT.md#working-alongside-oth
 - [Lighting](Docs/LIGHTING.md): shared Golden preset, local lights and explicit bake preparation.
 - [Gameplay sound](Docs/AUDIO.md): event timing, sound controls and private preparation.
 - [Loot](Docs/LOOT.md): inventory, physical drops, labels and pickup rules.
+- [Progression](Docs/PROGRESSION.md): shared XP and milestones.
+- [Smithing](Docs/SMITHING.md): Forge/Reclaim and recipes.
 - [Gathering and shelter](Docs/GATHERING.md): Woodcutting, Mining, restoration, stash and Rested.
 - [Combat and equipment](Docs/EQUIPMENT.md): authored gear, combat values, Sword/Bow mastery and the Axe kit.
 - [Protagonist appearance](Docs/PROTAGONISTS.md): selected B1 art, rig and private preparation.
@@ -82,8 +84,10 @@ Agents use the [private task workflow](Docs/DEVELOPMENT.md#working-alongside-oth
 
 Original Lantern code and content are source-available for noncommercial use under [CC BY-NC 4.0](LICENSE.md), following Alchemy's policy. Commercial use requires separate permission from the copyright owner. Third-party material retains its own terms, including the MIT-licensed three.js adaptation. Public source availability does not grant rights to privately supplied Synty or Mixamo assets.
 
-## Source layout
+## Storage and source layout
 
 `src/session/` coordinates each selected adventure across areas, including actors, input and camera. `src/levels/` owns area definitions, scenery construction and authoring; `src/gameplay/` contains the browser-independent simulation; `src/rendering/` owns graphics; `src/ui/` owns menus and HUD. Shared asset loading and combat motions live in `src/assets/` and `src/animation/`. Animation and character comparison live in `src/labs/animations/` and `src/labs/characters/`. Asset preparation tools are grouped under `scripts/assets/`, and level-authoring tools under `scripts/levels/`; build and verification entry points remain in `scripts/`. See [architecture](Docs/ARCHITECTURE.md) for ownership and dependency boundaries.
 
 Character and animation comparison labs are development-only. Game builds stage referenced gameplay art and exclude the private gallery roster and retired surface experiments.
+
+Tracked `assets/` holds production originals, recipes and review records; `src/assets/` loads them and `scripts/assets/` prepares them. Private sources and working evidence live under ignored `.local/`, prepared exports under ignored `public/vendor/`, and current build output under ignored `dist/`. Completed task evidence expires after seven days or earlier above its 2 GiB budget; source preservation is separate. Use `npm run agent:prune` to inspect the [retention policy](Docs/DEVELOPMENT_REFERENCE.md#retention-and-disk-use).

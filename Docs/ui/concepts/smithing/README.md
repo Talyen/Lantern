@@ -11,11 +11,8 @@ Forging takes two seconds and can be cancelled without cost. Equipment output go
 | Study | Image | Exact prompt |
 | --- | --- | --- |
 | Selected organization | [Workshop sheet](workshop-sheet.png) | [Prompt](workshop-sheet-prompt.md) |
-| Pending forge | [Forging](forging.png) | [Prompt](forging-prompt.md) |
-| Bag-space failure | [Blocked](bag-blocked.png) | [Prompt](bag-blocked-prompt.md) |
-| Reclamation | [Reclaim](reclamation.png) | [Prompt](reclamation-prompt.md) |
 
-[Provenance](provenance.json) records the built-in ImageGen tool, original text-only inputs and SHA-256 hashes. State studies reference only the original generated Workshop sheet. No licensed model, texture or gameplay capture was sent to ImageGen. Concepts are documentation, not imported runtime surfaces.
+[Provenance](provenance.json) records the built-in ImageGen tool, original text-only inputs and SHA-256 hashes. Removed state studies remain in Git history; pending, blocked and reclaim behavior is documented in the Smithing rules. No licensed model, texture or gameplay capture was sent to ImageGen. Concepts are documentation, not imported runtime surfaces.
 
 ## Critique and implementation
 

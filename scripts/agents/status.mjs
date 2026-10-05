@@ -17,7 +17,7 @@ export async function statusReport(ctx, options) {
     return {
       id: task.id, path: task.path, branch: task.branch, status: task.status,
       base: task.base, candidate: task.candidate, setupMs: task.setupMs,
-      assetChanges: task.assetChanges?.length ?? 0, assetConflicts: task.assetConflicts,
+      assetChanges: task.assetChangeCount ?? task.assetChanges?.length ?? 0, assetConflicts: task.assetConflicts,
       integratedAt: task.integratedAt, cleanedAt: task.cleanedAt,
       preview: preview ? { url: preview.url, session: preview.session, browser: preview.browser, author: preview.author } : null,
       lastCheck: lastCheck ?? task.lastCheck ?? null,
@@ -46,7 +46,7 @@ export function formatStatus(report) {
     const check = task.lastCheck, revision = check?.revision ?? check?.inputs?.head;
     lines.push(`${task.id}${task.id === report.currentTask ? ' [current]' : ''}: ${task.status}; ${task.path}`);
     if (task.preview) lines.push(`  Preview: ${task.preview.url}`);
-    if (check) lines.push(`  Last check: ${revision?.slice(0, 12) ?? 'unknown revision'}; ${check.evidence}`);
+    if (check) lines.push(`  Last check: ${revision?.slice(0, 12) ?? 'unknown revision'}; ${check.evidenceExpiredAt ? 'evidence expired under retention policy' : check.evidence}`);
     if (task.assetConflicts?.length) lines.push(`  Asset conflicts: ${task.assetConflicts.length}; use --task ${task.id} --json for paths`);
   }
   if (!report.tasks.length) lines.push('No tasks in this view.');

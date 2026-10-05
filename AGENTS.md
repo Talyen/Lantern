@@ -19,7 +19,7 @@ Start with [the daily workflow](Docs/DEVELOPMENT.md) and [task routing](Docs/ARC
 
 - Run `npm run agent:start -- --task <slug>` before any task edits, including documentation; use its returned worktree for every command. Do not edit main. The [task workflow](Docs/DEVELOPMENT_REFERENCE.md#private-assets-and-resource-use) owns shared capacity and queued admission.
 - One agent owns a task through completion. Private task branches, reviewed local commits and automatic local integration are authorized. Pushes, PRs and releases require a user request. Routine work needs no inter-agent messages, file reservations or user-managed merges.
-- Stage only reviewed task paths. Never reset, clean, stash, overwrite or terminate another task's work. Preserve unexpected main edits and private source archives.
+- Stage only reviewed task paths. Never reset, clean, stash, overwrite or terminate another task's work. Preserve unexpected main edits and unique private sources. Apply the [retention policy](Docs/DEVELOPMENT_REFERENCE.md#retention-and-disk-use) to completed-task evidence and verified duplicate copies.
 - Repair conflicts/check failures in the task and retry `npm run agent:finish` until integrated; then clean the completed worktree. Use managed previews/resource wrappers and close owned sessions after inspection.
 
 ## Asset boundaries

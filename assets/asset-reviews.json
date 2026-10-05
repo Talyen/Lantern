@@ -1,24 +1,6 @@
 {
   "version": 1,
   "decisions": {
-    "goblin-war-camp:model:props-sm-prop-anvil-01@original": {
-      "familyId": "goblin-war-camp:model:props-sm-prop-anvil-01",
-      "url": "/vendor/synty/library/models/goblin-war-camp/bc198f5728a1e9e28cb7.glb",
-      "name": "Anvil 01",
-      "state": "delete-requested",
-      "fingerprint": "34c4d152101c02c8b61555508943e395d7d1b1c7cddb962eae9148a644dea8c7",
-      "notes": "Owner explicitly selected the existing converted Anvil and Forge for Smithing. Successfully displayed and inspected at gameplay scale in the owned normal-settings Homestead preview; private evidence retained by smithing-starter.",
-      "updatedAt": "2026-10-05T04:11:25.269Z"
-    },
-    "goblin-war-camp:model:props-sm-prop-forge-01@original": {
-      "familyId": "goblin-war-camp:model:props-sm-prop-forge-01",
-      "url": "/vendor/synty/library/models/goblin-war-camp/2071c80f5a9fcb212933.glb",
-      "name": "Forge 01",
-      "state": "delete-requested",
-      "fingerprint": "f1d09de0e18f97d3ac123e872fabae3f7b392d8fccd73c2974f740c124690861",
-      "notes": "Owner explicitly selected the existing converted Anvil and Forge for Smithing. Successfully displayed and inspected at gameplay scale in the owned normal-settings Homestead preview; private evidence retained by smithing-starter.",
-      "updatedAt": "2026-10-05T04:24:43.644Z"
-    },
     "viking-realm:model:sm-wep-arrow-01@original": {
       "familyId": "viking-realm:model:sm-wep-arrow-01",
       "url": "/vendor/synty/library/models/viking-realm/ea283d75b515b9afce4c.glb",
@@ -46,87 +28,6 @@
       "notes": "",
       "updatedAt": "2026-10-05T04:12:46.964Z"
     },
-    "goblin-war-camp:model:props-sm-prop-barrel-01@area:clearing": {
-      "familyId": "goblin-war-camp:model:props-sm-prop-barrel-01",
-      "url": "/vendor/synty/environment/clearing/props-sm-prop-barrel-01.glb",
-      "name": "Barrel 01",
-      "state": "delete-requested",
-      "fingerprint": "e9d2df9dd1f003c8f14eae8344e7db4ca662bdc8679d26b8c3a1daea27cd4de1",
-      "notes": "",
-      "updatedAt": "2026-10-05T04:13:26.277Z"
-    },
-    "goblin-war-camp:model:props-sm-prop-barrel-01@gameplay": {
-      "familyId": "goblin-war-camp:model:props-sm-prop-barrel-01",
-      "url": "/vendor/synty/environment/props-sm-prop-barrel-01.glb",
-      "name": "Barrel 01",
-      "state": "delete-requested",
-      "fingerprint": "94a2337bc088684b2b779dfd2f354f24135b513c3029115da6e66cf2e693d0b4",
-      "notes": "",
-      "updatedAt": "2026-10-05T04:13:54.956Z"
-    },
-    "goblin-war-camp:model:props-sm-prop-barrel-01@original": {
-      "familyId": "goblin-war-camp:model:props-sm-prop-barrel-01",
-      "url": "/vendor/synty/library/models/goblin-war-camp/2c3b9b002f485c92f6f8.glb",
-      "name": "Barrel 01",
-      "state": "delete-requested",
-      "fingerprint": "cd4746ec6e6375ace26c94bca76afae2825e8bbbe88b6ad7ab48414dd8d2ae8b",
-      "notes": "",
-      "updatedAt": "2026-10-05T04:14:17.947Z"
-    },
-    "goblin-war-camp:model:props-sm-prop-bedroll-02@area:clearing": {
-      "familyId": "goblin-war-camp:model:props-sm-prop-bedroll-02",
-      "url": "/vendor/synty/environment/clearing/props-sm-prop-bedroll-02.glb",
-      "name": "Bedroll 02",
-      "state": "delete-requested",
-      "fingerprint": "0b52a1a46b10c4c060dbbf6af119fb8181f191fed568002f4368ef2af0234fc9",
-      "notes": "",
-      "updatedAt": "2026-10-05T04:17:12.150Z"
-    },
-    "goblin-war-camp:model:props-sm-prop-bedroll-02@gameplay": {
-      "familyId": "goblin-war-camp:model:props-sm-prop-bedroll-02",
-      "url": "/vendor/synty/environment/props-sm-prop-bedroll-02.glb",
-      "name": "Bedroll 02",
-      "state": "delete-requested",
-      "fingerprint": "c9733708bd32b3d193b6001c04e19762a7861527f5f170ba615991488bdd7d45",
-      "notes": "",
-      "updatedAt": "2026-10-05T04:18:06.239Z"
-    },
-    "goblin-war-camp:model:props-sm-prop-bedroll-02@original": {
-      "familyId": "goblin-war-camp:model:props-sm-prop-bedroll-02",
-      "url": "/vendor/synty/library/models/goblin-war-camp/17d20ba14f1137b969c4.glb",
-      "name": "Bedroll 02",
-      "state": "delete-requested",
-      "fingerprint": "42e1becf2762b535c8c371b262c83b293f0be129ff23b1ab60b20966f6990d50",
-      "notes": "",
-      "updatedAt": "2026-10-05T04:18:26.921Z"
-    },
-    "ashen-veil:model:forest-autumn-shrub@original": {
-      "familyId": "ashen-veil:model:forest-autumn-shrub",
-      "url": "/vendor/synty/library/models/ashen-veil/forest_autumn_shrub.glb",
-      "name": "forest autumn shrub",
-      "state": "delete-requested",
-      "fingerprint": "741499a54ffe786c513c8923d9f754b5bed088470f182073874000215f555de5",
-      "notes": "Owner requested a rough equivalent replacement for deleted scenery. Displayed and visually inspected using the shared native WebGPU/FSR asset lab; placement and interactions remain area-owned.",
-      "updatedAt": "2026-10-05T06:14:09.126Z"
-    },
-    "autumn-atlas:model:understory-copper-bracken@original": {
-      "familyId": "autumn-atlas:model:understory-copper-bracken",
-      "url": "/vendor/synty/library/models/autumn-atlas/understory_copper_bracken.glb",
-      "name": "Copper bracken",
-      "state": "delete-requested",
-      "fingerprint": "6d61f7a68044a04b08abe4990bfa4e0348384030a9bddaafa3b907f3ffcd711c",
-      "notes": "Owner requested a rough equivalent replacement for deleted scenery. Displayed and visually inspected using the shared native WebGPU/FSR asset lab; placement and interactions remain area-owned.",
-      "updatedAt": "2026-10-05T06:10:54.926Z"
-    },
-    "autumn-atlas:model:tree-golden-larch@original": {
-      "familyId": "autumn-atlas:model:tree-golden-larch",
-      "url": "/vendor/synty/library/models/autumn-atlas/tree_golden_larch.glb",
-      "name": "Golden larch",
-      "state": "delete-requested",
-      "fingerprint": "f51c615ea50fe5b70a64de0c2227ef4daa3f7aa1c8ea3ac8c943ea7dad89c04a",
-      "notes": "Owner requested a rough equivalent replacement for deleted scenery. Displayed and visually inspected using the shared native WebGPU/FSR asset lab; placement and interactions remain area-owned.",
-      "updatedAt": "2026-10-05T06:14:35.992Z"
-    },
     "ashen-veil:model:forest-rock-small@original": {
       "familyId": "ashen-veil:model:forest-rock-small",
       "url": "/vendor/synty/library/models/ashen-veil/forest_rock_small.glb",
@@ -135,15 +36,6 @@
       "fingerprint": "d34aae49dd32eb023dd6709018f95054fb0f8030f4d1d9f1dac64d46276a1129",
       "notes": "Owner requested a rough equivalent replacement for deleted scenery. Displayed and visually inspected using the shared native WebGPU/FSR asset lab; placement and interactions remain area-owned.",
       "updatedAt": "2026-10-04T23:16:33.187Z"
-    },
-    "ashen-veil:model:forest-rock-large@original": {
-      "familyId": "ashen-veil:model:forest-rock-large",
-      "url": "/vendor/synty/library/models/ashen-veil/forest_rock_large.glb",
-      "name": "forest rock large",
-      "state": "delete-requested",
-      "fingerprint": "348a43dcfc362284d0bb98b4210fcdeb6f7ad197fdfef1534e2bb21b7597710a",
-      "notes": "Owner requested a rough equivalent replacement for deleted scenery. Displayed and visually inspected using the shared native WebGPU/FSR asset lab; placement and interactions remain area-owned.",
-      "updatedAt": "2026-10-05T06:13:40.237Z"
     },
     "gothic-lootables:model:crate-single@original": {
       "familyId": "gothic-lootables:model:crate-single",
@@ -162,24 +54,6 @@
       "fingerprint": "52659f6c1b28a6737a289b1fa693fe57004ca40eb6f4b9e3a824bdae4804e859",
       "notes": "Owner requested a rough equivalent replacement for deleted scenery. Displayed and visually inspected using the shared native WebGPU/FSR asset lab; placement and interactions remain area-owned.",
       "updatedAt": "2026-10-04T23:16:33.190Z"
-    },
-    "ashen-veil-lights:model:light-tabletop-lantern@original": {
-      "familyId": "ashen-veil-lights:model:light-tabletop-lantern",
-      "url": "/vendor/synty/library/models/ashen-veil-lights/light_tabletop_lantern.glb",
-      "name": "Tabletop lantern",
-      "state": "delete-requested",
-      "fingerprint": "e7145c6c9d36447528132682b488132e8590eb47064bb245e0df6eee3d8e6da0",
-      "notes": "Owner requested a rough equivalent replacement for deleted scenery. Displayed and visually inspected using the shared native WebGPU/FSR asset lab; placement and interactions remain area-owned.",
-      "updatedAt": "2026-10-05T06:15:39.031Z"
-    },
-    "/vendor/synty/chest.glb@/vendor/synty/chest.glb": {
-      "familyId": "/vendor/synty/chest.glb",
-      "url": "/vendor/synty/chest.glb",
-      "name": "chest.glb",
-      "state": "delete-requested",
-      "fingerprint": "7812c9f6b6d8c5b1abd141e2067c132d8e59731a58035fb0a126172aaadd3319",
-      "notes": "Owner requested a rough equivalent replacement for deleted scenery. Displayed and visually inspected using the shared native WebGPU/FSR asset lab; placement and interactions remain area-owned.",
-      "updatedAt": "2026-10-05T06:10:25.204Z"
     },
     "goblin-war-camp:model:buildings-sm-bld-tent-small-04@area:clearing": {
       "familyId": "goblin-war-camp:model:buildings-sm-bld-tent-small-04",
@@ -406,42 +280,6 @@
       "notes": "",
       "updatedAt": "2026-10-04T21:51:05.696Z"
     },
-    "generic:model:sm-gen-env-log-02@area:clearing": {
-      "familyId": "generic:model:sm-gen-env-log-02",
-      "url": "/vendor/synty/environment/clearing/sm-gen-env-log-02.glb",
-      "name": "Log 02",
-      "state": "delete-requested",
-      "fingerprint": "488c37f49de50dc29a97e92f5d3367572e1b3d266f818e2fc51d5439dc152e79",
-      "notes": "",
-      "updatedAt": "2026-10-05T06:15:12.617Z"
-    },
-    "generic:model:sm-gen-env-log-02@gameplay": {
-      "familyId": "generic:model:sm-gen-env-log-02",
-      "url": "/vendor/synty/environment/sm-gen-env-log-02.glb",
-      "name": "Log 02",
-      "state": "delete-requested",
-      "fingerprint": "c0d4bd0f31787a7b43ed8a9b64472383fa8a8704b2d2272c602aeb18676e7260",
-      "notes": "",
-      "updatedAt": "2026-10-05T05:52:51.827Z"
-    },
-    "generic:model:sm-gen-env-log-02@original": {
-      "familyId": "generic:model:sm-gen-env-log-02",
-      "url": "/vendor/synty/library/models/generic/52daf91de76de0f5b5e6.glb",
-      "name": "Log 02",
-      "state": "delete-requested",
-      "fingerprint": "20ec50a4df7114cbad257801103e74e9acbf9ea75c9802322e682144b626aad4",
-      "notes": "",
-      "updatedAt": "2026-10-05T05:52:58.773Z"
-    },
-    "generic:model:sm-gen-wep-pickaxe-01@original": {
-      "familyId": "generic:model:sm-gen-wep-pickaxe-01",
-      "url": "/vendor/synty/library/models/generic/07cd1fe26477a8a7772d.glb",
-      "name": "Pickaxe 01",
-      "state": "delete-requested",
-      "fingerprint": "011594746c39cabe964c524e773a06eba1701f9d3b966d286cf21ecfbebd434c",
-      "notes": "",
-      "updatedAt": "2026-10-05T05:53:14.991Z"
-    },
     "/vendor/synty/art-lab/rock-painterly.glb@gameplay": {
       "familyId": "/vendor/synty/art-lab/rock-painterly.glb",
       "url": "/vendor/synty/environment/cliff-rock.glb",
@@ -477,15 +315,6 @@
       "fingerprint": "855a6b5a6b9380c1420d4b39100f92684ce0ae288029865cbb70b8d73a7cbfcd",
       "notes": "",
       "updatedAt": "2026-10-05T05:54:06.815Z"
-    },
-    "goblin-war-camp:model:weapons-sm-wep-shield-02@original": {
-      "familyId": "goblin-war-camp:model:weapons-sm-wep-shield-02",
-      "url": "/vendor/synty/library/models/goblin-war-camp/7c9b9d6cf18bec189ad9.glb",
-      "name": "Shield 02",
-      "state": "delete-requested",
-      "fingerprint": "589f5586d8245fbcc79c22ec9f8a71243286cfcca7e3979d30a3b952641990f0",
-      "notes": "",
-      "updatedAt": "2026-10-05T05:53:41.157Z"
     },
     "goblin-war-camp:model:weapons-sm-wep-staff-01@original": {
       "familyId": "goblin-war-camp:model:weapons-sm-wep-staff-01",
@@ -622,15 +451,6 @@
       "notes": "",
       "updatedAt": "2026-10-04T21:56:27.552Z"
     },
-    "generic:model:sm-gen-prop-table-01@original": {
-      "familyId": "generic:model:sm-gen-prop-table-01",
-      "url": "/vendor/synty/library/models/generic/28ef6c08f5bacc238511.glb",
-      "name": "Table 01",
-      "state": "delete-requested",
-      "fingerprint": "dd4b5510e1455fafba29a10733ad06f6ce046489495060125db2c00d494c9bf7",
-      "notes": "",
-      "updatedAt": "2026-10-05T05:54:22.412Z"
-    },
     "generic:model:sm-gen-env-rock-01@original": {
       "familyId": "generic:model:sm-gen-env-rock-01",
       "url": "/vendor/synty/library/models/generic/826986cee91b0be12922.glb",
@@ -648,15 +468,6 @@
       "fingerprint": "84c64a770428f0ac70ee2a173041032c8c964b72d46c6c3955dcc23260362226",
       "notes": "",
       "updatedAt": "2026-10-05T05:53:22.510Z"
-    },
-    "goblin-war-camp:model:props-sm-prop-ruins-pillar-01@original": {
-      "familyId": "goblin-war-camp:model:props-sm-prop-ruins-pillar-01",
-      "url": "/vendor/synty/library/models/goblin-war-camp/2bcd53ab8a311056b9ca.glb",
-      "name": "Ruins Pillar 01",
-      "state": "delete-requested",
-      "fingerprint": "ffcdb7e55968f14a1317beb8cbaaba74d2660fb8930f4ec1a5158873bf2d5a4a",
-      "notes": "",
-      "updatedAt": "2026-10-05T05:53:32.855Z"
     },
     "character:synty-generic-sm_gen_chr_skeleton_01@gameplay": {
       "familyId": "character:synty-generic-sm_gen_chr_skeleton_01",
@@ -1090,78 +901,6 @@
       "notes": "",
       "updatedAt": "2026-10-05T05:55:04.887Z"
     },
-    "goblin-war-camp:assembly:assets-synty-polygongoblinwarcamp-prefabs-environment-sm-env-algae-01@original": {
-      "familyId": "goblin-war-camp:assembly:assets-synty-polygongoblinwarcamp-prefabs-environment-sm-env-algae-01",
-      "url": "/vendor/synty/library/assemblies/goblin-war-camp/56b4983e865bcc71d71f6fd60ce05fb586d0f0e4fdacf3ef1edcb86654a4b86a.json",
-      "name": "Algae 01",
-      "state": "delete-requested",
-      "fingerprint": "8b7297977c45f37a5ee2bb36d6421d531573c47785f72a5e4486dc5df983194d",
-      "notes": "",
-      "updatedAt": "2026-10-05T05:55:16.705Z"
-    },
-    "goblin-war-camp:model:environment-sm-env-algae-01@original": {
-      "familyId": "goblin-war-camp:model:environment-sm-env-algae-01",
-      "url": "/vendor/synty/library/models/goblin-war-camp/3f86f51800e6d2838589.glb",
-      "name": "Algae 01",
-      "state": "delete-requested",
-      "fingerprint": "81c38402419ca444b4dcd7b92626b58da7533a1565c0a95a92a005805a61ed79",
-      "notes": "",
-      "updatedAt": "2026-10-05T05:55:24.972Z"
-    },
-    "goblin-war-camp:assembly:assets-synty-polygongoblinwarcamp-prefabs-environment-sm-env-algae-02@original": {
-      "familyId": "goblin-war-camp:assembly:assets-synty-polygongoblinwarcamp-prefabs-environment-sm-env-algae-02",
-      "url": "/vendor/synty/library/assemblies/goblin-war-camp/9e646639b820474383dcdfdaa0d3cc671a3752acfc637849e36ccf3fa24e8a40.json",
-      "name": "Algae 02",
-      "state": "delete-requested",
-      "fingerprint": "d908ef79eb08523849bdcbbb8929dbd3cd545a60b3b72bac2d607ae0e007989e",
-      "notes": "",
-      "updatedAt": "2026-10-05T05:55:34.465Z"
-    },
-    "goblin-war-camp:model:environment-sm-env-algae-02@original": {
-      "familyId": "goblin-war-camp:model:environment-sm-env-algae-02",
-      "url": "/vendor/synty/library/models/goblin-war-camp/833058d49d5686da50a3.glb",
-      "name": "Algae 02",
-      "state": "delete-requested",
-      "fingerprint": "46d0b03e540e283a4160ecea2749e8eb528026ab7f65cb61d26db839deea2a0e",
-      "notes": "",
-      "updatedAt": "2026-10-05T05:55:43.091Z"
-    },
-    "goblin-war-camp:assembly:assets-synty-polygongoblinwarcamp-prefabs-environment-sm-env-algae-03@original": {
-      "familyId": "goblin-war-camp:assembly:assets-synty-polygongoblinwarcamp-prefabs-environment-sm-env-algae-03",
-      "url": "/vendor/synty/library/assemblies/goblin-war-camp/4de27a2f05250551c5be5e35bc10450bbff80a2d90e4776388b18fc5b6228797.json",
-      "name": "Algae 03",
-      "state": "delete-requested",
-      "fingerprint": "2ad6c4ddd86da743592c5bbcbc67b89a6b8a7bf40cdb06d5187639b900be07c2",
-      "notes": "",
-      "updatedAt": "2026-10-05T05:55:51.479Z"
-    },
-    "goblin-war-camp:model:environment-sm-env-algae-03@original": {
-      "familyId": "goblin-war-camp:model:environment-sm-env-algae-03",
-      "url": "/vendor/synty/library/models/goblin-war-camp/c1589cf2d75542f5cba2.glb",
-      "name": "Algae 03",
-      "state": "delete-requested",
-      "fingerprint": "f891e88a3ed5eb5c7c0f2ece8be7f1f7e1db2417ed4f51b870f584b50f05a71f",
-      "notes": "",
-      "updatedAt": "2026-10-05T05:56:00.368Z"
-    },
-    "goblin-war-camp:assembly:assets-synty-polygongoblinwarcamp-prefabs-environment-sm-env-algae-04@original": {
-      "familyId": "goblin-war-camp:assembly:assets-synty-polygongoblinwarcamp-prefabs-environment-sm-env-algae-04",
-      "url": "/vendor/synty/library/assemblies/goblin-war-camp/dc89941e557b32bcb06a1b238b56f414871a0e529818cad88ac28164db30bf7a.json",
-      "name": "Algae 04",
-      "state": "delete-requested",
-      "fingerprint": "bb446ddf57bc250b1071fc8149e7eff656fa845b9399ff1c94cf5c9fa3373d1e",
-      "notes": "",
-      "updatedAt": "2026-10-05T05:56:09.225Z"
-    },
-    "goblin-war-camp:model:environment-sm-env-algae-04@original": {
-      "familyId": "goblin-war-camp:model:environment-sm-env-algae-04",
-      "url": "/vendor/synty/library/models/goblin-war-camp/7f1013d23480b54fe698.glb",
-      "name": "Algae 04",
-      "state": "delete-requested",
-      "fingerprint": "a9472ec45eb01ba407082d362b93f21818cd124fdddd9365e4e966310aab53ba",
-      "notes": "",
-      "updatedAt": "2026-10-05T05:56:17.382Z"
-    },
     "autumn-atlas:model:tree-amber-willow@original": {
       "familyId": "autumn-atlas:model:tree-amber-willow",
       "url": "/vendor/synty/library/models/autumn-atlas/tree_amber_willow.glb",
@@ -1188,51 +927,6 @@
       "fingerprint": "0703a28042c2082101ff32aea5eff14912c94a15620662ff96ec4f7004f59f23",
       "notes": "",
       "updatedAt": "2026-10-05T05:56:45.269Z"
-    },
-    "goblin-war-camp:assembly:assets-synty-polygongoblinwarcamp-prefabs-props-sm-prop-anvil-01@original": {
-      "familyId": "goblin-war-camp:assembly:assets-synty-polygongoblinwarcamp-prefabs-props-sm-prop-anvil-01",
-      "url": "/vendor/synty/library/assemblies/goblin-war-camp/5ad6da8a2c56c163ee8a67d6bef4729064ba0dac710f60f158966b01b8167d50.json",
-      "name": "Anvil 01",
-      "state": "delete-requested",
-      "fingerprint": "59e7af814b503125dcad54fdfce97bb2ffb4d70306e1600b4f8cc35142e4aa02",
-      "notes": "",
-      "updatedAt": "2026-10-05T05:56:54.255Z"
-    },
-    "viking-realm:assembly:assets-synty-polygonvikingrealm-prefabs-props-sm-prop-anvil-01@original": {
-      "familyId": "viking-realm:assembly:assets-synty-polygonvikingrealm-prefabs-props-sm-prop-anvil-01",
-      "url": "/vendor/synty/library/assemblies/viking-realm/2bb5a43181fa3be920069e21568e4e5824b59f4a62a01715a60e0aa299560aee.json",
-      "name": "Anvil 01",
-      "state": "delete-requested",
-      "fingerprint": "89e1ecf601cbb601e23bc58b0668bf78f1cf9c63b3ef97bf9e7728ecd9a14ff0",
-      "notes": "",
-      "updatedAt": "2026-10-05T05:57:05.536Z"
-    },
-    "viking-realm:model:sm-prop-anvil-01@original": {
-      "familyId": "viking-realm:model:sm-prop-anvil-01",
-      "url": "/vendor/synty/library/models/viking-realm/5e9acf88718aa70d4147.glb",
-      "name": "Anvil 01",
-      "state": "delete-requested",
-      "fingerprint": "148ca4a246b42b78d46f03b0b03906899983d612b3edce21f1053e825b7e6372",
-      "notes": "",
-      "updatedAt": "2026-10-05T05:57:14.032Z"
-    },
-    "viking-realm:assembly:assets-synty-polygonvikingrealm-prefabs-props-sm-prop-anvil-02@original": {
-      "familyId": "viking-realm:assembly:assets-synty-polygonvikingrealm-prefabs-props-sm-prop-anvil-02",
-      "url": "/vendor/synty/library/assemblies/viking-realm/1fd9fe571e3d8cdbbedb4631880de74a81b4d918346eb48cdcfa85cf0bedaed6.json",
-      "name": "Anvil 02",
-      "state": "delete-requested",
-      "fingerprint": "feca2618e35c5261ab6894ba2bc1ebb655f21ff9ba21a36f857018fe9ed68e5e",
-      "notes": "",
-      "updatedAt": "2026-10-05T05:57:23.186Z"
-    },
-    "viking-realm:model:sm-prop-anvil-02@original": {
-      "familyId": "viking-realm:model:sm-prop-anvil-02",
-      "url": "/vendor/synty/library/models/viking-realm/bbfa8804c8609dc39c6d.glb",
-      "name": "Anvil 02",
-      "state": "delete-requested",
-      "fingerprint": "fb20f0b63bdc42095a0cb737626b4a7f3e59d77de9ec58ec07aecd6307b173b6",
-      "notes": "",
-      "updatedAt": "2026-10-05T05:57:34.141Z"
     },
     "viking-realm:assembly:assets-synty-polygonvikingrealm-prefabs-props-sm-prop-apple-01@original": {
       "familyId": "viking-realm:assembly:assets-synty-polygonvikingrealm-prefabs-props-sm-prop-apple-01",
@@ -1333,24 +1027,6 @@
       "notes": "",
       "updatedAt": "2026-10-05T06:03:08.985Z"
     },
-    "hearthwood-furniture:model:loot-armor-stand@original": {
-      "familyId": "hearthwood-furniture:model:loot-armor-stand",
-      "url": "/vendor/synty/library/models/hearthwood-furniture/loot_armor_stand.glb",
-      "name": "Armor stand",
-      "state": "delete-requested",
-      "fingerprint": "a63f949b3324d844a750b8a365980f76a82107930eb2dd9f71af0b2c93ac62bd",
-      "notes": "",
-      "updatedAt": "2026-10-05T06:03:22.759Z"
-    },
-    "goblin-war-camp:assembly:assets-synty-polygongoblinwarcamp-prefabs-props-sm-prop-arrow-01@original": {
-      "familyId": "goblin-war-camp:assembly:assets-synty-polygongoblinwarcamp-prefabs-props-sm-prop-arrow-01",
-      "url": "/vendor/synty/library/assemblies/goblin-war-camp/8360a98953aaf866d740f040d9b7dbcf4a5a2308367bc08b7d76c5f4fb1eeee6.json",
-      "name": "Arrow 01",
-      "state": "delete-requested",
-      "fingerprint": "db4d8340dd58c3d717f4e64ad6438a97c7886093519d40e142f45b6ece234fa6",
-      "notes": "",
-      "updatedAt": "2026-10-05T06:03:39.387Z"
-    },
     "goblin-war-camp:assembly:assets-synty-polygongoblinwarcamp-prefabs-weapons-sm-wep-arrow-01@original": {
       "familyId": "goblin-war-camp:assembly:assets-synty-polygongoblinwarcamp-prefabs-weapons-sm-wep-arrow-01",
       "url": "/vendor/synty/library/assemblies/goblin-war-camp/0f4cf5271ed5521194bdf8fb0b94a002d15b60830436c06a11ab81dcde5bdfe2.json",
@@ -1359,15 +1035,6 @@
       "fingerprint": "bc5497ad20494037bbaac2a7a5e0dfa3d80ffbcc96073e2bc8e88fc66260834d",
       "notes": "",
       "updatedAt": "2026-10-05T06:03:53.724Z"
-    },
-    "goblin-war-camp:model:props-sm-prop-arrow-01@original": {
-      "familyId": "goblin-war-camp:model:props-sm-prop-arrow-01",
-      "url": "/vendor/synty/library/models/goblin-war-camp/a6203bf5b5029246833e.glb",
-      "name": "Arrow 01",
-      "state": "delete-requested",
-      "fingerprint": "3095d327f0538fd1e12add18e9654323ca2eb7d877713ea249d751ba1d8b6b1a",
-      "notes": "",
-      "updatedAt": "2026-10-05T06:04:35.892Z"
     },
     "goblin-war-camp:model:weapons-sm-wep-arrow-01@original": {
       "familyId": "goblin-war-camp:model:weapons-sm-wep-arrow-01",
@@ -1386,24 +1053,6 @@
       "fingerprint": "d1e5bd2821e2f8b7d3ab8c693bfee7aa9be64f63c2941c3c3b571bddf5f116a0",
       "notes": "",
       "updatedAt": "2026-10-05T06:05:05.634Z"
-    },
-    "goblin-war-camp:assembly:assets-synty-polygongoblinwarcamp-prefabs-props-sm-prop-arrow-basket-01@original": {
-      "familyId": "goblin-war-camp:assembly:assets-synty-polygongoblinwarcamp-prefabs-props-sm-prop-arrow-basket-01",
-      "url": "/vendor/synty/library/assemblies/goblin-war-camp/4edeb44eea25f610d62840dffa895e90feb059effdb4229619e04758eb8f4237.json",
-      "name": "Arrow Basket 01",
-      "state": "delete-requested",
-      "fingerprint": "494b072897aeb3d6581722269e58017870ba1368fe403050be82d9466dd2b452",
-      "notes": "",
-      "updatedAt": "2026-10-05T06:05:17.493Z"
-    },
-    "goblin-war-camp:model:props-sm-prop-arrow-basket-01@original": {
-      "familyId": "goblin-war-camp:model:props-sm-prop-arrow-basket-01",
-      "url": "/vendor/synty/library/models/goblin-war-camp/4601ad8ab6a80caefac7.glb",
-      "name": "Arrow Basket 01",
-      "state": "delete-requested",
-      "fingerprint": "c98c75679b9f2cdbc6711c01d77a0cb960a19c7ee61dbefe62681e1e4c10b666",
-      "notes": "",
-      "updatedAt": "2026-10-05T06:05:28.206Z"
     },
     "viking-realm:assembly:assets-synty-polygonvikingrealm-prefabs-props-sm-prop-arrow-insert-01@original": {
       "familyId": "viking-realm:assembly:assets-synty-polygonvikingrealm-prefabs-props-sm-prop-arrow-insert-01",
@@ -1440,132 +1089,6 @@
       "fingerprint": "fabc41593aa6893b42d7e2d2b0cfae3732bb30110ac6a1c65ee78bf6d99cbbbb",
       "notes": "",
       "updatedAt": "2026-10-05T06:06:36.106Z"
-    },
-    "shops:assembly:assets-synty-polygonshops-prefabs-props-sm-prop-art-01@original": {
-      "familyId": "shops:assembly:assets-synty-polygonshops-prefabs-props-sm-prop-art-01",
-      "url": "/vendor/synty/library/assemblies/shops/8989e3df8a633c5fcbfe1ea5eef50e6bc9629f9efb98229ac3566a22d228e42e.json",
-      "name": "Art 01",
-      "state": "delete-requested",
-      "fingerprint": "9cb569a45705b22951e2c47dc855cc373765f4a467b53f0f45d93fad0a541000",
-      "notes": "",
-      "updatedAt": "2026-10-05T06:06:52.222Z"
-    },
-    "shops:model:sm-prop-art-01@original": {
-      "familyId": "shops:model:sm-prop-art-01",
-      "url": "/vendor/synty/library/models/shops/f286a48b8fbdd93e5122.glb",
-      "name": "Art 01",
-      "state": "delete-requested",
-      "fingerprint": "84a745990decf3ddfdffbbbe791af1a9f54531565f5dd4e6b5439d92a4502291",
-      "notes": "",
-      "updatedAt": "2026-10-05T06:07:01.368Z"
-    },
-    "shops:assembly:assets-synty-polygonshops-prefabs-props-sm-prop-art-02@original": {
-      "familyId": "shops:assembly:assets-synty-polygonshops-prefabs-props-sm-prop-art-02",
-      "url": "/vendor/synty/library/assemblies/shops/feb43fa811fc80f99cef0b9bb297be2c08e92d64cc6159bab4a03823bcfa8b6e.json",
-      "name": "Art 02",
-      "state": "delete-requested",
-      "fingerprint": "77013a7333c13845c6a7810274d96c0d96469e9f5f6bb67a06b7b78bbf2d51f4",
-      "notes": "",
-      "updatedAt": "2026-10-05T06:07:12.415Z"
-    },
-    "shops:model:sm-prop-art-02@original": {
-      "familyId": "shops:model:sm-prop-art-02",
-      "url": "/vendor/synty/library/models/shops/ceb114b3955144bb62af.glb",
-      "name": "Art 02",
-      "state": "delete-requested",
-      "fingerprint": "21b8bb5c3b0d505897960a128786927d0c104f5bcce6afd89a93a487542a7c82",
-      "notes": "",
-      "updatedAt": "2026-10-05T06:07:24.714Z"
-    },
-    "shops:assembly:assets-synty-polygonshops-prefabs-props-sm-prop-art-03@original": {
-      "familyId": "shops:assembly:assets-synty-polygonshops-prefabs-props-sm-prop-art-03",
-      "url": "/vendor/synty/library/assemblies/shops/abca93c29600bdfb98de3365b19dba4f21f650b3b375a66b02cb6a03ec8a5a60.json",
-      "name": "Art 03",
-      "state": "delete-requested",
-      "fingerprint": "d5c803b3f54889edfa7956b5ea2a7382df092807dcb0b1fbe89dd43c7b7d2d48",
-      "notes": "",
-      "updatedAt": "2026-10-05T06:07:37.200Z"
-    },
-    "shops:model:sm-prop-art-03@original": {
-      "familyId": "shops:model:sm-prop-art-03",
-      "url": "/vendor/synty/library/models/shops/d3ec158f76724bee9161.glb",
-      "name": "Art 03",
-      "state": "delete-requested",
-      "fingerprint": "f3825460c99ff9c59114c1ea922818f9b43896ab147d5ef5aa8c682e3916e608",
-      "notes": "",
-      "updatedAt": "2026-10-05T06:07:57.041Z"
-    },
-    "shops:assembly:assets-synty-polygonshops-prefabs-props-sm-prop-art-04@original": {
-      "familyId": "shops:assembly:assets-synty-polygonshops-prefabs-props-sm-prop-art-04",
-      "url": "/vendor/synty/library/assemblies/shops/ab5aa9db250bd0a70cfa5635a3cbca86b25af2f25840be9bc43bfc42fa22ac9d.json",
-      "name": "Art 04",
-      "state": "delete-requested",
-      "fingerprint": "b73bca00b252c6c3910038e187208cc126c8381845301db2c847595b49086207",
-      "notes": "",
-      "updatedAt": "2026-10-05T06:08:20.943Z"
-    },
-    "shops:model:sm-prop-art-04@original": {
-      "familyId": "shops:model:sm-prop-art-04",
-      "url": "/vendor/synty/library/models/shops/99f3dec2719684b0dbdb.glb",
-      "name": "Art 04",
-      "state": "delete-requested",
-      "fingerprint": "ed5ab33850c7e053e46a42fe2355b05b61f94cb216ab6aaf94441f4180dff287",
-      "notes": "",
-      "updatedAt": "2026-10-05T06:08:46.554Z"
-    },
-    "shops:assembly:assets-synty-polygonshops-prefabs-props-sm-prop-art-05@original": {
-      "familyId": "shops:assembly:assets-synty-polygonshops-prefabs-props-sm-prop-art-05",
-      "url": "/vendor/synty/library/assemblies/shops/7375a41c720c509422f0cb1a627f3a5999c9b10676ca62c269e30e0f323d9c76.json",
-      "name": "Art 05",
-      "state": "delete-requested",
-      "fingerprint": "9ac587158288f6c7db92dff759ba861feddfa77e14d91c01474dec040e350fe5",
-      "notes": "",
-      "updatedAt": "2026-10-05T06:08:54.193Z"
-    },
-    "shops:model:sm-prop-art-05@original": {
-      "familyId": "shops:model:sm-prop-art-05",
-      "url": "/vendor/synty/library/models/shops/bb354b3d799a13868bed.glb",
-      "name": "Art 05",
-      "state": "delete-requested",
-      "fingerprint": "58295a49a4a60b7265f488f4a0fb0577cdfadbf844bee9116514422b4083237d",
-      "notes": "",
-      "updatedAt": "2026-10-05T06:09:03.753Z"
-    },
-    "shops:assembly:assets-synty-polygonshops-prefabs-props-sm-prop-art-06@original": {
-      "familyId": "shops:assembly:assets-synty-polygonshops-prefabs-props-sm-prop-art-06",
-      "url": "/vendor/synty/library/assemblies/shops/cec28bd3b207be06ff5fe988747a116b1236a9449e0b7ea97e1b27edd9d1802b.json",
-      "name": "Art 06",
-      "state": "delete-requested",
-      "fingerprint": "6b01b015f1a06a93b41f388839e5389b29308b177c1843baca4888782f7cffbc",
-      "notes": "",
-      "updatedAt": "2026-10-05T06:09:11.349Z"
-    },
-    "shops:model:sm-prop-art-06@original": {
-      "familyId": "shops:model:sm-prop-art-06",
-      "url": "/vendor/synty/library/models/shops/aa0b9887395f38f0ac3a.glb",
-      "name": "Art 06",
-      "state": "delete-requested",
-      "fingerprint": "c82b0b3f69991155dbd199828463439f74180076a539912793342b372912e681",
-      "notes": "",
-      "updatedAt": "2026-10-05T06:09:27.194Z"
-    },
-    "shops:assembly:assets-synty-polygonshops-prefabs-props-sm-prop-art-07@original": {
-      "familyId": "shops:assembly:assets-synty-polygonshops-prefabs-props-sm-prop-art-07",
-      "url": "/vendor/synty/library/assemblies/shops/e8debbd220bd94c764cfda39af5eec117123e99df211c6cbda3914dee6ecff2b.json",
-      "name": "Art 07",
-      "state": "delete-requested",
-      "fingerprint": "909c182aa52e060d714eeb388f944a5b9538ffa8b0daa71af2da7a832a4836dd",
-      "notes": "",
-      "updatedAt": "2026-10-05T06:09:40.423Z"
-    },
-    "shops:model:sm-prop-art-07@original": {
-      "familyId": "shops:model:sm-prop-art-07",
-      "url": "/vendor/synty/library/models/shops/1468fce0430e82c59abb.glb",
-      "name": "Art 07",
-      "state": "delete-requested",
-      "fingerprint": "07bcb9a1951895c2b6c56d9df8d1de978a63c59708eab441e61cde9f07e04779",
-      "notes": "",
-      "updatedAt": "2026-10-05T06:10:01.570Z"
     }
   },
   "familyDenials": {},
@@ -26299,6 +25822,271 @@
       "familyId": "generic:model:sm-gen-env-bush-01",
       "url": "/vendor/synty/environment/clearing/sm-gen-env-bush-01.glb",
       "deletedAt": "2026-10-04T23:20:59.084Z"
+    },
+    "/vendor/synty/chest.glb@/vendor/synty/chest.glb": {
+      "familyId": "/vendor/synty/chest.glb",
+      "url": "/vendor/synty/chest.glb",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "generic:model:sm-gen-env-log-02@original": {
+      "familyId": "generic:model:sm-gen-env-log-02",
+      "url": "/vendor/synty/library/models/generic/52daf91de76de0f5b5e6.glb",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "generic:model:sm-gen-prop-table-01@original": {
+      "familyId": "generic:model:sm-gen-prop-table-01",
+      "url": "/vendor/synty/library/models/generic/28ef6c08f5bacc238511.glb",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "generic:model:sm-gen-wep-pickaxe-01@original": {
+      "familyId": "generic:model:sm-gen-wep-pickaxe-01",
+      "url": "/vendor/synty/library/models/generic/07cd1fe26477a8a7772d.glb",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "goblin-war-camp:model:environment-sm-env-algae-01@original": {
+      "familyId": "goblin-war-camp:model:environment-sm-env-algae-01",
+      "url": "/vendor/synty/library/models/goblin-war-camp/3f86f51800e6d2838589.glb",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "goblin-war-camp:model:environment-sm-env-algae-02@original": {
+      "familyId": "goblin-war-camp:model:environment-sm-env-algae-02",
+      "url": "/vendor/synty/library/models/goblin-war-camp/833058d49d5686da50a3.glb",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "goblin-war-camp:model:environment-sm-env-algae-03@original": {
+      "familyId": "goblin-war-camp:model:environment-sm-env-algae-03",
+      "url": "/vendor/synty/library/models/goblin-war-camp/c1589cf2d75542f5cba2.glb",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "goblin-war-camp:model:environment-sm-env-algae-04@original": {
+      "familyId": "goblin-war-camp:model:environment-sm-env-algae-04",
+      "url": "/vendor/synty/library/models/goblin-war-camp/7f1013d23480b54fe698.glb",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "goblin-war-camp:model:props-sm-prop-anvil-01@original": {
+      "familyId": "goblin-war-camp:model:props-sm-prop-anvil-01",
+      "url": "/vendor/synty/library/models/goblin-war-camp/bc198f5728a1e9e28cb7.glb",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "goblin-war-camp:model:props-sm-prop-arrow-01@original": {
+      "familyId": "goblin-war-camp:model:props-sm-prop-arrow-01",
+      "url": "/vendor/synty/library/models/goblin-war-camp/a6203bf5b5029246833e.glb",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "goblin-war-camp:model:props-sm-prop-arrow-basket-01@original": {
+      "familyId": "goblin-war-camp:model:props-sm-prop-arrow-basket-01",
+      "url": "/vendor/synty/library/models/goblin-war-camp/4601ad8ab6a80caefac7.glb",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "goblin-war-camp:model:props-sm-prop-barrel-01@original": {
+      "familyId": "goblin-war-camp:model:props-sm-prop-barrel-01",
+      "url": "/vendor/synty/library/models/goblin-war-camp/2c3b9b002f485c92f6f8.glb",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "goblin-war-camp:model:props-sm-prop-bedroll-02@original": {
+      "familyId": "goblin-war-camp:model:props-sm-prop-bedroll-02",
+      "url": "/vendor/synty/library/models/goblin-war-camp/17d20ba14f1137b969c4.glb",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "goblin-war-camp:model:props-sm-prop-forge-01@original": {
+      "familyId": "goblin-war-camp:model:props-sm-prop-forge-01",
+      "url": "/vendor/synty/library/models/goblin-war-camp/2071c80f5a9fcb212933.glb",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "goblin-war-camp:model:props-sm-prop-ruins-pillar-01@original": {
+      "familyId": "goblin-war-camp:model:props-sm-prop-ruins-pillar-01",
+      "url": "/vendor/synty/library/models/goblin-war-camp/2bcd53ab8a311056b9ca.glb",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "goblin-war-camp:model:weapons-sm-wep-shield-02@original": {
+      "familyId": "goblin-war-camp:model:weapons-sm-wep-shield-02",
+      "url": "/vendor/synty/library/models/goblin-war-camp/7c9b9d6cf18bec189ad9.glb",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "viking-realm:model:sm-prop-anvil-01@original": {
+      "familyId": "viking-realm:model:sm-prop-anvil-01",
+      "url": "/vendor/synty/library/models/viking-realm/5e9acf88718aa70d4147.glb",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "viking-realm:model:sm-prop-anvil-02@original": {
+      "familyId": "viking-realm:model:sm-prop-anvil-02",
+      "url": "/vendor/synty/library/models/viking-realm/bbfa8804c8609dc39c6d.glb",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "shops:model:sm-prop-art-01@original": {
+      "familyId": "shops:model:sm-prop-art-01",
+      "url": "/vendor/synty/library/models/shops/f286a48b8fbdd93e5122.glb",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "shops:model:sm-prop-art-02@original": {
+      "familyId": "shops:model:sm-prop-art-02",
+      "url": "/vendor/synty/library/models/shops/ceb114b3955144bb62af.glb",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "shops:model:sm-prop-art-03@original": {
+      "familyId": "shops:model:sm-prop-art-03",
+      "url": "/vendor/synty/library/models/shops/d3ec158f76724bee9161.glb",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "shops:model:sm-prop-art-04@original": {
+      "familyId": "shops:model:sm-prop-art-04",
+      "url": "/vendor/synty/library/models/shops/99f3dec2719684b0dbdb.glb",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "shops:model:sm-prop-art-05@original": {
+      "familyId": "shops:model:sm-prop-art-05",
+      "url": "/vendor/synty/library/models/shops/bb354b3d799a13868bed.glb",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "shops:model:sm-prop-art-06@original": {
+      "familyId": "shops:model:sm-prop-art-06",
+      "url": "/vendor/synty/library/models/shops/aa0b9887395f38f0ac3a.glb",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "shops:model:sm-prop-art-07@original": {
+      "familyId": "shops:model:sm-prop-art-07",
+      "url": "/vendor/synty/library/models/shops/1468fce0430e82c59abb.glb",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "goblin-war-camp:assembly:assets-synty-polygongoblinwarcamp-prefabs-environment-sm-env-algae-01@original": {
+      "familyId": "goblin-war-camp:assembly:assets-synty-polygongoblinwarcamp-prefabs-environment-sm-env-algae-01",
+      "url": "/vendor/synty/library/assemblies/goblin-war-camp/56b4983e865bcc71d71f6fd60ce05fb586d0f0e4fdacf3ef1edcb86654a4b86a.json",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "goblin-war-camp:assembly:assets-synty-polygongoblinwarcamp-prefabs-environment-sm-env-algae-02@original": {
+      "familyId": "goblin-war-camp:assembly:assets-synty-polygongoblinwarcamp-prefabs-environment-sm-env-algae-02",
+      "url": "/vendor/synty/library/assemblies/goblin-war-camp/9e646639b820474383dcdfdaa0d3cc671a3752acfc637849e36ccf3fa24e8a40.json",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "goblin-war-camp:assembly:assets-synty-polygongoblinwarcamp-prefabs-environment-sm-env-algae-03@original": {
+      "familyId": "goblin-war-camp:assembly:assets-synty-polygongoblinwarcamp-prefabs-environment-sm-env-algae-03",
+      "url": "/vendor/synty/library/assemblies/goblin-war-camp/4de27a2f05250551c5be5e35bc10450bbff80a2d90e4776388b18fc5b6228797.json",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "goblin-war-camp:assembly:assets-synty-polygongoblinwarcamp-prefabs-environment-sm-env-algae-04@original": {
+      "familyId": "goblin-war-camp:assembly:assets-synty-polygongoblinwarcamp-prefabs-environment-sm-env-algae-04",
+      "url": "/vendor/synty/library/assemblies/goblin-war-camp/dc89941e557b32bcb06a1b238b56f414871a0e529818cad88ac28164db30bf7a.json",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "goblin-war-camp:assembly:assets-synty-polygongoblinwarcamp-prefabs-props-sm-prop-anvil-01@original": {
+      "familyId": "goblin-war-camp:assembly:assets-synty-polygongoblinwarcamp-prefabs-props-sm-prop-anvil-01",
+      "url": "/vendor/synty/library/assemblies/goblin-war-camp/5ad6da8a2c56c163ee8a67d6bef4729064ba0dac710f60f158966b01b8167d50.json",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "goblin-war-camp:assembly:assets-synty-polygongoblinwarcamp-prefabs-props-sm-prop-arrow-01@original": {
+      "familyId": "goblin-war-camp:assembly:assets-synty-polygongoblinwarcamp-prefabs-props-sm-prop-arrow-01",
+      "url": "/vendor/synty/library/assemblies/goblin-war-camp/8360a98953aaf866d740f040d9b7dbcf4a5a2308367bc08b7d76c5f4fb1eeee6.json",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "goblin-war-camp:assembly:assets-synty-polygongoblinwarcamp-prefabs-props-sm-prop-arrow-basket-01@original": {
+      "familyId": "goblin-war-camp:assembly:assets-synty-polygongoblinwarcamp-prefabs-props-sm-prop-arrow-basket-01",
+      "url": "/vendor/synty/library/assemblies/goblin-war-camp/4edeb44eea25f610d62840dffa895e90feb059effdb4229619e04758eb8f4237.json",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "shops:assembly:assets-synty-polygonshops-prefabs-props-sm-prop-art-01@original": {
+      "familyId": "shops:assembly:assets-synty-polygonshops-prefabs-props-sm-prop-art-01",
+      "url": "/vendor/synty/library/assemblies/shops/8989e3df8a633c5fcbfe1ea5eef50e6bc9629f9efb98229ac3566a22d228e42e.json",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "shops:assembly:assets-synty-polygonshops-prefabs-props-sm-prop-art-02@original": {
+      "familyId": "shops:assembly:assets-synty-polygonshops-prefabs-props-sm-prop-art-02",
+      "url": "/vendor/synty/library/assemblies/shops/feb43fa811fc80f99cef0b9bb297be2c08e92d64cc6159bab4a03823bcfa8b6e.json",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "shops:assembly:assets-synty-polygonshops-prefabs-props-sm-prop-art-03@original": {
+      "familyId": "shops:assembly:assets-synty-polygonshops-prefabs-props-sm-prop-art-03",
+      "url": "/vendor/synty/library/assemblies/shops/abca93c29600bdfb98de3365b19dba4f21f650b3b375a66b02cb6a03ec8a5a60.json",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "shops:assembly:assets-synty-polygonshops-prefabs-props-sm-prop-art-04@original": {
+      "familyId": "shops:assembly:assets-synty-polygonshops-prefabs-props-sm-prop-art-04",
+      "url": "/vendor/synty/library/assemblies/shops/ab5aa9db250bd0a70cfa5635a3cbca86b25af2f25840be9bc43bfc42fa22ac9d.json",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "shops:assembly:assets-synty-polygonshops-prefabs-props-sm-prop-art-05@original": {
+      "familyId": "shops:assembly:assets-synty-polygonshops-prefabs-props-sm-prop-art-05",
+      "url": "/vendor/synty/library/assemblies/shops/7375a41c720c509422f0cb1a627f3a5999c9b10676ca62c269e30e0f323d9c76.json",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "shops:assembly:assets-synty-polygonshops-prefabs-props-sm-prop-art-06@original": {
+      "familyId": "shops:assembly:assets-synty-polygonshops-prefabs-props-sm-prop-art-06",
+      "url": "/vendor/synty/library/assemblies/shops/cec28bd3b207be06ff5fe988747a116b1236a9449e0b7ea97e1b27edd9d1802b.json",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "shops:assembly:assets-synty-polygonshops-prefabs-props-sm-prop-art-07@original": {
+      "familyId": "shops:assembly:assets-synty-polygonshops-prefabs-props-sm-prop-art-07",
+      "url": "/vendor/synty/library/assemblies/shops/e8debbd220bd94c764cfda39af5eec117123e99df211c6cbda3914dee6ecff2b.json",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "viking-realm:assembly:assets-synty-polygonvikingrealm-prefabs-props-sm-prop-anvil-01@original": {
+      "familyId": "viking-realm:assembly:assets-synty-polygonvikingrealm-prefabs-props-sm-prop-anvil-01",
+      "url": "/vendor/synty/library/assemblies/viking-realm/2bb5a43181fa3be920069e21568e4e5824b59f4a62a01715a60e0aa299560aee.json",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "viking-realm:assembly:assets-synty-polygonvikingrealm-prefabs-props-sm-prop-anvil-02@original": {
+      "familyId": "viking-realm:assembly:assets-synty-polygonvikingrealm-prefabs-props-sm-prop-anvil-02",
+      "url": "/vendor/synty/library/assemblies/viking-realm/1fd9fe571e3d8cdbbedb4631880de74a81b4d918346eb48cdcfa85cf0bedaed6.json",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "ashen-veil:model:forest-autumn-shrub@original": {
+      "familyId": "ashen-veil:model:forest-autumn-shrub",
+      "url": "/vendor/synty/library/models/ashen-veil/forest_autumn_shrub.glb",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "ashen-veil:model:forest-rock-large@original": {
+      "familyId": "ashen-veil:model:forest-rock-large",
+      "url": "/vendor/synty/library/models/ashen-veil/forest_rock_large.glb",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "autumn-atlas:model:tree-golden-larch@original": {
+      "familyId": "autumn-atlas:model:tree-golden-larch",
+      "url": "/vendor/synty/library/models/autumn-atlas/tree_golden_larch.glb",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "autumn-atlas:model:understory-copper-bracken@original": {
+      "familyId": "autumn-atlas:model:understory-copper-bracken",
+      "url": "/vendor/synty/library/models/autumn-atlas/understory_copper_bracken.glb",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "ashen-veil-lights:model:light-tabletop-lantern@original": {
+      "familyId": "ashen-veil-lights:model:light-tabletop-lantern",
+      "url": "/vendor/synty/library/models/ashen-veil-lights/light_tabletop_lantern.glb",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "hearthwood-furniture:model:loot-armor-stand@original": {
+      "familyId": "hearthwood-furniture:model:loot-armor-stand",
+      "url": "/vendor/synty/library/models/hearthwood-furniture/loot_armor_stand.glb",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "generic:model:sm-gen-env-log-02@gameplay": {
+      "familyId": "generic:model:sm-gen-env-log-02",
+      "url": "/vendor/synty/environment/sm-gen-env-log-02.glb",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "goblin-war-camp:model:props-sm-prop-barrel-01@gameplay": {
+      "familyId": "goblin-war-camp:model:props-sm-prop-barrel-01",
+      "url": "/vendor/synty/environment/props-sm-prop-barrel-01.glb",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "goblin-war-camp:model:props-sm-prop-bedroll-02@gameplay": {
+      "familyId": "goblin-war-camp:model:props-sm-prop-bedroll-02",
+      "url": "/vendor/synty/environment/props-sm-prop-bedroll-02.glb",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "generic:model:sm-gen-env-log-02@area:clearing": {
+      "familyId": "generic:model:sm-gen-env-log-02",
+      "url": "/vendor/synty/environment/clearing/sm-gen-env-log-02.glb",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "goblin-war-camp:model:props-sm-prop-barrel-01@area:clearing": {
+      "familyId": "goblin-war-camp:model:props-sm-prop-barrel-01",
+      "url": "/vendor/synty/environment/clearing/props-sm-prop-barrel-01.glb",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "goblin-war-camp:model:props-sm-prop-bedroll-02@area:clearing": {
+      "familyId": "goblin-war-camp:model:props-sm-prop-bedroll-02",
+      "url": "/vendor/synty/environment/clearing/props-sm-prop-bedroll-02.glb",
+      "deletedAt": "2026-10-05T18:15:02.430Z"
     }
   }
 }

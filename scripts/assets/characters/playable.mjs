@@ -1,10 +1,9 @@
 import { deletionExclusions } from '../review/exclusions.mjs';
 import { cli, parseArgs, blender, root, UsageError } from '../../lib/cli.mjs';
-import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
-import { createHash } from 'node:crypto';
 import { context } from '../../agents/state.mjs';
-import { privateTree } from '../../agents/copy.mjs';
+import { restorePlayableSource } from '../../agents/retention.mjs';
 import { packCharacter } from './pack.mjs';
 await cli(async () => {
   const args = parseArgs(process.argv.slice(2), { '--blender': 'value', '--skeleton-only': 'boolean', '--player-only': 'boolean', '--motions-only': 'boolean' });
@@ -15,13 +14,7 @@ await cli(async () => {
   for (const role of roles) {
     const actor = config[role];
     if (!actor.source || existsSync(resolve(root, actor.source))) continue;
-    // Completed tasks preserve new source art in main's private archive. Clone
-    // only the missing source directory before Blender writes its own outputs.
-    const archives = resolve((await context()).main, '.local/agent-archives');
-    const candidates = existsSync(archives) ? readdirSync(archives).map(task => resolve(archives, task, actor.source.replace(/^\.local\//, ''))).filter(existsSync) : [];
-    const hashes = new Set(candidates.map(path => createHash('sha256').update(readFileSync(path)).digest('hex')));
-    if (hashes.size !== 1) throw new Error(`Supply one unambiguous private source for ${actor.name}: ${actor.source}`);
-    await privateTree(dirname(candidates[0]), dirname(resolve(root, actor.source)));
+    await restorePlayableSource(await context(), actor, root);
   }
   await blender('assets/characters/playable.py', ['--player-only', '--skeleton-only', '--motions-only'].filter(flag => args[flag]), args['--blender']);
   const excluded = deletionExclusions();

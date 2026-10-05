@@ -1,6 +1,6 @@
 # Orb-led HUD polish
 
-The owner selected the [orb-led study](orbs.png) on October 2, 2026, then removed the visible Set I control and requested a saved Resource Numbers toggle. [Centered meters](centered.png) and [split groups](split.png) are retained alternatives.
+The owner selected the [orb-led study](orbs.png) on October 2, 2026, then removed the visible Set I control and requested a saved Resource Numbers toggle. Rejected alternatives are recoverable from Git history.
 
 The owner requested the detailed visual finish of the concept, not only its organization. Production frames and dimensional icons are original ImageGen assets under `assets/ui/hud/`, referenced by the DOM atlas adapter. Values, actual bindings, cooldowns, captions, availability and focus remain live code. Inventory art and layout stay independent.
 

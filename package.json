@@ -63,7 +63,8 @@
     "assets:import-generated": "node scripts/agents/run.mjs --resource heavy -- node scripts/assets/generated-packs/import.mjs",
     "assets:review": "node scripts/assets/review/cli.mjs",
     "assets:review:report": "node scripts/assets/review/cli.mjs --report",
-    "assets:review:check": "node scripts/assets/review/cli.mjs --check"
+    "assets:review:check": "node scripts/assets/review/cli.mjs --check",
+    "agent:prune": "node scripts/agents/cli.mjs prune"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "0.21.0",

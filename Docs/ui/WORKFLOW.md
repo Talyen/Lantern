@@ -18,7 +18,7 @@ For an unresolved direction, produce multiple intentionally distinct treatments 
 
 Use the built-in ImageGen tool and original text descriptions by default. Never submit Synty/Mixamo models, textures, renders or private gameplay screenshots. An original generated UI-only image may be referenced in later ImageGen work after inspection. Study licensed captures locally and retain them privately; describe observations in text if needed.
 
-Save retained concepts under `Docs/ui/concepts/<screen-or-round>/`, outside `public/` and runtime imports. Save exact prompts and provenance beside them: date, tool, inputs, output filename, SHA-256, purpose/status and critique. Retain selected/reference candidates without copying private art into tracked documentation. Production original UI assets belong beside their consuming asset owner, with provenance and explicit references; concepts are not shipped textures.
+Keep one adopted reference per screen under `Docs/ui/concepts/<screen>/`, outside `public/` and runtime imports; working alternatives stay private and expire under the [retention policy](../DEVELOPMENT_REFERENCE.md#retention-and-disk-use). Save exact prompts and provenance beside them: date, tool, inputs, output filename, SHA-256, purpose/status and critique. Retain the adopted reference without copying private art into tracked documentation. Production original UI assets belong beside their consuming asset owner, with provenance and explicit references; concepts are not shipped textures.
 
 ### Reusable prompt structure
 

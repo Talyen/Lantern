@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, readFile, rm, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { spawn, execFile } from 'node:child_process';
 import { createInterface } from 'node:readline';
@@ -11,6 +11,7 @@ import { git, context, writeJSON, readJSON, readTask, currentTask, taskPath, tas
 import { startTask, finishTask, cleanupTask, recover, installedDependenciesMatch } from './workflow.mjs';
 import { acquire, childEnvironment, withResource, RESOURCE_LIMITS } from './resources.mjs';
 import { sessionPath, stopPreview, browserHistoryPath, recoverBrowsers } from './preview.mjs';
+import { retainSourceTree, restorePlayableSource, pruneRetention, sourceCloneBaseline } from './retention.mjs';
 
 import { checkStages } from '../check.mjs';
 
@@ -100,7 +101,7 @@ test('dependency clones with missing or stale required packages are not ready', 
   } finally { await ctx.dispose(); }
 });
 
-test('eight concurrent tasks land without lost work and completed cleanup preserves source archives', async () => {
+test('eight concurrent tasks land without lost work and cleanup preserves canonical sources', async () => {
   const ctx = await fixture();
   try {
     assert.equal(spaceRequirement(ctx.main, false), 20 * 1024 ** 3);
@@ -115,7 +116,7 @@ test('eight concurrent tasks land without lost work and completed cleanup preser
     await mkdir(join(done.path, '.local/animation-packs'), { recursive: true });
     await writeFile(join(done.path, '.local/animation-packs/source.fbx'), 'retained source');
     await cleanupTask(ctx, done);
-    assert.equal(await readFile(join(ctx.main, '.local/agent-archives/alpha/animation-packs/source.fbx'), 'utf8'), 'retained source');
+    assert.equal(await readFile(join(ctx.main, '.local/animation-packs/source.fbx'), 'utf8'), 'retained source');
     assert.equal((await readJSON(taskPath(ctx, 'alpha'))).status, 'cleaned');
     assert.equal((await readJSON(taskPath(ctx, 'bravo'))).status, 'integrated');
   } finally { await ctx.dispose(); }
@@ -528,5 +529,92 @@ test('promotion rejects colliding untracked art and tracked user edits', async (
     await writeFile(join(ctx.main, 'shared.txt'), 'user tracked work');
     await assert.rejects(startTask(ctx, 'tracked-edit', { wait: false }), /Checkout has uncommitted changes/);
     assert.equal(await readFile(join(ctx.main, 'shared.txt'), 'utf8'), 'user tracked work');
+  } finally { await ctx.dispose(); }
+});
+
+// Retention can destroy unique art or another task's recovery evidence. Existing
+// integration/guardian fixtures do not cover source deduplication and age/budget pruning.
+test('retention preserves unique versions and verifies canonical bytes before deduplication', async () => {
+  const ctx = await fixture();
+  try {
+    const source = join(ctx.main, '.local/archive'), canonical = join(ctx.main, '.local/sources');
+    await mkdir(source, { recursive: true }); await mkdir(canonical, { recursive: true });
+    await writeFile(join(source, 'model.glb'), 'authored original');
+    await writeFile(join(canonical, 'model.glb'), 'authored original');
+    const baseline = await sourceCloneBaseline(canonical, source);
+    await writeFile(join(canonical, 'model.glb'), 'different version');
+    const conflict = await retainSourceTree(source, canonical, { apply: true, removeDuplicates: true, baseline });
+    assert.deepEqual(conflict.conflicts, ['model.glb']);
+    assert.equal(await readFile(join(source, 'model.glb'), 'utf8'), 'authored original');
+    await writeFile(join(source, 'unique.blend'), 'editable master');
+    const report = await retainSourceTree(source, canonical, { apply: true, removeDuplicates: true });
+    assert.equal(report.publishedFiles, 1);
+    assert.equal(await readFile(join(canonical, 'unique.blend'), 'utf8'), 'editable master');
+    await assert.rejects(readFile(join(source, 'unique.blend')), { code: 'ENOENT' });
+    const second = join(ctx.main, '.local/second'); await mkdir(second);
+    await writeFile(join(second, 'model.glb'), 'authored original');
+    const versions = new Map(), references = join(ctx.main, '.local/references.jsonl');
+    await retainSourceTree(source, canonical, { apply: true, removeDuplicates: true, versions, references });
+    await retainSourceTree(second, canonical, { apply: true, removeDuplicates: true, versions, references });
+    await assert.rejects(readFile(join(second, 'model.glb')), { code: 'ENOENT' });
+    assert.equal(JSON.parse((await readFile(references, 'utf8')).trim()).retained, join(source, 'model.glb'));
+    await writeFile(join(canonical, 'model.glb'), 'authored original');
+    await retainSourceTree(source, canonical, { apply: true, removeDuplicates: true, protectedSources: new Set([join(source, 'model.glb')]) });
+    assert.equal(await readFile(join(source, 'model.glb'), 'utf8'), 'authored original');
+    await symlink(canonical, join(ctx.main, '.local/linked'));
+    await assert.rejects(retainSourceTree(source, join(ctx.main, '.local/linked'), { apply: true, removeDuplicates: true }), /symlink/);
+    assert.equal(await readFile(join(source, 'model.glb'), 'utf8'), 'authored original');
+  } finally { await ctx.dispose(); }
+});
+
+test('retention restores an archive-only supplied collection before its task can expire', async () => {
+  const ctx = await fixture();
+  try {
+    const collection = join(ctx.main, '.local/agent-archives/art/animation-packs/Protagonists/b1');
+    await mkdir(join(collection, 'source'), { recursive: true });
+    await writeFile(join(collection, 'source/model.glb'), 'rigged model');
+    await writeFile(join(collection, 'license.txt'), 'source license');
+    await writeFile(join(collection, 'editable.blend'), 'editable master');
+    const task = join(ctx.main, '.local/worktrees/art'), actor = { name: 'B1', source: '.local/animation-packs/Protagonists/b1/source/model.glb' };
+    await mkdir(task, { recursive: true });
+    await restorePlayableSource(ctx, actor, task);
+    await rm(join(ctx.main, '.local/agent-archives'), { recursive: true });
+    assert.equal(await readFile(join(ctx.main, '.local/animation-packs/Protagonists/b1/editable.blend'), 'utf8'), 'editable master');
+    assert.equal(await readFile(join(ctx.main, '.local/animation-packs/Protagonists/b1/license.txt'), 'utf8'), 'source license');
+    assert.equal(await readFile(join(task, actor.source), 'utf8'), 'rigged model');
+  } finally { await ctx.dispose(); }
+});
+
+test('retention report is read-only and apply expires evidence pairs while preserving pins, sources and active work', async () => {
+  const ctx = await fixture();
+  try {
+    const now = Date.now();
+    for (const id of ['old', 'pinned', 'active', 'live-browser']) {
+      const archive = join(ctx.main, '.local/agent-archives', id);
+      await mkdir(join(archive, 'captures'), { recursive: true });
+      await writeFile(join(archive, 'captures/frame.png'), 'image');
+      await writeJSON(join(archive, 'captures/frame.json'), { graphics: { dpr: 2 } });
+      await mkdir(join(archive, 'animation-packs'), { recursive: true });
+      await writeFile(join(archive, 'animation-packs/source.fbx'), 'unique source');
+      await writeJSON(join(archive, 'retained.json'), { task: id, ...(id === 'pinned' ? { pin: 'pending visual investigation' } : {}) });
+      await writeJSON(taskPath(ctx, id), { id, path: join(ctx.main, '.local/worktrees', id), status: id === 'active' ? 'working' : 'cleaned', cleanedAt: new Date(now - 8 * 86400000).toISOString(), assetIndex: { huge: 'old snapshot' } });
+      if (id === 'live-browser') await writeJSON(join(archive, 'browser-history.json'), [{ closed: true, pid: process.pid, started: await processIdentity(process.pid), browserProcesses: [] }]);
+    }
+    const report = await pruneRetention(ctx, { now, managedOnly: true });
+    assert.equal(report.removed.length, 1);
+    assert.equal(await readFile(join(ctx.main, '.local/agent-archives/old/captures/frame.png'), 'utf8'), 'image');
+    assert.ok((await readJSON(taskPath(ctx, 'old'))).assetIndex);
+    await pruneRetention(ctx, { apply: true, now, managedOnly: true });
+    await pruneRetention(ctx, { apply: true, now, managedOnly: true }); // Interrupted/repeated cleanup is idempotent.
+    await assert.rejects(readFile(join(ctx.main, '.local/agent-archives/old/captures/frame.json')), { code: 'ENOENT' });
+    assert.equal(await readFile(join(ctx.main, '.local/agent-archives/old/animation-packs/source.fbx'), 'utf8'), 'unique source');
+    assert.equal((await readJSON(taskPath(ctx, 'old'))).assetIndex, undefined);
+    for (const id of ['pinned', 'active', 'live-browser']) assert.equal(await readFile(join(ctx.main, '.local/agent-archives', id, 'captures/frame.png'), 'utf8'), 'image');
+    await writeJSON(taskPath(ctx, 'recent'), { id: 'recent', path: join(ctx.main, '.local/worktrees/recent'), status: 'cleaned', cleanedAt: new Date(now).toISOString() });
+    const recent = join(ctx.main, '.local/agent-archives/recent');
+    await mkdir(join(recent, 'captures'), { recursive: true }); await writeJSON(join(recent, 'retained.json'), { task: 'recent' });
+    await writeFile(join(recent, 'captures/frame.png'), 'over budget'); await writeJSON(join(recent, 'captures/frame.json'), {});
+    await pruneRetention(ctx, { apply: true, now, budget: 1, managedOnly: true });
+    await assert.rejects(readFile(join(recent, 'captures/frame.png')), { code: 'ENOENT' });
   } finally { await ctx.dispose(); }
 });

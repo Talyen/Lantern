@@ -18,7 +18,7 @@ Laptop quality capped pixel ratio at 1, reduced bloom luminance/blur resolution 
 
 #### Original surfaces and local export
 
-At the time of this study, the original text-generated surfaces were `assets/archive/textures/stone-painterly.png`, `soil-painterly.png`, and `wood-painterly.png`. They share broad painted shapes and restrained variation, with no baked directional lighting. No Synty source, texture, or render was submitted to ImageGen. The bake projects each surface locally and exports 1024px color textures; characters and foliage retain their palette materials.
+At the time of this study, the original text-generated surfaces were retired stone, soil and wood originals, now recoverable from Git history. They share broad painted shapes and restrained variation, with no baked directional lighting. No Synty source, texture, or render was submitted to ImageGen. The bake projects each surface locally and exports 1024px color textures; characters and foliage retain their palette materials.
 
 Current retained scenery preparation is documented in the [optional scenery and surface workflow](../ASSET_PREPARATION.md#optional-scenery-and-surface-studies).
 

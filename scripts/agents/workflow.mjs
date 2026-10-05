@@ -8,6 +8,7 @@ import { withResource } from './resources.mjs';
 import { privateTree } from './copy.mjs';
 import { snapshotAssets, prepareAssets, assetIndex, assetIdentity, retainSources } from './assets.mjs';
 import { run } from '../lib/cli.mjs';
+import { pruneRetention, sourceCloneBaseline } from './retention.mjs';
 export async function recover(ctx) {
   const path = join(ctx.store, 'promotion.json');
   const journal = await readJSON(path, null);
@@ -40,6 +41,7 @@ export async function recover(ctx) {
 }
 export async function startTask(ctx, id, { wait = true, signal } = {}) {
   if (!/^[a-z][a-z0-9-]{0,47}$/.test(id)) throw new Error('Task name must be a short lowercase slug starting with a letter.');
+  await pruneRetention(ctx, { apply: true, managedOnly: true });
   let announced = false;
   for (;;) {
     signal?.throwIfAborted();
@@ -131,7 +133,10 @@ export async function prepareSources(ctx, task, names) {
       if (existsSync(target)) continue;
       const source = join(ctx.main, '.local', name);
       if (!existsSync(source)) throw new Error(`Private sources unavailable: ${source}`);
-      await privateTree(source, target);
+      await withResource('source-retention', async () => {
+        await privateTree(source, target);
+        await writeJSON(join(task.path, '.local/agents/source-baselines', name + '.json'), await sourceCloneBaseline(source, target));
+      }, { ctx });
     }
   }, { ctx });
 }
@@ -200,7 +205,7 @@ export async function finishTask(ctx, task, { paths = [], message = `feat: ${tas
   }, { ctx });
 }
 export async function cleanupTask(ctx, task) {
-  return withResource(`task-${task.id}`, async () => {
+  await withResource(`task-${task.id}`, async () => {
     if (task.status === 'cleaned') return;
     if (task.status !== 'integrated') throw new Error(`Preserving unfinished task ${task.id} (${task.status}).`);
     await clean(task.path);
@@ -211,4 +216,5 @@ export async function cleanupTask(ctx, task) {
     await git(['worktree', 'remove', task.path], ctx.main);
     task.status = 'cleaned'; task.cleanedAt = new Date().toISOString(); await saveTask(ctx, task);
   }, { ctx });
+  await pruneRetention(ctx, { apply: true, managedOnly: true });
 }

@@ -10,11 +10,9 @@ Title centers the original loading lantern above the Pirata One Lantern heading 
 
 Names are trimmed, required and at most 24 Unicode code points; duplicates are allowed. New Adventure never replaces an occupied or unknown slot. Naming focuses the field; deletion identifies the adventure, explains loss of progress and focuses Cancel. Arrow keys/Home/End select rows, Tab reaches actions, Escape cancels the current dialog or returns Play to Title, and focus returns to its owning control. The supported target is 1280 × 800; reduced motion removes decorative transitions.
 
-The UI uses actual local Pirata One and system sans-serif, live DOM text/hit areas and CSS chrome. Generated lettering and surface texture are references, not shipped raster text or functionality. The dialog study's background still says Adventures; the implementation uses Play consistently.
+The UI uses actual local Pirata One and system sans-serif, live DOM text/hit areas and CSS chrome. Generated lettering and surface texture are references, not shipped raster text or functionality. Naming and deletion states are documented above; their superseded study remains in Git history.
 
 ![Adopted Title and Play composition](adopted-play.png)
-
-![Naming and deletion states](dialogs.png)
 
 ## Original-only provenance
 
@@ -22,9 +20,7 @@ Built-in ImageGen, October 3, 2026. Exact prompts are in [prompts.json](prompts.
 
 | Output | Inputs / purpose | SHA-256 |
 | --- | --- | --- |
-| `option-a.png` | Original loading lantern; centered Title and framed Play layout study | `251bce8d8618ce41944a7cfe5eb9867fd73cfe2d537da844568d117b2a5ffa48` |
 | `adopted-play.png` | Option A; exact Adventures-to-Play revision, adopted | `87009fd324373fecbe50a8241ab14d4c495fa8680d2582db1c66d2a0494d1a43` |
-| `dialogs.png` | Option A; naming and confirmed deletion state study | `f49b1e98d6690e5eda37ce1ad5e0ae378ec8cb0c62252fce593fa2bb5135effb` |
 
 Critique: the centered title has a clear lantern/name/action hierarchy; the contained sheet makes the four slots and selected action easy to scan. Keep quiet detail surfaces and sufficient separation for Delete. CSS frames deliberately stay lighter than the illustrative oversized rivets. Exact typography, contrast, hit areas and behavior require DOM inspection.
 

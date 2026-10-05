@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { privateCopy, privateTree } from './copy.mjs';
 import { writeJSON, saveTask } from './state.mjs';
+import { retainTaskSources } from './retention.mjs';
 export async function assetIndex(directory) {
   const result = {};
   async function walk(path) {
@@ -93,13 +94,7 @@ export async function prepareAssets(ctx, task, mainHead, resolved = []) {
   return assetIdentity(task.assetIndex);
 }
 export async function retainSources(ctx, task) {
-  for (const name of ['animation-packs', 'synty-library']) {
-    const source = join(task.path, '.local', name);
-    if (!existsSync(source)) continue;
-    const archive = join(ctx.main, '.local/agent-archives', task.id, name);
-    if (existsSync(archive)) throw new Error(`Archive already exists; preserve/reconcile it before cleanup: ${archive}`);
-    await privateTree(source, archive);
-  }
+  await retainTaskSources(ctx, task);
   const archive = join(ctx.main, '.local/agent-archives', task.id);
   const checks = join(task.path, '.local/checks');
   if (existsSync(checks)) {
@@ -112,6 +107,8 @@ export async function retainSources(ctx, task) {
   if (existsSync(browsers)) await privateCopy(browsers, join(archive, 'browser-history.json'));
   const captures = join(task.path, '.local/agents/captures');
   if (existsSync(captures)) await privateTree(captures, join(archive, 'captures'));
+  const inspection = join(task.path, '.local/inspection');
+  if (existsSync(inspection)) await privateTree(inspection, join(archive, 'inspection'));
   const views = join(task.path, '.local/level-design');
   if (existsSync(views)) await privateTree(views, join(archive, 'level-design'));
   await writeJSON(join(ctx.main, '.local/agent-archives', task.id, 'retained.json'), { task: task.id, revision: task.candidate, retained: new Date().toISOString() });

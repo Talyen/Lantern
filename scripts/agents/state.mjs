@@ -33,7 +33,9 @@ export async function writeJSON(path, value) {
 export async function tasks(ctx) {
   const directory = join(ctx.store, 'tasks');
   const names = await readdir(directory).catch(error => { if (error.code === 'ENOENT') return []; throw error; });
-  return Promise.all(names.filter(name => name.endsWith('.json')).map(name => readJSON(join(directory, name))));
+  const records = [];
+  for (const name of names.filter(name => name.endsWith('.json'))) records.push(compactTask(await readJSON(join(directory, name))));
+  return records;
 }
 export const defaultTaskWorktreeLimit = 8;
 /** Local Git configuration is shared by every task worktree in this repository. */
@@ -56,7 +58,13 @@ export async function readTask(ctx, id) {
   if (task && (task.id !== id || resolve(task.path) !== join(ctx.main, '.local/worktrees', id))) throw new Error('Task registration does not match its worktree. Preserve the record and inspect it.');
   return task;
 }
-export async function saveTask(ctx, task) { await writeJSON(taskPath(ctx, task.id), task); }
+export function compactTask(task) {
+  if (task.status !== 'cleaned') return task;
+  const result = { ...task, assetChangeCount: task.assetChangeCount ?? task.assetChanges?.length ?? 0 };
+  for (const key of ['assetIndex', 'assetsStaged', 'assetsPrepared', 'assetChanges', 'assetConflicts', 'assetConflictHashes', 'assetConflictBase']) delete result[key];
+  return result;
+}
+export async function saveTask(ctx, task) { await writeJSON(taskPath(ctx, task.id), compactTask(task)); }
 export async function currentTask(ctx) {
   const id = basename(ctx.cwd);
   const task = resolve(ctx.cwd) === join(ctx.main, '.local/worktrees', id) ? await readTask(ctx, id) : null;
