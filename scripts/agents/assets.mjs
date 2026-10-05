@@ -70,6 +70,14 @@ export async function prepareAssets(ctx, task, mainHead, resolved = []) {
     task.assetConflicts = conflicts; task.assetConflictHashes = conflictHashes; task.assetConflictBase = mainHead; task.status = 'needs-asset-repair'; await saveTask(ctx, task);
     throw new Error(`Asset conflicts: ${conflicts.join(', ')}. Reconcile/re-export these artifacts; then pass --resolved-assets with a JSON list of reviewed paths for this main revision.`);
   }
+  // Byte comparisons proved no art edits, and this independent snapshot still
+  // corresponds to main. Retain its settled metadata when retrying validation.
+  if (!edits.length && task.mainAssetIdentity === mainIdentity) {
+    if (assetIdentity(await assetIndex(current)) !== mainIdentity) throw new Error('Main assets changed during snapshot verification; retry finish.');
+    task.assetIndex = index; task.assetChanges = [];
+    await saveTask(ctx, task);
+    return assetIdentity(index);
+  }
   // Freeze the combined asset input before checks. Preserve old task files until the swap succeeds.
   const combined = join(task.path, '.local/agents/combined-vendor');
   await rm(combined, { recursive: true, force: true });

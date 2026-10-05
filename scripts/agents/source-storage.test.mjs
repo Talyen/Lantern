@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { migrateSourceTree, retrieveSources } from './source-storage.mjs';
 import { retainTaskSources, retainSourceTree } from './retention.mjs';
 import { writeJSON } from './state.mjs';
+import { assetIndex, assetIdentity, prepareAssets } from './assets.mjs';
 
 // These fixtures protect original files from loss during corruption, interruption
 // and task cleanup; static checks cannot establish those filesystem outcomes.
@@ -13,12 +14,36 @@ async function fixture() {
   const directory = await mkdtemp(join(tmpdir(), 'lantern-source-storage-'));
   const main = join(directory, 'main'), assetSourceRoot = join(directory, 'library');
   await mkdir(main); await mkdir(assetSourceRoot);
-  const task = { path: join(main, '.local/worktrees/asset-task') };
+  const task = { id: 'asset-task', path: join(main, '.local/worktrees/asset-task') };
   await mkdir(task.path, { recursive: true });
   return { main, common: join(main, '.git'), store: join(main, '.git/lantern'), assetSourceRoot, task,
     journal: join(assetSourceRoot, 'migration-inventory.jsonl'), dispose: () => rm(directory, { recursive: true, force: true }) };
 }
 async function write(path, text) { await mkdir(join(path, '..'), { recursive: true }); await writeFile(path, text); }
+
+test('validation retries preserve an unchanged art snapshot and still incorporate changed main art', async () => {
+  const ctx = await fixture();
+  try {
+    const main = join(ctx.main, 'public/vendor'), local = join(ctx.task.path, 'public/vendor');
+    const baseline = join(ctx.task.path, '.local/agents/base-vendor');
+    for (const path of [main, local, baseline]) await write(join(path, 'model.glb'), 'prepared art');
+    ctx.task.assetIndex = await assetIndex(local); ctx.task.assetChanges = [];
+    ctx.task.mainAssetIdentity = assetIdentity(await assetIndex(main));
+    await chmod(join(local, 'model.glb'), 0o600);
+    const settled = await assetIndex(local);
+    assert.equal(await prepareAssets(ctx, ctx.task, 'fixture'), assetIdentity(settled));
+    assert.deepEqual(await assetIndex(local), settled);
+    assert.deepEqual(ctx.task.assetChanges, []);
+    await writeFile(join(main, 'model.glb'), 'incoming art');
+    await prepareAssets(ctx, ctx.task, 'fixture');
+    assert.equal(await readFile(join(local, 'model.glb'), 'utf8'), 'incoming art');
+    await writeFile(join(local, 'model.glb'), 'task art');
+    await prepareAssets(ctx, ctx.task, 'fixture');
+    assert.equal(await readFile(join(local, 'model.glb'), 'utf8'), 'task art');
+    assert.deepEqual(ctx.task.assetChanges, ['model.glb']);
+    assert.equal(await readFile(join(main, 'model.glb'), 'utf8'), 'incoming art');
+  } finally { await ctx.dispose(); }
+});
 
 test('publication recovers a verified pending copy and preserves a differing interrupted copy', async () => {
   const ctx = await fixture();
