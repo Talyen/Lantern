@@ -1,3 +1,4 @@
+import { resizeDisplay } from '../rendering/display-resolution';
 import { loadRigArt } from '../assets/rig-art';
 import { RenewalVisibility } from './renewal-visibility';
 import { finishSubmittedFrame, resetNativeFrameCompilation } from '../rendering/renderer';
@@ -514,7 +515,9 @@ function updateGame(dt: number): void {
 }
 function resize(): void {
   cameraOwner.resize(mount.clientWidth, mount.clientHeight);
-  renderer.setSize(mount.clientWidth, mount.clientHeight); graphics?.resize(); invalidateFrame();
+  if (graphics) graphics.resize();
+  else resizeDisplay(renderer, mount.clientWidth, mount.clientHeight);
+  invalidateFrame();
 }
 window.addEventListener('resize', resize, { signal: lifecycle.signal });
 resize();

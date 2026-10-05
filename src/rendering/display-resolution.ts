@@ -10,13 +10,22 @@ export function displayPixelRatio(): number {
 export function syncDisplayResolution(renderer: WebGPURenderer): boolean {
   const ratio = displayPixelRatio();
   if (renderer.getPixelRatio() === ratio) return false;
-  renderer.setPixelRatio(ratio);
+  renderer.getSize(logicalSize);
+  renderer.setDrawingBufferSize(logicalSize.x, logicalSize.y, ratio);
   return true;
 }
 export function resizeDisplay(renderer: WebGPURenderer, width: number, height: number): void {
-  syncDisplayResolution(renderer);
+  const ratio = displayPixelRatio();
   renderer.getSize(logicalSize);
-  if (logicalSize.x !== width || logicalSize.y !== height) renderer.setSize(width, height);
+  const sizeChanged = logicalSize.x !== width || logicalSize.y !== height;
+  if (renderer.getPixelRatio() !== ratio) {
+    // r186 setPixelRatio resizes the old logical size. Commit both domains once.
+    renderer.setDrawingBufferSize(width, height, ratio);
+    if (sizeChanged) {
+      renderer.domElement.style.width = `${width}px`;
+      renderer.domElement.style.height = `${height}px`;
+    }
+  } else if (sizeChanged) renderer.setSize(width, height);
 }
 
 /** A display-density change can occur without a CSS-size change, while paused. */
