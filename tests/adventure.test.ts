@@ -48,6 +48,34 @@ test('failed equipment preparation retains saved gear and releases the gate for 
   adventure.closeSave();
 });
 
+// Admission: equipped drops previously persisted removal before the ground item existed.
+// The controller boundary protects crash/backup recovery without loading game art.
+test('dropping equipped gear saves one coherent transfer and retains the original backup', async () => {
+  const THREE = await import('three');
+  const { makeActor } = await import('../src/session/actors');
+  const { InventoryController } = await import('../src/session/inventory');
+  const storage = memory(), adventure = new Adventure(storage), encounter = createEncounter('won');
+  adventure.configureAreas({ homestead: home });
+  adventure.enter(encounter, home);
+  const player = makeActor(new THREE.Scene(), encounter.player);
+  player.mixer = new THREE.AnimationMixer(player.root);
+  const inventory = new InventoryController(adventure, encounter, player, { prepare: async () => {}, activate: () => {} }, { play: () => {} }, {
+    clearInput: () => {}, equipmentBlocked: () => false,
+    updateCharacter: () => {}, syncAdventure: () => {},
+  });
+  const axe = adventure.character.items.find(item => item.slot === 'main')!;
+  const writes = vi.spyOn(storage, 'setItem');
+  await inventory.drop(axe.id, 1);
+  const saved = decodeCharacter(storage.data.get(characterSaveKey)!);
+  expect(saved.items.some(item => item.id === axe.id)).toBe(false);
+  expect(saved.outing.areas.homestead.drops).toEqual([expect.objectContaining({ item: 'axe', quantity: 1, instanceId: axe.id })]);
+  expect(writes.mock.calls.filter(([key]) => key === characterSaveKey)).toHaveLength(1);
+  const backup = decodeCharacter(storage.data.get(characterBackupKey)!);
+  expect(backup.items).toContainEqual(axe);
+  expect(backup.outing.areas.homestead.drops).toEqual([]);
+  adventure.closeSave();
+});
+
 test('home recovery, campfire travel and defeat preserve the outing and collected scrolls', () => {
   const state = new Adventure(memory(), () => 0), encounter = createEncounter('playing');
   state.enter(encounter, home); expect(state.destinations({ homestead: home, clearing: field }).map(d => d.area.id)).toEqual([]);

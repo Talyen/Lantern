@@ -15,12 +15,12 @@ import { validBar, abilityUnlocked, weaponTrees, type AbilityId, type ActionBar,
 import { createEncounter, healthRegeneration, inCombat, type Encounter, type EnemyId } from './encounter';
 import { near, type Point, type Spawn } from './area';
 import type { AreaDefinition, Campfire, Chest } from '../levels/types';
-import { isEquipmentSlot, equipmentCatalog, type ItemId } from './equipment';
+import { equipmentCatalog, type ItemId } from './equipment';
 import { character, type CharacterSave } from './character';
 import { CharacterPersistence, type StorageSource } from './character-persistence';
 export { characterSaveKey } from './character-save';
 export type { CharacterSave } from './character';
-import { lootDefinitions, transferItem, validatedContainers, type InventoryItem, type LootItem } from './inventory';
+import { lootDefinitions, removeQuantity, transferItem, validatedContainers, type InventoryItem, type LootItem } from './inventory';
 
 import { progression, withSkillXp, combatSkills, type Skill, type GatheringSkill } from './skills';
 
@@ -238,13 +238,12 @@ export class Adventure {
     const entry = this.character.items.find(i => i.id === id);
     if (!entry || !Number.isSafeInteger(quantity) || quantity < 1 || quantity > entry.quantity) throw new Error('Item is no longer available.');
     if (entry.item === 'scroll' && entry.slot === 'bag' && this.castRemaining > 0 && this.character.scrolls - quantity < 1) throw new Error('Scroll is in use.');
-    if (isEquipmentSlot(entry.slot)) throw new Error('Move equipped gear into the bag before dropping it.');
+    const items = removeQuantity(this.character.items, id, quantity);
     this.spawnDrop(entry.item, quantity, origin, {
       blocked: lootDefinitions[entry.item].stackable,
       instanceId: lootDefinitions[entry.item].stackable ? undefined : entry.id,
     });
-    entry.quantity -= quantity;
-    this.replaceItems(this.character.items.filter(i => i.quantity > 0));
+    this.replaceItems(items);
   }
 
   recoverItem(id: string): void {

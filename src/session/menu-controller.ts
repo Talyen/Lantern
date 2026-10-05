@@ -7,20 +7,22 @@ type Menus = {
   readonly bindings: Menu;
   readonly options: (Menu & { open(): void }) | undefined;
 };
+const menuOrder = ['smithing', 'bindings', 'skills', 'adventure', 'shop', 'options'] as const;
 
 /** Resolves menus lazily because input is wired before startup finishes creating them. */
 export class MenuController {
   constructor(private readonly menus: Menus, private readonly canOpen: () => boolean) {}
 
-  private all(): (Menu | undefined)[] {
-    const { smithing, bindings, skills, adventure, shop, options } = this.menus;
-    return [smithing, bindings, skills, adventure, shop, options];
+  get paused(): boolean {
+    for (const name of menuOrder) if (this.menus[name]?.paused) return true;
+    return false;
   }
 
-  get paused(): boolean { return this.all().some(menu => menu?.paused); }
-
   close(): void {
-    for (const menu of this.all()) if (menu?.paused) menu.close();
+    for (const name of menuOrder) {
+      const menu = this.menus[name];
+      if (menu?.paused) menu.close();
+    }
   }
 
   toggleOptions(): void {

@@ -3,7 +3,7 @@ import type { Adventure } from '../gameplay/adventure';
 import type { CharacterSave } from '../gameplay/character';
 import { applyEquipment, inCombat, type Encounter } from '../gameplay/encounter';
 import {
-  lootDefinitions, removeQuantity, sameEquipment, validItems,
+  removeQuantity, sameEquipment, validItems,
   type InventoryItem,
 } from '../gameplay/inventory';
 import { play, type Actor } from './actors';
@@ -39,7 +39,7 @@ export class InventoryController {
   }
 
   async initialize(): Promise<void> {
-    await this.prepareEquipment(this.adventure.character.items, false);
+    await this.prepareEquipment(this.adventure.character.items);
   }
 
   syncLoadout(): void {
@@ -59,17 +59,17 @@ export class InventoryController {
     this.context.updateCharacter(this.adventure.character); this.audio.play('equip');
   }
 
-  private async prepareEquipment(items: InventoryItem[], save: boolean): Promise<void> {
+  private async prepareEquipment(items: InventoryItem[], commit?: () => void): Promise<void> {
     if (this.loading || !this.player.mixer) throw new Error('Character equipment is still loading.');
     this.preparing = true;
     this.context.clearInput();
     try {
       await this.equipment.prepare(items, this.adventure.character.activeSet);
-      if (save) this.adventure.replaceItems(items);
+      commit?.();
       this.syncLoadout();
       play(this.player, 'idle');
       this.context.updateCharacter(this.adventure.character);
-      if (save) this.audio.play('equip');
+      if (commit) this.audio.play('equip');
     } finally {
       this.preparing = false;
     }
@@ -79,7 +79,7 @@ export class InventoryController {
     if (!validItems(items)) throw new Error('Item does not fit.');
     if (!sameEquipment(items, this.adventure.character.items)) {
       if (!this.canEditEquipment()) throw new Error('Equipment cannot change during combat or an action.');
-      await this.prepareEquipment(items, true);
+      await this.prepareEquipment(items, () => this.adventure.replaceItems(items));
     } else {
       this.adventure.replaceItems(items);
       this.inventoryChanged();
@@ -104,18 +104,17 @@ export class InventoryController {
   async drop(id: string, quantity: number): Promise<void> {
     const entry = this.adventure.character.items.find(item => item.id === id);
     if (!entry) throw new Error('Item is no longer available.');
-    if (entry.slot === 'bag' || entry.slot === 'overflow') {
+    const drop = () => {
       const { player } = this.encounter;
       this.adventure.dropItem(id, quantity, [player.x, player.z]);
+    };
+    if (entry.slot === 'bag' || entry.slot === 'overflow') {
+      drop();
       this.context.updateCharacter(this.adventure.character);
     } else {
-      await this.change(removeQuantity(this.adventure.character.items, id, quantity));
-      const { stackable } = lootDefinitions[entry.item];
-      const { player } = this.encounter;
-      this.adventure.spawnDrop(entry.item, quantity, [player.x, player.z], {
-        blocked: stackable,
-        instanceId: stackable ? undefined : entry.id,
-      });
+      if (!this.canEditEquipment()) throw new Error('Equipment cannot change during combat or an action.');
+      const items = removeQuantity(this.adventure.character.items, id, quantity);
+      await this.prepareEquipment(items, drop);
     }
     this.audio.play('inventoryDrop');
     this.context.syncAdventure();
