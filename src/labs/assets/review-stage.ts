@@ -5,7 +5,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import type { ReviewAsset } from '../../assets/asset-review';
 import { disposeSceneResources } from '../../assets/resource-ownership';
-import { createRenderer } from '../../rendering/renderer';
+import { createRenderer, waitForPresentedFrames } from '../../rendering/renderer';
 import { WebGPUPipeline } from '../../rendering/webgpu-pipeline';
 import { AreaLightingResources } from '../../rendering/area-lighting';
 import type { GraphicsSettings } from '../../rendering/graphics-settings';
@@ -41,6 +41,8 @@ export class ReviewStage {
   private loader = new GLTFLoader();
   private generation = 0;
   private frame = 0;
+  private completedFrames = 0;
+  private renderError: unknown;
   private disposed = false;
   private observer: ResizeObserver;
   private lastTime = 0;
@@ -103,6 +105,7 @@ export class ReviewStage {
   async preload(asset: ReviewAsset): Promise<void> { const prepared = await this.pool.get(asset); await this.warm(prepared); }
   async show(asset: ReviewAsset): Promise<string | null> {
     const generation = ++this.generation; this.motionGeneration++; this.clear();
+    this.renderError = undefined;
     const prepared = await this.pool.get(asset, true);
     if (generation !== this.generation || this.disposed) return null;
     this.active = prepared; this.object = prepared.object; this.content = prepared.content;
@@ -115,9 +118,12 @@ export class ReviewStage {
     try {
       await this.warm(prepared);
       if (generation !== this.generation || this.disposed) return null;
-      this.pipeline.render(); if (!this.frame) this.tick(performance.now());
-      await new Promise<void>(accept => requestAnimationFrame(() => accept()));
-      if (generation !== this.generation || this.disposed) return null;
+      if (!this.frame) this.tick(performance.now());
+      if (!await waitForPresentedFrames(this.renderer, () => this.completedFrames, 2, () => {
+        if (generation !== this.generation || this.disposed) return false;
+        if (this.renderError !== undefined) throw this.renderError;
+        return true;
+      })) return null;
       return `${size.x.toFixed(2)} × ${size.y.toFixed(2)} × ${size.z.toFixed(2)} m`;
     } catch (error) { if (generation === this.generation) this.clear(); throw error; }
   }
@@ -171,7 +177,7 @@ export class ReviewStage {
     const dt = this.lastTime ? Math.min(.05, (time - this.lastTime) / 1000) : 0; this.lastTime = time;
     if (!document.hidden) {
       if (this.mode !== 'game') this.controls.update(); if (!this.paused) this.mixer?.update(dt); if (this.content) updateAssetLods(this.content, this.camera);
-      try { this.pipeline.render(); } catch (error) { this.onError(error); return; }
+      try { if (this.pipeline.render()) this.completedFrames++; } catch (error) { this.renderError = error; this.onError(error); return; }
     }
     this.frame = requestAnimationFrame(next => this.tick(next));
   }

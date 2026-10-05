@@ -25,7 +25,7 @@ vi.mock('three/webgpu', () => ({ WebGPURenderer: class {
   async init() {}
   setPixelRatio() {}
 } }));
-import { createRenderer, renderNativeFrame, preparingNativeFrame, finishSubmittedFrame, resetNativeFrameCompilation } from '../src/rendering/renderer';
+import { createRenderer, renderNativeFrame, preparingNativeFrame, finishSubmittedFrame, resetNativeFrameCompilation, waitForPresentedFrames } from '../src/rendering/renderer';
 
 async function renderer() {
   fixture.reset(); vi.stubGlobal('navigator', { gpu: {} });
@@ -65,6 +65,26 @@ test('destination reveal waits for submitted GPU work and rejects a reported GPU
   complete(); await readiness; expect(revealed).toBe(true);
   gpu.domElement.dataset.renderError = 'GPU validation failed';
   await expect(finishSubmittedFrame(gpu)).rejects.toThrow('GPU validation failed');
+});
+
+// Review approval and private thumbnails must observe successful draws rather
+// than RAF callbacks; the compiler-only fixtures above do not exercise that wait.
+test('preview readiness survives skipped callbacks and waits for GPU completion without revealing a cancelled selection', async () => {
+  const gpu = await renderer();
+  let nextFrame!: FrameRequestCallback, frames = 0, current = true, complete!: () => void;
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => { nextFrame = callback; return 1; });
+  fixture.queue.onSubmittedWorkDone.mockImplementationOnce(() => new Promise<void>(resolve => { complete = resolve; }));
+  let ready: boolean | undefined;
+  const wait = waitForPresentedFrames(gpu, () => frames, 2, () => current).then(value => { ready = value; });
+  for (let i = 0; i < 100; i++) { nextFrame(i); await Promise.resolve(); }
+  expect(ready).toBeUndefined(); expect(fixture.queue.onSubmittedWorkDone).not.toHaveBeenCalled();
+  frames = 1; nextFrame(101); await Promise.resolve(); expect(ready).toBeUndefined();
+  frames = 2; nextFrame(102); await Promise.resolve(); expect(ready).toBeUndefined();
+  current = false; complete(); await wait;
+  expect(ready).toBe(false);
+  current = true;
+  const presented = waitForPresentedFrames(gpu, () => frames, 1, () => current);
+  frames++; nextFrame(103); await expect(presented).resolves.toBe(true);
 });
 
 test('retry and another adventure cannot inherit a disposed session compilation failure', async () => {

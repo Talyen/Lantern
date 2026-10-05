@@ -433,13 +433,14 @@ function renderFrame(delta: number): boolean {
     applyPose();
   }
   controls.update();
+  let rendered = true;
   for (const [index, preview] of previews.entries()) {
     if (!visibleLane(index)) continue;
     preview.camera.copy(camera);
-    preview.pipeline.render();
+    if (!preview.pipeline.render()) rendered = false;
     preview.renderer.domElement.dataset.graphics = JSON.stringify({ renderer: 'webgpu', settings, pipeline: preview.pipeline.diagnostics() });
   }
-  return true;
+  return rendered;
 }
 setDisplay('a');
 frameLoop.start();

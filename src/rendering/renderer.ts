@@ -97,6 +97,24 @@ export async function finishSubmittedFrame(renderer: WebGPURenderer): Promise<vo
   if (error) throw new Error(error);
 }
 
+/** Observe an owner's ongoing loop without submitting extra temporal frames.
+ * Only completed draws advance its counter; cancellation cannot reveal another selection. */
+export async function waitForPresentedFrames(renderer: WebGPURenderer, completedFrames: () => number, count: number, current: () => boolean): Promise<boolean> {
+  const target = completedFrames() + count;
+  while (current()) {
+    const failure = frameCompilation(renderer)?.failure;
+    if (failure) throw failure;
+    const error = renderer.domElement.dataset.renderError;
+    if (error) throw new Error(error);
+    if (completedFrames() >= target) {
+      await finishSubmittedFrame(renderer);
+      return current();
+    }
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+  }
+  return false;
+}
+
 /** A frame with skipped, still-compiling objects cannot satisfy world readiness. */
 export function renderNativeFrame(renderer: WebGPURenderer, render: () => void): boolean {
   const frames = frameCompilation(renderer);

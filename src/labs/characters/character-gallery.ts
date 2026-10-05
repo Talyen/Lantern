@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { MeshStandardNodeMaterial } from 'three/webgpu';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { createRenderer } from '../../rendering/renderer';
+import { createRenderer, waitForPresentedFrames } from '../../rendering/renderer';
 import { AreaLightingResources } from '../../rendering/area-lighting';
 import { resolveLighting } from '../../levels/lighting';
 import { WebGPUPipeline } from '../../rendering/webgpu-pipeline';
@@ -75,7 +75,7 @@ const stages = await Promise.all([0, 1].map(async index => {
   const focus = new THREE.Vector3(0, 0.9, 0);
   applyShadowQuality(scene, settings.shadowQuality);
   const pipeline = new WebGPUPipeline(renderer, scene, laneCamera, focus); pipeline.configure(settings, look.saturation ?? 1, look); await pipeline.ready();
-  return { index, mount, renderer, lighting, scene, camera: laneCamera, pipeline, focus, generation: 0, motionGeneration: 0, character: undefined as Character | undefined, model: undefined as THREE.Group | undefined, mixer: undefined as THREE.AnimationMixer | undefined, action: undefined as THREE.AnimationAction | undefined, error: '', clips: new Map<Motion, THREE.AnimationClip>(), release: () => {} };
+  return { index, mount, renderer, lighting, scene, camera: laneCamera, pipeline, focus, generation: 0, motionGeneration: 0, completedFrames: 0, character: undefined as Character | undefined, model: undefined as THREE.Group | undefined, mixer: undefined as THREE.AnimationMixer | undefined, action: undefined as THREE.AnimationAction | undefined, error: '', clips: new Map<Motion, THREE.AnimationClip>(), release: () => {} };
 }));
 const controls = new OrbitControls(camera, document.querySelector<HTMLElement>('.character-stages'));
 controls.target.set(0, 0.9, 0); controls.enablePan = false; controls.minDistance = 0.35; controls.maxDistance = 9; controls.maxPolarAngle = Math.PI * 0.9;
@@ -183,7 +183,7 @@ function render(now: number): void {
     if (capturing && stage.index !== 0) continue;
     stage.camera.position.copy(camera.position); stage.camera.quaternion.copy(camera.quaternion); stage.focus.copy(controls.target);
     if (playing) stage.mixer?.update(dt * Number(speed.value));
-    try { stage.pipeline.render(); } catch (error) { stage.error = `Graphics unavailable: ${String(error)}`; refreshCaption(stage.index); disposed = true; return; }
+    try { if (stage.pipeline.render()) stage.completedFrames++; } catch (error) { stage.error = `Graphics unavailable: ${String(error)}`; refreshCaption(stage.index); disposed = true; return; }
   }
   requestAnimationFrame(render);
 }
@@ -202,8 +202,12 @@ const bridge = {
     capturing = true; playing = false; pause.textContent = 'Play'; motion.value = role; setView('iso');
     await select(0, id);
     const stage = stages[0]; if (stage.error) throw new Error(stage.error);
+    const generation = stage.generation, motionGeneration = stage.motionGeneration;
     stage.mixer?.setTime(seconds); stage.pipeline.resetHistory();
-    for (let frame = 0; frame < 20; frame++) await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+    if (!await waitForPresentedFrames(stage.renderer, () => stage.completedFrames, 20, () => {
+      if (stage.error) throw new Error(stage.error);
+      return !disposed && stage.generation === generation && stage.motionGeneration === motionGeneration;
+    })) throw new Error('Character capture was cancelled.');
     return stage.renderer.domElement.toDataURL('image/png');
   },
 };
