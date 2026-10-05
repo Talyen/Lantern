@@ -1,40 +1,12 @@
-# Animation review and authoring
+# Animation authoring
 
-Lantern uses Mixamo motions baked independently to B1 Adventurer, Goblin D Shareyko and the graveyard Skeleton rig. Earlier Erika/Paladin reviews below retain their historical evidence; current B1 preparation and acceptance belong to [protagonist appearance](PROTAGONISTS.md). Weapon models come from the converted Synty library. The aim is readable preparation, decisive contact, short recovery, and footwork that agrees with movement while the player faces the cursor.
+Lantern uses Mixamo motions baked independently to B1 Adventurer, Goblin D Shareyko and the graveyard Skeleton rig. Current player preparation and acceptance belong to [protagonist appearance](PROTAGONISTS.md). Weapon models come from the converted Synty library. Aim for readable preparation, decisive contact, short recovery and footwork that agrees with movement while the player faces the cursor.
 
-This review records the original 17 prepared clips, the source-selection correction, and the new equipment profiles. Source inspection, actual-rig comparisons and native WebGPU gameplay checks establish the changes below. A compatible rig and a passing build do not establish good hand placement, convincing foot contact, or smooth transitions.
+## Source selection
 
-## Confirmed causes
+Select clips using their catalog description and actual-rig poses, including planted-foot travel relative to motion. Generic names can conceal backward locomotion or weapon-inappropriate gestures. Correct the selected source at the catalog/export owner; do not rotate the whole character or reverse every clip to compensate. Compatible bones and passing checks do not establish convincing grips, contact or transitions.
 
-The old Paladin forward selection was a backward run. Its generic **sword and shield run** title hid the source's actual direction. Source hip samples match the explicitly described **Sword And Shield Backward Run**: both advance along source-world +Y, whereas the explicit forward source advances along −Y. The exported/runtime character forward basis is already +Z. Select the right motion at the catalog/export owner; rotating the entire character 180 degrees or playing every clip backward would break aim and other actions.
-
-The Goblin's generic **Running** selection was described as **Turn To Silly Run Away**. Its default hit reaction was a pistol-holding reaction. The player's roll was **Dive Roll While Holding Rifle**. These are source-selection problems, even when their retargeted bones bind successfully.
-
-Dodge also activated an invulnerability effect that alternated brightness over the whole canvas. That filter has been removed. Dodge immunity remains simulation state; the ground, scenery and UI must keep stable brightness throughout a roll. Damage feedback stays local to the struck actor.
-
-## Original clip inventory
-
-Durations below describe the previous prepared clips. Recommendations concern observed source suitability and action timing; three comparative poses per original clip support the inventory below. All 17 sources remain available on their own rigs in the comparison lab as **Previous …** entries.
-
-| Rig / previous clip | Previous duration | Source or behavior issue | Replacement / recommendation |
-| --- | ---: | --- | --- |
-| Player / sword and shield idle | 8.67 s | Broad shield stance was the default even without equipment; generic title gave little selection evidence. | Explicit Shield Idle for shield loadouts; Axe Idle for one-handed weapons, Bow Idle for Bow, and a short casting preparation pose for Staff. Inspect loop settling and grips. |
-| Player / sword and shield run | 0.53 s | Confirmed backward source selected for forward movement. | Shield Forward for forward travel, separate Shield Backward and left/right strafe loops. Axe and Bow have their own directional families. |
-| Player / sword and shield slash | 1.67 s | Full source recovery held input; generic 42% contact landed at about 0.70 s. | Retain this compatible source as Sword Attack with a trimmed, cooked action and explicit 0.26 s contact. |
-| Player / sword and shield impact | 0.70 s | Long reaction lock and shield-specific pose applied to every loadout. | Axe-specific reaction from the left cooked to about 0.30 s; inspect transition back to each weapon stance. |
-| Player / sword and shield death | 2.30 s | Generic title obscured the actual fall; no weapon/grip comparison existed. | Explicit Sword And Shield Falling Back Death cooked to about 1.35 s. Check ground intersection and final held pose. |
-| Player / Dive Roll | 3.00 s | Rifle-holding source compressed into a 0.45 s dodge; canvas-wide invulnerability flash compounded the motion. | Dive Roll From Standing, trim the rolling interval, scale playback to the unchanged 0.45 s dodge, and keep scene brightness stable. |
-| Player / sword and shield block idle | 1.37 s | Prepared as an alternate idle, without a functional shield block. | Explicit Shield Block for a held shield stance and upper-body movement blend. Inspect shield direction at idle and half-speed movement. |
-| Player / sword and shield attack | 1.30 s | Alternate generic attack; inherited percentage contact and whole-clip lock. | Keep as a comparison source. Prefer the reviewed Sword Attack profile; promote alternatives only after assigning their own trim and contact. |
-| Player / sword and shield slash (2) | 3.53 s | Long alternate action/recovery is unsuitable as a responsive basic attack without editing. | Keep for comparison; select a single readable strike interval before considering an alternate/combo. No combo system is introduced. |
-| Player / sword and shield run (2) | 0.53 s | Its sampled planted-foot travel also matches the backward source. | Keep for comparison. Use explicitly described forward/backward/strafe sources and compare planted-foot travel before promoting this alternative. |
-| Goblin / Orc Idle | 5.33 s | Source explicitly describes Male Orc Standing Idle; broadly suitable, but weapon placement was absent. | Retain as Goblin Idle and inspect the equipped Axe through the loop. |
-| Goblin / Running | 1.63 s | Source describes Turn To Silly Run Away, including behavior inappropriate for pursuit. | Use an explicit forward Axe locomotion source. At the Goblin's 1.45 m/s pursuit speed, use the selected Axe walking stride rather than stretching a sprint; the runtime role is still named `run`. |
-| Goblin / standing melee attack horizontal | 2.40 s | Generic title matched a different source than the explicit Axe attack; full lock/contact percentage lacked a weapon-specific review. | Explicit Right To Left Attack With Axe, cooked to about 1.05 s with contact at 0.46 s, preserving a readable enemy wind-up. |
-| Goblin / Hit Reaction | 2.60 s | Source describes Reaction To Getting Hit To The Left While Holding A Pistol; long weapon-inappropriate reaction. | Axe-specific reaction from the left baked to Goblin and cooked to about 0.35 s. |
-| Goblin / Dying | 4.33 s | Source describes Death Hit From The Back Falling On One Knee; long staged fall and directional assumption. | Explicit falling-back death baked to Goblin and cooked to about 1.55 s. Inspect its final grounded pose. |
-| Goblin / Standing Melee Attack Horizontal | 2.40 s | This alternate source explicitly describes Right To Left Attack With Axe, unlike the previous default with a similar title. | Promote this exact source into Goblin Attack with the reviewed trim/contact above. |
-| Goblin / Run | 0.63 s | Source describes Female Ninja Run; silhouette and hand posture do not support the equipped Axe. | Keep for comparison; use the explicit Axe locomotion source calibrated to actual pursuit movement. |
+Dodge immunity is simulation state. Keep scene/UI brightness stable through rolls and damage feedback local to the struck actor. Comparison-only Previous clips do not define current gameplay timing; selected profiles own trims and markers.
 
 ## Canonical motion profiles and clocks
 
@@ -94,42 +66,23 @@ The viewer uses the same native WebGPU/FSR pipeline and shared Golden lighting. 
 
 B1 Adventurer is the sole player appearance, with her authored outfit, facial controls, lantern and all compatible player profiles. Her supplied outfit has no quiver; Bow still uses the existing equipment and compatible motion profile. See [protagonist preparation and acceptance](PROTAGONISTS.md).
 
-## Comparison and acceptance evidence
-
-The observations below record the original equipment/motion review. Its studio/silver lighting choices and menu-based Restart/inspection controls have since been retired or moved to development authoring; current gameplay uses the shared Golden preset.
+## Comparison and acceptance
 
 Open the [animation comparison route](../src/labs/animations/animation-lab.ts) on the development server with `/?lab=animations`. Each lane selects its own Player/Goblin rig and weapon model, browses that rig's compatible clips, and retains independent temporal history in the shared native WebGPU pipeline. Use normal/half/quarter speed, frame steps, linked cycle lengths, scrub, and the contact/release marker to inspect hand placement and timing. Goblin has Axe and Staff gameplay profiles; Staff supplies the separate caster fight in the normal clearing. Other lab equipment models do not imply weapon-specific Goblin gameplay motions.
 
 Paused previews retain their pose and stop scheduling frames after temporal history and camera damping settle. Orbiting, resizing, scrubbing, frame steps and selection changes wake the preview; Play resumes from the retained pose. Hidden lab windows stop rendering and resume without advancing through the time spent hidden.
 
-The representative automated flows cover v1 save migration, unique equipment rewards, two-hand Shield return, separate saved progression, contact/release timing, buffered aim and recovery boundaries, frontal/rear block damage, swept terrain obstruction and exactly-once ranged damage. A presented-pose regression verifies that contact actions fully replace manually phased locomotion. Level flows cover systematic tree identity, depletion/regrowth, occupancy and removed/restored collision/navigation.
+Inspect one affected action/transition in a normal-settings preview and use the change-aware sanity gate. Broaden playable/catalog validation only for changed preparation or a requested audit. Checks do not establish other-platform performance or visual quality.
 
-Native WebGPU browser observations on macOS:
-
-- All 17 Previous sources were compared at three poses on their own rigs, alongside their replacements. Numerical sampling covers all 51 prepared clips and confirms the old forward selections have backward planted-foot travel, while the selected forward/backward/strafe families oppose the corresponding displacement.
-- WASD forward/backward/strafe movement settles to idle; dodge crosses its compact roll and returns to idle with the canvas brightness filter empty throughout. Local character feedback remains, and actor/equipment silhouettes were reviewed in studio, golden and silver references.
-- Axe and Sword each defeated the Goblin with two damaging contacts. The chest granted all four items, and equipment/Animations selections stayed aligned without resetting the encounter. Bow body clicks damaged the enemy after the centre-picking correction; Staff released a visible bolt at home. Shield hold/movement selected its guard and walking layers. Damage direction/reduction is covered by the simulation flow.
-- Standing against the engaged Goblin produced defeat. Return Home restored 100 health and retained equipment/Wood/XP; the menu Restart restored a playable encounter. Rock inspection entered its close view and returned successfully.
-- Three chops produced three Wood and 30 Woodcutting XP, a stump, and a completed navigation-worker update without errors. The lighting fingerprint stayed unchanged during chopping. Felling survived Homestead travel and return; regrowth was observed during continued play. The exact 120-second/occupancy rules are verified by the level flow. The cross-area lighting fingerprint comparison was not a controlled cache-reuse measurement and is not used as evidence for travel-cache behavior.
-- Motion-only preparation now refreshes all ten retained gallery entries; their sample URLs resolve to compatible prepared clips. Licensed captures and detailed pose/flow evidence remain private.
-
-This historical pass used playable asset validation and the former full gate. New animation edits use one affected action/transition in a normal preview and the fast `npm run check`; full playable/catalog validation is targeted to changed preparation or a requested audit. A passing check describes its stable source snapshot; it does not establish other-platform performance or eliminate every art cleanup opportunity.
-
-The raider now checks its committed forward swing arc and retains the attack pose through nonlethal hits during the final 0.16 s before contact. Earlier/recovery hits stagger; lethal hits always stop it. Local hit particles and recorded action/impact audio support the exchange; see [gameplay sound](AUDIO.md).
-
-Remaining art limits: Bow mesh/string deformation and nocking are not authored yet; retargeting has no runtime hand/foot IK; Staff locomotion shares the Axe directional family with a steady carrying arm. Future weapon-specific hit/death/roll refinements should use the retained source catalog and actual gameplay-scale comparisons rather than generic clip titles. The starter-Skill review below records the earlier action-bar pass; current earned Ultimates and progression bonuses follow [weapon mastery](EQUIPMENT.md#sword-and-bow-mastery).
+Remaining art limits: Bow mesh/string deformation and nocking are not authored yet; retargeting has no runtime hand/foot IK; Staff locomotion shares the Axe directional family with a steady carrying arm. Future weapon-specific hit/death/roll refinements should use the retained source catalog and actual gameplay-scale comparisons rather than generic clip titles.
 
 ## Starter Skills and gathering presentation
 
-Historical Paladin/action-bar review. Current selected sources are baked independently to Erika; Sword/Bow unlocks and projectile ranges follow [weapon mastery](EQUIPMENT.md#sword-and-bow-mastery).
+Sword/Bow actions use selected compatible clips baked independently to the current player rig. Recipes, trims, blend intervals and contact/release markers belong to [motion profiles](../assets/motion-profiles.json); the runtime loads selected compatible families rather than the full private source catalog. The comparison lab's Skills filter supports source audition.
 
-Sword Sweep uses **Stable Sword Outward Slash**, source `601fe909df8a`, independently baked to Paladin. Bow Piercing Shot joins **Standing Aim Overdraw** (`0e01e003edfb`) and **Standing Aim Recoil** (`57f928ff818a`) with an 80 ms pose transition. Recipes, trims and contact markers stay in the motion manifest. Runtime loads only these selected compatible clips; the full catalog remains private. The comparison lab exposes a Skills filter for source audition.
+The action bar activates the compatible equipped set automatically. Action locks, costs, cooldowns, hit arcs and projectile range come from [ability definitions](../src/gameplay/abilities.ts) and [weapon mastery](EQUIPMENT.md#sword-and-bow-mastery). Motions do not grant invulnerability or change simulation outcomes.
 
-The action bar activates the compatible equipped set automatically. A Skill uses its own action lock/contact marker, shared mana and independent cooldown, while Basic and dodge remain free. Sword Basic uses a focused 90-degree arc; Sweep covers the forward 180 degrees at the same reach. Piercing Shot keeps the 12 m arrow range, crosses each enemy once and stops at terrain. Neither adds invulnerability.
-
-Click-to-harvest presents the basic Generic Axe tool and the existing Paladin Axe Chop action, even when a Sword, Bow or Staff is equipped. Its owned item state and active combat set remain unchanged, and interruption restores their presentation.
-
-Native review of the action-bar addition confirmed the Paladin Sweep and bow draw/recoil source poses, automatic set activation and hold/release Shield Basic. A focused clearing flow defeated the guard, opened/collected chest rewards, configured both sets and assigned abilities through selection and dragging. F healed during live combat; T and paired portal clicks completed the home/return loop. With no owned Axe, a clicked tree granted 30 Woodcutting XP and restored Sword + Shield presentation after felling. Hover picking remained available with cosmetic Outlines off. Keyboard conflict swapping, mouse/secondary movement remapping, Apply/Cancel and saved layout/controls were checked in the managed browser. This is local native WebGPU acceptance, not a hardware performance result. The pass deferred measurements under the resource policy at that time; current reviews use the single owned GPU session described in [Development](DEVELOPMENT_REFERENCE.md#private-assets-and-resource-use).
+Click-to-harvest presents the temporary Axe/Pickaxe and compatible gathering motion regardless of the equipped weapon. Owned equipment and the active combat set remain unchanged; interruption restores their presentation.
 
 ## Ultimate motion and Synty effects study
 
@@ -155,12 +108,9 @@ The manifest now prepares Thrust, Executioner's Strike and Onslaught for both Sw
 
 Crushing Blow independently bakes **Downward Attack With Axe** (`50032fca84ef`) to Erika rather than using the gathering action at runtime. Its 0.15–2.05-second source interval is cooked toward 0.95 seconds, with reviewed contact at 0.38 seconds. Berserking independently bakes **Battlecry With Axe** (`cc64b1879065`), using its 0.5–1.6-second source interval cooked to 0.5 seconds. Both belong to the Axe and Axe + Shield profiles and the lab's Skills filter. Attack-rate bonuses drive Crushing Blow playback/contact together; the battle cry keeps its authored rate.
 
-An owned native-WebGPU session inspected both actions on Erika with and without Shield, using the contact and mid-cry poses and normal gameplay playback. The selected downward strike keeps the Shield clear; the cry opens the chest and arms without using a damage reaction. Original FBXs remain private and unchanged. The owned gameplay flow earned Berserking from Crushing Blow, retained other assignments, activated its recorded vocal cue and reviewed the timed HUD state. These are local interaction/motion observations, not cross-platform or final listening-based mix approval.
 
-## Axe Double Strike design review
+## Axe Double Strike candidates
 
-October 4: two local Mixamo **Two Hit Combo Attack With Axe** sources were baked to Erika for the [Axe mastery design](EQUIPMENT.md#axe-mastery-design-in-progress). Ver. 3 (`8592ac65ac9f`) lasts 2.73 seconds at source timing; Ver. 1 (`6a6969484303`) lasts 4.67 seconds. Ver. 3 is the recommended candidate for compact pressure. Ver. 1 has a long overhead preparation with more off-hand involvement; its equipped Shield visibly crosses the Axe's path. The shorter candidate still needs combat-scale contact and transition refinement before adoption.
+Two local Mixamo **Two Hit Combo Attack With Axe** sources were baked to Erika for the [Axe mastery design](EQUIPMENT.md#axe-mastery-design-in-progress). Ver. 3 (`8592ac65ac9f`) lasts 2.73 seconds at source timing; Ver. 1 (`6a6969484303`) lasts 4.67 seconds. Ver. 3 is the recommended candidate for compact pressure. Ver. 1 has a long overhead preparation with more off-hand involvement; its equipped Shield visibly crosses the Axe's path. The shorter candidate still needs combat-scale contact and transition refinement before adoption.
 
 The manifest retains both source-timed clips and `axe-double-strike-review`: Ver. 3's 0.25–2.35-second interval cooked toward 1.05 seconds (1.05 seconds at 60 fps). This is a timing trial, with no approved hit markers or gameplay assignment. In `/?lab=animations`, choose **All motions**, search **Axe Double Strike**, then compare the source variants or select the timing trial with Axe and Axe + Shield. The lab reads the separate per-rig `study.json` without modifying the shared gameplay catalog. These comparison clips remain outside the gameplay build dependency closure.
-
-One owned native-WebGPU lab session exercised selection, scrubbing and both loadouts at close and reduced framing, with no browser errors. Prepared-art validation passed. Private captures remain under the task's `.local/`; original FBXs remain unchanged. Enemy contacts, gameplay transitions, final timing, full Shield clearance and cross-platform behavior remain unverified. This review adds no gameplay action or automated tests.

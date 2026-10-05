@@ -152,22 +152,6 @@ Inspect the running result or local captures at gameplay scale. Use the existing
 
 Compare the result with the stated intent, revise the weakest part when needed, and inspect again. Keep licensed-art captures private and use the lean sanity-check policy; expand review only for a concrete reason.
 
-## Earlier olive-palette review — September 30, 2026
-
-This review records the earlier olive-dominant woodland, before the autumn recolor. Six original sources were generated with the built-in ImageGen tool, with prompts and source hashes retained in the manifest. Sixteen locally projected GLBs cover the selected woodland and camp set, retaining triangle counts and named hierarchy. Matched authored/projected captures in Homestead and Clearing cover both moods at zoom 0.9, 1.35 and 2. The UV-topology correction removes the cliff-rock atlas gaps without changing the source mesh. Chest articulation and its wood/metal separation remain intact.
-
-Native WebGPU browser flows pass movement/dodge, inspection, contact-timed attacks, victory, chest rewards, fire safety/healing, walking links, campfire travel, defeat, Return Home and restart in both moods. Private captures, source/bake reports, state checks and production performance samples live under `.local/environment-art/`. Performance evidence describes local presentation cadence and resource counts; other GPUs and Windows remain unverified.
-
-The missing-variant check confirms original scenery loads when all sixteen prepared files are absent. Warmed travel keeps texture, geometry and render-target counts constant; small native uniform-buffer growth during repeated replacement is recorded for the separate lighting/cache follow-up, rather than described as fully stable GPU memory.
-
-## Autumn woodland review — October 1, 2026
-
-This historical review predates the sole shared Golden preset. Its alternate moods and studio comparisons are no longer runtime choices.
-
-The five foliage variants now use weathered copper, burnt orange, ochre and rust with olive or burgundy shadows. Gameplay-scale review reduced their baked values to keep mustard from reading as pale yellow, and quieted Homestead's dry grass. Warm-brown soil and subdued edge staining preserve the paths and fighting space. Lighting profiles, flame recipes, geometry, hierarchy, alpha handling, scene transforms, collision and navigation retain their existing behavior. All six original texture hashes and prompt records remain intact.
-
-Matched native WebGPU views cover both areas in golden and silver at zoom 0.9, 1.35 and 2, plus studio, authored-surface, moonlit-lantern, Soft and Cinematic comparisons. Movement/dodge, contact-timed hits, victory, chest use, defeat/retry, inspection and travel passed in both dusk moods. Original scenery also loaded with all prepared variants absent. Warmed travel retains texture, geometry and render-target counts; the existing small native uniform-buffer growth remains a separate follow-up. Private captures, integrity checks, resource records and production samples live under `.local/autumn-art/`. Windows and other GPU families remain unverified.
-
 ## Shared lighting preset
 
 The approved Golden preset is resolved centrally on every route. Keep shared tuning in `src/levels/lighting-preset.ts` and small placement/coverage differences in area overrides. See [lighting authoring](LIGHTING.md) for recipes, probe preparation, reference views and cache ownership.
@@ -207,13 +191,13 @@ Run `npm run materials:probe` in an owned authoring preview after changing the a
 
 Native, DOF-off gameplay-scale comparisons selected 1.5 times the coupled normal/height relief for prepared stone and bark, primitive stone and Clearing ground. Two times made the soil ridges too prominent and added little useful trunk structure. Other ground areas keep their baseline gain. This is an authored starting point, not a universal maximum: use the comparison controls for future surfaces and recheck movement under the shipping Quality/Cinematic settings.
 
-## October 2 presentation polish
+## Presentation direction
 
 The adopted [orb-led HUD](ui/concepts/hud-polish/README.md) uses original detailed iron/brass chrome and painted ability/utility art, live values and binding plaques. The visible set control is removed. Resource Numbers is saved independently of the glass/liquid and accessible meter values.
 
 Clearing connects the caster branch through continuous worn ground, groups camp supplies and adds a shallow walkable approach stream with restrained rain. Wet material response follows authored ground patches and water banks; there is no global wet gloss. Homestead's worn paths connect real interactions and the repaired shelter adds braces and orderly belongings while retaining the stash approach. Graveyard Ruins has a quiet chapel approach through edge litter/mineral accumulation; Crypt uses subdued tile variation to distinguish the hall procession and tomb. Golden lighting and current encounter/resource identities remain authoritative.
 
-Combat now permits brief selective hit pause and strongest-Skill camera shake, approved by the owner during this plan. Keep impacts localized and weapon-specific; ordinary movement and rewards remain quiet. Misses and normal ranged Basics do not pause or shake.
+Combat now permits brief selective hit pause and strongest-Skill camera shake, approved by the owner. Keep impacts localized and weapon-specific; ordinary movement and rewards remain quiet. Misses and normal ranged Basics do not pause or shake.
 
 ## Painterly water and combat fluids
 
