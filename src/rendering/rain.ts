@@ -17,22 +17,36 @@ export class RainField {
   private area?: AreaDefinition;
   private groundHeight = 0;
   private shelters: RainShelter[] = [];
+  private readonly exposurePoint: [number, number] = [0, 0];
   constructor(private contact: (x: number, z: number, height: number) => void) { this.root.name='rain'; this.streaks.count=0; this.streaks.frustumCulled=false; this.root.add(this.streaks); }
   configure(area: AreaDefinition | undefined, shelters: RainShelter[] = []): void { this.area=area; this.shelters=shelters; const ground=area?.props.find(p=>p.terrain && p.primitive?.kind==='box'); this.groundHeight=ground ? ground.position[1]+ground.primitive!.size[1]*ground.scale[1]/2 : 0; this.clear(); }
   view(camera: THREE.Camera, position: THREE.Vector3): void { this.camera=camera; this.anchor.copy(position); }
   clear(): void { this.drops.length=0; this.carry=0; this.streaks.count=0; }
-  update(dt:number, enabled:boolean, rate:number, wind:THREE.Vector3):void {
-    const area=this.area;
+  update(dt: number, enabled: boolean, rate: number, wind: THREE.Vector3): void {
+    const area = this.area;
     if (!enabled || !area?.effects.weather || !this.camera) { this.clear(); return; }
-    const shelters=this.shelters;
-    const exposed=(x:number,z:number)=>boundaryDistance(area.layout.boundary,[x,z])>=0 && rainExposure(shelters,x,z)>0;
-    this.carry+=dt*rate;
-    while(this.carry>=1){this.carry--;const x=this.anchor.x+(Math.random()-.5)*18,z=this.anchor.z+(Math.random()-.5)*18;if(this.drops.length<384 && exposed(x,z) && Math.random()<rainExposure(shelters,x,z))this.drops.push({x,y:this.anchor.y+4+Math.random()*2,z});}
-    for(let i=this.drops.length-1;i>=0;i--){const drop=this.drops[i];drop.y-=dt*7;drop.x+=dt*wind.x;drop.z+=dt*wind.z;
-      const surface=waterAt(area.effects.water,drop.x,drop.z), height=surface ? waterLevel(surface) : this.groundHeight;
-      if(!exposed(drop.x,drop.z) || drop.y<=height+.01){
-        if(exposed(drop.x,drop.z) && Math.random()<.35*rainExposure(shelters,drop.x,drop.z)) this.contact(drop.x,drop.z,height);
-        this.drops[i]=this.drops[this.drops.length-1];this.drops.pop();
+    const shelters = this.shelters, point = this.exposurePoint;
+    // Boundary queries consume the point synchronously; particles share one scratch pair.
+    const exposureAt = (x: number, z: number) => {
+      point[0] = x; point[1] = z;
+      return boundaryDistance(area.layout.boundary, point) >= 0 ? rainExposure(shelters, x, z) : 0;
+    };
+    this.carry += dt * rate;
+    while (this.carry >= 1) {
+      this.carry--;
+      const x = this.anchor.x + (Math.random() - .5) * 18, z = this.anchor.z + (Math.random() - .5) * 18;
+      if (this.drops.length >= 384) continue;
+      const exposure = exposureAt(x, z);
+      if (exposure > 0 && Math.random() < exposure) this.drops.push({ x, y: this.anchor.y + 4 + Math.random() * 2, z });
+    }
+    for (let i = this.drops.length - 1; i >= 0; i--) {
+      const drop = this.drops[i];
+      drop.y -= dt * 7; drop.x += dt * wind.x; drop.z += dt * wind.z;
+      const surface = waterAt(area.effects.water, drop.x, drop.z), height = surface ? waterLevel(surface) : this.groundHeight;
+      const exposure = exposureAt(drop.x, drop.z);
+      if (!(exposure > 0) || drop.y <= height + .01) {
+        if (exposure > 0 && Math.random() < .35 * exposure) this.contact(drop.x, drop.z, height);
+        this.drops[i] = this.drops[this.drops.length - 1]; this.drops.pop();
       }
     }
     const t=this.transform;
