@@ -7,7 +7,7 @@ import { context, git, writeJSON, saveTask } from '../../agents/state.mjs';
 import { startTask } from '../../agents/workflow.mjs';
 import { reviewRevision, saveReview, finishReview } from './store.mjs';
 import { createReviewCache } from './cache.mjs';
-import { readReviews, reviewIndex, fingerprint, baseReviewAssets, reviewBlockers, deletionRequests } from './index.mjs';
+import { readReviews, reviewIndex, fingerprint, baseReviewAssets, deletionRequests, reviewBlockers } from './index.mjs';
 import { emptyReviews, effectiveReview } from '../../../src/assets/asset-review.ts';
 
 async function fixture() {
@@ -119,7 +119,8 @@ test('base decisions cover current and future variants without losing deletion i
     assert.deepEqual(await reviewBlockers(index, index.assets), [], 'variant changes do not require independent approval');
     await writeFile(join(f.task.path, 'public', base.url.slice(1)), '{"nodes":[{"name":"changed source"}]}');
     index = await reviewIndex(f.task.path);
-    assert.equal((await reviewBlockers(index, index.assets)).length, 3);
+    assert.deepEqual(await reviewBlockers(index, index.assets), [], 'changed approvals are advisory, not shipping exclusions');
+    assert.ok(index.assets.every(row => effectiveReview(row, saved.reviews).changed));
     await assert.rejects(saveReview(f.task.path, saved.revision, { type: 'decision', scope: 'family', id: base.id, state: 'approved', fingerprint: base.fingerprint, notes: '' }, cache), /changed or is unavailable/);
     saved = await saveReview(f.task.path, saved.revision, { type: 'decision', scope: 'family', id: base.id, state: 'denied', fingerprint: null, notes: 'Wrong shape' }, cache);
     assert.ok((await reviewIndex(f.task.path)).assets.every(row => effectiveReview(row, saved.reviews).state === 'denied'));
@@ -157,5 +158,23 @@ test('deleting a prepared variant retains its source while deleted originals sti
     assert.equal(tree.id, `${original}@original`);
     assert.equal(tree.available, false);
     assert.match(tree.warnings.join('\n'), /Deleted asset is still referenced/);
+  } finally { await f.dispose(); }
+});
+
+// Admission: exclusion-only shipping must neither block unreviewed art nor let
+// an explicit rejection through; existing decision-storage tests do not cover the gate.
+test('eligibility allows unreviewed and changed approvals but blocks explicit exclusions', async () => {
+  const f = await fixture();
+  try {
+    const index = await reviewIndex(f.task.path), asset = index.assets[0];
+    assert.equal((await reviewBlockers(index, [asset])).length, 0);
+    index.reviews.decisions[asset.id] = { familyId: asset.familyId, url: asset.url, name: asset.name, state: 'approved', fingerprint: '0'.repeat(64), notes: '', updatedAt: new Date().toISOString() };
+    assert.equal((await reviewBlockers(index, [asset])).length, 0);
+    for (const state of ['denied', 'delete-requested']) {
+      index.reviews.decisions[asset.id].state = state;
+      assert.equal((await reviewBlockers(index, [asset]))[0].state, state);
+    }
+    index.reviews.decisions[asset.id].state = 'unreviewed'; index.reviews.familyDenials[asset.familyId] = { notes: '', updatedAt: new Date().toISOString() };
+    assert.equal((await reviewBlockers(index, [asset]))[0].state, 'denied');
   } finally { await f.dispose(); }
 });

@@ -10,8 +10,8 @@ import { resetMaterialCalibration } from '../../rendering/material-calibration';
 
 type Sampler = { maxAnisotropy?: number; magFilter?: string; minFilter?: string; mipmapFilter?: string };
 type Device = { createSampler(descriptor: Sampler): unknown; queue: { onSubmittedWorkDone(): Promise<void> } };
-type Case = 'legacy' | 'mapped' | 'reference' | 'tangents' | 'back' | 'back-reference' | 'transform' | 'transform-reference' | 'depth' | 'depth-off' | 'masked' | 'masked-off' | 'highlight-dry' | 'highlight-dry-reference' | 'highlight-metal' | 'highlight-metal-reference' | 'highlight-smooth' | 'highlight-smooth-reference';
-const cases: Case[] = ['legacy', 'mapped', 'reference', 'tangents', 'back', 'back-reference', 'transform', 'transform-reference', 'depth', 'depth-off', 'masked', 'masked-off', 'highlight-dry', 'highlight-dry-reference', 'highlight-metal', 'highlight-metal-reference', 'highlight-smooth', 'highlight-smooth-reference'];
+type Case = 'ao-direct' | 'ao-direct-reference' | 'ao-coat' | 'ao-coat-reference' | 'env-diffuse' | 'env-diffuse-owned' | 'env-metal' | 'env-metal-owned' | 'env-coat' | 'env-coat-owned' | 'legacy' | 'mapped' | 'reference' | 'tangents' | 'back' | 'back-reference' | 'transform' | 'transform-reference' | 'depth' | 'depth-off' | 'masked' | 'masked-off' | 'highlight-dry' | 'highlight-dry-reference' | 'highlight-metal' | 'highlight-metal-reference' | 'highlight-smooth' | 'highlight-smooth-reference';
+const cases: Case[] = ['ao-direct','ao-direct-reference','ao-coat','ao-coat-reference','env-diffuse','env-diffuse-owned','env-metal','env-metal-owned','env-coat','env-coat-owned','legacy', 'mapped', 'reference', 'tangents', 'back', 'back-reference', 'transform', 'transform-reference', 'depth', 'depth-off', 'masked', 'masked-off', 'highlight-dry', 'highlight-dry-reference', 'highlight-metal', 'highlight-metal-reference', 'highlight-smooth', 'highlight-smooth-reference'];
 
 function pixels(renderer: WebGPURenderer) {
   const canvas = document.createElement('canvas'); canvas.width = canvas.height = 128;
@@ -21,6 +21,10 @@ function pixels(renderer: WebGPURenderer) {
 function difference(a: number[], b: number[]) {
   let maximum = 0, sum = 0; for (let i = 0; i < a.length; i++) { const delta = Math.abs(a[i] - b[i]); maximum = Math.max(maximum, delta); sum += delta; }
   return { maximum, mean: sum / a.length };
+}
+function interior(rgba: number[]): number[] {
+  const result: number[] = []; for (let y = 40; y < 88; y++) for (let x = 40; x < 88; x++) result.push(...rgba.slice((y * 128 + x) * 4, (y * 128 + x) * 4 + 4));
+  return result;
 }
 function deviation(rgba: number[]) {
   const values: number[] = []; for (let y = 24; y < 104; y++) for (let x = 24; x < 104; x++) values.push(rgba[(y * 128 + x) * 4]);
@@ -43,7 +47,15 @@ export async function runMaterialProbe() {
       camera.position.set(kind.startsWith('depth') || kind.startsWith('masked') ? 1.5 : 0, 0, 5); camera.lookAt(0, 0, 0);
       const look = lightingPreset.lighting;
       const sun = new THREE.DirectionalLight(look.sun.color, look.sun.intensity); sun.position.fromArray(look.sun.position); scene.add(sun, new THREE.HemisphereLight(look.ambient.sky, look.ambient.ground, look.ambient.intensity));
-      const highlight = kind.startsWith('highlight-');
+      const aoFixture = kind.startsWith('ao-');
+      const enclosure = kind.startsWith('env-') || aoFixture;
+      const highlight = kind.startsWith('highlight-') || enclosure;
+      let sky: THREE.DataTexture | undefined;
+      if (enclosure) {
+        const pixels = new Float32Array(128 * 64 * 4).fill(1); sky = new THREE.DataTexture(pixels, 128, 64, THREE.RGBAFormat, THREE.FloatType);
+        sky.mapping = THREE.EquirectangularReflectionMapping; sky.needsUpdate = true; scene.environment = sky;
+        if (!aoFixture) scene.remove(sun);
+      }
       const geometry = highlight ? new THREE.SphereGeometry(1.5, 32, 16) : new THREE.PlaneGeometry(4, 4); geometry.setAttribute('uv2', geometry.getAttribute('uv').clone());
       const reference = kind === 'reference' || kind === 'back-reference' || kind === 'tangents' || kind === 'transform-reference';
       if (!reference && !highlight) geometry.getAttribute('uv').array.fill(.5);
@@ -62,11 +74,13 @@ export async function runMaterialProbe() {
       const transform = kind.startsWith('transform'), depth = kind.startsWith('depth') || kind.startsWith('masked');
       if (transform) { albedo.repeat.set(2, 1); albedo.offset.set(.13, .07); albedo.rotation = .5; }
       const source = new MeshStandardNodeMaterial({ color: '#888888', roughness: highlight ? kind.includes('smooth') ? .25 : .9 : 1,
-        metalness: kind.includes('highlight-metal') ? 1 : 0,
+        metalness: kind.includes('highlight-metal') || kind.includes('env-metal') || kind.includes('env-coat') ? 1 : 0,
         normalMap: highlight || transform || depth ? null : normal, map: !highlight && (transform || depth) ? albedo : null,
         roughnessMap: depth ? data : null, side: kind.startsWith('back') ? THREE.DoubleSide : THREE.FrontSide });
-      const material = highlight && kind.endsWith('reference') ? source : new MeshPhysicalNodeMaterial().copy(source);
+      const material = kind.startsWith('highlight-') && kind.endsWith('reference') ? source : new MeshPhysicalNodeMaterial().copy(source);
       if (material !== source) source.dispose();
+      if ((kind.includes('env-coat') || kind.startsWith('ao-coat')) && material instanceof MeshPhysicalNodeMaterial) { material.clearcoat = 1; material.clearcoatRoughness = .2; }
+      if (aoFixture) material.emissive.set('#4c210b');
       prepareSurfaceMaterial(material, depth ? data : undefined, depth ? .12 : 0, 3);
       if (kind === 'legacy' || kind === 'reference' || kind === 'back-reference') material.normalNode = Fn(builder => {
         const scale = surfaceBias(builder).exp2();
@@ -75,7 +89,7 @@ export async function runMaterialProbe() {
       if (kind === 'transform-reference') material.colorNode = Fn(builder => texture(albedo).bias(surfaceBias(builder)).rgb.mul(color(material.color)))();
       const mesh = new THREE.Mesh(geometry, material); scene.add(mesh);
       const pipeline = new WebGPUPipeline(renderer, scene, camera, new THREE.Vector3());
-      pipeline.configure({ ...defaults(), upscaleQuality: 'native', dof: 'off', ao: 0, bloom: 0, outlines: false, textureDepth: kind !== 'depth-off' && kind !== 'masked-off' }, 1);
+      pipeline.configure({ ...defaults(), upscaleQuality: 'native', dof: 'off', ao: aoFixture && !kind.endsWith('reference') ? 1 : 0, bloom: 0, outlines: false, textureDepth: kind !== 'depth-off' && kind !== 'masked-off' }, 1, kind.endsWith('-owned') || aoFixture ? { ...look, probes: { position: [0,0,0], size: [10,10,10], resolution: [2,2,2], intensity: 1, bounces: 1 } } : look);
       try {
         await pipeline.ready();
         // Shader skips are not warmup frames. Capture only after 32 completed
@@ -83,9 +97,14 @@ export async function runMaterialProbe() {
         for (let frames = 0; frames < 32;) { await new Promise(requestAnimationFrame); if (pipeline.render()) frames++; }
         await device.queue.onSubmittedWorkDone(); pipeline.render(); images[kind] = pixels(renderer);
       }
-      finally { pipeline.dispose(); mesh.dispose(); geometry.dispose(); material.dispose(); [normal, albedo, data].forEach(map => map.dispose()); }
+      finally { pipeline.dispose(); mesh.dispose(); geometry.dispose(); material.dispose(); [normal, albedo, data].forEach(map => map.dispose()); sky?.dispose(); }
     }
     const checks = {
+      aoDirectEmissionPreserved: difference(interior(images['ao-direct'].rgba), interior(images['ao-direct-reference'].rgba)).maximum <= 1 && difference(images['ao-direct'].rgba, images['ao-direct-reference'].rgba).mean < .3,
+      aoClearcoatPreserved: difference(interior(images['ao-coat'].rgba), interior(images['ao-coat-reference'].rgba)).maximum <= 1 && difference(images['ao-coat'].rgba, images['ao-coat-reference'].rgba).mean < .3,
+      enclosureDiffuseOwned: difference(images['env-diffuse'].rgba, images['env-diffuse-owned'].rgba).mean > 5,
+      enclosureMetalPreserved: difference(interior(images['env-metal'].rgba), interior(images['env-metal-owned'].rgba)).maximum <= 1 && difference(images['env-metal'].rgba, images['env-metal-owned'].rgba).mean < .3,
+      enclosureClearcoatPreserved: difference(interior(images['env-coat'].rgba), interior(images['env-coat-owned'].rgba)).maximum <= 1 && difference(images['env-coat'].rgba, images['env-coat-owned'].rgba).mean < .3,
       flatControl: deviation(images.legacy.rgba) < 2,
       alternateUVRelief: deviation(images.mapped.rgba) > 8,
       validUVParity: difference(images.mapped.rgba, images.reference.rgba).maximum <= 2,

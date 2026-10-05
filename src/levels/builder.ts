@@ -21,7 +21,7 @@ import { TreeFelling } from '../rendering/tree-felling';
 import { vegetationProfile } from './vegetation';
 import { woodlandGroundRecipeFor, woodlandMaterial } from '../rendering/woodland-ground';
 import { Portal } from '../rendering/portal';
-import { resolveLocalLight } from './local-lighting';
+import { resolveLocalLight, resolveWorldFlame } from './local-lighting';
 import type { CoreEffects } from '../rendering/effects';
 import { generateDecoration } from './decoration';
 import { createShelter } from '../rendering/shelter';
@@ -260,7 +260,7 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
         try { const model = await asset(fire.asset); transform(model, { id: fire.id, asset: fire.asset, position: [fire.position[0], 0, fire.position[1]], height: fire.height, yaw: 0, scale: [1, 1, 1], castShadow: true, receiveShadow: true }); } catch { missing.push(fire.id); return; }
         const recipe = resolveLocalLight(fire), [x, z] = fire.position;
         const light = new THREE.PointLight(recipe.color, recipe.intensity, recipe.distance, 2);
-        light.position.set(x, recipe.emitterHeight + .05, z); light.userData.baseIntensity = recipe.intensity; light.userData.flicker = recipe.flicker;
+        light.position.set(x, recipe.emitterHeight + .05, z); light.userData.baseIntensity = recipe.intensity; light.userData.flicker = recipe.flicker; light.userData.staticFlame = resolveWorldFlame(fire);
         includeCutawayShadows(light);
         light.castShadow = recipe.shadow; light.shadow.mapSize.set(1024, 1024); light.shadow.camera.near = .12; light.shadow.camera.far = recipe.distance + 1;
         light.shadow.radius = recipe.shadowRadius; light.shadow.intensity = recipe.shadowIntensity; light.shadow.normalBias = .012; light.shadow.bias = -.0001;

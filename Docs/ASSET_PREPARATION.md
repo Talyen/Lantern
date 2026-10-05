@@ -4,7 +4,7 @@ Use an [owned task worktree](DEVELOPMENT.md#working-alongside-other-agents) and 
 
 ## Visual asset review
 
-Use the [Asset Review Lab](ASSET_REVIEW.md) to approve individual prepared appearances, deny asset families, or request separate deletion cleanup. Existing assets start unreviewed; shipping requires approval of used appearances and selected visual roots. Completed deletion exclusions prevent import/export resurrection while preserving private sources.
+Use the [Asset Review Lab](ASSET_REVIEW.md) to approve individual prepared appearances, deny asset families, or request separate deletion cleanup. Unreviewed art can ship; denied or deletion-marked used appearances and selected visual roots cannot. Completed deletion exclusions prevent import/export resurrection while preserving private sources.
 
 ## Private asset workflow
 

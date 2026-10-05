@@ -1,7 +1,8 @@
+import { indirectDiffuseAttachment, type IndirectContext } from './indirect-lighting';
 import { syncDisplayResolution } from './display-resolution';
 import { renderNativeFrame, preparingNativeFrame } from './renderer';
-import { ACESFilmicToneMapping, RedFormat, CustomBlending, OneFactor, OneMinusSrcAlphaFactor, DataUtils, RenderPipeline, BlendMode, NormalBlending, Color, Vector2, Vector3, Vector4, Matrix4, Plane, type Node, type OrthographicCamera, type PerspectiveCamera, type Scene, type WebGPURenderer, type TextureNode, type QuadMesh, type Texture } from 'three/webgpu';
-import { Fn, context, dot, float, mix, mrt, normalView, orthographicDepthToViewZ, perspectiveDepthToViewZ, output, pass, rtt, screenUV, smoothstep, toneMapping, uniform, uv, vec2, vec3, vec4, velocity, positionWorld, select } from 'three/tsl';
+import { ACESFilmicToneMapping, HalfFloatType, FloatType, RGFormat, RedFormat, CustomBlending, OneFactor, OneMinusSrcAlphaFactor, DataUtils, RenderPipeline, BlendMode, NormalBlending, Color, Vector2, Vector3, Vector4, Matrix4, Plane, type Node, type OrthographicCamera, type PerspectiveCamera, type Scene, type WebGPURenderer, type TextureNode, type QuadMesh, type Texture } from 'three/webgpu';
+import { Fn, context, dot, float, mix, mrt, orthographicDepthToViewZ, perspectiveDepthToViewZ, output, pass, rtt, screenUV, smoothstep, toneMapping, uniform, uv, vec2, vec3, vec4, velocity, positionWorld, select } from 'three/tsl';
 import { ao } from 'three/addons/tsl/display/GTAONode.js';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { gaussianBlur } from 'three/addons/tsl/display/GaussianBlurNode.js';
@@ -13,6 +14,7 @@ import { SettingsPreparation } from './settings-preparation';
 import { waterPlanes } from './water-registry';
 import { outlinedColor, outlineStrength } from './outlines';
 
+export const aoContactRecipe = { radius: .35, thickness: .3, samples: 8 };
 type FSRNode = ReturnType<typeof fsrTemporal>;
 // Restrained focus profiles, applied to the stabilized output. Focus distance continues to track the camera target.
 const depthOfFieldPresets = {
@@ -37,6 +39,10 @@ class PipelineGraph {
   private exposure = uniform(1.25);
   private saturation = uniform(0.72);
   private aoStrength = uniform(1);
+  private contactAO: ReturnType<typeof ao> | null = null;
+  private indirectEnabled = uniform(0);
+  private indirectMin = uniform(new Vector3());
+  private indirectMax = uniform(new Vector3());
   private bokeh = uniform(1.6);
   private focusRange = uniform(16);
   private bloomStrength = uniform(0.8);
@@ -77,16 +83,19 @@ class PipelineGraph {
     this.scale = 1 / upscaleRatio(settings.upscaleQuality);
     const scenePass = pass(this.scene, this.camera, { samples: 0 });
     scenePass.setResolutionScale(this.scale);
-    const surfaceContext = { materialMipBias: this.materialMipBias, textureDepth: settings.textureDepth,
+    const surfaceContext = { ...this.indirectContext(), lanternAO: settings.ao > 0, materialMipBias: this.materialMipBias, textureDepth: settings.textureDepth,
       waterReflection: (height: number, distortion: Node<'vec2'>) => this.waterReflection(height, distortion) };
     scenePass.contextNode = context(surfaceContext);
     const coverage = Fn(builder => builder.material.transparent || builder.material.alphaHash ? vec4(output.a, 0, 0, output.a) : vec4(0))();
+    const diffuse = Fn(builder => vec4(indirectDiffuseAttachment(builder), output.a))();
     const sceneMRT = mrt({ output, velocity, coverage,
+      ...(settings.ao > 0 ? { indirectDiffuse: diffuse } : {}),
       ...(settings.outlines ? { outline: vec4(outlineStrength(), 0, 0, output.a) } : {}) });
     sceneMRT.setClearColor('coverage', 0, 0);
     const coverageBlend = new BlendMode(CustomBlending);
     coverageBlend.blendSrc = OneFactor; coverageBlend.blendDst = OneMinusSrcAlphaFactor;
     sceneMRT.setBlendMode('coverage', coverageBlend);
+    if (settings.ao > 0) { sceneMRT.setClearColor('indirectDiffuse', 0, 0); sceneMRT.setBlendMode('indirectDiffuse', new BlendMode(NormalBlending)); }
     if (settings.outlines) {
       sceneMRT.setClearColor('outline', 0, 0);
       sceneMRT.setBlendMode('outline', new BlendMode(NormalBlending));
@@ -103,23 +112,21 @@ class PipelineGraph {
       return texture;
     };
     let beauty: Node<'vec4'> = vec4(color);
+    if (settings.ao > 0) {
+      // Beauty depth already includes the same cutouts/receiver visibility.
+      // Post-shading occlusion removes the preceding second geometry pass.
+      // r186 supports null normals (depth reconstruction); its declarations omit it.
+      const contact = ao(depth, null as unknown as Node, this.camera);
+      contact.resolutionScale = .5; contact.samples.value = aoContactRecipe.samples;
+      contact.radius.value = aoContactRecipe.radius; contact.thickness.value = aoContactRecipe.thickness; this.contactAO = contact;
+      this.resources.push(contact);
+      const occlusion = mix(float(1), contact.getTextureNode().sample(screenUV).r, this.aoStrength);
+      const indirect = scenePass.getTextureNode('indirectDiffuse').rgb;
+      beauty = vec4(beauty.rgb.sub(indirect.mul(occlusion.oneMinus())).max(vec3(0)), beauty.a);
+    }
     if (settings.outlines) {
       const distance = (value: Node<'float'>) => ('isOrthographicCamera' in this.camera ? orthographicDepthToViewZ : perspectiveDepthToViewZ)(value, uniform(this.camera.near), uniform(this.camera.far)).negate();
-      beauty = outlinedColor(color, scenePass.getTextureNode('outline'), depth, distance, this.outlineScale, this.depthTexel);
-    }
-    if (settings.ao > 0) {
-      // Independent geometry inputs avoid a cycle: AO is consumed while shading
-      // the beauty pass, through the material's native indirect-light occlusion.
-      const geometry = pass(this.scene, this.camera, { samples: 0 });
-      geometry.transparent = false; geometry.setResolutionScale(this.scale);
-      geometry.setMRT(mrt({ output: normalView }));
-      geometry.contextNode = context({ materialMipBias: this.materialMipBias, textureDepth: false });
-      const contact = ao(geometry.getTextureNode('depth'), geometry.getTextureNode('output'), this.camera);
-      contact.resolutionScale = 0.5; contact.samples.value = 8;
-      contact.radius.value = 0.18; contact.thickness.value = 0.3;
-      this.resources.push(geometry, contact); this.sceneResources.push(geometry);
-      scenePass.contextNode = context({ ...surfaceContext, getAO: (materialAO: Node<'float'> | null) =>
-        mix(float(1), contact.getTextureNode().sample(screenUV).r, this.aoStrength).mul(materialAO ?? float(1)) });
+      beauty = outlinedColor(settings.ao > 0 ? sceneTexture(beauty) : color, scenePass.getTextureNode('outline'), depth, distance, this.outlineScale, this.depthTexel);
     }
     // Source-over coverage is authored by the same visible fragments. It keeps
     // particles/transparency responsive without shading the opaque world again.
@@ -176,13 +183,17 @@ class PipelineGraph {
     this.preparation = this.prepare(this.post, ++this.generation);
   }
 
+  private indirectContext(): IndirectContext {
+    return { lanternIndirect: { enabled: this.indirectEnabled, min: this.indirectMin, max: this.indirectMax } };
+  }
+
   /** One opaque scene reflection per water elevation, owned by this same graph. */
   private waterReflection(height: number, distortion: Node<'vec2'>): Node<'vec4'> {
     let reflection = this.reflections.get(height);
     if (!reflection) {
       const camera = this.camera.clone();
       const reflected = pass(this.scene, camera, { samples: 0 }); reflected.transparent = false; reflected.setResolutionScale(this.scale * .5);
-      reflected.contextNode = context({ materialMipBias: this.materialMipBias, textureDepth: false });
+      reflected.contextNode = context({ ...this.indirectContext(), materialMipBias: this.materialMipBias, textureDepth: false });
       reflection = { camera, pass: reflected, projection: uniform(new Matrix4()) };
       this.reflections.set(height, reflection); this.resources.push(reflected);
       this.updateReflection(height, reflection);
@@ -248,6 +259,12 @@ class PipelineGraph {
       }
     }
     this.look = look; this.settings = { ...settings };
+    const probes = look?.probes;
+    this.indirectEnabled.value = probes ? 1 : 0;
+    if (probes) {
+      this.indirectMin.value.fromArray(probes.position).addScaledVector(new Vector3(...probes.size), -.5);
+      this.indirectMax.value.fromArray(probes.position).addScaledVector(new Vector3(...probes.size), .5);
+    }
     this.outlineScale.value = this.scale;
     // One finer mip than resolution compensation, shared by all material passes.
     // Private comparison offsets remain relative to the original baseline.
@@ -281,7 +298,8 @@ class PipelineGraph {
 
   diagnostics() {
     const rt = this.scenePass?.renderTarget;
-    return { comparisonPreset, textureDepth: this.settings.textureDepth, materialMipBias: this.materialMipBias.value, materialAnisotropy: 16, ready: this.prepared, method: 'fsr-temporal', outlines: this.settings.outlines, outlineStage: this.settings.outlines ? 'pre-fsr' : 'off', sceneAttachments: rt?.textures.length ?? 0, reactiveSource: 'fragment-coverage', worldPasses: 1 + (this.settings.ao > 0 ? 1 : 0) + this.reflections.size, reflectionPasses: this.reflections.size, outputPixelRatio: this.renderer.getPixelRatio(), dof: this.settings.dof, dofStage: this.settings.dof === 'off' ? 'off' : 'far-background-half-resolution',
+    return { comparisonPreset, textureDepth: this.settings.textureDepth, materialMipBias: this.materialMipBias.value, materialAnisotropy: 16, ready: this.prepared, method: 'fsr-temporal', outlines: this.settings.outlines, outlineStage: this.settings.outlines ? 'pre-fsr' : 'off', sceneAttachments: rt?.textures.length ?? 0,
+      sceneAttachmentBytes: rt ? rt.textures.reduce((sum, map) => sum + rt.width * rt.height * (map.format === RedFormat ? 1 : map.format === RGFormat ? 2 : 4) * (map.type === HalfFloatType ? 2 : map.type === FloatType ? 4 : 1), 0) : 0, reactiveSource: 'fragment-coverage', worldPasses: 1 + this.reflections.size, aoStage: this.settings.ao > 0 ? 'indirect-diffuse-pre-fsr' : 'off', aoNormals: 'beauty-depth', aoRadius: aoContactRecipe.radius, reflectionPasses: this.reflections.size, outputPixelRatio: this.renderer.getPixelRatio(), dof: this.settings.dof, dofStage: this.settings.dof === 'off' ? 'off' : 'far-background-half-resolution',
       sceneWidth: rt?.width ?? 0, sceneHeight: rt?.height ?? 0,
       outputWidth: this.renderer.domElement.width, outputHeight: this.renderer.domElement.height,
       reconstructionScale: this.scale, cpuRenderMs: this.cpuRenderMs, renderedFrames: this.successfulFrames,
@@ -318,6 +336,7 @@ class PipelineGraph {
   render(): boolean {
     if (!this.prepared) return false;
     this.camera.updateMatrixWorld();
+    if (this.contactAO) this.contactAO.radius.value = aoContactRecipe.radius;
     const planes = waterPlanes(this.scene);
     if (this.reflectionRevision !== planes.revision) {
       this.reflectionRevision = planes.revision;
@@ -368,7 +387,7 @@ class PipelineGraph {
     // keyed by those target contexts. Release just this graph's native bindings.
     this.releaseBindings(this.resources);
     this.resources.forEach((node) => node.dispose()); this.reflections.clear(); this.resources = []; this.sceneResources = [];
-    this.fsr = null; this.reactiveTexture = null; this.scenePass = null; this.successfulFrames = 0;
+    this.contactAO = null; this.fsr = null; this.reactiveTexture = null; this.scenePass = null; this.successfulFrames = 0;
     this.post.dispose(); this.post = new RenderPipeline(this.renderer);
   }
   dispose(): void { this.release(); this.post.dispose(); }

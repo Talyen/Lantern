@@ -5,21 +5,23 @@ import { finishSubmittedFrame } from './renderer';
 import * as THREE from 'three';
 import { PMREMGenerator, type WebGPURenderer, type RenderTarget } from 'three/webgpu';
 import { LightProbeGrid } from 'three/addons/lighting/LightProbeGrid.js';
-import { LightProbeGridNode } from 'three/addons/tsl/lighting/LightProbeGridNode.js';
+import { EnclosureProbeNode } from './indirect-lighting';
+import { worldFirelightGain } from '../levels/local-lighting';
 import type { ResolvedAreaDefinition, AreaLighting, ProbeLighting } from '../levels/types';
 import { LightingCache } from './lighting-cache';
-import { decodeProbeBake, exportProbeBake, lightingBakeSignature, type PreparedProbeBake } from './lighting-bake';
+import { decodeProbeBake, exportProbeComponent, staticFlameEmitters, combinedProbeTexture, mixProbeCoefficients, lightingBakeSignature, lightingBakeVersion, type PreparedProbeBake, type ProbeCoefficients } from './lighting-bake';
 import bakeIndex from '../../assets/lighting-bakes.json';
-import { disposeSceneInstances } from '../assets/resource-ownership';
+import { disposeSceneInstances, isMesh } from '../assets/resource-ownership';
 
-type LightingPool = { environments: LightingCache<RenderTarget>; probes: LightingCache<ProbeResource>; pmrem: PMREMGenerator; pending: Promise<unknown> };
+type SkyResource = { target: RenderTarget; source: THREE.DataTexture };
+type LightingPool = { environments: LightingCache<SkyResource>; probes: LightingCache<ProbeResource>; pmrem: PMREMGenerator; pending: Promise<unknown> };
 const poolKey = Symbol.for('lantern.lightingPool');
 function lightingPool(renderer: WebGPURenderer): LightingPool {
   const existing = Reflect.get(renderer, poolKey) as LightingPool | undefined;
   if (existing) return existing;
   const pool: LightingPool = {
-    environments: new LightingCache(lightingCacheBudgets.skies.entries, lightingCacheBudgets.skies.bytes, target => target.dispose()),
-    probes: new LightingCache(lightingCacheBudgets.probes.entries, lightingCacheBudgets.probes.bytes, item => { item.grid.dispose(); item.imported?.dispose(); }),
+    environments: new LightingCache(lightingCacheBudgets.skies.entries, lightingCacheBudgets.skies.bytes, sky => { sky.target.dispose(); sky.source.dispose(); }),
+    probes: new LightingCache(lightingCacheBudgets.probes.entries, lightingCacheBudgets.probes.bytes, () => {}),
     pmrem: new PMREMGenerator(renderer), pending: Promise.resolve(),
   };
   Reflect.set(renderer, poolKey, pool);
@@ -27,8 +29,8 @@ function lightingPool(renderer: WebGPURenderer): LightingPool {
   renderer.dispose = async () => { await pool.pending; pool.probes.dispose(); pool.environments.dispose(); pool.pmrem.dispose(); await dispose(); };
   return pool;
 }
-type ProbeResource = { grid: LightProbeGrid; imported?: THREE.Texture; prepared?: PreparedProbeBake; source: 'live' | 'prepared' };
-export type PreparedLighting = { environment: THREE.Texture | null; grid: LightProbeGrid | null; signature: string; probes?: ProbeLighting; release(): void; resource?: ProbeResource; preparation: { key: string; sources: string[] } };
+type ProbeResource = { coefficients: ProbeCoefficients; source: 'live' | 'prepared'; owners: number };
+export type PreparedLighting = { environment: THREE.Texture | null; grid: LightProbeGrid | null; signature: string; probes?: ProbeLighting; release(): void; resource?: ProbeResource; preparation: { key: string; sources: string[] }; updateFlame(gain: number): void; mixMs: number };
 /** Renderer-wide budgets, independent of the number of areas in the game. */
 export const lightingCacheBudgets = { skies: { entries: 8, bytes: 32 * 1024 * 1024 }, probes: { entries: 8, bytes: 16 * 1024 * 1024 } };
 export class AreaLightingResources {
@@ -43,12 +45,12 @@ export class AreaLightingResources {
   private preparedFailure: string | null = null;
   constructor(private renderer: WebGPURenderer) {
     this.pool = lightingPool(renderer);
-    if (renderer.library.getLightNodeClass(LightProbeGrid) === null) renderer.library.addLight(LightProbeGridNode, LightProbeGrid);
+    if (renderer.library.getLightNodeClass(LightProbeGrid) === null) renderer.library.addLight(EnclosureProbeNode, LightProbeGrid);
   }
 
   environmentTexture(look: AreaLighting): THREE.Texture | null {
     const lease = this.environment(look); this.previewLease?.release(); this.previewLease = lease;
-    return lease?.value.texture ?? null;
+    return lease?.value.target.texture ?? null;
   }
   private environment(look: AreaLighting) {
     const spec = look.environment;
@@ -80,8 +82,8 @@ export class AreaLightingResources {
     const texture = new THREE.DataTexture(pixels, width, height, THREE.RGBAFormat, THREE.FloatType);
     texture.colorSpace = THREE.LinearSRGBColorSpace; texture.mapping = THREE.EquirectangularReflectionMapping; texture.needsUpdate = true;
     let target: RenderTarget;
-    try { target = this.pmrem.fromEquirectangular(texture); } finally { texture.dispose(); }
-    return this.environments.insert(key, target, target.width * target.height * 8);
+    try { target = this.pmrem.fromEquirectangular(texture); } catch (error) { texture.dispose(); throw error; }
+    return this.environments.insert(key, { target, source: texture }, target.width * target.height * 8 + pixels.byteLength * 2);
   }
 
   prepare(area: ResolvedAreaDefinition, root: THREE.Group): Promise<PreparedLighting> {
@@ -117,13 +119,32 @@ export class AreaLightingResources {
           this.stage = this.renderer.domElement.dataset.lightingStage = 'prepared-load';
           let resource = signature ? await this.loadPrepared(signature, spec) : null;
           if (!resource && !authoring) throw new Error(`Lighting for ${area.name} needs preparation. Prepare this area in the level authoring preview, then reload.`);
-          resource ??= await this.bake(area, root, sky?.value.texture ?? null);
-          const [nx, ny, nz] = spec.resolution;
-          probe = this.probes.insert(signature, resource, nx * ny * 7 * (nz + 2) * 8 * (resource.source === 'live' ? 2 : 1));
+          resource ??= await this.bake(area, root, signature, sky?.value ?? null);
+          probe = this.probes.insert(signature, resource, this.resourceBytes(resource));
         }
       }
-      return { environment: sky?.value.texture ?? null, grid: probe?.value.grid ?? null, signature, probes: spec,
-        resource: probe?.value, preparation: { key, sources }, release: () => { sky?.release(); probe?.release(); } };
+      if (this.disposed) throw new Error('Lighting resources are closed.');
+      const resource = probe?.value;
+      const texture = resource ? combinedProbeTexture(resource.coefficients, worldFirelightGain(.85)) : null;
+      const grid = texture && spec ? new LightProbeGrid(...spec.size, ...spec.resolution) : null;
+      if (grid && spec) { grid.position.fromArray(spec.position); grid.intensity = spec.intensity; grid.texture = texture; grid.updateBoundingBox(); }
+      if (resource) { resource.owners++; this.probes.setBytes(signature, this.resourceBytes(resource)); }
+      let released = false, lastGain = worldFirelightGain(.85);
+      const prepared: PreparedLighting = { environment: sky?.value.target.texture ?? null, grid, signature, probes: spec,
+        resource, preparation: { key, sources }, mixMs: 0,
+        updateFlame: gain => {
+          if (!texture || !resource?.coefficients.flame || gain === lastGain || released) return;
+          const start = performance.now();
+          mixProbeCoefficients(resource.coefficients, gain, texture.image.data as Uint16Array);
+          texture.needsUpdate = true; lastGain = gain; prepared.mixMs = performance.now() - start;
+        },
+        release: () => {
+          if (released) return; released = true;
+          grid?.removeFromParent(); grid?.dispose(); texture?.dispose();
+          if (resource) { resource.owners--; this.probes.setBytes(signature, this.resourceBytes(resource)); }
+          sky?.release(); probe?.release();
+        } };
+      return prepared;
     } catch (error) { sky?.release(); probe?.release(); throw error; }
     finally { this.stage = this.renderer.domElement.dataset.lightingStage = 'idle'; }
   }
@@ -133,45 +154,77 @@ export class AreaLightingResources {
     try {
       const response = await fetch(entry.url); if (!response.ok) throw new Error(`Prepared bake unavailable (${response.status}).`);
       const prepared = await response.json() as PreparedProbeBake;
-      const imported = decodeProbeBake(prepared, signature, probes);
-      const grid = new LightProbeGrid(...probes.size, ...probes.resolution);
-      grid.position.fromArray(probes.position); grid.intensity = probes.intensity; grid.texture = imported; grid.updateBoundingBox();
-      this.preparedFailure = null; return { grid, imported, prepared, source: 'prepared' };
+      const coefficients = decodeProbeBake(prepared, signature, probes);
+      this.preparedFailure = null; return { coefficients, source: 'prepared', owners: 0 };
     } catch (error) { this.preparedFailure = String(error); return null; }
   }
-  private async bake(area: ResolvedAreaDefinition, root: THREE.Group, environment: THREE.Texture | null): Promise<ProbeResource> {
+  private resourceBytes(resource: ProbeResource): number {
+    const { daylight, flame } = resource.coefficients;
+    return daylight.byteLength + (flame?.byteLength ?? 0) + resource.owners * daylight.byteLength * 2;
+  }
+  private async bake(area: ResolvedAreaDefinition, root: THREE.Group, signature: string, sky: SkyResource | null): Promise<ProbeResource> {
     const spec = area.lighting.probes!;
-    const bake = new THREE.Scene(); bake.environment = environment; bake.environmentIntensity = area.lighting.environment?.intensity ?? 1;
-    bake.environmentRotation.y = area.lighting.environment?.rotation ?? 0;
-    const scenery = root.clone(true); restoreBakeVisibility(scenery);
-    scenery.traverse(object => { if (object instanceof THREE.Light || object.userData.transient) object.visible = false; }); bake.add(scenery);
+    const bake = new THREE.Scene(), scenery = root.clone(true), captureMaterials = new Set<THREE.Material>();
+    restoreBakeVisibility(scenery);
+    const materialClones = new Map<THREE.Material, THREE.Material>();
+    const withoutEmission = (source: THREE.Material) => {
+      const emissive = Reflect.get(source, 'emissive') as THREE.Color | undefined;
+      if ((!emissive || emissive.r === 0 && emissive.g === 0 && emissive.b === 0) && !Reflect.get(source, 'emissiveNode') && !Reflect.get(source, 'emissiveMap')) return source;
+      const existing = materialClones.get(source); if (existing) return existing;
+      const material = source.clone(); captureMaterials.add(material); materialClones.set(source, material);
+      (Reflect.get(material, 'emissive') as THREE.Color | undefined)?.set(0);
+      if (Reflect.has(material, 'emissiveNode')) Reflect.set(material, 'emissiveNode', null);
+      if (Reflect.has(material, 'emissiveMap')) Reflect.set(material, 'emissiveMap', null);
+      return material;
+    };
+    scenery.traverse(object => { if (object instanceof THREE.Light || object instanceof THREE.SkinnedMesh || object.userData.transient) object.visible = false; });
+    scenery.traverseVisible(object => {
+      if (!isMesh(object)) return;
+      object.material = Array.isArray(object.material) ? object.material.map(withoutEmission) : withoutEmission(object.material);
+    });
+    bake.add(scenery);
     const sun = new THREE.DirectionalLight(area.lighting.sun.color, area.lighting.sun.intensity);
     sun.target.position.set(spec.position[0], 0, spec.position[2]); sun.position.copy(sun.target.position).addScaledVector(new THREE.Vector3(...area.lighting.sun.position).normalize(), 70); sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048); sun.shadow.radius = 4; sun.shadow.normalBias = .025; sun.shadow.bias = -.00015;
     const extent = Math.max(area.lighting.sun.shadowExtent, Math.max(spec.size[0], spec.size[2]) / 2 + 7);
     Object.assign(sun.shadow.camera, { left: -extent, right: extent, top: extent, bottom: -extent, near: .1, far: 150 });
-    includeCutawayShadows(sun);
-    sun.shadow.camera.updateProjectionMatrix(); bake.add(sun, sun.target);
-    const grid = new LightProbeGrid(...spec.size, ...spec.resolution);
-    grid.position.fromArray(spec.position); grid.intensity = spec.intensity; grid.updateBoundingBox();
-    const count = spec.resolution.reduce((a,b) => a*b, 1);
+    includeCutawayShadows(sun); sun.shadow.camera.updateProjectionMatrix();
+    const emitters = staticFlameEmitters(root);
+    const flames = emitters.map(spec => {
+      const light = new THREE.PointLight(spec.color, spec.intensity, spec.distance, spec.decay); light.position.fromArray(spec.position);
+      light.castShadow = true; light.shadow.mapSize.set(1024, 1024); light.shadow.camera.near = .12; light.shadow.radius = spec.shadowRadius;
+      light.shadow.normalBias = .012; light.shadow.bias = -.0001; return light;
+    });
+    const capture = async (kind: 'daylight' | 'flame') => {
+      const daylight = kind === 'daylight';
+      bake.environment = daylight ? sky?.target.texture ?? null : null;
+      bake.background = daylight ? sky?.source ?? null : new THREE.Color(0);
+      bake.environmentIntensity = bake.backgroundIntensity = area.lighting.environment?.intensity ?? 1;
+      bake.environmentRotation.y = bake.backgroundRotation.y = area.lighting.environment?.rotation ?? 0;
+      if (daylight) bake.add(sun, sun.target); else bake.add(...flames);
+      const grid = new LightProbeGrid(...spec.size, ...spec.resolution);
+      grid.position.fromArray(spec.position); grid.intensity = spec.intensity; grid.updateBoundingBox();
+      const count = spec.resolution.reduce((a,b) => a*b, 1);
+      try {
+        this.stage = this.renderer.domElement.dataset.lightingStage = `compile:${kind}`;
+        await this.renderer.compileAsync(bake, new THREE.PerspectiveCamera());
+        for (let pass = 0; pass <= spec.bounces; pass++) for (let start = 0; start < count; start += 8) {
+          if (this.disposed) throw new Error('Lighting resources are closed.');
+          this.stage = this.renderer.domElement.dataset.lightingStage = `capture:${kind}:${pass}:${start}/${count}`;
+          grid.bake(this.renderer, bake, { cubemapSize: 16, sampleCount: 128, near: .08, far: 100, pass, start, count: Math.min(8, count - start) });
+          await finishSubmittedFrame(this.renderer);
+          await new Promise<void>(resolve => setTimeout(resolve, 0));
+        }
+        return await exportProbeComponent(this.renderer, grid, spec);
+      } finally { grid.removeFromParent(); grid.dispose(); sun.removeFromParent(); sun.target.removeFromParent(); flames.forEach(light => light.removeFromParent()); }
+    };
     try {
-      this.stage = this.renderer.domElement.dataset.lightingStage = 'compile';
-      await this.renderer.compileAsync(bake, new THREE.PerspectiveCamera());
-      for (let pass = 0; pass <= spec.bounces; pass++) for (let start = 0; start < count; start += 8) {
-        if (this.disposed) throw new Error('Lighting resources are closed.');
-        this.stage = this.renderer.domElement.dataset.lightingStage = `capture:${pass}:${start}/${count}`;
-        grid.bake(this.renderer, bake, { cubemapSize: 16, sampleCount: 128, near: .08, far: 100, pass, start, count: Math.min(8, count - start) });
-        // Yielding JavaScript alone can enqueue the entire multi-bounce bake
-        // before Safari finishes its first captures. Bound in-flight GPU work
-        // to this batch without changing probe order or capture settings.
-        await finishSubmittedFrame(this.renderer);
-        await new Promise<void>(resolve => setTimeout(resolve, 0));
-      }
-      grid.removeFromParent(); return { grid, source: 'live' };
-    } catch (error) { grid.dispose(); throw error; }
-    finally { sun.dispose(); disposeSceneInstances(scenery); scenery.traverse(object => { if (object instanceof THREE.Light) object.dispose(); }); }
+      const daylight = await capture('daylight'), flame = emitters.length ? await capture('flame') : undefined;
+      const prepared: PreparedProbeBake = { version: lightingBakeVersion, three: THREE.REVISION, signature, probes: spec, flameEmitterCount: emitters.length, daylight, flame };
+      return { coefficients: decodeProbeBake(prepared, signature, spec), source: 'live', owners: 0 };
+    } finally { sun.dispose(); flames.forEach(light => light.dispose()); disposeSceneInstances(scenery); captureMaterials.forEach(material => material.dispose()); }
   }
+  updateFlame(warmth: number): void { this.active?.updateFlame(worldFirelightGain(warmth)); }
   commit(scene: THREE.Scene, prepared: PreparedLighting): void {
     this.active?.grid?.removeFromParent(); this.active?.release(); this.active = prepared;
     scene.environment = prepared.environment; if (prepared.grid) scene.add(prepared.grid);
@@ -179,10 +232,13 @@ export class AreaLightingResources {
   async exportCurrent(): Promise<PreparedProbeBake> {
     const active = this.active;
     if (!active?.grid || !active.probes) throw new Error('This scene has no irradiance probes.');
-    const value = active.resource?.prepared ?? await exportProbeBake(this.renderer, active.grid, active.probes, active.signature);
+    const source = active.resource!.coefficients;
+    const component = (data: Uint16Array) => ({ dimensions: source.dimensions, data: Array.from(data) });
+    const value: PreparedProbeBake = { version: lightingBakeVersion, three: THREE.REVISION, signature: active.signature, probes: active.probes, flameEmitterCount: source.flameEmitterCount,
+      daylight: component(source.daylight), flame: source.flame ? component(source.flame) : undefined };
     return { ...value, preparation: { key: active.preparation.key, sources: active.preparation.sources.map(url => ({ url, hash: '' })) } };
   }
-  diagnostics() { return { stage: this.stage, skies: this.environments.stats(), probes: this.probes.stats(), signature: this.active?.signature, source: this.active?.resource?.source ?? 'none', preparedFailure: this.preparedFailure }; }
+  diagnostics() { return { stage: this.stage, skies: this.environments.stats(), probes: this.probes.stats(), signature: this.active?.signature, source: this.active?.resource?.source ?? 'none', preparedFailure: this.preparedFailure, components: this.active?.resource?.coefficients.flame ? 2 : 1, mixMs: this.active?.mixMs ?? 0 }; }
   dispose(): void {
     this.disposed = true; this.active?.grid?.removeFromParent(); this.active?.release(); this.previewLease?.release();
     this.active = null; this.previewLease = undefined;

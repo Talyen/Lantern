@@ -39,7 +39,9 @@ The shared resolver derives the initial probe volume from the playable boundary,
 }
 ```
 
-Explicit `position`, `size` and `resolution` overrides are available for deliberate volume placement. The resolver fills unspecified grid fields from the preset's automatic coverage. Static scenery is baked under the resolved sun/environment. Characters, portals, particles, animated local lights and hemisphere readability fill are excluded.
+Explicit `position`, `size` and `resolution` overrides are available for deliberate volume placement. The resolver fills unspecified grid fields from the preset's automatic coverage. Static scenery has separate daylight and fixed-flame captures. Daylight includes the resolved sun/environment and the generated sky background, so unobstructed capture rays see the sky rather than black. Flame captures use a black background, no sun/environment, and occluded fixed world emitters at recipe strength. Visible emissive flame surfaces, characters, portals, particles, the moving personal lantern and hemisphere readability fill are excluded.
+
+Within probe coverage, captured irradiance owns diffuse ambient light. A one-metre exterior collar blends complementarily back to global hemisphere/environment diffuse. Environment specular, metallic multiscattering and clearcoat reflections remain native and independent of that diffuse weight. Probe coordinates use geometric normals with a 0.15 m offset cap (also bounded by half the smallest cell spacing); shading normals still evaluate SH. The shared gain is 1.0. The regular grid still interpolates across neighbouring samples: this is not visibility-aware wall interpolation. Inspect remaining leakage near thin walls instead of hiding it with AO.
 
 ## Prepared bakes and resource ownership
 
@@ -53,13 +55,15 @@ npm run lighting:bake -- --area=homestead --surfaces=projected
 npm run levels:stop
 ```
 
-The command uses the existing owned native WebGPU preview, exports half-float irradiance atlases under ignored `public/vendor/lighting/`, and updates `assets/lighting-bakes.json` with metadata references. `--area=all` prepares every registered area with probes under the one Golden preset. There are no lighting/profile selection flags. Surface comparison uses `--surfaces=authored`. Never run preparation concurrently with another preview owner or final build gate.
+The command uses the existing owned native WebGPU preview, exports paired half-float irradiance components under ignored `public/vendor/lighting/`, and updates `assets/lighting-bakes.json` with metadata references. `--area=all` visits registered areas; use explicit playable-area commands while Blockout retains its ground-receiver preparation issue. There are no lighting/profile selection flags. Surface comparison uses `--surfaces=authored`. Never run preparation concurrently with another preview owner or final build gate.
 
 Normal gameplay requires a matching prepared atlas. Missing, stale or invalid prepared data produces an actionable preparation error and never replaces the preceding scene with broken lighting. Live preparation remains available only in level authoring, and diagnostics report prepared-data failures. Live preparation waits for each eight-probe GPU batch to complete before submitting the next; a JavaScript yield alone does not bound native graphics work. Startup and travel also wait for completed destination submissions before revealing the world. Original assets and derived bakes remain private. Build staging copies only indexed private lighting outputs; superseded local bakes remain private and are not staged; source-only builds can omit it. Inspect inventory and applicable licensing before any distribution.
 
-The r186 atlas readback/restore adapter is in `src/rendering/lighting-bake.ts`. Revalidate it on three.js upgrades and increment `lightingBakeVersion` when static shading or bake behavior changes. This invalidates incompatible outputs rather than trusting old bytes.
+Bake version 9 requires named daylight and optional flame components, a fixed-emitter count, matching dimensions and finite signed SH coefficients. Legacy single-component data is incompatible. The r186 atlas readback/restore adapter is in `src/rendering/lighting-bake.ts`. Revalidate it on three.js upgrades and increment `lightingBakeVersion` when static shading or bake behavior changes. This invalidates incompatible outputs rather than trusting old bytes.
 
-Each renderer has a global least-recently-used budget: **8 sky environments / 32 MiB**, **8 probe appearances / 16 MiB**. These limits do not grow with the number of areas. Leases protect committed lighting and in-flight candidates; inactive resources are disposed as budgets are exceeded. Active/in-flight resources can temporarily exceed a budget and are trimmed when released. These budgets cover cached lighting textures, not every render target, material or GPU binding in the application. Cancelled loads release their leases; failed preparation retains the current lighting.
+Each renderer has a global least-recently-used budget: **8 sky environments / 32 MiB**, **8 probe appearances / 16 MiB**. These limits do not grow with the number of areas. Leases protect committed lighting and in-flight candidates; inactive resources are disposed as budgets are exceeded. Active/in-flight resources can temporarily exceed a budget and are trimmed when released. Sky accounting includes the retained original sky and PMREM; probe accounting includes both immutable CPU components and each leased owner’s combined CPU/GPU texture. These budgets cover cached lighting resources, not every render target, material or GPU binding in the application. Cancelled loads release their leases; failed preparation retains the current lighting.
+
+Each committed lighting owner has one stable combined atlas: `daylight SH + worldFirelightGain × flame SH`. The shared gain is `0.65 + 0.5 × Firelight`, matching average direct world-fire strength. Signed coefficients mix before irradiance evaluation/clamping. Coalesced Firelight edits update the atlas; ordinary frames do not mix or upload coefficients. Direct flames retain flicker, and daylight/personal emitters remain independent. Prepared components are immutable and owners never mutate another scene’s atlas. Diagnostics expose component count and CPU mixing time; that time is not an isolated GPU-upload measurement.
 
 ## Visual reference and handoff
 
@@ -89,6 +93,10 @@ Fresh/reset settings use FSR Temporal Quality, sharpening 0.50, native physical 
 
 DOF runs after FSR reconstruction with aligned depth: far-only Soft uses focus range 10 and bokeh 0.65; Cinematic uses 6 and 1.15. Both track the camera target. Review thin foliage while moving and at both zoom extremes; shader readiness alone does not establish visual quality.
 
+
+## Ambient occlusion
+
+Screen AO uses the existing beauty depth, half scene resolution, eight samples and depth-derived normals. Beauty writes one optional indirect-diffuse attachment; AO subtracts only its occluded portion before outlines and FSR. Direct sun/flames, emission and specular highlights remain intact, and authored material cavity/AO is applied once. Transparent water and particles contribute no receiver term; their beauty coverage still attenuates the underlying diffuse contribution. AO Off allocates no AO attachment or processing, and enabling AO adds no world geometry pass. The shared contact radius is 0.35 m with thickness 0.3 m. Positive strength values have the same sampling cost; select strength visually rather than as a performance tier.
 
 ## Agent lighting workflow
 

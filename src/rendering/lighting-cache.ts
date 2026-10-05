@@ -19,6 +19,10 @@ export class LightingCache<T> {
     this.entries.set(key, { value, bytes, references: 0 });
     const lease = this.acquire(key)!; this.trim(); return lease;
   }
+  setBytes(key: string, bytes: number): void {
+    const entry = this.entries.get(key); if (!entry) throw new Error('Lighting cache entry is unavailable.');
+    entry.bytes = bytes; this.trim();
+  }
   private trim(): void {
     let { entries, bytes } = this.stats();
     for (const [key, entry] of this.entries) {

@@ -1,3 +1,4 @@
+import type { resolveWorldFlame } from '../levels/local-lighting';
 import { lightingBakeVersion, type LightingPreparation } from '../levels/lighting-preparation';
 import { materialRecipes } from './material-recipes';
 import { isMesh, isTexture } from '../assets/resource-ownership';
@@ -8,7 +9,10 @@ import type { RenderTarget, WebGPURenderer } from 'three/webgpu';
 
 /** Increment when static shading or the pinned probe adapter changes. */
 export { lightingBakeVersion } from '../levels/lighting-preparation';
-export type PreparedProbeBake = { version: number; three: string; signature: string; probes: ProbeLighting; dimensions: [number, number, number]; data: number[]; preparation?: LightingPreparation };
+export type ProbeComponent = { dimensions: [number, number, number]; data: number[] };
+export type PreparedProbeBake = { version: number; three: string; signature: string; probes: ProbeLighting; flameEmitterCount: number; daylight: ProbeComponent; flame?: ProbeComponent; preparation?: LightingPreparation };
+export type ProbeCoefficients = { dimensions: [number, number, number]; flameEmitterCount: number; daylight: Uint16Array; flame?: Uint16Array };
+
 
 /** Render inputs only: gameplay names, arrivals, enemies and rewards do not invalidate GI. */
 export async function lightingBakeSignature(area: ResolvedAreaDefinition, root: THREE.Group): Promise<string> {
@@ -91,12 +95,12 @@ export async function lightingBakeSignature(area: ResolvedAreaDefinition, root: 
   }
   const look = area.lighting;
   const payload = { version: lightingBakeVersion, three: THREE.REVISION, materialRecipes,
-    sun: look.sun, environment: look.environment, probes: look.probes, meshes: meshes.sort(), sources: sources.sort(),
+    sun: look.sun, environment: look.environment, probes: look.probes, emitters: staticFlameEmitters(root), meshes: meshes.sort(), sources: sources.sort(),
     procedural: ((root.userData.lightingProcedural as unknown[] | undefined) ?? []).map((value: unknown) => JSON.stringify(value)).sort(), surfaces: (root.userData.surfaceMode as string | undefined) ?? 'authored' };
   return digest(new TextEncoder().encode(JSON.stringify(payload)));
 }
 
-export async function exportProbeBake(renderer: WebGPURenderer, grid: LightProbeGrid, probes: ProbeLighting, signature: string): Promise<PreparedProbeBake> {
+export async function exportProbeComponent(renderer: WebGPURenderer, grid: LightProbeGrid, probes: ProbeLighting): Promise<ProbeComponent> {
   // r186 exposes the texture but not its render target. Keep this pinned adapter
   // here, and fail clearly if a dependency update changes the native atlas layout.
   const target = Reflect.get(grid, '_renderTarget') as RenderTarget | null;
@@ -109,14 +113,44 @@ export async function exportProbeBake(renderer: WebGPURenderer, grid: LightProbe
     if (!(slice instanceof Uint16Array)) throw new Error('Expected a half-float irradiance atlas.');
     for (let y = 0; y < height; y++) data.push(...slice.subarray(y * rowStride, y * rowStride + width * 4));
   }
-  return { version: lightingBakeVersion, three: THREE.REVISION, signature, probes, dimensions: [width, height, depth], data };
+  return { dimensions: [width, height, depth], data };
 }
 
-export function decodeProbeBake(value: PreparedProbeBake, signature: string, probes: ProbeLighting): THREE.Data3DTexture {
-  const dimensions = [probes.resolution[0], probes.resolution[1], 7 * (probes.resolution[2] + 2)];
-  if (value.version !== lightingBakeVersion || value.three !== THREE.REVISION || value.signature !== signature || (['position', 'size', 'resolution'] as const).some(key => JSON.stringify(value.probes[key]) !== JSON.stringify(probes[key])) || value.probes.intensity !== probes.intensity || value.probes.bounces !== probes.bounces || JSON.stringify(value.dimensions) !== JSON.stringify(dimensions)
-    || value.data.length !== dimensions.reduce((a,b) => a*b, 4) || value.data.some(n => !Number.isInteger(n) || n < 0 || n > 65535)) throw new Error('Prepared irradiance bake is stale or invalid.');
-  const texture = new THREE.Data3DTexture(new Uint16Array(value.data), ...value.dimensions);
+/** Actual built emitters, never transient personal lights. */
+export function staticFlameEmitters(root: THREE.Object3D) {
+  const emitters: ReturnType<typeof resolveWorldFlame>[] = [];
+  root.traverse(object => {
+    if (!(object instanceof THREE.PointLight) || !object.userData.staticFlame) return;
+    const spec = object.userData.staticFlame as ReturnType<typeof resolveWorldFlame>;
+    const position = object.getWorldPosition(new THREE.Vector3()).toArray();
+    emitters.push({ ...spec, position });
+  });
+  return emitters.sort((a, b) => a.id.localeCompare(b.id));
+}
+export function decodeProbeBake(value: PreparedProbeBake, signature: string, probes: ProbeLighting): ProbeCoefficients {
+  const dimensions: [number, number, number] = [probes.resolution[0], probes.resolution[1], 7 * (probes.resolution[2] + 2)];
+  if (!Number.isInteger(value.flameEmitterCount) || value.flameEmitterCount < 0 || Boolean(value.flame) !== (value.flameEmitterCount > 0) || value.version !== lightingBakeVersion || value.three !== THREE.REVISION || value.signature !== signature || (['position', 'size', 'resolution'] as const).some(key => JSON.stringify(value.probes?.[key]) !== JSON.stringify(probes[key])) || value.probes?.intensity !== probes.intensity || value.probes?.bounces !== probes.bounces) throw new Error('Prepared irradiance bake is stale or invalid.');
+  const decode = (component: ProbeComponent | undefined) => {
+    if (!component || JSON.stringify(component.dimensions) !== JSON.stringify(dimensions)
+      || !Array.isArray(component.data) || component.data.length !== dimensions.reduce((a,b) => a*b, 4)
+      || component.data.some(n => !Number.isInteger(n) || n < 0 || n > 65535 || !Number.isFinite(THREE.DataUtils.fromHalfFloat(n)))) throw new Error('Prepared irradiance component is invalid.');
+    return new Uint16Array(component.data);
+  };
+  return { dimensions, flameEmitterCount: value.flameEmitterCount, daylight: decode(value.daylight), flame: value.flame ? decode(value.flame) : undefined };
+}
+/** Mix signed coefficients, never evaluated/clamped radiance. Inputs stay immutable. */
+export function mixProbeCoefficients(source: ProbeCoefficients, gain: number, output: Uint16Array): void {
+  if (!Number.isFinite(gain) || gain < 0 || output.length !== source.daylight.length || (source.flame && source.flame.length !== output.length)) throw new Error('Invalid irradiance mix.');
+  if (!source.flame) { output.set(source.daylight); return; }
+  for (let i = 0; i < output.length; i++) {
+    const value = THREE.DataUtils.fromHalfFloat(source.daylight[i]) + gain * THREE.DataUtils.fromHalfFloat(source.flame[i]);
+    if (!Number.isFinite(value) || Math.abs(value) > 65504) throw new Error('Irradiance mix exceeds half-float range.');
+    output[i] = THREE.DataUtils.toHalfFloat(value);
+  }
+}
+export function combinedProbeTexture(source: ProbeCoefficients, gain: number): THREE.Data3DTexture {
+  const pixels = new Uint16Array(source.daylight.length); mixProbeCoefficients(source, gain, pixels);
+  const texture = new THREE.Data3DTexture(pixels, ...source.dimensions);
   texture.type = THREE.HalfFloatType; texture.format = THREE.RGBAFormat; texture.minFilter = texture.magFilter = THREE.LinearFilter; texture.generateMipmaps = false; texture.needsUpdate = true;
   return texture;
 }

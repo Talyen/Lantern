@@ -1,3 +1,4 @@
+import { worldFirelightGain } from '../levels/local-lighting';
 import { resizeDisplay } from './display-resolution';
 import { isMesh } from '../assets/resource-ownership';
 import { applyShadowQuality } from './quality-presets';
@@ -52,6 +53,9 @@ export class Graphics {
   private intervals: number[] = [];
   private lastFrame = 0;
   private statsAt = 0;
+  private shadowTrackingMs = 0;
+  private cpuSubmissionTimes: number[] = [];
+  private shadowTrackingTimes: number[] = [];
 
   constructor(private ctx: GraphicsContext, private settings: GraphicsSettings, readonly effects: CoreEffects) {
     this.areaLighting = new AreaLightingResources(ctx.renderer);
@@ -61,12 +65,16 @@ export class Graphics {
   async ready() { await this.gpuPipeline?.ready(); }
   pipelineDiagnostics() { return this.gpuPipeline?.diagnostics(); }
   get preparingSettings(): boolean { return this.gpuPipeline?.preparing ?? false; }
-  resetMeasurements(): void { this.intervals = []; this.lastFrame = 0; }
+  resetMeasurements(): void { this.intervals = []; this.cpuSubmissionTimes = []; this.shadowTrackingTimes = []; this.lastFrame = 0; }
   measurements() {
     const sorted = [...this.intervals].sort((a, b) => a - b);
-    return { settings: this.settings, samples: [...this.intervals], pipeline: this.gpuPipeline?.diagnostics() ?? { method: 'fsr-temporal', sceneWidth: this.ctx.renderer.domElement.width, sceneHeight: this.ctx.renderer.domElement.height, outputWidth: this.ctx.renderer.domElement.width, outputHeight: this.ctx.renderer.domElement.height }, renderer: 'webgpu', median: sorted.length ? sorted[Math.floor(sorted.length / 2)] : null, p95: sorted.length ? sorted[Math.floor(sorted.length * 0.95)] : null,
+    const costs = (values: number[]) => {
+      const sorted = [...values].sort((a,b) => a-b);
+      return { median: sorted.length ? sorted[Math.floor(sorted.length / 2)] : null, p95: sorted.length ? sorted[Math.floor(sorted.length * .95)] : null, samples: [...values] };
+    };
+    return { cpuSubmission: costs(this.cpuSubmissionTimes), shadowTracking: costs(this.shadowTrackingTimes), settings: this.settings, samples: [...this.intervals], pipeline: this.gpuPipeline?.diagnostics() ?? { method: 'fsr-temporal', sceneWidth: this.ctx.renderer.domElement.width, sceneHeight: this.ctx.renderer.domElement.height, outputWidth: this.ctx.renderer.domElement.width, outputHeight: this.ctx.renderer.domElement.height }, renderer: 'webgpu', median: sorted.length ? sorted[Math.floor(sorted.length / 2)] : null, p95: sorted.length ? sorted[Math.floor(sorted.length * 0.95)] : null,
         width: this.ctx.renderer.domElement.width, height: this.ctx.renderer.domElement.height, cameraOffset: this.ctx.camera.position.clone().sub(this.ctx.controls.target).toArray(), camera: this.ctx.camera.position.toArray(), zoom: this.ctx.camera.zoom,
-        fireShadow: { enabled: this.ctx.lighting.shadow?.castShadow, map: !!this.ctx.lighting.shadow?.shadow.map, intensity: this.ctx.lighting.shadow?.intensity }, localShadows: this.localShadows.diagnostics(), environment: this.ctx.scene.environmentIntensity, lighting: this.areaLighting.diagnostics() };
+        fireShadow: { enabled: this.ctx.lighting.shadow?.castShadow, map: !!this.ctx.lighting.shadow?.shadow.map, intensity: this.ctx.lighting.shadow?.intensity }, localShadows: this.localShadows.diagnostics(), shadowTrackingMs: this.shadowTrackingMs, environment: this.ctx.scene.environmentIntensity, lighting: this.areaLighting.diagnostics() };
   }
   async initialize(): Promise<void> {
     this.gpuPipeline = new WebGPUPipeline(this.ctx.renderer, this.ctx.scene, this.ctx.camera, this.ctx.controls.target);
@@ -81,7 +89,7 @@ export class Graphics {
   }
   exportLighting() { return this.areaLighting.exportCurrent(); }
   lightingDiagnostics() { return this.areaLighting.diagnostics(); }
-  commitLighting(prepared: PreparedLighting): void { this.areaLighting.commit(this.ctx.scene, prepared); }
+  commitLighting(prepared: PreparedLighting): void { prepared.updateFlame(worldFirelightGain(this.settings.warmth)); this.areaLighting.commit(this.ctx.scene, prepared); }
   dispose(): void { this.disposed = true; cancelAnimationFrame(this.applyFrame); this.localShadows.dispose(); this.areaLighting.dispose(); this.ctx.scene.environment = null; this.effects.dispose(); this.gpuPipeline?.dispose(); }
   apply(settings: GraphicsSettings): void {
     this.pendingSettings = { ...settings };
@@ -135,6 +143,7 @@ export class Graphics {
       renderer.toneMapping = THREE.NoToneMapping; renderer.toneMappingExposure = 1;
       this.effects.setWeather(null); this.resize();
     }
+    this.areaLighting.updateFlame(s.warmth);
     this.gpuPipeline?.update(s, look.saturation ?? .84, look);
     this.gpuPipeline?.configure(s, look.saturation ?? .84, look, delay);
     this.appliedSettings = { ...s }; this.appliedLook = look; this.ctx.invalidate();
@@ -204,11 +213,18 @@ export class Graphics {
     if (this.preparingLighting || this.gpuPipeline?.preparing) return false;
     const now = performance.now();
     if (!paused) this.time += dt;
-    this.ctx.lighting.fires.forEach((light, i) => { light.intensity = Number(light.userData.baseIntensity ?? 9) * (.65 + this.settings.warmth * .5) * (1 + Math.sin(this.time * 3.3 + i * 1.7) * Number(light.userData.flicker ?? .025) + Math.sin(this.time * 7.1 + i) * Number(light.userData.flicker ?? .025) * .6); });
+    this.ctx.lighting.fires.forEach((light, i) => { light.intensity = Number(light.userData.baseIntensity ?? 9) * worldFirelightGain(this.settings.warmth) * (1 + Math.sin(this.time * 3.3 + i * 1.7) * Number(light.userData.flicker ?? .025) + Math.sin(this.time * 7.1 + i) * Number(light.userData.flicker ?? .025) * .6); });
     this.effects.paused = paused; this.effects.update(dt);
+    const shadowStart = performance.now();
     this.localShadows.update(this.ctx.scene, this.ctx.lighting.fires, paused);
+    this.shadowTrackingMs = performance.now() - shadowStart;
     this.fitLights();
+    const submissionStart = performance.now();
     const rendered = this.gpuPipeline?.render() ?? false;
+    if (rendered) {
+      this.cpuSubmissionTimes.push(performance.now() - submissionStart); this.shadowTrackingTimes.push(this.shadowTrackingMs);
+      if (this.cpuSubmissionTimes.length > 180) { this.cpuSubmissionTimes.shift(); this.shadowTrackingTimes.shift(); }
+    }
     if (rendered) { if (this.lastFrame) this.intervals.push(now - this.lastFrame); this.lastFrame = now; if (this.intervals.length > 180) this.intervals.shift(); }
     if (now - this.statsAt > 500 && this.intervals.length >= 30 && (!this.gpuPipeline || this.gpuPipeline.diagnostics().ready)) {
       this.ctx.renderer.domElement.dataset.graphics = JSON.stringify(this.measurements()); this.statsAt = now;

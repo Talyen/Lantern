@@ -14,7 +14,7 @@ await cli(async () => {
       console.log(JSON.stringify({ blockers: issues, deletionRequests: deletionRequests(index), exclusions: index.reviews.deleted }, null, 2)); return;
     }
     const fresh = args['--shipping'] ? issues : (await changedUses(root, args['--base'] ?? 'HEAD')).issues;
-    if (fresh.length) throw new Error(`Asset approval required:\n${fresh.map(issue => `${issue.name}: ${issue.state}${issue.changed ? ' (changed artwork)' : ''}\n  ${issue.id}\n  ${issue.uses.map(use => `${use.sceneName}/${use.owner} (${use.role})`).slice(0, 5).join(', ')}${issue.selected ? '\n  Build selection: remove if obsolete, or approve before shipping.' : ''}`).join('\n')}`);
+    if (fresh.length) throw new Error(`Blocked asset references:\n${fresh.map(issue => `${issue.name}: ${issue.state}${issue.changed ? ' (changed artwork)' : ''}\n  ${issue.id}\n  ${issue.uses.map(use => `${use.sceneName}/${use.owner} (${use.role})`).slice(0, 5).join(', ')}${issue.selected ? '\n  Build selection: remove if obsolete, or clear the deny/delete decision before shipping.' : ''}`).join('\n')}`);
     console.log('Asset review eligibility passed.'); return;
   }
   const ctx = await context(root), records = await tasks(ctx);

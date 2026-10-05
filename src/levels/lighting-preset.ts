@@ -16,5 +16,5 @@ export const lightingPreset: { lighting: AreaLighting; autoProbes: AutoProbes } 
     environment: { sky: '#82969a', horizon: '#c7b48e', ground: '#443b2e', sunColor: '#ffdaa0', sunIntensity: 1.6, intensity: .75, rotation: 0 },
     grade: { shadows: '#bdcbd0', highlights: '#ffe6bc', strength: .06 },
   },
-  autoProbes: { spacing: 6, bottom: .6, height: 3, padding: 1, intensity: .55, bounces: 1 },
+  autoProbes: { spacing: 6, bottom: .6, height: 3, padding: 1, intensity: 1, bounces: 1 },
 };

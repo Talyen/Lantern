@@ -28,6 +28,13 @@ export async function validatePreparedLighting(root, signature, fresh = false) {
       if (cached.hash !== source.hash) throw new Error(`Prepared lighting for ${entry.area} is stale (${source.url}). Re-prepare its lighting.`);
     }
     const atlas = JSON.parse(await readFile(resolve(root, 'public', entry.url.slice(1)), 'utf8'));
+    const probes = resolveAreaLighting(area).probes;
+    const dimensions = probes && [probes.resolution[0], probes.resolution[1], 7 * (probes.resolution[2] + 2)];
+    const valid = component => component && JSON.stringify(component.dimensions) === JSON.stringify(dimensions)
+      && Array.isArray(component.data) && component.data.length === dimensions.reduce((a, b) => a * b, 4)
+      && component.data.every(n => Number.isInteger(n) && n >= 0 && n <= 65535 && (n & 0x7c00) !== 0x7c00);
+    if (!dimensions || !valid(atlas.daylight) || !Number.isInteger(atlas.flameEmitterCount) || atlas.flameEmitterCount < 0
+      || Boolean(atlas.flame) !== (atlas.flameEmitterCount > 0) || (atlas.flame && !valid(atlas.flame))) throw new Error(`Prepared irradiance components do not match ${entry.area}.`);
     if (atlas.version !== lightingBakeVersion || atlas.signature !== key || atlas.preparation?.key !== entry.preparation.key || JSON.stringify(atlas.preparation?.sources) !== JSON.stringify(entry.preparation.sources)) throw new Error(`Prepared atlas metadata does not match ${entry.area}.`);
   }
   return true;

@@ -17,10 +17,9 @@ await cli(async()=>{
  let count=0;
  try{
   for(const definition of Object.values(areas).filter(a=>area==='all'||a.id===area)){
-   await evaluate(state,`window.lanternAuthoring.selectArea(${JSON.stringify(definition.id)})`);await ready(state,definition.id);
-   await evaluate(state,`window.lanternAuthoring.setShelterRestored(${!!saved.appearance.shelterRestored})`).catch(()=>{});
-   await evaluate(state,`window.lanternAuthoring.setSurfaces(${JSON.stringify(surfaces)})`);await ready(state,definition.id);
-   if (definition.shelter) { await evaluate(state,`window.lanternAuthoring.setShelterRestored(${!!args['--shelter-restored']})`); await ready(state,definition.id); }
+   if ((await evaluate(state,'window.lanternAuthoring.area().id')) !== definition.id) await evaluate(state,`window.lanternAuthoring.selectArea(${JSON.stringify(definition.id)})`);await ready(state,definition.id);
+   if ((await evaluate(state,'window.lanternAuthoring.appearance().surfaces')) !== surfaces) await evaluate(state,`window.lanternAuthoring.setSurfaces(${JSON.stringify(surfaces)})`);await ready(state,definition.id);
+   if (definition.shelter && (await evaluate(state,'window.lanternAuthoring.appearance().shelterRestored')) !== !!args['--shelter-restored']) { await evaluate(state,`window.lanternAuthoring.setShelterRestored(${!!args['--shelter-restored']})`); await ready(state,definition.id); }
    if(!(await evaluate(state,'window.lanternAuthoring.lighting().signature')))continue;
    const data=await evaluate(state,'window.lanternAuthoring.exportLighting()');
    if (!data.preparation) throw new Error('Prepared capture metadata is missing.');
@@ -33,9 +32,9 @@ await cli(async()=>{
    console.log(`Prepared ${definition.id} / Golden / ${surfaces}`);
   }
  }finally{
-  await evaluate(state,`window.lanternAuthoring.selectArea(${JSON.stringify(saved.area)})`).catch(()=>{});
-  await evaluate(state,`window.lanternAuthoring.setShelterRestored(${!!saved.appearance.shelterRestored})`).catch(()=>{});
-   await evaluate(state,`window.lanternAuthoring.setSurfaces(${JSON.stringify(saved.appearance.surfaces)})`).catch(()=>{});
+  if ((await evaluate(state,'window.lanternAuthoring.area().id')) !== saved.area) await evaluate(state,`window.lanternAuthoring.selectArea(${JSON.stringify(saved.area)})`).catch(()=>{});
+  if ((await evaluate(state,'window.lanternAuthoring.appearance().shelterRestored')) !== !!saved.appearance.shelterRestored) await evaluate(state,`window.lanternAuthoring.setShelterRestored(${!!saved.appearance.shelterRestored})`).catch(()=>{});
+   if ((await evaluate(state,'window.lanternAuthoring.appearance().surfaces')) !== saved.appearance.surfaces) await evaluate(state,`window.lanternAuthoring.setSurfaces(${JSON.stringify(saved.appearance.surfaces)})`).catch(()=>{});
  }
  await writeFile(indexPath,JSON.stringify(index,null,2)+'\n');console.log(`Prepared ${count} probe appearances. Source index: assets/lighting-bakes.json`);
 });

@@ -206,7 +206,8 @@ export async function reviewBlockers(index, assets = index.assets.filter(row => 
   for (const row of assets) {
     await inspectReview(index, row);
     const decision = effectiveReview(row, index.reviews);
-    if (decision.state !== 'approved') issues.push({ id: row.id, name: row.name, state: decision.state, changed: decision.changed, uses: row.uses, selected: row.selected });
+    if (['denied', 'delete-requested'].includes(decision.state)) issues.push({ id: row.id, name: row.name, state: decision.state, changed: decision.changed, uses: row.uses, selected: row.selected });
+    if (!row.available) issues.push({ id: row.id, name: row.name, state: 'unavailable', uses: row.uses, selected: row.selected });
     const seen = new Set();
     const visit = id => {
       if (seen.has(id)) return; seen.add(id);
@@ -252,7 +253,7 @@ export async function changedUses(cwd, base) {
   return { index: current, issues, added: added.size };
 }
 
-export async function requireShippingApprovals(cwd = root) {
+export async function requireShippingEligibility(cwd = root) {
   const index = await reviewIndex(cwd, { reviewed: false }), issues = await reviewBlockers(index);
-  if (issues.length) throw new Error(`Shipping requires approved visual assets (${issues.length} blockers).\n${issues.map(issue => `${issue.name}: ${issue.state} — ${issue.id}${issue.selected && !issue.uses.length ? ' (obsolete build selection: remove or review)' : ''}`).join('\n')}\nInspect with npm run assets:review:report.`);
+  if (issues.length) throw new Error(`Shipping contains blocked or unavailable visual assets (${issues.length} blockers).\n${issues.map(issue => `${issue.name}: ${issue.state} — ${issue.id}${issue.selected && !issue.uses.length ? ' (unused build selection: remove or clear its exclusion)' : ''}`).join('\n')}\nInspect with npm run assets:review:report.`);
 }

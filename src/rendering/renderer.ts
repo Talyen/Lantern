@@ -1,3 +1,4 @@
+import { installIndirectLighting } from './indirect-lighting';
 import { displayPixelRatio, watchDisplayResolution } from './display-resolution';
 import { recordFailure } from '../diagnostics/report';
 import { prepareSceneryLoader } from '../assets/scenery-loader';
@@ -74,6 +75,7 @@ export async function createRenderer(mount: HTMLElement): Promise<WebGPURenderer
     mount.dataset.renderError = message;
     recordFailure('gpu-device-lost', message);
   }).catch((error: unknown) => recordFailure('gpu-device-lost', error));
+  installIndirectLighting(renderer);
   prepareSceneryLoader(renderer);
   watchDisplayResolution(); renderer.setPixelRatio(displayPixelRatio());
   renderer.shadowMap.enabled = true;

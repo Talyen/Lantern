@@ -16,3 +16,10 @@ export function resolveLocalLight(definition: LocalLightDefinition) {
     distance: definition.distance ?? recipe.distance, emitterHeight: definition.emitterHeight ?? recipe.emitterHeight,
     shadow: definition.shadow ?? recipe.shadow };
 }
+
+/** Shared average gain; flicker affects direct light only. */
+export const worldFirelightGain = (warmth: number): number => .65 + .5 * warmth;
+export function resolveWorldFlame(definition: LocalLightDefinition & { id: string; position: readonly number[] }) {
+  const recipe = resolveLocalLight(definition);
+  return { id: definition.id, ...recipe, position: [definition.position[0], recipe.emitterHeight + .05, definition.position[1]] as [number, number, number], decay: 2 };
+}
