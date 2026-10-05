@@ -1,3 +1,4 @@
+import { rainShelters, rainExposureNode } from './weather';
 import { waterTerrain } from './water-terrain';
 import { createMerchant } from '../rendering/merchant';
 
@@ -6,7 +7,7 @@ import { SceneCache } from '../assets/scene-cache';
 import { disposeSceneInstances, isMesh } from '../assets/resource-ownership';
 import { MeshStandardNodeMaterial, type Node } from 'three/webgpu';
 import { createSurfaceMaterial } from '../rendering/surface-detail';
-import { texture, mix, vec2, positionWorld, color, sin, smoothstep } from 'three/tsl';
+import { texture, mix, vec2, positionWorld, color, sin, smoothstep, uniform } from 'three/tsl';
 import environmentManifest from '../../assets/textures/environment/manifest.json';
 import * as THREE from 'three';
 import { sceneryLoader as loader, disposeSceneryLoader } from '../assets/scenery-loader';
@@ -39,6 +40,9 @@ export function createWorld() {
 }
 export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode = 'projected', shelterRestored = false) {
   const root = new THREE.Group(); root.name = area.id; root.userData.surfaceMode = surfaceMode; root.userData.shelterRestored = shelterRestored;
+  const weatherShelters = rainShelters(area, shelterRestored), rainWetness = uniform(0);
+  root.userData.rainWetness = rainWetness;
+  const exposedWetness = area.effects.weather ? rainWetness.mul(.6).mul(rainExposureNode(weatherShelters)) : undefined;
   const lightingSources = new Set<string>(), textureReady: Promise<void>[] = [];
   root.userData.lightingSources = [];
   const lightingProcedural: unknown[] = [];
@@ -108,7 +112,7 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
         const points = boundary.kind === 'circle' ? [[boundary.center[0] - boundary.radius - 2, boundary.center[1] - boundary.radius - 2], [boundary.center[0] + boundary.radius + 2, boundary.center[1] + boundary.radius + 2]] : boundary.points;
         const min: [number, number] = [Math.min(...points.map(point => point[0])) - 2, Math.min(...points.map(point => point[1])) - 2];
         const span: [number, number] = [Math.max(...points.map(point => point[0])) - min[0] + 2, Math.max(...points.map(point => point[1])) - min[1] + 2];
-        const surface = woodlandMaterial(groundMap, patches, recipe, paths, bankWetness, { min, span });
+        const surface = woodlandMaterial(groundMap, patches, recipe, paths, bankWetness, { min, span }, exposedWetness);
         ownedTextures.add(surface.coverageMap); Object.assign(m, { groundCoverageMap: surface.coverageMap });
         m.colorNode = surface.color; m.normalNode = surface.normal; m.roughnessNode = surface.roughness; m.aoNode = surface.cavity;
         // Grass receives actual baked/local contact lighting. Avoid a second
@@ -347,7 +351,7 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
     function activate(effects: CoreEffects): void {
       effects.addVegetation(vegetation);
       treeFelling.activate(effects);
-      effects.configureWeather(area);
+      effects.configureWeather(area, weatherShelters);
       effects.addGrass(grass!);
       for (const model of foliage) effects.addFoliage(model);
       for (const water of area.effects.water) effects.addWater(root, ...water.position, water);
@@ -358,7 +362,7 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
         effects.addEmitter('sparks', new THREE.Vector3(fire.position[0], (recipe.emitterHeight) + .15, fire.position[1]), root, 4);
       }
     }
-    return { root, area, missing, fires, portals, trees, interactables, resources, pickResource, setResourceState, vegetation, treeFelling, fellTree, get shadow() { return shadow; }, update, setChestOpened, setTreeState, treeHit, activate, dispose };
+    return { root, rainWetness, weatherShelters, area, missing, fires, portals, trees, interactables, resources, pickResource, setResourceState, vegetation, treeFelling, fellTree, get shadow() { return shadow; }, update, setChestOpened, setTreeState, treeHit, activate, dispose };
   } catch (error) {
     // Texture callbacks can still be pending when another construction stage fails.
     await Promise.allSettled(textureReady);

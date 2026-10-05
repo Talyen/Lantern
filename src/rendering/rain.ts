@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { MeshBasicNodeMaterial } from 'three/webgpu';
-import type { AreaDefinition } from '../levels/types';
+import { rainExposure } from '../levels/weather';
+import type { AreaDefinition, RainShelter } from '../levels/types';
 import { waterAt, waterLevel } from '../levels/water';
 import { boundaryDistance } from '../gameplay/area';
 
@@ -15,21 +16,22 @@ export class RainField {
   private camera?: THREE.Camera;
   private area?: AreaDefinition;
   private groundHeight = 0;
+  private shelters: RainShelter[] = [];
   constructor(private contact: (x: number, z: number, height: number) => void) { this.root.name='rain'; this.streaks.count=0; this.streaks.frustumCulled=false; this.root.add(this.streaks); }
-  configure(area: AreaDefinition | undefined): void { this.area=area; const ground=area?.props.find(p=>p.terrain && p.primitive?.kind==='box'); this.groundHeight=ground ? ground.position[1]+ground.primitive!.size[1]*ground.scale[1]/2 : 0; this.clear(); }
+  configure(area: AreaDefinition | undefined, shelters: RainShelter[] = []): void { this.area=area; this.shelters=shelters; const ground=area?.props.find(p=>p.terrain && p.primitive?.kind==='box'); this.groundHeight=ground ? ground.position[1]+ground.primitive!.size[1]*ground.scale[1]/2 : 0; this.clear(); }
   view(camera: THREE.Camera, position: THREE.Vector3): void { this.camera=camera; this.anchor.copy(position); }
   clear(): void { this.drops.length=0; this.carry=0; this.streaks.count=0; }
   update(dt:number, enabled:boolean, rate:number, wind:THREE.Vector3):void {
     const area=this.area;
     if (!enabled || !area?.effects.weather || !this.camera) { this.clear(); return; }
-    const shelters=area.effects.weather.shelters ?? [];
-    const exposed=(x:number,z:number)=>boundaryDistance(area.layout.boundary,[x,z])>=0 && !shelters.some(s=>Math.hypot(x-s.center[0],z-s.center[1])<s.radius);
+    const shelters=this.shelters;
+    const exposed=(x:number,z:number)=>boundaryDistance(area.layout.boundary,[x,z])>=0 && rainExposure(shelters,x,z)>0;
     this.carry+=dt*rate;
-    while(this.carry>=1){this.carry--;const x=this.anchor.x+(Math.random()-.5)*18,z=this.anchor.z+(Math.random()-.5)*18;if(this.drops.length<384 && exposed(x,z))this.drops.push({x,y:this.anchor.y+4+Math.random()*2,z});}
+    while(this.carry>=1){this.carry--;const x=this.anchor.x+(Math.random()-.5)*18,z=this.anchor.z+(Math.random()-.5)*18;if(this.drops.length<384 && exposed(x,z) && Math.random()<rainExposure(shelters,x,z))this.drops.push({x,y:this.anchor.y+4+Math.random()*2,z});}
     for(let i=this.drops.length-1;i>=0;i--){const drop=this.drops[i];drop.y-=dt*7;drop.x+=dt*wind.x;drop.z+=dt*wind.z;
       const surface=waterAt(area.effects.water,drop.x,drop.z), height=surface ? waterLevel(surface) : this.groundHeight;
-      if(drop.y<=height+.01){
-        if(exposed(drop.x,drop.z) && Math.random()<.35) this.contact(drop.x,drop.z,height);
+      if(!exposed(drop.x,drop.z) || drop.y<=height+.01){
+        if(exposed(drop.x,drop.z) && Math.random()<.35*rainExposure(shelters,drop.x,drop.z)) this.contact(drop.x,drop.z,height);
         this.drops[i]=this.drops[this.drops.length-1];this.drops.pop();
       }
     }

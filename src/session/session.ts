@@ -39,6 +39,8 @@ import { Graphics } from '../rendering/graphics';
 import { CoreEffects } from '../rendering/effects';
 import type { VegetationActor } from '../rendering/vegetation';
 import type { Options } from '../ui/options';
+import { advanceWeather, weatherIntensity, type WeatherPhase, type WeatherState } from '../gameplay/weather';
+import { rainExposure } from '../levels/weather';
 import { buildArea, createWorld, type AreaInstance } from '../levels/builder';
 import type * as LevelRegistry from '../levels/registry';
 import type * as LevelLighting from '../levels/lighting';
@@ -151,6 +153,7 @@ let lanternEnabled = !(import.meta.env.DEV && renderQuery.get('lantern') === 'of
 let personalLantern: PlayerLantern | undefined;
 let surfaceMode: SurfaceMode = import.meta.env.DEV && renderQuery.get('surfaces') === 'showcase' ? 'showcase' : import.meta.env.DEV && renderQuery.get('surfaces') === 'authored' ? 'authored' : 'projected';
 let active: AreaInstance | undefined;
+let weatherPreview: WeatherState | undefined;
 let worldInteractions: WorldInteractions | undefined;
 let movementWorld: MovementWorld | undefined;
 let generation = 0, revision = 0, renderedRevision = 0, transitioning = false;
@@ -533,8 +536,14 @@ function renderFrame(dt: number): boolean {
   }
   abilityEffects?.sync(encounter,player.root,cameraOwner.camera);
   if (!paused()) { active?.portals.forEach(p => p.update(gameDt)); adventureVisuals?.update(gameDt); }
+  if (!paused() && encounter.player.hp > 0 && encounter.phase !== 'lost' && encounter.phase !== 'loading') { adventure.advanceWeather(dt); if (weatherPreview) advanceWeather(weatherPreview,dt); }
+  const weather = weatherPreview ?? adventure.character.outing.weather;
+  const rain = currentArea.effects.weather ? weatherIntensity(weather) : 0;
+  const exposure = rainExposure(active?.weatherShelters ?? [], encounter.player.x, encounter.player.z);
+  if (active) active.rainWetness.value = currentArea.effects.weather ? weather.wetness : 0;
+  graphics?.effects.setRainIntensity(rain);
   const portalPoint = adventure.portalPosition(currentArea);
-  gameplayAudio.ambience(currentArea.effects.fires,encounter.player,portalPoint ? {x:portalPoint[0],z:portalPoint[1]} : null,lanternEnabled && encounter.player.hp>0 ? encounter.player : null, currentArea.ambience ?? 'woodland', !!currentArea.effects.weather && (options?.settings.weatherEffects ?? true));
+  gameplayAudio.ambience(currentArea.effects.fires,encounter.player,portalPoint ? {x:portalPoint[0],z:portalPoint[1]} : null,lanternEnabled && encounter.player.hp>0 ? encounter.player : null, currentArea.ambience ?? 'woodland', (options?.settings.weatherEffects ?? true) ? rain : 0, exposure);
   controls.update();
   camera.updateMatrixWorld();
   pointerAim.capture(camera);
@@ -596,7 +605,15 @@ const runtimeDiagnostics = new ClearingDiagnostics({
   get renderedFrames() { return renderedFrames; },
 });
 const diagnostics = () => runtimeDiagnostics.snapshot();
-if (import.meta.env.DEV) Object.assign(window, { lanternRenewal: {
+const previewWeather = (phase: WeatherPhase | 'live', wetness = 0) => {
+  if (!['live','dry','gathering','shower','clearing'].includes(phase) || !Number.isFinite(wetness) || wetness < 0 || wetness > 1) throw new Error('Invalid weather preview');
+  weatherPreview = phase === 'live' ? undefined : { ...structuredClone(adventure.character.outing.weather), phase, elapsed: 0, wetness };
+  invalidateFrame();
+};
+if (import.meta.env.DEV) Object.assign(window, { lanternWeather: {
+  status: () => ({ ...structuredClone(weatherPreview ?? adventure.character.outing.weather), intensity: weatherIntensity(weatherPreview ?? adventure.character.outing.weather), preview: !!weatherPreview, area: currentArea.id, outdoor: !!currentArea.effects.weather, effectsEnabled: options.settings.weatherEffects, groundWetness: active?.rainWetness.value, exposure: rainExposure(active?.weatherShelters ?? [],encounter.player.x,encounter.player.z) }),
+  preview: previewWeather,
+}, lanternRenewal: {
   diagnostics,
   snapshot: () => { adventure.save(); return structuredClone(adventure.character.outing); },
   advance: (seconds: number) => {
@@ -605,7 +622,7 @@ if (import.meta.env.DEV) Object.assign(window, { lanternRenewal: {
   },
 } });
 
-if (import.meta.env.DEV) releases.push(() => { Reflect.deleteProperty(window, 'lanternRenewal'); });
+if (import.meta.env.DEV) releases.push(() => { Reflect.deleteProperty(window, 'lanternRenewal'); Reflect.deleteProperty(window, 'lanternWeather'); });
 try {
   loadingScreen.preparing(loadingScreen.current, 'Preparing character');
   const character = await loadRigArt(loader, characters.player.model);
@@ -641,7 +658,7 @@ try {
   if (!await changeArea({ kind: 'travel', area: currentArea.id, spawn: explicitArea ? undefined : resumed.spawn })) throw new Error('Initial area could not be prepared.');
   if (import.meta.env.DEV && renderQuery.get('author') === 'levels') {
     const { attachAuthoring } = await import('../levels/authoring');
-    const authoring = attachAuthoring({ previewGraphics: () => graphics.previewGraphics(diagnostics().ready), invalidate: invalidateFrame, scene, camera, renderer, definitions: () => definitions, area: () => currentArea, encounter,
+    const authoring = attachAuthoring({ previewWeather, previewGraphics: () => graphics.previewGraphics(diagnostics().ready), invalidate: invalidateFrame, scene, camera, renderer, definitions: () => definitions, area: () => currentArea, encounter,
       resetMaterials: () => graphics.resetHistory(),
       resetMeasurements: () => graphics.resetMeasurements(), measurements: () => graphics.measurements(),
       exportLighting: () => graphics.exportLighting(), lighting: () => graphics.lightingDiagnostics(),

@@ -218,11 +218,13 @@ export class AreaLightingResources {
         return await exportProbeComponent(this.renderer, grid, spec);
       } finally { grid.removeFromParent(); grid.dispose(); sun.removeFromParent(); sun.target.removeFromParent(); flames.forEach(light => light.removeFromParent()); }
     };
+    const wetness = root.userData.rainWetness as { value: number } | undefined, previousWetness = wetness?.value;
+    if (wetness) wetness.value = 0;
     try {
       const daylight = await capture('daylight'), flame = emitters.length ? await capture('flame') : undefined;
       const prepared: PreparedProbeBake = { version: lightingBakeVersion, three: THREE.REVISION, signature, probes: spec, flameEmitterCount: emitters.length, daylight, flame };
       return { coefficients: decodeProbeBake(prepared, signature, spec), source: 'live', owners: 0 };
-    } finally { sun.dispose(); flames.forEach(light => light.dispose()); disposeSceneInstances(scenery); captureMaterials.forEach(material => material.dispose()); }
+    } finally { if (wetness) wetness.value = previousWetness!; sun.dispose(); flames.forEach(light => light.dispose()); disposeSceneInstances(scenery); captureMaterials.forEach(material => material.dispose()); }
   }
   updateFlame(warmth: number): void { this.active?.updateFlame(worldFirelightGain(warmth)); }
   commit(scene: THREE.Scene, prepared: PreparedLighting): void {

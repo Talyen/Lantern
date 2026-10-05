@@ -8,6 +8,7 @@ import type { Traversal } from '../gameplay/movement';
 import type { WaterDefinition } from './water';
 import type { PortalDefinition } from '../rendering/portal';
 import type { EncounterLayout, Gate, Point, Spawn } from '../gameplay/area.ts';
+export type RainShelter = { center: Point; restoredOnly?: boolean } & ({ radius: number; halfSize?: never; yaw?: never } | { halfSize: Point; yaw?: number; radius?: never });
 export type EnvironmentLighting = { sky: string; horizon: string; ground: string; sunColor: string; sunIntensity: number; intensity: number; rotation: number };
 export type ProbeLighting = { position: [number, number, number]; size: [number, number, number]; resolution: [number, number, number]; intensity: number; bounces: number };
 export type AssetRef = { url: string } | { libraryId: string };
@@ -37,7 +38,7 @@ export type AreaDefinition = {
   scatter: { id: string; count: number; radius: [number, number]; primitive: Primitive; harvest?: Placement['harvest']; excludedIds: string[] }[];
   grass?: GrassPatch[];
   reserved: Region[]; gates: Gate[]; lighting: LightingRecipe;
-  effects: { weather?: { kind: 'rain'; shelters?: {center: Point; radius: number}[] }; portals?: PortalDefinition[]; water: WaterDefinition[]; fires: { id: string; position: Point; asset: AssetRef; height: number; emitterHeight?: number; intensity?: number; role?: LocalLightRole; color?: string; distance?: number; shadow?: boolean }[] };
+  effects: { weather?: { kind: 'rain'; shelters?: RainShelter[] }; portals?: PortalDefinition[]; water: WaterDefinition[]; fires: { id: string; position: Point; asset: AssetRef; height: number; emitterHeight?: number; intensity?: number; role?: LocalLightRole; color?: string; distance?: number; shadow?: boolean }[] };
   views: { id: string; target: [number, number, number] }[];
   inspection?: { position: Point };
 };

@@ -2814,17 +2814,7 @@
     ],
     "yaw": -0.8
   },
-  "lighting": {
-    "overrides": {
-      "sun": {
-        "position": [
-          -16,
-          20,
-          18
-        ]
-      }
-    }
-  },
+  "lighting": {},
   "effects": {
     "water": [],
     "fires": [
@@ -2871,7 +2861,24 @@
         "distance": 6,
         "shadow": false
       }
-    ]
+    ],
+    "weather": {
+      "kind": "rain",
+      "shelters": [
+        {
+          "center": [
+            -4,
+            -2
+          ],
+          "halfSize": [
+            1.55,
+            1.05
+          ],
+          "yaw": 0,
+          "restoredOnly": true
+        }
+      ]
+    }
   },
   "views": [
     {

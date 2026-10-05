@@ -7,7 +7,7 @@ import { initialSkillXP, type SkillXP } from './skills';
 
 /** Live character state; save decoding and browser storage have separate owners. */
 export type CharacterSave = {
-  version: 9;
+  version: 10;
   outing: OutingSave;
   gold: number;
   buyback: BuybackEntry[];
@@ -34,7 +34,7 @@ export function character(
   ],
 ): CharacterSave {
   const value: CharacterSave = {
-    version: 9,
+    version: 10,
     outing: freshOuting(),
     gold: 0,
     buyback: [],

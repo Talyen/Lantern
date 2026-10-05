@@ -134,7 +134,7 @@ test('the chest scatters rewards once per session and only collected gear is per
 test('legacy characters migrate equipped copies, resources and claimed rewards without loss', () => {
   const storage = memory(); storage.setItem(characterSaveKey, JSON.stringify({ version: 2, scrolls: 7, campfires: ['clearing/camp'], equipment: ['axe', 'sword', 'shield', 'bow', 'staff'], loadout: { main: 'bow', off: null }, wood: 12000, xp: { woodcutting: 20, axeCombat: 30 }, campEquipmentClaimed: true }));
   const state = new Adventure(storage, () => 1), encounter = createEncounter('playing');
-  expect([state.character.version, state.character.scrolls, state.character.loadout.main]).toEqual([9, 7, 'bow']);
+  expect([state.character.version, state.character.scrolls, state.character.loadout.main]).toEqual([10, 7, 'bow']);
   expect(state.character.equipment).toEqual(['bow', 'axe', 'sword', 'shield', 'staff']);
   expect(state.character.wood).toBe(12000); expect(state.character.items.some(i => i.slot === 'overflow')).toBe(true);
   expect(validItems(state.character.items)).toBe(true);
@@ -333,7 +333,7 @@ test('revision 3 migration preserves a full bag and grants starter potions only 
   const storage=memory(),items:InventoryItem[]=Array.from({length:96},(_,i)=>({id:`full-${i}`,item:'wood',quantity:99,slot:'bag',x:i%12,y:Math.floor(i/12)}));
   items.push({id:'item-20',item:'axe',quantity:1,slot:'main',x:0,y:0});
   storage.setItem(characterSaveKey,JSON.stringify({version:3,items,campfires:['homestead/camp'],xp:{woodcutting:30,axeCombat:40},campClaims:['sword']}));
-  const migrated=new Adventure(storage);expect(migrated.character.version).toBe(9);expect(migrated.character.items.filter(i=>i.item!=='potion')).toEqual(items);
+  const migrated=new Adventure(storage);expect(migrated.character.version).toBe(10);expect(migrated.character.items.filter(i=>i.item!=='potion')).toEqual(items);
   expect(migrated.character.items.find(i=>i.item==='potion')).toMatchObject({slot:'overflow',quantity:3});
   expect(migrated.character).toMatchObject({campClaims:['sword'],campfires:['homestead/camp'],xp:{woodcutting:30,axeCombat:40,mining:0},stash:[],shelterRestored:false});
   migrated.character.xp.bow=5000;
@@ -389,7 +389,7 @@ test('revision 4 Homestead progress migrates with combat controls and starter po
   const items:InventoryItem[]=[{id:'item-42',item:'sword',quantity:1,slot:'main',x:0,y:0},{id:'item-43',item:'scroll',quantity:5,slot:'bag',x:0,y:0}];
   const stash:InventoryItem[]=[{id:'item-900',item:'iron',quantity:99,slot:'bag',x:0,y:0}];
   storage.setItem(characterSaveKey,JSON.stringify({version:4,items,stash,shelterRestored:true,restedSeconds:123,campfires:['homestead/camp'],xp:{woodcutting:327.5,mining:47.5,axeCombat:60},campClaims:['sword']}));
-  const migrated=new Adventure(storage);expect(migrated.character.version).toBe(9);expect(migrated.character.stash).toEqual(stash);expect(migrated.character.shelterRestored).toBe(true);expect(migrated.character.restedSeconds).toBe(123);expect(migrated.character.xp.mining).toBe(47.5);expect(migrated.character.actionBar[4]).toBe('sword-basic');expect(migrated.character.potions).toBe(3);
+  const migrated=new Adventure(storage);expect(migrated.character.version).toBe(10);expect(migrated.character.stash).toEqual(stash);expect(migrated.character.shelterRestored).toBe(true);expect(migrated.character.restedSeconds).toBe(123);expect(migrated.character.xp.mining).toBe(47.5);expect(migrated.character.actionBar[4]).toBe('sword-basic');expect(migrated.character.potions).toBe(3);
   const restored=new Adventure(storage);expect(restored.character).toEqual(migrated.character);expect(restored.character.potions).toBe(3);expect(new Set([...restored.character.items,...restored.character.stash].map(i=>i.id)).size).toBe(restored.character.items.length+restored.character.stash.length);
 });
 
@@ -540,7 +540,7 @@ test('shared equipment stays across swaps, accepts only its slots, and full-bag 
 test('revision 5 migrates losslessly and current saves retain shared slots, stash and all discovery claims', () => {
   const storage=memory(),adventure=new Adventure(storage);
   const old={...adventure.character,version:5,campClaims:['sword','shield'],shelterRestored:true,restedSeconds:123,stash:[{id:'stored',item:'iron',quantity:7,slot:'bag',x:0,y:0}],xp:{woodcutting:31,mining:22,axeCombat:17}};
-  const migrated=decodeCharacter(JSON.stringify(old));expect(migrated.version).toBe(9);expect(migrated.items).toEqual(old.items);expect(migrated.stash).toEqual(old.stash);expect(migrated.campClaims).toEqual(old.campClaims);
+  const migrated=decodeCharacter(JSON.stringify(old));expect(migrated.version).toBe(10);expect(migrated.items).toEqual(old.items);expect(migrated.stash).toEqual(old.stash);expect(migrated.campClaims).toEqual(old.campClaims);
   expect(migrated.items.some(item=>item.slot==='helmet')).toBe(false);
   migrated.items.push({id:'helm',item:'guard-helm',quantity:1,slot:'helmet',x:0,y:0});migrated.campClaims.push('guard-helm','yew-longbow');
   expect(decodeCharacter(JSON.stringify(migrated))).toEqual(migrated);
@@ -664,7 +664,7 @@ test('buyback retains only the last ten, migrates revision 6 without gifts and r
   const duplicate={...state.character,items:[{id:ids[10],item:'sword',quantity:1,slot:'bag',x:0,y:0}]};
   expect(()=>decodeCharacter(JSON.stringify(duplicate))).toThrow('Duplicate buyback identity');
   const legacy={...state.character,version:6,gold:undefined,buyback:undefined};
-  const migrated=decodeCharacter(JSON.stringify(legacy));expect(migrated.version).toBe(9);expect(migrated.gold).toBe(0);expect(migrated.buyback).toEqual([]);
+  const migrated=decodeCharacter(JSON.stringify(legacy));expect(migrated.version).toBe(10);expect(migrated.gold).toBe(0);expect(migrated.buyback).toEqual([]);
   expect(migrated.items).toEqual(legacy.items); expect(migrated.campClaims).toEqual(legacy.campClaims);
   state.closeSave();restored.closeSave();
 });
@@ -710,7 +710,8 @@ test('revision 7 skill migration preserves the full character and seeds new trac
     buyback:[{id:'sold-shield',item:'shield',price:3}], campClaims:['sword'],
     xp:{woodcutting:327.5,mining:47.5,axeCombat:60}};
   const migrated = decodeCharacter(JSON.stringify(old));
-  expect({...migrated, version:7, xp:old.xp}).toEqual(old);
+  expect({...migrated, version:7, xp:old.xp, outing:{...migrated.outing,weather:old.outing.weather}}).toEqual(old);
+  expect(migrated.outing.weather).toMatchObject({ phase: 'dry', elapsed: 0, wetness: 0 });
   expect(migrated.xp).toMatchObject(old.xp);
   expect(skillIds.filter(id => !['woodcutting','mining','axeCombat'].includes(id)).every(id => migrated.xp[id] === 0)).toBe(true);
   expect(decodeCharacter(JSON.stringify(migrated))).toEqual(migrated);

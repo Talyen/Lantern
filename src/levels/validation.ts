@@ -149,7 +149,7 @@ export function validateAreas(input: Record<string, AreaDefinition>): string[] {
       }
       if (area.effects.weather) {
         if (area.effects.weather.kind !== 'rain') fail('unknown area weather');
-        for (const shelter of area.effects.weather.shelters ?? []) if (!finite(shelter.center,2) || !Number.isFinite(shelter.radius) || shelter.radius<=0) fail('invalid weather shelter');
+        for (const shelter of area.effects.weather.shelters ?? []) if (!finite(shelter.center,2) || (shelter.halfSize !== undefined ? !finite(shelter.halfSize,2) || shelter.halfSize.some(n => n <= 0) || shelter.radius !== undefined : !Number.isFinite(shelter.radius) || shelter.radius<=0 || shelter.yaw !== undefined) || shelter.yaw !== undefined && !Number.isFinite(shelter.yaw) || shelter.restoredOnly !== undefined && typeof shelter.restoredOnly !== 'boolean') fail('invalid weather shelter');
       }
       for (const portal of area.effects.portals ?? []) {
         id(portal.id);

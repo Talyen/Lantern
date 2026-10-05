@@ -137,6 +137,23 @@ test('checkpoint selection rejects unsafe or removed fires; malformed outings re
   storage.data.set(characterSaveKey, JSON.stringify(invalid));
   expect(new Adventure(storage).character.items).toEqual(adventure.character.items);
   expect(storage.data.has(`${characterSaveKey}.unreadable`)).toBe(true);
+  // Admission: corrupt weather must recover the valid outing, not lose inventory/progress.
+  const corruptWeather = parseJson(valid);
+  if (!isRecord(corruptWeather) || !isRecord(corruptWeather.outing) || !isRecord(corruptWeather.outing.weather)) throw new Error('Invalid fixture');
+  corruptWeather.outing.weather.peak = NaN;
+  storage.data.set(characterSaveKey, JSON.stringify(corruptWeather));
+  storage.data.set(characterBackupKey, valid);
+  const recovered = new Adventure(storage);
+  expect(recovered.character.items).toEqual(adventure.character.items);
+  expect(recovered.character.outing.weather).toEqual(adventure.character.outing.weather);
+  const oldOuting = parseJson(valid);
+  if (!isRecord(oldOuting) || !isRecord(oldOuting.outing)) throw new Error('Invalid fixture');
+  oldOuting.version = 9; delete oldOuting.outing.weather;
+  const migrated = decodeCharacter(JSON.stringify(oldOuting));
+  expect(migrated.version).toBe(10);
+  expect(migrated.items).toEqual(adventure.character.items);
+  expect(migrated.outing.checkpoint).toBe(adventure.character.outing.checkpoint);
+  expect(migrated.outing.weather.phase).toBe('dry');
   const legacy = parseJson(valid);
   if (!isRecord(legacy)) throw new Error('Invalid fixture');
   legacy.version = 8; delete legacy.outing;

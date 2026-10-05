@@ -31,7 +31,7 @@ export function copyCharacter(value: unknown): CharacterSave {
   return restoreCharacter(structuredClone(value));
 }
 function restoreCharacter(value: unknown): CharacterSave {
-  if (!isRecord(value) || typeof value.version !== 'number' || ![1, 2, 3, 4, 5, 6, 7, 8, 9].includes(value.version)
+  if (!isRecord(value) || typeof value.version !== 'number' || ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10].includes(value.version)
     || !Array.isArray(value.campfires) || !value.campfires.every((id: unknown): id is string => typeof id === 'string'))
     throw new Error('Invalid character save');
 
@@ -58,7 +58,7 @@ function restoreCharacter(value: unknown): CharacterSave {
     }
   }
   if (value.version >= 9) {
-    result.outing = decodeOuting(value.outing);
+    result.outing = decodeOuting(value.outing, value.version < 10);
     const ids = new Set([...result.items, ...result.stash, ...result.buyback].map(entry => entry.id));
     for (const area of Object.values(result.outing.areas)) for (const drop of area.drops) {
       for (const id of new Set([drop.id, drop.instanceId].filter((id): id is string => id !== undefined))) {

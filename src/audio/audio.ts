@@ -4,7 +4,7 @@ import { readAudioSettings, type AudioSettings } from './settings';
 export type SoundCue = keyof typeof manifest.cues;
 export type SoundPosition = { x: number; z: number };
 type Bus = 'effects' | 'ambience' | 'ui';
-type Voice = { source: AudioBufferSourceNode; gain: GainNode; pan: StereoPannerNode; bus: Bus; position?: SoundPosition; level: number; key?: string; loop: boolean };
+type Voice = { source: AudioBufferSourceNode; gain: GainNode; pan: StereoPannerNode; bus: Bus; position?: SoundPosition; level: number; key?: string; loop: boolean; filter?: BiquadFilterNode };
 const cues = manifest.cues as Record<SoundCue, { clips: string[]; gain: number; bus: Bus; rate: number }>;
 const clips = manifest.clips as Record<string, { url: string; loop: boolean; loopStart?: number; loopEnd?: number }>;
 
@@ -119,23 +119,29 @@ export class GameAudio {
     gain.gain.value = 0;
     source.buffer = buffer; source.loop = options.loop ?? false;
     if (source.loop) { source.loopStart = clips[id].loopStart ?? 0; source.loopEnd = Math.min(buffer.duration,clips[id].loopEnd ?? buffer.duration); } source.playbackRate.value = options.rate ?? definition.rate;
-    source.connect(gain); gain.connect(pan); pan.connect(this.buses.get(definition.bus)!);
-    const voice: Voice = { source, gain, pan, bus: definition.bus, position: position ? { x: position.x, z: position.z } : undefined, level: definition.gain * (options.gain ?? 1), key: options.key, loop: source.loop };
+    const filter = cue === 'rain' ? context.createBiquadFilter() : undefined;
+    if (filter) { filter.type = 'lowpass'; filter.frequency.value = 20000; source.connect(filter); filter.connect(gain); } else source.connect(gain);
+    gain.connect(pan); pan.connect(this.buses.get(definition.bus)!);
+    const voice: Voice = { source, gain, pan, bus: definition.bus, position: position ? { x: position.x, z: position.z } : undefined, level: definition.gain * (options.gain ?? 1), key: options.key, loop: source.loop, filter };
     this.voices.add(voice);
     if (voice.key) this.keyedVoices.set(voice.key, voice);
     this.position(voice, !voice.loop);
-    source.onended = () => { this.removeVoice(voice); source.disconnect(); gain.disconnect(); pan.disconnect(); };
+    source.onended = () => { this.removeVoice(voice); source.disconnect(); filter?.disconnect(); gain.disconnect(); pan.disconnect(); };
     source.start(); this.counts.set(cue, (this.counts.get(cue) ?? 0) + 1);
   }
-  loop(key: string, cue: SoundCue, position?: SoundPosition, gain = 1): void {
+  loop(key: string, cue: SoundCue, position?: SoundPosition, gain = 1, lowpass = 20000): void {
     const voice = this.keyedVoices.get(key);
     if (voice) {
       if (position) { voice.position ??= { x: 0, z: 0 }; voice.position.x = position.x; voice.position.z = position.z; }
       else voice.position = undefined;
-      voice.level = cues[cue].gain * gain; return;
+      voice.level = cues[cue].gain * gain;
+      voice.filter?.frequency.setTargetAtTime(lowpass, this.context!.currentTime, .15); return;
     }
     let count = 0; for (const active of this.voices) if (active.loop) count++;
-    if (count < 12) this.play(cue, position, { key, loop: true, gain });
+    if (count < 12) {
+      this.play(cue, position, { key, loop: true, gain });
+      this.keyedVoices.get(key)?.filter?.frequency.setTargetAtTime(lowpass, this.context!.currentTime, .15);
+    }
   }
   keepLoops(keys: Set<string>): void { for (const voice of this.voices) if (voice.loop && voice.key && !keys.has(voice.key)) this.stopVoice(voice); }
   stop(key: string): void {

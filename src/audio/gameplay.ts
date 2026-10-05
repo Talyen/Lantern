@@ -88,7 +88,7 @@ export class GameplayAudio {
     if (id === 'player' && count % 2 === 0) this.audio.play('gear', actor);
     previous.count++;
   }
-  ambience(fires: readonly AuthoredFire[], listener: SoundPosition, portal: SoundPosition | null, lantern: SoundPosition | null, ambience: 'woodland' | 'quiet' = 'woodland', rain = false): void {
+  ambience(fires: readonly AuthoredFire[], listener: SoundPosition, portal: SoundPosition | null, lantern: SoundPosition | null, ambience: 'woodland' | 'quiet' = 'woodland', rain = 0, exposure = 1): void {
     if (this.fireDefinitions !== fires) {
       this.fireDefinitions = fires;
       this.authoredFlames = fires.map(fire => ({key:`fire-${fire.id}`,position:{x:fire.position[0],z:fire.position[1]},camp:fire.role==='campfire',distance:0}));
@@ -107,7 +107,7 @@ export class GameplayAudio {
     if (lantern) this.loopKeys.add('personal-lantern');
     this.audio.keepLoops(this.loopKeys);
     if (ambience === 'woodland') this.audio.loop('woodland', 'woodland');
-    if(rain)this.audio.loop('rain','rain');
+    if(rain)this.audio.loop('rain','rain',undefined,rain*(.4+.6*exposure),1800+18200*exposure);
     // Keep at most the six nearest authored flames, including optional scenery.
     for (const fire of this.nearestFlames) this.audio.loop(fire.key, fire.camp ? 'fire' : 'flame', fire.position);
     if (portal) this.audio.loop('portal-hum', 'portalHum', portal);

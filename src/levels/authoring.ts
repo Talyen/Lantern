@@ -1,4 +1,5 @@
 import { attachPreviewGraphics, type PreviewGraphicsView } from '../rendering/preview-graphics';
+import type { WeatherPhase } from '../gameplay/weather';
 import type { ClearingSnapshot } from '../session/diagnostics';
 import { isLine } from '../assets/resource-ownership';
 import * as THREE from 'three';
@@ -10,7 +11,7 @@ import { setMaterialCalibration, resetMaterialCalibration, materialCalibration }
 import { calibrationStrengths, type CalibrationFamily } from '../rendering/material-recipes';
 type Diagnostics = Pick<ClearingSnapshot, 'area' | 'revision' | 'renderedRevision' | 'ready' | 'errors' | 'missing' | 'contentHash' | 'camera' | 'renderedFrames' | 'phase' | 'updateMs' | 'objects' | 'resources' | 'graphics'>;
 type Appearance = { shelterRestored?: boolean; lantern: boolean; surfaces: SurfaceMode };
-type Context = { previewGraphics(): PreviewGraphicsView | undefined; invalidate(): void; resetMaterials(): void; resetMeasurements(): void; measurements(): unknown; exportLighting(this: void): Promise<PreparedProbeBake>; lighting(this: void): unknown; appearance(this: void): Appearance; setAppearance(appearance: { surfaces?: SurfaceMode; lantern?: boolean; shelterRestored?: boolean }): Promise<boolean>; scene: THREE.Scene; camera: THREE.OrthographicCamera; renderer: { domElement: HTMLCanvasElement }; definitions(): Record<string, AreaDefinition>; area(): AreaDefinition; encounter: Encounter; changeArea(id: string): Promise<boolean>; restart(this: void): void; inspect(): boolean; waitFrames(count?: number): Promise<void>; setFrozen(value: boolean): void; setView(id: string): void; diagnostics(): Diagnostics };
+type Context = { previewWeather(phase: WeatherPhase | 'live', wetness: number): void; previewGraphics(): PreviewGraphicsView | undefined; invalidate(): void; resetMaterials(): void; resetMeasurements(): void; measurements(): unknown; exportLighting(this: void): Promise<PreparedProbeBake>; lighting(this: void): unknown; appearance(this: void): Appearance; setAppearance(appearance: { surfaces?: SurfaceMode; lantern?: boolean; shelterRestored?: boolean }): Promise<boolean>; scene: THREE.Scene; camera: THREE.OrthographicCamera; renderer: { domElement: HTMLCanvasElement }; definitions(): Record<string, AreaDefinition>; area(): AreaDefinition; encounter: Encounter; changeArea(id: string): Promise<boolean>; restart(this: void): void; inspect(): boolean; waitFrames(count?: number): Promise<void>; setFrozen(value: boolean): void; setView(id: string): void; diagnostics(): Diagnostics };
 export function attachAuthoring(ctx: Context) {
   attachPreviewGraphics(() => { const view = ctx.previewGraphics(); return view ? [view] : []; });
   const runtimeId = crypto.randomUUID();
@@ -36,6 +37,13 @@ export function attachAuthoring(ctx: Context) {
     resetMaterialCalibration(); comparisonControls.forEach(select => { select.value = '1'; }); ctx.resetMaterials(); ctx.invalidate();
   };
   calibration.append(replay, restore); panel.append(calibration);
+  const weatherControls = document.createElement('details');
+  weatherControls.innerHTML = '<summary>Weather preview</summary><label>Weather <select aria-label="Weather preview"><option value="live">Live</option><option value="dry">Dry</option><option value="gathering">Gathering rain</option><option value="shower">Shower</option><option value="clearing">Clearing rain</option></select></label><label> Ground wetness <input aria-label="Ground wetness preview" type="range" min="0" max="1" step="0.05" value="0"></label>';
+  const weatherSelect = weatherControls.querySelector('select')!, wetnessInput = weatherControls.querySelector('input')!;
+  const previewWeather = () => ctx.previewWeather(weatherSelect.value as WeatherPhase | 'live', Number(wetnessInput.value));
+  weatherSelect.onchange = previewWeather;
+  wetnessInput.oninput = () => { if (weatherSelect.value === 'live') weatherSelect.value = 'dry'; previewWeather(); };
+  panel.append(weatherControls);
   const overlay = new THREE.Group(); ctx.scene.add(overlay); let overlayRevision = -1, frozen = true, selectedView = 'center';
   function clearOverlay(): void { overlay.children.forEach(o => { if (isLine(o)) { o.geometry.dispose(); (o.material as THREE.Material).dispose(); } }); overlay.clear(); }
   function line(points: number[][], color: string): void { const object = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points.map(p => new THREE.Vector3(...p as [number, number, number]))), new THREE.LineBasicMaterial({ color, depthTest: false, transparent: true, opacity: .85 })); object.renderOrder = 100; overlay.add(object); }

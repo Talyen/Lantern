@@ -15,9 +15,9 @@ Lighting is shared game infrastructure. Every route inherits the single approved
 }
 ```
 
-Use `"lighting": {}` to inherit the preset. Keep small placement, coverage and probe-volume differences beside the area definition. Full legacy lighting definitions are unsupported. Palette and family-wide changes belong in the preset. Honey-gold direct sun, richer autumn color, readable cool shade and deeper amber flame pools establish the same visual identity on every route. Exposure remains a player preference.
+Use `"lighting": {}` to inherit the preset. Keep small shadow-coverage and probe-volume differences beside the area definition. Sun direction belongs only to the shared preset, so outdoor travel retains a consistent light direction. Full legacy lighting definitions are unsupported. Palette and family-wide changes belong in the preset. Honey-gold direct sun, richer autumn color, readable cool shade and deeper amber flame pools establish the same visual identity on every route. Exposure remains a player preference.
 
-Area overrides support fog distance, sun placement/coverage and probe volume/settings; palette, light strength, environment and grading stay in the shared preset. `probes: false` disables static probes for a blockout. Labs use the same sun, hemisphere, environment and grading without area-sized scenery probes; the character gallery disables focus blur for inspection. Static probe coverage is derived when an area boundary is supplied.
+Area overrides support fog distance, sun coverage and probe volume/settings; palette, light strength, environment and grading stay in the shared preset. `probes: false` disables static probes for a blockout. Labs use the same sun, hemisphere, environment and grading without area-sized scenery probes; the character gallery disables focus blur for inspection. Static probe coverage is derived when an area boundary is supplied.
 
 ## Autumn woodland review
 
@@ -80,6 +80,10 @@ The personal lantern is enabled by default in browser and desktop play. The opti
 The cage handle is aligned to the belt socket and connected by a small hook, rather than a model-independent floating offset. Cage placement is independent of the effective chest emitter/bounce placement; preparation preserves those initial world positions and all recipe strengths/ranges. The same attachment class is used in gameplay and animation inspection.
 
 Both personal emitters are unshadowed and excluded from static probe preparation. Campfires keep world shadows. Development inspection can disable the lantern with `?lantern=off` or the authoring checkbox; neither changes the shared preset. Fuel, equipment ownership and healing remain separate from cosmetic illumination.
+
+## Weather and static preparation
+
+Outdoor showers share the adventure schedule described in [level authoring](LEVEL_DESIGN.md#authored-precipitation-and-shallow-water). Rain never changes the Golden sun, sky, fog or indirect-light strengths. Ground rain wetness is a live uniform; probe captures set it to zero and restore it afterward, including failed captures. Transient precipitation and saved weather are excluded from bake identity. Changing the shared sun requires explicit re-preparation; Homestead no longer overrides its direction.
 
 ## Sculpted dusk and atmosphere
 

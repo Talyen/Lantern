@@ -1,3 +1,4 @@
+import { advanceWeather } from './weather';
 import { resourceDefinitions, type ResourceDefinition } from '../levels/resources';
 import { Harvesting, type TreeChange } from './harvesting';
 import { renewalSeconds, renewalDistance, sameSource, type RewardSource, type SavedEnemy, type SavedChest, type OutingSave } from './outing';
@@ -168,9 +169,10 @@ export class Adventure {
       areas[id] = { enemies: structuredClone(session.enemies), chests: structuredClone(session.chests), drops: structuredClone(session.drops), resources: this.definitions[id] ? this.harvesting.snapshot(id) : previous.areas[id]?.resources ?? {} };
     }
     const e = this.liveEncounter;
-    this.character.outing = { elapsed: this.elapsed, checkpoint: previous.checkpoint, portal: structuredClone(this.portal), areas,
+    this.character.outing = { weather: structuredClone(previous.weather), elapsed: this.elapsed, checkpoint: previous.checkpoint, portal: structuredClone(this.portal), areas,
       cooldowns: e ? { abilityCooldowns: { ...e.abilityCooldowns }, ultimateCooldown: e.ultimateCooldown, potionCooldown: e.potionCooldown, dodgeCooldown: e.dodgeCooldown, attackCooldown: e.attackCooldown } : previous.cooldowns };
   }
+  advanceWeather(seconds: number): void { advanceWeather(this.character.outing.weather, seconds); }
   capture(): CharacterSave { this.snapshot(); return this.character; }
   save(): void { this.snapshot(); if (this.sessionSave) this.sessionSave.save(this.character); else this.persistence.request(this.character); }
   closeSave(): void { this.snapshot(); this.persistence.close(this.character); }

@@ -166,9 +166,9 @@ Acceptance: quit and continue after partially damaging an enemy, opening a chest
 
 ## Stylized water and weather
 
-The Clearing stream, carved bed/banks, wet ground, fixed rain, shelter exclusions and pooled crossing/rain feedback are implemented. [Area/water authoring](Docs/LEVEL_DESIGN.md#authored-precipitation-and-shallow-water) owns the current data contract; [reusable water surfaces](Docs/LEVEL_DESIGN.md#reusable-water-surfaces) owns level/depth/surface controls, grounded traversal and shared scene reflections. [Performance](Docs/archive/PERFORMANCE_HISTORY.md#woodland-stream-visual-correction--october-3-2026) records the successive visual corrections and their limited local evidence.
+The Clearing stream, carved bed/banks, wet ground, occasional shared outdoor showers, shelter exclusions and pooled crossing/rain feedback are implemented. [Area/water authoring](Docs/LEVEL_DESIGN.md#authored-precipitation-and-shallow-water) owns the current data contract; [reusable water surfaces](Docs/LEVEL_DESIGN.md#reusable-water-surfaces) owns level/depth/surface controls, grounded traversal and shared scene reflections. [Performance](Docs/archive/PERFORMANCE_HISTORY.md#woodland-stream-visual-correction--october-3-2026) records the successive visual corrections and their limited local evidence.
 
-Finish water as part of the weathered woodland composition: irregular shorelines, visible gravel shallows, dark deeper water and restrained moving highlights under Golden lighting. Characters, attacks and loot remain readable. Weather is authored per area; Homestead stays dry.
+Finish water as part of the weathered woodland composition: irregular shorelines, visible gravel shallows, dark deeper water and restrained moving highlights under Golden lighting. Characters, attacks and loot remain readable. Outdoor eligibility and shelter cover are authored per area; Homestead, Clearing and Graveyard Ruins share occasional showers, shelter-aware audio and gradual exposed-ground wetting/drying. Crypt remains sheltered. All areas inherit the shared sun direction.
 
 ### Current defaults and controls
 
@@ -190,7 +190,7 @@ The earlier planned Simple/Detailed Water Reflections setting is superseded by t
 
 Use one relevant owned interaction for a changed surface: movement through the ford, combat readability, shelter, pause, travel or a weather setting/reload. Expand inspection for a concrete failure. No automated settings/viewport matrix or new test infrastructure is implied.
 
-SSR, local cubemap captures, snow, storms, dynamic weather/wetting/drying, visible sky/cloud animation, refraction/underwater rendering and simulation-heavy water remain conditional future work, activated by an authored scene or demonstrated need. Add no water/weather dependency without a concrete consumer.
+SSR, local cubemap captures, snow, storms, prop-wide wetting, accumulating puddles, dynamic overcast lighting, visible sky/cloud animation, refraction/underwater rendering and simulation-heavy water remain conditional future work, activated by an authored scene or demonstrated need. Add no water/weather dependency without a concrete consumer.
 
 ## UI design and polish
 

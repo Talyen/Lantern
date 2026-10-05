@@ -31,7 +31,7 @@ function apply(base: AreaLighting, overrides: LightingOverrides, boundary?: Boun
 export function resolveLighting(definition: LightingRecipe = {}, boundary?: Boundary): AreaLighting {
   if (Object.keys(definition).some(key => key !== 'overrides')) throw new Error('Area lighting accepts only overrides of the shared Golden preset.');
   const overrides = definition.overrides ?? {};
-  if (Object.keys(overrides).some(key => !['fogNear', 'fogFar', 'sun', 'probes'].includes(key)) || Object.keys(overrides.sun ?? {}).some(key => !['position', 'shadowExtent'].includes(key))) throw new Error('Area lighting overrides support only fog distance, sun placement/coverage and probes.');
+  if (Object.keys(overrides).some(key => !['fogNear', 'fogFar', 'sun', 'probes'].includes(key)) || Object.keys(overrides.sun ?? {}).some(key => !['shadowExtent'].includes(key))) throw new Error('Area lighting overrides support only fog distance, sun coverage and probes.');
   const look = structuredClone(preset.lighting);
   if (boundary) look.probes = deriveProbes(boundary, preset.autoProbes);
   return apply(look, overrides, boundary, preset.autoProbes);

@@ -7,7 +7,7 @@ import { fsrComparison } from '../labs/fsr/settings';
 import { Fn, positionPrevious, positionLocal, uniform, vec3, sin, float, max, pow } from 'three/tsl';
 import { copyStandardNodeMaterial } from '../assets/environment-surfaces';
 import { RainField } from './rain';
-import type { AreaDefinition } from '../levels/types';
+import type { AreaDefinition, RainShelter } from '../levels/types';
 import { createWaterSurface, waterNormalTexture, type WaterOptions } from './water';
 import { FluidEffects } from './fluids';
 
@@ -66,6 +66,8 @@ export class CoreEffects {
   private texture: THREE.CanvasTexture;
   private weather: ParticleKind | null = null;
   private weatherEffects = true;
+  private rainIntensity = 0;
+  setRainIntensity(intensity: number): void { this.rainIntensity = intensity; }
   readonly fluids = new FluidEffects();
   private readonly rain = new RainField((x, z, height) => this.fluids.rainContact(x, z, height));
   private readonly waterNormal = waterNormalTexture();
@@ -80,7 +82,7 @@ export class CoreEffects {
     return { time: this.time, particleHash: hash >>> 0, foliageMeshes: this.foliage.length };
   }
   setWeatherEffects(enabled: boolean): void { this.weatherEffects=enabled; if(!enabled){this.rain.clear();this.fluids.clearWeather();} }
-  configureWeather(area: AreaDefinition): void { this.weather=area.effects.weather?.kind ?? null; this.rain.configure(area); this.fluids.configure(area.effects.water); }
+  configureWeather(area: AreaDefinition, shelters: RainShelter[] = []): void { this.weather=area.effects.weather?.kind ?? null; this.rain.configure(area, shelters); this.fluids.configure(area.effects.water); }
   weatherView(camera: THREE.Camera, position: THREE.Vector3): void { this.rain.view(camera,position); }
   private weatherCarry = 0;
   private scratch = new THREE.Vector3();
@@ -213,7 +215,7 @@ export class CoreEffects {
       while (emitter.carry >= 1) { emitter.carry--; this.spawn(emitter.kind, this.scratch.x, this.scratch.y, this.scratch.z); }
     }
     this.fluids.update(actionDt);
-    this.rain.update(dt,this.weatherEffects && this.weather==='rain',particlePresets[this.quality].weather,this.wind.value);
+    this.rain.update(dt,this.weatherEffects && this.weather==='rain',particlePresets[this.quality].weather * this.rainIntensity,this.wind.value);
     if (this.weather === 'snow' && this.weatherEffects) {
       this.weatherCarry += dt * particlePresets[this.quality].weather;
       while (this.weatherCarry >= 1) { this.weatherCarry--; this.spawn(this.weather, (Math.random() - 0.5) * 16, 6, (Math.random() - 0.5) * 16); }

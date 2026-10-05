@@ -33,10 +33,10 @@ export function woodlandPatchWeight(patch: Pick<GroundPatch, 'center' | 'radius'
   return smoothstep(.35, 1, distance).oneMinus().mul(patch.strength);
 }
 /** One coherent projection per layer preserves individual painted features instead of double-image crossfades. */
-export function woodlandMaterial(load: (url: string, data: boolean) => THREE.Texture, patches: GroundPatch[], recipe: WoodlandGroundRecipe = woodlandGroundRecipe, paths: GroundPath[] = [], bankWetness?: Node<'float'>, bounds: { min: [number, number]; span: [number, number] } = { min: [-64, -64], span: [128, 128] }) {
+export function woodlandMaterial(load: (url: string, data: boolean) => THREE.Texture, patches: GroundPatch[], recipe: WoodlandGroundRecipe = woodlandGroundRecipe, paths: GroundPath[] = [], bankWetness?: Node<'float'>, bounds: { min: [number, number]; span: [number, number] } = { min: [-64, -64], span: [128, 128] }, rainWetness?: Node<'float'>) {
   const coverage = prepareGroundCoverage(patches, paths, bounds.min, bounds.span);
   const weights = texture(coverage.map, positionWorld.xz.sub(vec2(...bounds.min)).div(vec2(...bounds.span)));
-  const wet: Node<'float'> = (bankWetness ?? float(0)).max(weights.a);
+  const wet: Node<'float'> = (bankWetness ?? float(0)).max(weights.a).max(rainWetness ?? float(0));
   let litter: Node<'float'> = weights.r, rocky: Node<'float'> = weights.g;
   const worn = weights.b;
   litter = litter.mul(worn.oneMinus()); rocky = rocky.mul(worn.oneMinus());

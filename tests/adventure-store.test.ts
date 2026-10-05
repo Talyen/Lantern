@@ -1,6 +1,7 @@
 import { memory } from './helpers/storage';
 import { expect, test, vi } from 'vitest';
 import { AdventureStore, slotKey, migrationKey } from '../src/gameplay/adventure-store';
+import { freshWeather, advanceWeather } from '../src/gameplay/weather';
 import { character } from '../src/gameplay/character';
 import { characterSaveKey, characterBackupKey } from '../src/gameplay/character-save';
 
@@ -9,6 +10,9 @@ test('four slots keep complete character and outing state independent through fr
   const storage = memory(), store = new AdventureStore(storage);
   for (const slot of [1, 2, 3, 4] as const) {
     const saved = store.create(slot, `Name ${slot}`)!;
+    // Admission: new weather snapshot validation must not discard another slot's progress.
+    saved.character.outing.weather = freshWeather(slot);
+    advanceWeather(saved.character.outing.weather, saved.character.outing.weather.drySeconds + 15 + slot * 5);
     saved.character.gold = slot * 20;
     saved.character.xp.mining = slot * 11;
     saved.character.outing.elapsed = slot * 100;
@@ -30,6 +34,9 @@ test('four slots keep complete character and outing state independent through fr
     expect(saved.character.outing.elapsed).toBe(slot * 100);
     expect(saved.character.outing.cooldowns.ultimateCooldown).toBe(slot);
     expect(saved.character.outing.portal?.departure.position).toEqual([slot, 2]);
+    const expectedWeather = freshWeather(slot);
+    advanceWeather(expectedWeather, expectedWeather.drySeconds + 15 + slot * 5);
+    expect(saved.character.outing.weather).toEqual(expectedWeather);
     expect(saved.character.items).toHaveLength(3);
     saved.character.gold = 0; expect(restored.load(slot)!.character.gold).toBe(slot * 20);
   }

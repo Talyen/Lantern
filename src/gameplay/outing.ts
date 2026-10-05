@@ -1,3 +1,4 @@
+import { freshWeather, decodeWeather, type WeatherState } from './weather';
 import { isRecord } from '../data/json';
 import { abilities, type AbilityId } from './abilities';
 import { lootDefinitions } from './inventory';
@@ -26,6 +27,7 @@ export type SavedCooldowns = {
   attackCooldown: number;
 };
 export type OutingSave = {
+  weather: WeatherState;
   elapsed: number;
   checkpoint: string;
   portal: { area: string; departure: Spawn & { height?: number } } | null;
@@ -33,7 +35,7 @@ export type OutingSave = {
   areas: Record<string, SavedArea>;
 };
 export const emptyCooldowns = (): SavedCooldowns => ({ abilityCooldowns: {}, ultimateCooldown: 0, potionCooldown: 0, dodgeCooldown: 0, attackCooldown: 0 });
-export const freshOuting = (): OutingSave => ({ elapsed: 0, checkpoint: 'homestead/camp', portal: null, cooldowns: emptyCooldowns(), areas: {} });
+export const freshOuting = (): OutingSave => ({ weather: freshWeather(), elapsed: 0, checkpoint: 'homestead/camp', portal: null, cooldowns: emptyCooldowns(), areas: {} });
 export const sameSource = (a: RewardSource | undefined, b: RewardSource): boolean => a?.kind === b.kind && a.id === b.id;
 const number = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && Math.abs(v) <= Number.MAX_SAFE_INTEGER;
 const counter = (v: unknown): v is number => number(v) && v >= 0;
@@ -51,7 +53,7 @@ function validDrop(drop: Record<string, unknown>): boolean {
     && (drop.harvestXp === undefined || isRecord(drop.harvestXp) && ['woodcutting', 'mining'].includes(String(drop.harvestXp.skill)) && counter(drop.harvestXp.perUnit));
 }
 /** Reject malformed snapshots as a unit so existing backup recovery remains authoritative. */
-export function decodeOuting(value: unknown): OutingSave {
+export function decodeOuting(value: unknown, legacyWeather = false): OutingSave {
   if (!isRecord(value) || !counter(value.elapsed) || typeof value.checkpoint !== 'string' || !isRecord(value.cooldowns)
     || !isRecord(value.cooldowns.abilityCooldowns)
     || !Object.entries(value.cooldowns.abilityCooldowns).every(([key, time]) => Object.hasOwn(abilities, key) && counter(time))
@@ -65,6 +67,7 @@ export function decodeOuting(value: unknown): OutingSave {
     && record(area.resources, resource => counter(resource.hits) && Number.isSafeInteger(resource.hits) && deadline(resource.regrowAt))
     && Array.isArray(area.drops) && area.drops.every(drop => isRecord(drop) && validDrop(drop)))) throw new Error('Invalid area save');
   const candidate = structuredClone(value) as OutingSave;
+  candidate.weather = legacyWeather ? freshWeather() : decodeWeather(value.weather);
   const ids = new Set<string>();
   for (const area of Object.values(candidate.areas)) for (const drop of area.drops) {
     if (ids.has(drop.id)) throw new Error('Duplicate ground item');

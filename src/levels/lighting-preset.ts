@@ -3,7 +3,7 @@ import type { AreaLighting, ProbeLighting } from './types.ts';
 export type AutoProbes = { spacing: number; bottom: number; height: number; padding: number; intensity: number; bounces: number };
 export type LightingOverrides = {
   fogNear?: number; fogFar?: number;
-  sun?: Partial<Pick<AreaLighting['sun'], 'position' | 'shadowExtent'>>;
+  sun?: Partial<Pick<AreaLighting['sun'], 'shadowExtent'>>;
   probes?: Partial<ProbeLighting> | { auto: Partial<AutoProbes> } | false;
 };
 

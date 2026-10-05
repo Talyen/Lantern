@@ -65,7 +65,7 @@ All routes require supported native WebGPU and hardware acceleration. Browser de
 
 ## Presentation preferences
 
-Camera Shake, Resource Numbers and Weather Effects are saved On/Off controls, On for fresh/reset settings. Resource Numbers hides visible HP/MP text only. Camera Shake Off removes an active offset immediately; hit pause has no option. Existing-player Weather Effects is seeded from the old Atmospheric particles preference once, then persists independently. Weather Off removes precipitation/contact effects and rain ambience while retaining authored wet ground, water, wind and fog. Preserve all other preferences when migrating.
+Camera Shake, Resource Numbers and Weather Effects are saved On/Off controls, On for fresh/reset settings. Resource Numbers hides visible HP/MP text only. Camera Shake Off removes an active offset immediately; hit pause has no option. Existing-player Weather Effects is seeded from the old Atmospheric particles preference once, then persists independently. Weather Off removes precipitation/contact effects and rain ambience while retaining authored and rain-wetted ground, water, wind and fog. The saved weather schedule and wetting/drying continue independently of this presentation preference. Preserve all other preferences when migrating.
 
 ## Private FSR comparisons
 
