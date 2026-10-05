@@ -5,9 +5,9 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { embeddedGlb, encodeGlb } from '../../lib/glb.mjs';
 
 /** Preserve authored binary data; r186 reserves extras.pivot for numeric offsets. */
-export function prepareModel(source, name) {
+export function prepareModel(source, name, { embeddedTextures = false } = {}) {
   const { json, tail } = embeddedGlb(source, name);
-  if (json.asset?.version !== '2.0' || json.extensionsRequired?.some(extension => extension !== 'KHR_materials_emissive_strength') || json.images?.length || json.textures?.length
+  if (json.asset?.version !== '2.0' || json.extensionsRequired?.some(extension => extension !== 'KHR_materials_emissive_strength') || !embeddedTextures && (json.images?.length || json.textures?.length)
     || json.cameras?.length || json.extensions?.KHR_lights_punctual) throw new Error(`Expected self-contained, uncompressed geometry: ${name}`);
   for (const view of json.bufferViews ?? []) {
     if (view.buffer !== 0 || (view.byteOffset ?? 0) < 0 || view.byteLength < 0
@@ -25,8 +25,8 @@ export function yUpBounds({ min, max }) {
 }
 
 /** Inspect actual decoded data and compatibility with the shared node-material adapter. */
-export async function inspectModel(bytes, name, expected = {}) {
-  const gltf = await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '');
+export async function inspectModel(bytes, name, expected = {}, { loader = new GLTFLoader(), transparent = false } = {}) {
+  const gltf = await loader.parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '');
   const fail = message => { throw new Error(`${name}: ${message}`); };
   try {
     let triangles = 0, primitives = 0, coloredMeshes = 0;
@@ -50,13 +50,15 @@ export async function inspectModel(bytes, name, expected = {}) {
       primitives += meshMaterials.length;
       if (geometry.attributes.color) coloredMeshes++;
       for (const material of meshMaterials) {
-        if (!material.isMeshStandardMaterial || material.transparent || material.opacity !== 1
+        if (!material.isMeshStandardMaterial || !transparent && (material.transparent || material.opacity !== 1)
           || !material.color.toArray().concat(material.emissive.toArray(), material.emissiveIntensity, material.roughness, material.metalness).every(Number.isFinite)) fail('Unsupported PBR material');
         const adapted = new MeshStandardNodeMaterial().copy(material);
         try {
           if (!adapted.color.equals(material.color) || adapted.side !== material.side || adapted.vertexColors !== material.vertexColors
             || adapted.roughness !== material.roughness || adapted.metalness !== material.metalness
-            || !adapted.emissive.equals(material.emissive) || adapted.emissiveIntensity !== material.emissiveIntensity) fail('Node-material adaptation changed authored values');
+            || !adapted.emissive.equals(material.emissive) || adapted.emissiveIntensity !== material.emissiveIntensity
+            || ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'emissiveMap', 'transparent', 'opacity', 'alphaTest', 'depthWrite']
+              .some(key => adapted[key] !== material[key]) || !adapted.normalScale.equals(material.normalScale)) fail('Node-material adaptation changed authored values');
         } finally { adapted.dispose(); }
         if (expected.vertexColors && (!geometry.attributes.color || !material.vertexColors)) fail('Lost authored vertex colors');
         if (expected.side !== undefined && material.side !== expected.side) fail('Changed authored material sidedness');

@@ -61,6 +61,7 @@
     "assets:import-asterfall": "node scripts/agents/run.mjs --resource heavy -- node scripts/assets/asterfall/import.mjs",
     "assets:import-ashen-veil": "node scripts/agents/run.mjs --resource heavy -- node scripts/assets/ashen-veil/import.mjs",
     "assets:import-handoff": "node scripts/agents/run.mjs --resource heavy -- node scripts/assets/generated-packs/source-handoff.mjs",
+    "assets:import-download-kits": "node scripts/agents/run.mjs --resource heavy -- node scripts/assets/generated-packs/download-kits.mjs",
     "assets:import-generated": "node scripts/agents/run.mjs --resource heavy -- node scripts/assets/generated-packs/import.mjs",
     "assets:review": "node scripts/assets/review/cli.mjs",
     "assets:review:report": "node scripts/assets/review/cli.mjs --report",

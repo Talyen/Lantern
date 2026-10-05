@@ -233,3 +233,30 @@ Preparation decodes all GLBs with pinned three.js, checks geometry and source tr
 Image checks decode compressed PNG data without resizing or recompression. Albedo and painted RGB use sRGB; scalar masks and PBR data use linear sampling, normals use OpenGL +Y, ORM is R=AO/G=roughness/B=metallic, and material height maps retain 16-bit precision. FX metadata owns color space and straight alpha. The preferred sequences retain exactly 60 Hz source cadence, page/frame rectangles, gutters and valid-frame counts; one-shots stop at the final valid frame. Atlas mip generation remains off. Supplied compact sequences remain source alternatives. This preparation does not establish frame rate, gameplay timing or in-engine appearance.
 
 Original ZIPs, editable Blender libraries, manifests, receipts, source textures, generators and import fingerprints stay under `.local/animation-packs/rpg-source-handoff/`. Task cleanup preserves these through the existing canonical source/unique-version retention policy. `--verify` finds retained sources on main or in completed-task archives and checks extracted originals, prepared outputs and shared model registrations without writing. Collision, navigation, wind, dynamic flames, mechanical motion and scene composition remain later adoption work.
+
+## Gothic dungeon and environment source kits
+
+The October 5 Downloads delivery adds **218 standalone models** and **eight reference assemblies**. In an owned task run `npm run assets:import-download-kits`; `--downloads PATH` selects another source folder. The [importer](../scripts/assets/generated-packs/download-kits.mjs) requires all numbered ZIP volumes and `Gothic_Dungeon_Props_Catalog.json`. It merges identical shared files, rejects conflicting volume contents, verifies the Gothic catalog's archive hashes/sizes and every supplied internal file receipt, and retains import fingerprints for files without supplied checksums. Bundled generators stay private and are never executed.
+
+| Library pack | Standalone models |
+| --- | --- |
+| `gothic-crypt-funerary` | 16 crypt/funerary props |
+| `gothic-ruined-statuary` | 16 statues/relics |
+| `gothic-iron-barriers` | 16 doors/barriers |
+| `gothic-chains-restraints` | 16 chains/restraints |
+| `gothic-altars-ritual` | 16 altars/ritual props |
+| `gothic-braziers-lighting` | 16 lighting props |
+| `gothic-armory-displays` | 16 armory displays |
+| `gothic-loot-debris` | 16 containers/debris props |
+| `highland-pass` | 20 highland modules |
+| `ashen-crossroads` | 25 ruined-settlement modules |
+| `marsh-islands` | 20 wetland modules |
+| `greywatch-fortress` | 25 fortress modules |
+
+Find models with `npm run levels:find -- --query gothic-crypt-funerary --limit 20` or any pack ID above. IDs follow `<pack>:model:<lowercase-hyphenated-source-id>`, for example `gothic-crypt-funerary:model:01-sarcophagus-open`. Prepared GLBs live under ignored `public/vendor/synty/library/models/<pack>/`; this is the existing loader convention, not Synty provenance. The eight example assemblies stay outside the placeable catalog under `public/vendor/<environment-pack>/reference-scenes/`. Import retains other library entries and adds no scene placements, appearance approvals, equipment or build selections.
+
+Preparation preserves authored binary geometry, embedded PNGs, metre-scale Y-up roots and named hierarchies. It renames descriptive `extras.pivot` strings for pinned three.js compatibility. Headless validation decodes geometry with the pinned loader, checks triangles and precise bounds against the source inventories, verifies named socket/group pivots where supplied as actual nodes, validates PNG framing/checksums/compressed scanlines, and checks node-material conversion retains PBR factors, maps and alpha settings. The CLI uses dimensions-only image objects for material-binding inspection; browser image decoding and visual appearance remain separate acceptance work.
+
+Keep source Z-up connector/socket metadata labeled as such; exported models need no additional axis correction or recentering. Mathematical connectors do not always correspond to actual node helpers. Water, feathered mire and static flame placeholders preserve their source materials; production water/flames, collision, navigation, opening motions and gameplay behavior remain later authoring. These are library-ready visual assets, not integrated gameplay systems.
+
+Unchanged archives, merged editable sources, textures, manifests, catalog and import receipts stay under `.local/animation-packs/download-kits/`, retained through task cleanup's canonical-source/unique-version policy. Run `npm run assets:import-download-kits -- --verify` to check preserved sources, prepared output hashes and catalog registrations without writing, including on main after cleanup. Source/import checks do not establish visual quality or runtime performance.
