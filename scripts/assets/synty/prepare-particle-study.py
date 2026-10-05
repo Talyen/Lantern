@@ -23,7 +23,10 @@ def unity(path):
 
 def main():
     argparse.ArgumentParser(description=__doc__).parse_args()
-    inventory = json.loads((ROOT / '.local/synty-library/inventory.json').read_text())
+    inventory_path = ROOT / '.local/synty-library/inventory.json'
+    if not inventory_path.is_file() or not (ROOT / '.local/synty-library/sources').is_dir():
+        raise SystemExit('Working Synty sources unavailable; run npm run agent:sources -- --sources synty-library in the owned task.')
+    inventory = json.loads(inventory_path.read_text())
     by_guid = {x['guid']: x for x in inventory if x.get('guid')}
     catalog = json.loads((ROOT / 'public/vendor/synty/library/catalog.json').read_text())['assets']
     output = ROOT / 'public/vendor/synty/particle-study'

@@ -66,7 +66,8 @@
     "assets:review": "node scripts/assets/review/cli.mjs",
     "assets:review:report": "node scripts/assets/review/cli.mjs --report",
     "assets:review:check": "node scripts/assets/review/cli.mjs --check",
-    "agent:prune": "node scripts/agents/cli.mjs prune"
+    "agent:prune": "node scripts/agents/cli.mjs prune",
+    "assets:archive-sources": "node scripts/assets/archive-sources.mjs"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "0.21.0",

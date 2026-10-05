@@ -8,7 +8,7 @@ import { withResource } from './resources.mjs';
 import { privateTree } from './copy.mjs';
 import { snapshotAssets, prepareAssets, assetIndex, assetIdentity, retainSources } from './assets.mjs';
 import { run } from '../lib/cli.mjs';
-import { pruneRetention, sourceCloneBaseline } from './retention.mjs';
+import { pruneRetention } from './retention.mjs';
 export async function recover(ctx) {
   const path = join(ctx.store, 'promotion.json');
   const journal = await readJSON(path, null);
@@ -125,20 +125,8 @@ export async function ensureDependencies(task) {
   await withResource('heavy', () => run('npm', ['ci'], { cwd: task.path }), { cwd: task.path });
   await writeJSON(path, { signature });
 }
-export async function prepareSources(ctx, task, names) {
-  if (!names.every(name => ['animation-packs', 'synty-library'].includes(name))) throw new Error('Sources must be animation-packs or synty-library.');
-  await withResource('heavy', async () => {
-    for (const name of names) {
-      const target = join(task.path, '.local', name);
-      if (existsSync(target)) continue;
-      const source = join(ctx.main, '.local', name);
-      if (!existsSync(source)) throw new Error(`Private sources unavailable: ${source}`);
-      await withResource('source-retention', async () => {
-        await privateTree(source, target);
-        await writeJSON(join(task.path, '.local/agents/source-baselines', name + '.json'), await sourceCloneBaseline(source, target));
-      }, { ctx });
-    }
-  }, { ctx });
+export async function prepareSources(ctx, task, names, selected = []) {
+  return (await import('./source-storage.mjs')).retrieveSources(ctx, task, names, selected);
 }
 export async function finishTask(ctx, task, { paths = [], message = `feat: ${task.id}`, resolvedAssets = [] } = {}) {
   return withResource(`task-${task.id}`, async () => {

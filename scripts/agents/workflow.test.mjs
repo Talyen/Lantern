@@ -25,13 +25,13 @@ async function fixture() {
   await git(['config', 'user.email', 'workflow@example.invalid'], directory);
   await mkdir(join(directory, 'scripts'), { recursive: true });
   await mkdir(join(directory, 'node_modules'), { recursive: true });
-  await writeFile(join(directory, '.gitignore'), '.local/\nnode_modules/\npublic/vendor/\n');
+  await writeFile(join(directory, '.gitignore'), '.local/\n.asset-library/\nnode_modules/\npublic/vendor/\n');
   await writeFile(join(directory, 'package.json'), '{"name":"workflow-fixture","version":"0.0.0","private":true}\n');
   await writeFile(join(directory, 'package-lock.json'), '{"name":"workflow-fixture","version":"0.0.0","lockfileVersion":3,"packages":{"":{"name":"workflow-fixture","version":"0.0.0"}}}\n');
   await writeFile(join(directory, 'scripts/check.mjs'), "import {existsSync} from 'node:fs'; if(existsSync('broken.txt'))process.exit(1);\n");
   await writeFile(join(directory, 'shared.txt'), 'baseline\n');
   await git(['add', '.'], directory); await git(['commit', '-m', 'fixture'], directory);
-  return { ...await context(directory), dispose: () => rm(directory, { recursive: true, force: true }) };
+  return { ...await context(directory), assetSourceRoot: join(directory, '.asset-library'), dispose: () => rm(directory, { recursive: true, force: true }) };
 }
 async function edit(task, name, value) { await writeFile(join(task.path, name), value); }
 
@@ -119,7 +119,7 @@ test('eight concurrent tasks land without lost work and cleanup preserves canoni
     await mkdir(join(done.path, '.local/animation-packs'), { recursive: true });
     await writeFile(join(done.path, '.local/animation-packs/source.fbx'), 'retained source');
     await cleanupTask(ctx, done);
-    assert.equal(await readFile(join(ctx.main, '.local/animation-packs/source.fbx'), 'utf8'), 'retained source');
+    assert.equal(await readFile(join(ctx.assetSourceRoot, 'animation-packs/source.fbx'), 'utf8'), 'retained source');
     assert.equal(await readJSON(taskPath(ctx, 'alpha'), null), null);
     assert.equal((await readJSON(taskPath(ctx, 'bravo'))).status, 'integrated');
   } finally { await ctx.dispose(); }
@@ -582,8 +582,8 @@ test('retention restores an archive-only supplied collection before its task can
     await mkdir(task, { recursive: true });
     await restorePlayableSource(ctx, actor, task);
     await rm(join(ctx.main, '.local/agent-archives'), { recursive: true });
-    assert.equal(await readFile(join(ctx.main, '.local/animation-packs/Protagonists/b1/editable.blend'), 'utf8'), 'editable master');
-    assert.equal(await readFile(join(ctx.main, '.local/animation-packs/Protagonists/b1/license.txt'), 'utf8'), 'source license');
+    assert.equal(await readFile(join(ctx.assetSourceRoot, 'animation-packs/Protagonists/b1/editable.blend'), 'utf8'), 'editable master');
+    assert.equal(await readFile(join(ctx.assetSourceRoot, 'animation-packs/Protagonists/b1/license.txt'), 'utf8'), 'source license');
     assert.equal(await readFile(join(task, actor.source), 'utf8'), 'rigged model');
   } finally { await ctx.dispose(); }
 });
@@ -621,7 +621,7 @@ test('retention disposes completed evidence immediately while preserving pins, s
     await rm(bundle, { recursive: true });
     await pruneRetention(ctx, { apply: true, sources: true, managedOnly: true });
     assert.equal(await readJSON(taskPath(ctx, 'old'), null), null);
-    assert.equal(await readFile(join(ctx.main, '.local/animation-packs/source.fbx'), 'utf8'), 'unique source');
+    assert.equal(await readFile(join(ctx.assetSourceRoot, 'animation-packs/source.fbx'), 'utf8'), 'unique source');
     for (const id of ['pinned', 'active', 'live-browser']) assert.equal(await readFile(join(ctx.main, '.local/agent-archives', id, 'captures/frame.png'), 'utf8'), 'image');
     await writeJSON(taskPath(ctx, 'recent'), { id: 'recent', path: join(ctx.main, '.local/worktrees/recent'), status: 'cleaned', cleanedAt: new Date(now).toISOString() });
     const recent = join(ctx.main, '.local/agent-archives/recent');

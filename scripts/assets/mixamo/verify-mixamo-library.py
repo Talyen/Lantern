@@ -3,6 +3,7 @@ import argparse
 import hashlib
 import json
 import struct
+import subprocess
 from pathlib import Path
 
 
@@ -48,7 +49,11 @@ parser.add_argument('--complete', action='store_true', help='Require all source 
 parser.add_argument('--fps', type=int, choices=[30, 60], help='Require this exported motion clock')
 args = parser.parse_args()
 repo = Path(__file__).resolve().parents[3]
-root = repo / '.local/animation-packs/mixamo/Library'
+try:
+    state_path = Path(subprocess.check_output(['node', str(repo / 'scripts/lib/source-location.mjs'), '--path', 'animation-packs/mixamo/Library/download-state.json'], text=True).strip())
+except subprocess.CalledProcessError:
+    parser.exit(1, 'Mixamo originals unavailable; restore the external source library or retrieve sources with agent:sources.\n')
+root = state_path.parent
 if not (root / 'download-state.json').is_file(): parser.exit(1, 'Mixamo collection unavailable; run assets:download-mixamo first.\n')
 state = json.loads((root / 'download-state.json').read_text())
 catalog = state['catalog']
@@ -60,7 +65,12 @@ bad = []
 for key in expected.intersection(completed):
     record = completed[key]
     path = Path(record['file'])
-    if not path.is_absolute(): path = repo / path
+    marker = 'animation-packs/mixamo/Library/'
+    source = str(path)
+    if marker in source:
+        path = root / source.split(marker, 1)[1]
+    elif not path.is_absolute():
+        path = repo / path
     if not path.is_file() or path.stat().st_size != record['bytes']:
         bad.append(key)
     elif args.fps and key.startswith('Motion:') and (record.get('fps') != args.fps or fbx_time_mode(path) != {30: 6, 60: 3}[args.fps]):

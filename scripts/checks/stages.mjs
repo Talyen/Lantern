@@ -24,7 +24,7 @@ export function checkStages(files, args = {}) {
     ...(lintPolicy ? [['lint-policy', node, ['--test', 'eslint/rules.test.mjs']]] : []),
     ...(full ? [['asset-imports', node, ['--test', 'scripts/lib/asset-imports.test.mjs']]] : []),
     ...(full ? [['asset-review-store', node, ['--test', 'scripts/assets/review/store.test.mjs']]] : []),
-    ...(full ? [['workflow', node, ['--test', 'scripts/agents/workflow.test.mjs']]] : []),
+    ...(full ? [['workflow', node, ['--test', 'scripts/agents/workflow.test.mjs', 'scripts/agents/source-storage.test.mjs']]] : []),
     ...(full ? [['tests', node, ['node_modules/vitest/vitest.mjs', 'run']]] : []),
     ...(preparedLighting ? [['prepared-lighting-contract', node, ['--test', 'scripts/levels/prepared-lighting.test.mjs']]] : []),
     ...(levels ? [['levels', node, ['scripts/levels/check.mjs', ...(args['--base'] ? ['--base', args['--base']] : [])]]] : []),

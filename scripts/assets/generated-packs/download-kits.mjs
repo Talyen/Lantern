@@ -5,7 +5,7 @@ import { basename, dirname, resolve } from 'node:path';
 import { PropertyBinding } from 'three';
 import { cli, isMain, parseArgs, root, UsageError } from '../../lib/cli.mjs';
 import { preserveSources, sourceArchiveReader, sourceEntry } from '../../lib/asset-sources.mjs';
-import { context } from '../../agents/state.mjs';
+import { retainedSource } from '../../lib/source-location.mjs';
 import { embeddedGlb } from '../../lib/glb.mjs';
 import { deletionExclusions } from '../review/exclusions.mjs';
 import { yUpBounds } from './validate.mjs';
@@ -38,13 +38,7 @@ async function exists(path) { try { await access(path); return true; } catch (er
 async function write(path, bytes) { await mkdir(dirname(path), { recursive: true }); await writeFile(path, bytes); }
 async function readJSON(path, fallback) { return await exists(path) ? json(await readFile(path)) : fallback; }
 async function retainedSources() {
-  if (await exists(resolve(sourceRoot, catalogName))) return sourceRoot;
-  const archives = resolve((await context()).main, '.local/agent-archives');
-  for (const task of (await readdir(archives)).sort().reverse()) {
-    const path = resolve(archives, task, privateSuffix);
-    if (await exists(resolve(path, catalogName))) return path;
-  }
-  throw new Error('Preserved download kits unavailable; import them in an owned task first.');
+  return dirname(await retainedSource(`${privateSuffix}/${catalogName}`));
 }
 
 /** Complementary ZIPs merge only identical duplicates; every delivered original stays private. */

@@ -65,6 +65,12 @@ export async function run(command, args, { timeout = 0, stdio = 'inherit', cwd =
     });
   });
 }
-export function blender(script, args, executable = defaultBlender) {
+export async function blender(script, args, executable = defaultBlender) {
+  const motions = ['assets/characters/playable.py', 'assets/characters/export.py', 'assets/characters/merchant.py', 'assets/characters/protagonist.py'];
+  if (motions.includes(script)) {
+    const { requireWorkingSource } = await import('./source-location.mjs');
+    await requireWorkingSource('animation-packs/mixamo/converted-source-catalog.json');
+    if (script === 'assets/characters/export.py') await requireWorkingSource('synty-library/sources');
+  }
   return run(executable, ['-b', '--factory-startup', '--python-exit-code', '1', '--python', resolve(root, 'scripts', script), '--', ...args]);
 }

@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { access, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
+import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { basename, dirname, posix, resolve } from 'node:path';
 import { inflateSync } from 'node:zlib';
@@ -8,7 +8,7 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 import { disposeSceneResources } from '../../../src/assets/resource-ownership.ts';
 import { cli, isMain, parseArgs, root, UsageError } from '../../lib/cli.mjs';
 import { preserveSources, sourceArchiveReader, sourceEntry } from '../../lib/asset-sources.mjs';
-import { context } from '../../agents/state.mjs';
+import { retainedSource } from '../../lib/source-location.mjs';
 import { deletionExclusions } from '../review/exclusions.mjs';
 import { inspectModel, prepareModel, yUpBounds } from './validate.mjs';
 
@@ -54,13 +54,7 @@ async function archiveFiles(path, prefix) {
   return files;
 }
 async function retainedSources() {
-  if (await exists(resolve(sourceRoot, indexName))) return sourceRoot;
-  const archives = resolve((await context()).main, '.local/agent-archives');
-  for (const task of (await readdir(archives)).sort().reverse()) {
-    const path = resolve(archives, task, privateSuffix);
-    if (await exists(resolve(path, indexName))) return path;
-  }
-  throw new Error('Preserved source handoff unavailable; import it in an owned task first.');
+  return dirname(await retainedSource(`${privateSuffix}/${indexName}`));
 }
 
 function checkReceipts(files, prefix) {

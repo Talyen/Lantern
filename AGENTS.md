@@ -24,7 +24,7 @@ Start with [the daily workflow](Docs/DEVELOPMENT.md) and [task routing](Docs/ARC
 
 ## Asset boundaries
 
-- Keep licensed Synty and Mixamo source files under ignored `.local/`. Keep exported character, terrain, and Synty GLBs under ignored `public/vendor/`. Do not commit or distribute these files as standalone assets.
+- Keep original Synty, Mixamo and owner-supplied asset collections in the private external source library described in [asset preparation](Docs/ASSET_PREPARATION.md#private-asset-workflow). Keep independent task working copies under ignored `.local/`. Keep exported character, terrain, and Synty GLBs under ignored `public/vendor/`. Do not commit or distribute these files as standalone assets.
 - Original text-prompted ImageGen surfaces may live under tracked `assets/textures/`. Do not send Synty models, textures, or renders to image generation tools. Project and bake locally.
 - Check the applicable purchase terms and the contents of `dist/` before any public web deployment; Build staging selects explicit library IDs and referenced gameplay art; inspect `.local/build-inventory.json`.
 

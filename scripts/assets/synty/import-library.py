@@ -171,6 +171,8 @@ def main():
     if not 1 <= args.jobs <= 4: parser.error('--jobs must be between 1 and 4')
     if args.limit is not None and args.limit < 1: parser.error('--limit must be positive')
     args.packs = set(args.pack) or {'generic','goblin-war-camp','alpine-mountain','viking-realm','particle-fx','shops','prototype','goblin-locomotion'}
+    if args.reuse_inventory and (not (PRIVATE / 'inventory.json').is_file() or not (PRIVATE / 'sources').is_dir()):
+        raise SystemExit('Working Synty sources unavailable; run npm run agent:sources -- --sources synty-library before --reuse-inventory.')
     print('Inventorying',args.downloads,flush=True)
     entries = json.loads((PRIVATE/'inventory.json').read_text()) if args.reuse_inventory else inventory(args.downloads,not args.dry_run,args.packs)
     entries = [e for e in entries if e['pack'] in args.packs]

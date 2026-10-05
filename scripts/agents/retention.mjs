@@ -5,6 +5,7 @@ import { hashFile } from '../lib/assets.mjs';
 import { privateCopy, privateTree } from './copy.mjs';
 import { readJSON, writeJSON, readTask, saveTask, taskPath, freeSpace, compactTask, processIdentity, git, liveLeases } from './state.mjs';
 import { acquire, withResource } from './resources.mjs';
+import { assetSourceRoot, originalTrees } from '../lib/source-location.mjs';
 
 export const retentionPolicy = Object.freeze({ days: 0, bytes: 0 });
 const sourceNames = ['animation-packs', 'synty-library'];
@@ -90,7 +91,7 @@ async function publishSource(source, target, cache) {
 }
 
 /** Retain unique versions; discard a copy only while verified canonical bytes remain. */
-export async function retainSourceTree(source, canonical, { apply = false, removeDuplicates = false, cache = new Map(), baseline = {}, versions, references, protectedSources = new Set(), progress = () => {} } = {}) {
+export async function retainSourceTree(source, canonical, { apply = false, removeDuplicates = false, cache = new Map(), baseline = {}, versions, references, protectedSources = new Set(), progress = () => {}, verified } = {}) {
   await safeRetentionPath(dirname(source), source);
   await safeRetentionPath(dirname(canonical), canonical);
   const report = { source, canonical, duplicateFiles: 0, duplicateBytes: 0, publishedFiles: 0, retainedReferences: 0, conflicts: [] };
@@ -131,6 +132,7 @@ export async function retainSourceTree(source, canonical, { apply = false, remov
     const unchangedClone = initial?.copy === a.identity && initial?.canonical === b.identity;
     if (!unchangedClone && await digest(a, cache) !== await digest(b, cache)) { await preserveVersion(a, to); return; }
     report.duplicateFiles++; report.duplicateBytes += a.bytes;
+    if (verified) await verified({ source: from, destination: to, bytes: a.bytes, sha256: await digest(a, cache) });
     if (apply && removeDuplicates) {
       await safeRetentionPath(source, from); await safeRetentionPath(canonical, to);
       if (stamp(await info(from)) !== a.identity || stamp(await info(to)) !== b.identity) throw new Error(`Source changed before deduplication: ${from}`);
@@ -148,34 +150,41 @@ export async function sourceCloneBaseline(source, copy) {
   return Object.fromEntries((await retentionFiles(copy)).map(file => [relative(copy, file.path), { canonical: a.get(relative(copy, file.path)), copy: file.identity }]));
 }
 
-/** Legacy archive recovery first protects the complete supplied collection on main. */
+/** Retrieve the complete editable collection without hydrating main. */
 export async function restorePlayableSource(ctx, actor, cwd) {
   if (!actor.source) return;
-  const canonical = resolve(ctx.main, actor.source), target = resolve(cwd, actor.source);
-  await safeRetentionPath(ctx.main, canonical); await safeRetentionPath(cwd, target);
+  const target = resolve(cwd, actor.source);
+  await safeRetentionPath(cwd, target);
   if (await info(target)) return;
   await withResource('source-retention', async () => {
+    const suffix = actor.source.replace(/^\.local\//, '');
+    const canonical = join(assetSourceRoot(ctx), suffix);
     if (!await info(canonical)) {
       const archives = join(ctx.main, '.local/agent-archives');
       const candidates = [];
-      for (const name of await readdir(archives)) {
+      for (const name of await readdir(archives).catch(error => { if (error.code === 'ENOENT') return []; throw error; })) {
         const path = resolve(archives, name, actor.source.replace(/^\.local\//, ''));
         await safeRetentionPath(archives, path);
         if (await info(path)) candidates.push(path);
       }
+      const local = resolve(ctx.main, actor.source);
+      if (await info(local)) candidates.push(local);
       const cache = new Map(), hashes = new Set();
       for (const path of candidates) hashes.add(await digest((await retentionFiles(path))[0], cache));
       if (hashes.size !== 1) throw new Error(`Supply one unambiguous private source for ${actor.name}: ${actor.source}`);
       // Include acquisition records/editable masters, not just the immediate GLB parent.
       const collection = actor.source.match(/^\.local\/animation-packs\/Protagonists\/([^/]+)\//)?.[1];
       if (!collection) throw new Error(`Supplied source needs an explicit collection owner: ${actor.source}`);
-      const root = join(ctx.main, '.local/animation-packs/Protagonists', collection);
+      const root = join(assetSourceRoot(ctx), 'animation-packs/Protagonists', collection);
       for (const path of candidates) {
         const prefix = path.slice(0, path.indexOf('/animation-packs/'));
         await retainSourceTree(join(prefix, 'animation-packs/Protagonists', collection), root, { apply: true, cache });
       }
     }
-    if (!await info(target)) await privateTree(dirname(canonical), dirname(target));
+    const collection = suffix.match(/^animation-packs\/Protagonists\/[^/]+/)?.[0];
+    if (!collection) throw new Error(`Supplied source needs a collection owner: ${actor.source}`);
+    const from = join(assetSourceRoot(ctx), collection);
+    await retainSourceTree(from, join(cwd, '.local', collection), { apply: true });
   }, { ctx });
 }
 
@@ -186,22 +195,26 @@ export async function retainTaskSources(ctx, task) {
       const source = join(task.path, '.local', name);
       if (!await info(source)) continue;
       // Keep the worktree intact until git removes it; originals belong to asset owners.
-      const canonical = join(ctx.main, '.local', name);
       const baseline = await readJSON(join(task.path, '.local/agents/source-baselines', name + '.json'), {});
-      const report = await retainSourceTree(source, canonical, { apply: true, baseline });
-      await preserveSourceConflicts(ctx, name, source, report.conflicts);
+      for (const tree of originalTrees(name, source)) {
+        const suffix = relative(source, tree);
+        const canonical = join(assetSourceRoot(ctx), name, suffix);
+        const scoped = Object.fromEntries(Object.entries(baseline).filter(([path]) => !suffix || path.startsWith(suffix + '/')).map(([path, value]) => [suffix ? path.slice(suffix.length + 1) : path, value]));
+        const report = await retainSourceTree(tree, canonical, { apply: true, baseline: scoped });
+        await preserveSourceConflicts(ctx, join(name, suffix), tree, report.conflicts);
+      }
     }
   }, { ctx });
 }
 
 /** Content-addressed originals survive independently of the task that supplied them. */
-async function preserveSourceConflicts(ctx, collection, source, conflicts, remove = false) {
+export async function preserveSourceConflicts(ctx, collection, source, conflicts, remove = false) {
   const cache = new Map();
   for (const conflict of conflicts) for (const file of await retentionFiles(join(source, conflict))) {
     const hash = await digest(file, cache);
-    const owner = join(ctx.main, '.local/source-replacements', collection, hash);
+    const owner = join(assetSourceRoot(ctx), 'source-replacements', collection, hash);
     const target = join(owner, relative(source, file.path));
-    await safeRetentionPath(ctx.main, target);
+    await safeRetentionPath(assetSourceRoot(ctx), target);
     const result = await retainSourceTree(file.path, target, { apply: true, removeDuplicates: remove, cache });
     if (result.conflicts.length) throw new Error(`Source preservation differs: ${target}`);
   }
@@ -298,12 +311,13 @@ export async function pruneRetention(ctx, { apply = false, sources = false, mana
             if (!sources) { report.protected.push({ path, reason: 'source audit required: --sources' }); continue; }
             await withResource('source-retention', async () => {
               progress(`Verifying sources: ${id}/${entry}`);
-              const result = await retainSourceTree(path, join(ctx.main, '.local', entry), { apply, removeDuplicates: apply });
-              report.sourceReports.push(result);
-              if (apply) {
-                await preserveSourceConflicts(ctx, entry, path, result.conflicts, true);
-                if (await info(path)) report.protected.push({ path, reason: 'remaining source content' });
+              for (const tree of originalTrees(entry, path)) {
+                const suffix = relative(path, tree);
+                const result = await retainSourceTree(tree, join(assetSourceRoot(ctx), entry, suffix), { apply, removeDuplicates: apply });
+                report.sourceReports.push(result);
+                if (apply) await preserveSourceConflicts(ctx, join(entry, suffix), tree, result.conflicts, true);
               }
+              if (apply && await info(path)) report.protected.push({ path, reason: 'remaining source content or conversion caches' });
             }, { ctx });
             continue;
           }

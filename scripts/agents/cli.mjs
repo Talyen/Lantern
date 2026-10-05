@@ -14,13 +14,13 @@ await cli(async () => {
     start: { '--task': 'value', '--no-wait': 'boolean' },
     dev: { '--task': 'value', '--browser': 'boolean', '--author': 'boolean', '--area': 'value', '--stop': 'boolean', '--lab': 'value', '--viewport': 'value', '--dpr': 'value' },
     finish: { '--task': 'value', '--paths': 'value', '--message': 'value', '--resolved-assets': 'value' },
-    sources: { '--task': 'value', '--sources': 'value' },
+    sources: { '--task': 'value', '--sources': 'value', '--paths': 'value' },
     status: { '--all': 'boolean', '--task': 'value', '--json': 'boolean' }, cleanup: { '--task': 'value' }, main: { '--stop': 'boolean', '--browser': 'boolean', '--viewport': 'value', '--dpr': 'value' },
     capture: { '--task': 'value', '--output': 'value' },
     prune: { '--apply': 'boolean', '--sources': 'boolean', '--codex': 'boolean' },
   };
   const { command: operation, args } = parseCommand(process.argv.slice(2), options);
-  if (args['--help']) { console.log('Agent workflow: start --task SLUG [--no-wait]; dev [--browser] [--author] [--area ID] [--lab ID] [--viewport WIDTHxHEIGHT] [--dpr NUMBER] [--stop]; finish [--paths JSON_FILE] [--message TEXT] [--resolved-assets JSON_FILE]; sources --sources animation-packs,synty-library; status [--all | --task SLUG] [--json]; cleanup [--task SLUG]; main [--browser] [--viewport WIDTHxHEIGHT] [--dpr NUMBER] [--stop]; capture --output PNG; prune [--apply] [--sources] [--codex].'); return; }
+  if (args['--help']) { console.log('Agent workflow: start --task SLUG [--no-wait]; dev [--browser] [--author] [--area ID] [--lab ID] [--viewport WIDTHxHEIGHT] [--dpr NUMBER] [--stop]; finish [--paths JSON_FILE] [--message TEXT] [--resolved-assets JSON_FILE]; sources --sources animation-packs,synty-library [--paths JSON_FILE]; status [--all | --task SLUG] [--json]; cleanup [--task SLUG]; main [--browser] [--viewport WIDTHxHEIGHT] [--dpr NUMBER] [--stop]; capture --output PNG; prune [--apply] [--sources] [--codex].'); return; }
   if (operation === 'start' && !args['--task']) throw new UsageError('agent:start requires --task SLUG.');
   const viewportOptions = { viewport: args['--viewport'], dpr: args['--dpr'] };
   if (operation === 'dev' || operation === 'main') {
@@ -62,7 +62,7 @@ await cli(async () => {
       await stopPreview(task.path);
       await finishTask(ctx, task, { paths: args['--paths'] ? await readJSON(resolve(process.cwd(), args['--paths'])) : [], message: args['--message'], resolvedAssets: args['--resolved-assets'] ? await readJSON(resolve(process.cwd(), args['--resolved-assets'])) : [] });
     } else if (operation === 'sources') {
-      await prepareSources(ctx, task, (args['--sources'] ?? '').split(','));
+      await prepareSources(ctx, task, (args['--sources'] ?? '').split(','), args['--paths'] ? await readJSON(resolve(process.cwd(), args['--paths'])) : []);
     } else if (operation === 'cleanup') {
       await cleanupTask(ctx, task);
     } else throw new Error(`Unknown agent operation: ${operation}`);
