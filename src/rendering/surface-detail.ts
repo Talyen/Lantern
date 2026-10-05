@@ -1,7 +1,7 @@
 import { isMesh } from '../assets/resource-ownership';
 import * as THREE from 'three';
-import { Fn, If, Loop, float, vec2, vec3, color, uniform, uv, texture, dFdx, dFdy, positionView, positionViewDirection, normalViewGeometry, cross, dot, normalMap, negateOnBackSide, materialRoughness, materialSpecularIntensity, mix, smoothstep } from 'three/tsl';
-import { type MeshStandardNodeMaterial, MeshPhysicalNodeMaterial, type Node, type NodeBuilder } from 'three/webgpu';
+import { Fn, If, Loop, float, vec2, vec3, color, uniform, uv, texture, dFdx, dFdy, positionView, positionViewDirection, normalView, normalViewGeometry, cross, dot, normalMap, negateOnBackSide, materialRoughness, materialSpecularIntensity, mix, smoothstep, BRDF_GGX, specularF90, roughness, retroreflectivity } from 'three/tsl';
+import { type MeshStandardNodeMaterial, MeshPhysicalNodeMaterial, PhysicalLightingModel, type Node, type NodeBuilder } from 'three/webgpu';
 import { calibrationGain } from './material-calibration';
 import { materialRecipes, type MaterialFamily } from './material-recipes';
 import { validateMaterial } from '../assets/material-validation';
@@ -9,6 +9,38 @@ import { validateMaterial } from '../assets/material-validation';
 type SurfaceContext = { materialMipBias?: Node<'float'>; textureDepth?: boolean };
 // The pinned r186 builder exposes this method; its declarations omit it.
 type SurfaceBuilder = NodeBuilder & { isFlatShading(): boolean };
+// r186 passes boolean feature flags to GGX; its declarations incorrectly require nodes.
+const surfaceGGX = BRDF_GGX as unknown as (input: Omit<Parameters<typeof BRDF_GGX>[0], 'USE_IRIDESCENCE' | 'USE_ANISOTROPY'>
+  & { USE_IRIDESCENCE: boolean; USE_ANISOTROPY: boolean }) => Node<'vec3'>;
+/** r186 hardcodes direct GGX's grazing response to 1. Remove only that excess;
+ * specularF90 already contains authored intensity, dry suppression and metalness. */
+class SurfaceLightingModel extends PhysicalLightingModel {
+  override direct(input: Parameters<PhysicalLightingModel['direct']>[0], builder: NodeBuilder): void {
+    super.direct(input, builder);
+    const lightDirection = input.lightDirection as Node<'vec3'>, lightColor = input.lightColor as Node<'vec3'>;
+    const excess = (viewDirection = positionViewDirection) => surfaceGGX({
+      lightDirection, viewDirection, f0: vec3(0), f90: specularF90.oneMinus(), roughness,
+      f: vec3(0), USE_IRIDESCENCE: this.iridescence, USE_ANISOTROPY: this.anisotropy,
+    });
+    const correction = this.retroreflection
+      ? mix(excess(), excess(positionViewDirection.negate().reflect(normalView)), retroreflectivity.clamp())
+      : excess();
+    (input.reflectedLight.directSpecular as Node<'vec3'>).subAssign(normalView.dot(lightDirection).clamp()
+      .mul(lightColor).mul(correction).mul(this.multiScatteringCompensation as Node<'vec3'>));
+  }
+}
+/** Preserve the lighting adapter through native clone/copy operations. */
+class SurfaceMaterial extends MeshPhysicalNodeMaterial {
+  override copy(source: THREE.Material): this {
+    super.copy(source);
+    prepareSurfaceHighlights(this);
+    return this;
+  }
+  override setupLightingModel(): PhysicalLightingModel {
+    return new SurfaceLightingModel(this.useClearcoat, this.useSheen, this.useIridescence, this.useAnisotropy,
+      this.useTransmission, this.useDispersion, this.useRetroreflection);
+  }
+}
 /** Use authored roughness, including maps/wetness, rather than an asset-wide gloss override.
  * Physical materials retain the metallic branch and authored smooth-surface response. */
 export function prepareSurfaceHighlights(material: MeshPhysicalNodeMaterial): void {
@@ -22,7 +54,7 @@ export function prepareSurfaceHighlights(material: MeshPhysicalNodeMaterial): vo
   })();
 }
 export function createSurfaceMaterial(parameters?: ConstructorParameters<typeof MeshPhysicalNodeMaterial>[0]): MeshPhysicalNodeMaterial {
-  const material = new MeshPhysicalNodeMaterial(parameters);
+  const material = new SurfaceMaterial(parameters);
   prepareSurfaceHighlights(material);
   return material;
 }
@@ -158,7 +190,7 @@ export function prepareStandardMaterials(root: THREE.Object3D): void {
     const convert = (source: THREE.Material) => {
       if (!(source instanceof THREE.MeshStandardMaterial)) return source;
       let material = converted.get(source);
-      if (!material) { material = new MeshPhysicalNodeMaterial().copy(source); prepareSurfaceMaterial(material); converted.set(source, material); }
+      if (!material) { material = createSurfaceMaterial().copy(source); prepareSurfaceMaterial(material); converted.set(source, material); }
       return material;
     };
     object.material = Array.isArray(object.material) ? object.material.map(convert) : convert(object.material);

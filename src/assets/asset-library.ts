@@ -1,8 +1,8 @@
 import { disposeSceneInstances, ownTexture, sceneTextures, isMesh, isTexture } from './resource-ownership';
 import * as THREE from 'three';
 import { cachedRequest } from '../data/cached-request';
-import { type MeshStandardNodeMaterial, MeshPhysicalNodeMaterial } from 'three/webgpu';
-import { prepareStandardMaterials, prepareSurfaceMaterial, filterMaterialTexture } from '../rendering/surface-detail';
+import { type MeshStandardNodeMaterial } from 'three/webgpu';
+import { createSurfaceMaterial, prepareStandardMaterials, prepareSurfaceMaterial, filterMaterialTexture } from '../rendering/surface-detail';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
 import { assembleAsset, type AssemblySpec, type LibraryModel } from './asset-assembly';
@@ -86,7 +86,7 @@ export class AssetLibrary {
   private async material(id: string): Promise<MeshStandardNodeMaterial> {
     return this.cached(this.materials, id, async () => {
       const spec = await this.data<MaterialSpec>(id);
-      const material = new MeshPhysicalNodeMaterial({ name: spec.name, roughness: spec.roughness ?? 0.9, metalness: spec.metalness ?? 0,
+      const material = createSurfaceMaterial({ name: spec.name, roughness: spec.roughness ?? 0.9, metalness: spec.metalness ?? 0,
         side: spec.doubleSided || spec.effectRole === 'foliage' ? THREE.DoubleSide : THREE.FrontSide, transparent: spec.alphaMode === 'BLEND',
         depthWrite: spec.alphaMode !== 'BLEND', alphaTest: spec.alphaMode === 'MASK' || spec.effectRole === 'foliage' && !!spec.textures.baseColor ? spec.alphaCutoff ?? 0.5 : 0 });
       this.ownedMaterials.add(material);

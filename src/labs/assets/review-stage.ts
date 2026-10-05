@@ -9,6 +9,7 @@ import { createRenderer, waitForPresentedFrames } from '../../rendering/renderer
 import { resizeDisplay } from '../../rendering/display-resolution';
 import { WebGPUPipeline } from '../../rendering/webgpu-pipeline';
 import { previewGraphicsView } from '../../rendering/preview-graphics';
+import { createSurfaceMaterial } from '../../rendering/surface-detail';
 import { AreaLightingResources } from '../../rendering/area-lighting';
 import type { GraphicsSettings } from '../../rendering/graphics-settings';
 import { reviewGraphics } from './review-graphics';
@@ -60,7 +61,7 @@ export class ReviewStage {
     this.lighting = new AreaLightingResources(renderer); this.scene.environment = this.lighting.environmentTexture(look); this.scene.environmentIntensity = look.environment!.intensity;
     this.scene.add(new THREE.HemisphereLight(look.ambient.sky, look.ambient.ground, look.ambient.intensity));
     this.sun = new THREE.DirectionalLight(look.sun.color, look.sun.intensity); this.sun.position.fromArray(look.sun.position); this.sun.castShadow = true; this.scene.add(this.sun, this.sun.target);
-    this.floor = new THREE.Mesh(new THREE.PlaneGeometry(2000, 2000), new MeshStandardNodeMaterial({ color: '#484137', roughness: 1 }));
+    this.floor = new THREE.Mesh(new THREE.PlaneGeometry(2000, 2000), createSurfaceMaterial({ color: '#484137', roughness: 1 }));
     this.floor.rotation.x = -Math.PI / 2; this.floor.position.y = -.015; this.floor.receiveShadow = true; this.scene.add(this.floor);
     // A subdued human-height marker supplies scale without competing with the asset.
     const markerMaterial = new MeshStandardNodeMaterial({ color: '#ad9674', roughness: 1, wireframe: true });

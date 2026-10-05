@@ -1,8 +1,8 @@
 import { ownTexture, sceneTextures, isMesh } from './resource-ownership';
 import * as THREE from 'three';
-import { type MeshStandardNodeMaterial, MeshPhysicalNodeMaterial } from 'three/webgpu';
+import { type MeshStandardNodeMaterial } from 'three/webgpu';
 import manifest from '../../assets/textures/environment/manifest.json';
-import { prepareSurfaceMaterial, prepareSurfaceHighlights } from '../rendering/surface-detail';
+import { createSurfaceMaterial, prepareSurfaceMaterial, prepareSurfaceHighlights } from '../rendering/surface-detail';
 import type { AssetRef } from '../levels/types';
 import { validateMaterial } from './material-validation';
 import { materialRecipes, type MaterialFamily } from '../rendering/material-recipes';
@@ -23,7 +23,7 @@ export function environmentOutlineEligible(ref: AssetRef): boolean {
   return !!asset && ['backpack', 'barrel', 'bedroll', 'chest', 'crate', 'lantern', 'log', 'rock', 'tent'].includes(asset.kind);
 }
 export function copyStandardNodeMaterial(source: THREE.MeshStandardMaterial | MeshStandardNodeMaterial): MeshStandardNodeMaterial {
-  const material = new MeshPhysicalNodeMaterial().copy(source);
+  const material = createSurfaceMaterial().copy(source);
   prepareSurfaceHighlights(material);
   return material;
 }

@@ -4,7 +4,7 @@ import { color, dFdx, dFdy, Fn, normalMap, texture, uv, vec2 } from 'three/tsl';
 import { createRenderer } from '../../rendering/renderer';
 import { WebGPUPipeline } from '../../rendering/webgpu-pipeline';
 import { defaults } from '../../rendering/graphics-settings';
-import { prepareSurfaceMaterial, surfaceBias } from '../../rendering/surface-detail';
+import { createSurfaceMaterial, prepareSurfaceMaterial, surfaceBias } from '../../rendering/surface-detail';
 import { lightingPreset } from '../../levels/lighting-preset';
 import { resetMaterialCalibration } from '../../rendering/material-calibration';
 
@@ -77,7 +77,7 @@ export async function runMaterialProbe() {
         metalness: kind.includes('highlight-metal') || kind.includes('env-metal') || kind.includes('env-coat') ? 1 : 0,
         normalMap: highlight || transform || depth ? null : normal, map: !highlight && (transform || depth) ? albedo : null,
         roughnessMap: depth ? data : null, side: kind.startsWith('back') ? THREE.DoubleSide : THREE.FrontSide });
-      const material = kind.startsWith('highlight-') && kind.endsWith('reference') ? source : new MeshPhysicalNodeMaterial().copy(source);
+      const material = kind.startsWith('highlight-') && kind.endsWith('reference') ? source : createSurfaceMaterial().copy(source);
       if (material !== source) source.dispose();
       if ((kind.includes('env-coat') || kind.startsWith('ao-coat')) && material instanceof MeshPhysicalNodeMaterial) { material.clearcoat = 1; material.clearcoatRoughness = .2; }
       if (aoFixture) material.emissive.set('#4c210b');

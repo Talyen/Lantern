@@ -15,7 +15,8 @@ export class AbilityEffects {
   private point=new THREE.Vector3();
   private rest=new THREE.Vector3();
   constructor(area:AreaInstance,quality:QualityLevel,renderer:WebGPURenderer) {
-    const definition=area.area.props.filter(p=>p.primitive?.kind==='box' && p.primitive.size[1]<=.5 && p.position[1]<=.25).sort((a,b)=>b.primitive!.size[0]*b.primitive!.size[2]-a.primitive!.size[0]*a.primitive!.size[2])[0];
+    // Authored terrain can be thicker than a decorative slab (Blockout is 0.6 m).
+    const definition=area.area.props.filter(p=>p.primitive?.kind==='box' && (p.terrain || p.primitive.size[1]<=.5) && p.position[1]<=.25).sort((a,b)=>b.primitive!.size[0]*b.primitive!.size[2]-a.primitive!.size[0]*a.primitive!.size[2])[0];
     const mesh=definition ? area.root.getObjectByName(definition.id) : undefined;
     if (!isMesh(mesh)) throw new Error('Rain of Arrows needs an authored ground receiver.');
     // Decals use a real world transform even when the floor is an instanced prop.
