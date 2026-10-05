@@ -12,7 +12,9 @@ Centralized intake for unresolved agent friction while working in Lantern. Keep 
 
 ## Open
 
-No open entries.
+| Date | Issue | Evidence and next action |
+| --- | --- | --- |
+| 2026-10-05 | Safari reloads during world entry after exceeding its memory limit. | The local Safari log reports a 14,069 MB footprint, 12,136 MB after attempted relief, and `ExceededMemoryLimit`. An owned normal-settings Chromium Homestead entry at revision `a818adf8e3de` created about 4.1 GiB of GPU textures, including repeated named 4K atlases, and 260 overlapping native pipeline requests. Shader-node construction accounted for about 97% of the sampled retained allocation bytes during a repeat entry. See details below; unresolved evidence is retained with the `safari-memory-investigation` task. |
 
 ## Archive
 
@@ -21,6 +23,13 @@ No open entries.
 ## Details
 
 Add a `### YYYY-MM-DD — short slug` subsection here only when the table row needs more context. Keep the table as the index and identify the associated details there.
+
+### 2026-10-05 — Safari world-entry memory
+
+- **Confirmed failure:** Safari 27 on this 16 GiB host killed the local world-entry web process at 11:59:22 PDT. Its dump included 17,704,168 JavaScript objects, a 4,501 MB JavaScript heap and 3,501 MB of extra heap memory. This establishes memory exhaustion, but does not identify the retaining objects in Safari.
+- **Owned comparison:** Chromium at 1920 × 1080 CSS pixels, DPR 1, fresh default graphics, reached Homestead with prepared lighting and no reported runtime failures. The first entry created 633 shader modules, 310 native pipelines, about 4.1 GiB of GPU textures and 34 MiB of GPU buffers. These are creation totals, not live-memory peaks; mip/format estimates omit driver overhead. Of 89 uncompressed 2K/4K RGBA texture allocations, matching nonempty labels, sizes and formats suggest about 0.9 GiB of repeated atlas storage; prove resolved source and sampling equivalence before sharing. A repeat entry's V8 sampling profile attributed 565.7 MB of 581.0 MB sampled retained allocations to shader-node build paths. Instrumentation and this different browser are not Safari memory or performance acceptance.
+- **Priorities:** First share equivalent runtime textures across GLTFs, with explicit leases and bitmap disposal, through [asset loading](../src/assets/asset-library.ts) and [rig art](../src/assets/rig-art.ts). Then prepare high-quality GPU-compressed maps and route all relevant GLTF loaders through the existing [KTX2 scenery support](../src/assets/scenery-loader.ts), checking normal/roughness/alpha fidelity. Reduce duplicate shader graphs and bound first-use native compilation in the [shared renderer](../src/rendering/renderer.ts) and [pipeline](../src/rendering/webgpu-pipeline.ts); keep destination readiness truthful. Bound inactive library/rig retention and asset decode concurrency as follow-up work, rather than assuming the existing unused-scene budget covers those owners.
+- **Acceptance:** Compare a fresh Safari entry and reload/Continue at the same recorded settings and drawable resolution, record process footprint by preparation stage and compilation concurrency, and verify travel/Return to Title releases resources. Preserve native WebGPU, FSR, physical output, authored detail and saved settings. Do not claim closure from Chromium completion or lower creation totals alone.
 
 ### Expanded entry template
 
