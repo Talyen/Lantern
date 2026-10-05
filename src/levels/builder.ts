@@ -242,14 +242,14 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
         }
         const chest = area.chests?.find(c => c.prop === p.id);
         if (chest) {
-          // This exported chest has a separate lid in its original Z-up mesh coordinates.
-          const lid = model.getObjectByName('SM_Prop_Chest_01_Lid');
+          // Both chest exports retain a separate lid in original Z-up mesh coordinates.
+          const lid = model.getObjectByName('SM_Prop_Chest_01_Lid') ?? model.getObjectByName('SM_Prop_Chest_02_Lid_01');
           if (isMesh(lid) && lid.parent) {
             lid.geometry.computeBoundingBox();
             const box = lid.geometry.boundingBox!, hinge = new THREE.Group();
             hinge.position.set((box.min.x + box.max.x) / 2, box.min.y, box.max.z);
             lid.parent.add(hinge); hinge.add(lid); lid.position.sub(hinge.position);
-            const lock = model.getObjectByName('SM_Prop_Chest_01_Lock');
+            const lock = model.getObjectByName('SM_Prop_Chest_01_Lock') ?? model.getObjectByName('SM_Prop_Chest_02_Latch_01');
             if (lock) { hinge.add(lock); lock.position.sub(hinge.position); }
             chests.set(chest.id, { hinge, opened: false });
           }

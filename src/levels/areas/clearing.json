@@ -563,14 +563,14 @@
       ],
       "yaw": -0.7853981633974483,
       "scale": [
+        1.3127678966229608,
         1,
-        1,
-        1
+        1.3673771481010106
       ],
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "viking-realm:model:sm-prop-chest-01"
+        "libraryId": "viking-realm:model:sm-prop-chest-02"
       },
       "height": 0.85
     },
@@ -2407,14 +2407,14 @@
       ],
       "yaw": -0.7853981633974483,
       "scale": [
-        0.7,
-        0.7,
-        0.7
+        1.2992805552193003,
+        1,
+        1.3650155295377966
       ],
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "viking-realm:model:sm-prop-chest-01"
+        "libraryId": "viking-realm:model:sm-prop-chest-02"
       },
       "height": 0.6
     },
@@ -2427,14 +2427,14 @@
       ],
       "yaw": -0.7853981633974483,
       "scale": [
-        0.7,
-        0.7,
-        0.7
+        1.2992805552193003,
+        1,
+        1.3650155295377966
       ],
       "castShadow": true,
       "receiveShadow": true,
       "asset": {
-        "libraryId": "viking-realm:model:sm-prop-chest-01"
+        "libraryId": "viking-realm:model:sm-prop-chest-02"
       },
       "height": 0.6
     },
