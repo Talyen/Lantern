@@ -10,11 +10,9 @@ import { duration, play, type Actor } from './actors';
 type PresentationContext = {
   effects(): CoreEffects | undefined;
   weaponSet(set: WeaponSet): void;
-  proficiency(family:'axe' | 'sword' | 'bow',amount:number): void;
-  playerHit(unblocked: boolean): void;
 };
 
-/** Presents ordered simulation events; the coordinator retains progress and input decisions. */
+/** Presents committed simulation events; it never commits progress or cancels input. */
 export class EncounterPresentation {
   constructor(
     private readonly encounter: Encounter,
@@ -34,13 +32,6 @@ export class EncounterPresentation {
     for (const event of events) {
       switch (event.type) {
         case 'weaponSet': this.context.weaponSet(event.set); break;
-        case 'proficiency': this.context.proficiency(event.family,event.amount); break;
-        case 'hit': {
-          if (event.actor === 'player') {
-            this.context.playerHit(events.some(impact => impact.type === 'impact' && impact.actor === 'player' && !impact.blocked));
-          }
-          break;
-        }
         case 'animation':
           play(this.actors[event.actor], event.motion, event.actor === 'player' ? this.encounter.playerAction?.rate ?? 1 : 1);
           break;
@@ -63,7 +54,7 @@ export class EncounterPresentation {
         case 'projectileImpact':
           if (event.kind === 'bolt' && event.owner && event.owner !== 'player') event.damageType==='burn' ? this.context.effects()?.burst('fire',new Vector3(event.position.x,event.position.y ?? .85,event.position.z),9) : this.context.effects()?.fluids.magic(event.position.x, event.position.y ?? .85, event.position.z);
           break;
-        case 'abilityCommitted': case 'abilityCancelled': case 'label': case 'outcome': break;
+        case 'proficiency': case 'hit': case 'abilityCommitted': case 'abilityCancelled': case 'label': case 'outcome': break;
       }
     }
     this.audio.encounter(events, this.encounter);

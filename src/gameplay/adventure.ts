@@ -12,7 +12,7 @@ import { purchase, sale, repurchase } from './shop-transactions';
 import { forged, reclaimed, learnedRecipes, smithing, type SmithingContainer } from './smithing';
 import { canRepairShelter, restoredShelter } from './homestead-transactions';
 import { validBar, abilityUnlocked, weaponTrees, type AbilityId, type ActionBar, type WeaponSet } from './abilities';
-import { createEncounter, healthRegeneration, inCombat, type Encounter, type EnemyId } from './encounter';
+import { applyEquipment, createEncounter, healthRegeneration, inCombat, type Encounter, type EncounterEvent, type EnemyId } from './encounter';
 import { near, type Point, type Spawn } from './area';
 import type { AreaDefinition, Campfire, Chest } from '../levels/types';
 import { equipmentCatalog, type ItemId } from './equipment';
@@ -186,6 +186,23 @@ export class Adventure {
   setWeaponSet(set: WeaponSet): void {
     this.character.activeSet = set;
     this.save();
+  }
+
+  syncLoadout(encounter: Encounter): void {
+    encounter.proficiency = { ...this.character.xp };
+    applyEquipment(encounter, this.character.items, this.character.activeSet);
+  }
+
+  /** Consumed once by the combat coordinator, before any presentation or enemy loot update. */
+  applyCombatEvents(encounter: Encounter, events: readonly EncounterEvent[]): void {
+    for (const event of events) {
+      if (event.type === 'weaponSet') this.setWeaponSet(event.set);
+      else if (event.type === 'proficiency') {
+        this.grantWeaponXp(event.family, event.amount);
+        this.syncLoadout(encounter);
+      }
+    }
+    if (events.some(event => event.type === 'abilityCommitted')) this.save();
   }
 
   usePotion(encounter: Encounter, id?: string): boolean {

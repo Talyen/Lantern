@@ -1,7 +1,7 @@
 import type { GameAudio } from '../audio/audio';
 import type { Adventure } from '../gameplay/adventure';
 import type { CharacterSave } from '../gameplay/character';
-import { applyEquipment, inCombat, type Encounter } from '../gameplay/encounter';
+import { inCombat, type Encounter } from '../gameplay/encounter';
 import {
   removeQuantity, sameEquipment, validItems,
   type InventoryItem,
@@ -43,9 +43,7 @@ export class InventoryController {
   }
 
   syncLoadout(): void {
-    const { character } = this.adventure;
-    this.encounter.proficiency={...character.xp};
-    applyEquipment(this.encounter,character.items,character.activeSet);
+    this.adventure.syncLoadout(this.encounter);
   }
 
   activateSet(set: WeaponSet): void {

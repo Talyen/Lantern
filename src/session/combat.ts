@@ -37,11 +37,17 @@ export class CombatController {
     private readonly encounter: Encounter,
     private readonly adventure: Adventure,
     private readonly actors: Record<ActorId, Actor>,
-    private readonly input: ReturnType<typeof createInput>,
-    private readonly pointerAim: PointerAim,
-    private readonly equipment: EquipmentSets,
+    private readonly input: Pick<ReturnType<typeof createInput>, 'suppress' | 'held' | 'pointer' | 'movement'>,
+    private readonly pointerAim: Pick<PointerAim, 'resolve' | 'attack'>,
+    private readonly equipment: Pick<EquipmentSets, 'abilityTimings'>,
     private readonly context: CombatContext,
   ) {}
+
+  /** Commands and frame steps share one gameplay commit before presentation. */
+  complete(events: EncounterEvent[]): void {
+    this.adventure.applyCombatEvents(this.encounter, events);
+    this.context.present(events);
+  }
 
   timings(): Timings {
     // Simulation consumes these synchronously and snapshots accepted attacks.
@@ -89,7 +95,7 @@ export class CombatController {
       return;
     }
     const events = useAbility(this.encounter, id, this.timings().player, false, aim,this.context.navigation?.());
-    this.context.present(events);
+    this.complete(events);
     if (events.length || this.encounter.pending) return;
 
     const definition = abilities[id];
@@ -118,7 +124,7 @@ export class CombatController {
       if(this.encounter.weaponSets[(1-this.encounter.activeSet) as 0|1].main) this.encounter.pending = { kind:'swap', remaining:.15 };
       return;
     }
-    this.context.present(swapWeaponSet(this.encounter, false));
+    this.complete(swapWeaponSet(this.encounter, false));
   }
 
   dodge(): void {
@@ -128,7 +134,7 @@ export class CombatController {
     const aim = this.pointerAim.resolve(this.input.pointer(), this.encounter.player.y);
     const events=dodge(this.encounter,this.input.movement(),false,aim);
     if (events.some(event=>event.type==='action' && event.action==='dodge')) this.context.cancelImpact?.();
-    this.context.present(events);
+    this.complete(events);
     if (this.encounter.pending?.kind === 'dodge' && Math.max(this.encounter.dodgeCooldown, this.encounter.dodgeRemaining) > .15)
       this.adventure.message('Dodge is not ready');
   }

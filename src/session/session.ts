@@ -308,20 +308,18 @@ const presentation = new EncounterPresentation(encounter, actors, gameplayAudio,
   effects: () => graphics?.effects,
   weaponSet: set => {
     equipmentSets.activate(set);
-    adventure.setWeaponSet(set);
     combatUI?.update();
     audio.play('equip');
     menus.updateCharacter(adventure.character);
     shop.update(adventure.character);
   },
-  proficiency: (family,amount) => {adventure.grantWeaponXp(family,amount); inventory.syncLoadout();},
-  playerHit: () => interruptApproach(false),
 });
 function present(events: EncounterEvent[]): void {
+  if (events.some(event => event.type === 'hit' && event.actor === 'player')) interruptApproach(false);
+  const lost = events.some(event => event.type === 'outcome' && !event.won);
+  if (lost) { impact.clear(); pendingUtility = null; }
   presentation.present(events);
-  if (events.some(event => event.type === 'abilityCommitted')) adventure.save();
-  if (!frozen && !inspecting && !areaTransitions?.transitioning) impact.present(events);
-  if (events.some(event => event.type === 'outcome' && !event.won)) { impact.clear(); pendingUtility=null; }
+  if (!lost && !frozen && !inspecting && !areaTransitions?.transitioning) impact.present(events);
 }
 function resetPresentation(clearGameplayEffects = true): void {
   gameplayAudio.reset();
@@ -499,8 +497,8 @@ function updateGame(dt: number): void {
   const commands = { ...movement, block, paused: isPaused || paused(), aim: isPaused ? undefined : approachCommand?.aim ?? resolveAim() };
   if (encounter.player.hp > 0 && !commands.paused && Math.hypot(movement.x, movement.z) > 0) hud.dismissResult();
   if (encounter.phase === 'won' || currentArea.kind === 'safe') {
-    present(stepExploration(encounter, dt, commands, movementWorld, combat.timings()));
-  } else present(stepEncounter(encounter, dt, commands, combat.timings(), movementWorld));
+    combat.complete(stepExploration(encounter, dt, commands, movementWorld, combat.timings()));
+  } else combat.complete(stepEncounter(encounter, dt, commands, combat.timings(), movementWorld));
   if (!paused() && encounter.phase !== 'loading' && adventure.currentArea) adventure.step(encounter, currentArea, dt);
   if (!isPaused && encounter.player.hp > 0) gathering.advance(dt);
   projectileVisuals.sync(encounter.projectiles, isPaused ? 0 : dt);
