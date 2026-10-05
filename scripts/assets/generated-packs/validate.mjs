@@ -63,7 +63,7 @@ export async function inspectModel(bytes, name, expected = {}) {
       }
       if (node.isSkinnedMesh) fail('Static prop unexpectedly skinned');
     });
-    const box = new Box3().setFromObject(gltf.scene);
+    const box = new Box3().setFromObject(gltf.scene, expected.preciseBounds ?? false);
     const bounds = [box.min.toArray(), box.max.toArray()];
     if (!bounds.flat().every(Number.isFinite) || box.getSize(new Vector3()).length() <= 0) fail('Invalid loaded bounds');
     if (expected.root || expected.identityMesh) {
