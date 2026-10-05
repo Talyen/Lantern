@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdir, readFile, writeFile, rename, readdir, statfs } from 'node:fs/promises';
-import { resolve, join } from 'node:path';
+import { resolve, join, basename } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { root } from '../lib/cli.mjs';
 const execute = promisify(execFile);
@@ -49,10 +49,18 @@ export async function taskCapacity(ctx, records) {
   return { used: records.filter(task => task.status !== 'cleaned').length, limit: configured === null ? defaultTaskWorktreeLimit : Number(configured) };
 }
 export function taskPath(ctx, id) { return join(ctx.store, 'tasks', `${id}.json`); }
+/** Single-task commands must not load retained asset indexes for other tasks. */
+export async function readTask(ctx, id) {
+  if (!/^[a-z][a-z0-9-]{0,47}$/.test(id)) throw new Error('Invalid task slug.');
+  const task = await readJSON(taskPath(ctx, id), null);
+  if (task && (task.id !== id || resolve(task.path) !== join(ctx.main, '.local/worktrees', id))) throw new Error('Task registration does not match its worktree. Preserve the record and inspect it.');
+  return task;
+}
 export async function saveTask(ctx, task) { await writeJSON(taskPath(ctx, task.id), task); }
 export async function currentTask(ctx) {
-  const task = (await tasks(ctx)).find(record => record.path === ctx.cwd && record.status !== 'cleaned');
-  if (!task) throw new Error('Run agent:start from main, then use its returned worktree directory.');
+  const id = basename(ctx.cwd);
+  const task = resolve(ctx.cwd) === join(ctx.main, '.local/worktrees', id) ? await readTask(ctx, id) : null;
+  if (!task || task.status === 'cleaned') throw new Error('Run agent:start from main, then use its returned worktree directory.');
   return task;
 }
 export async function clean(cwd, candidate) {

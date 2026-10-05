@@ -4,6 +4,7 @@ import { createMerchant } from '../rendering/merchant';
 
 import { lightingOnly, includeCutawayShadows } from '../rendering/cutaway';
 import { SceneCache } from '../assets/scene-cache';
+import { pendingCachedRequests } from '../data/cached-request';
 import { disposeSceneInstances, isMesh } from '../assets/resource-ownership';
 import { MeshStandardNodeMaterial, type Node } from 'three/webgpu';
 import { createSurfaceMaterial } from '../rendering/surface-detail';
@@ -32,6 +33,7 @@ import { gathering } from '../gameplay/skills';
 import { treeDefinitions } from './trees';
 import type { AreaDefinition, AssetRef, Placement, Primitive, GroundPatch } from './types';
 const cache = new SceneCache();
+export const pendingAreaAssets = (): string[] => [...pendingCachedRequests(), ...cache.pendingAssets()].slice(0, 16);
 export async function disposeAreaCache(): Promise<void> { await cache.dispose(); await assetLibrary.dispose(); disposeSceneryLoader(); }
 export function createWorld() {
   const scene = new THREE.Scene();

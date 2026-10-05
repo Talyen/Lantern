@@ -1,6 +1,6 @@
 import { resolve } from 'node:path';
 import { cli, parseCommand, UsageError } from '../lib/cli.mjs';
-import { context, currentTask, readJSON, tasks, freeSpace } from './state.mjs';
+import { context, currentTask, readJSON, readTask, freeSpace } from './state.mjs';
 import { startTask, finishTask, cleanupTask, prepareSources, ensureDependencies, recover } from './workflow.mjs';
 import { startPreview, stopPreview } from './preview.mjs';
 import { withResource } from './resources.mjs';
@@ -41,7 +41,7 @@ await cli(async () => {
     if (args['--stop']) await stopPreview(ctx.main);
     else console.log((await startPreview(ctx.main, { main: true, browser: !!args['--browser'], ...viewportOptions })).url);
   } else {
-    const task = args['--task'] ? (await tasks(ctx)).find(task => task.id === args['--task']) : await currentTask(ctx);
+    const task = args['--task'] ? await readTask(ctx, args['--task']) : await currentTask(ctx);
     if (!task) throw new Error('Unknown task');
     if (operation === 'dev') {
       if (args['--stop']) await stopPreview(task.path);
@@ -54,7 +54,7 @@ await cli(async () => {
     } else if (operation === 'sources') {
       await prepareSources(ctx, task, (args['--sources'] ?? '').split(','));
     } else if (operation === 'cleanup') {
-      await stopPreview(task.path); await cleanupTask(ctx, task);
+      await cleanupTask(ctx, task);
     } else throw new Error(`Unknown agent operation: ${operation}`);
   }
 });

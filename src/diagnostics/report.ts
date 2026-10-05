@@ -5,6 +5,7 @@ export type RuntimeSnapshot = {
   graphics?: { ready: boolean; method: string; sceneWidth: number; sceneHeight: number; outputWidth: number; outputHeight: number };
   audio?: { state: string; loaded: number; loading: number; voices: number; errors: string[] };
   persistence?: { pending: boolean; loaded: boolean; failures: number; blockedByExisting: boolean; error: string };
+  preparation?: { generation: number; destination: string; stage: string; pendingAssets: string[]; lightingStage?: string; compilationPending: number; completedFrames: number };
 };
 type Failure = { at: string; kind: string; message: string };
 type Report = { schemaVersion: 1; createdAt: string; build: typeof __LANTERN_BUILD__; runtime: { platform: string; userAgent: string; webgpuAvailable: boolean }; state: RuntimeSnapshot; failures: Failure[] };

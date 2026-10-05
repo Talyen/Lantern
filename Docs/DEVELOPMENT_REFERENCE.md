@@ -48,11 +48,21 @@ whose preview owner has exited. The lease
 guardian attempts normal browser close, then stops only those verified groups if
 close fails or the preview owner exits abruptly, and verifies their exit before
 discarding ownership records. GPU admission stays reserved through cleanup.
+Stop and task cleanup independently verify recorded browser exit after the preview
+owner exits, including retained history when the current preview record is absent.
 No extra agent registration or cleanup steps are required. Do not use global browser-close or age-based reclamation against
 another task or the user's browser. These limits belong to this repository;
 Alchemy browser tests and Trinket simulator builds can still compete for the same
 Mac's memory. Coordinate expensive inspections when host memory pressure is high,
 while allowing source editing to continue.
+
+Native material probes run from a settled level-authoring route in the owned
+preview. Their results remain in that page until exported; short browser requests
+poll completion without extending command deadlines or changing frame checks.
+
+Preview and handoff commands read only the selected registration. Current-task lookup
+derives the slug from the managed worktree directory and verifies its registered
+path and status; historical discovery remains available through `agent:status`.
 
 Set a repository-local override with `git config --local lantern.maxWorktrees 12`; remove it with `git config --local --unset lantern.maxWorktrees` to restore eight. The setting must be a positive integer and is shared by every worktree. Lowering it preserves existing tasks and waits for usage to fall below the new limit. Every task not yet cleaned consumes a slot, including integrated tasks awaiting cleanup. Admission releases the promotion lock while waiting so other tasks can finish and be cleaned.
 

@@ -7,6 +7,7 @@ export class SceneCache {
   private closed = false;
   private disposal?: Promise<void>;
   constructor(private unusedBytes = 256 * 1024 * 1024) {}
+  pendingAssets(): string[] { return [...this.entries].filter(([, entry]) => !entry.root).slice(0, 16).map(([key]) => key); }
   acquire(key: string, load: () => Promise<THREE.Group>): { scene: Promise<THREE.Group>; release(this: void): void } {
     if (this.closed) throw new Error('Scene cache is closed.');
     let entry = this.entries.get(key);

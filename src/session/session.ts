@@ -85,6 +85,7 @@ export type GameSession = {
   dispose(): Promise<void>;
 };
 export type SessionContext = {
+  reportLoading?: (report: () => ReturnType<ClearingDiagnostics['report']>) => void;
   renderer: WebGPURenderer;
   adventure: Adventure;
   options: Options;
@@ -100,6 +101,7 @@ resetNativeFrameCompilation(ctx.renderer);
 const lifecycle = new AbortController();
 const releases: (() => void | Promise<void>)[] = [];
 let closed = false;
+let preparation = { generation: 0, destination: 'startup', stage: 'character' };
 async function dispose(): Promise<void> {
   if (closed) return;
   closed = true; lifecycle.abort();
@@ -585,6 +587,7 @@ function stageVegetationActors(): void {
   graphics?.effects.setVegetationActors(vegetationActors);
 }
 const runtimeDiagnostics = new ClearingDiagnostics({
+  get preparation() { return preparation; },
   audio, adventure, encounter, preferences, harvesting, gathering, approach,
   playerEquipment, enemyActors, actors, camera, controls, renderer, mount,
   get currentArea() { return currentArea; },
@@ -604,6 +607,7 @@ const runtimeDiagnostics = new ClearingDiagnostics({
   get updateMs() { return updateMs; },
   get renderedFrames() { return renderedFrames; },
 });
+ctx.reportLoading?.(() => runtimeDiagnostics.report());
 const diagnostics = () => runtimeDiagnostics.snapshot();
 const previewWeather = (phase: WeatherPhase | 'live', wetness = 0) => {
   if (!['live','dry','gathering','shower','clearing'].includes(phase) || !Number.isFinite(wetness) || wetness < 0 || wetness > 1) throw new Error('Invalid weather preview');
@@ -629,6 +633,7 @@ try {
   sceneTextures(character.scene);
   attachCharacter(player, character.scene, character.animations, characters.player.height);
   loadingScreen.preparing(loadingScreen.current, 'Preparing equipment');
+  preparation.stage = 'equipment';
   await inventory.initialize();
   loadingScreen.preparing(loadingScreen.current, 'Preparing equipment');
   await gatheringTools.prepare();
@@ -641,6 +646,7 @@ try {
 
 {
   loadingScreen.preparing(loadingScreen.current, 'Preparing lighting');
+  preparation.stage = 'lighting';
   personalLantern = new PlayerLantern(player.root, lanternEnabled); releases.push(() => personalLantern?.dispose()); await personalLantern.initialize();
   const effects = new CoreEffects(); scene.add(effects.root);
   const lighting = { get definition() { return committedLighting; }, get fires() { return active?.fires ?? []; }, get shadow() { return active?.shadow ?? null; } };
@@ -654,6 +660,7 @@ try {
   releases.push(() => menusChanged.disconnect());
   resize();
   loadingScreen.preparing(loadingScreen.current, 'Preparing graphics');
+  preparation.stage = 'graphics';
   await graphics.initialize();
   if (!await changeArea({ kind: 'travel', area: currentArea.id, spawn: explicitArea ? undefined : resumed.spawn })) throw new Error('Initial area could not be prepared.');
   if (import.meta.env.DEV && renderQuery.get('author') === 'levels') {
@@ -717,6 +724,8 @@ async function changeArea(change: AreaChange): Promise<boolean> {
   const { canCommit, spawn } = change;
   const appearance = change.kind === 'refresh' ? change.appearance : undefined;
   const started = performance.now(), request = ++generation, next = definitions[id];
+  preparation = { generation: request, destination: id, stage: 'validation' };
+  const stage = (value: string) => { if (request === generation) preparation.stage = value; };
   const errors = validateDefinitions(definitions);
   if (!next || errors.length) {
     transitioning = false;
@@ -748,20 +757,22 @@ async function changeArea(change: AreaChange): Promise<boolean> {
       if (token !== undefined && await loadingScreen.ready(token)) renderer.domElement.focus();
       return false;
     }
+    stage('content-hash');
     const digest = await crypto.subtle.digest('SHA-256',
       new TextEncoder().encode(JSON.stringify({ ...resolved, surfaces: nextSurfaces })));
     const hash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
     candidateOwner = await prepareAreaCandidate(
-      () => buildArea(next, nextSurfaces, appearance?.shelterRestored ?? adventure.character.shelterRestored),
-      () => MovementWorld.create(next.layout.boundary, traversalWithTrees(next)),
+      () => { stage('area-assets'); return buildArea(next, nextSurfaces, appearance?.shelterRestored ?? adventure.character.shelterRestored); },
+      () => { stage('navigation'); return MovementWorld.create(next.layout.boundary, traversalWithTrees(next)); },
       async candidate => {
+        stage('ability-graphics');
         candidateAbilities=new AbilityEffects(candidate,options.settings.particleQuality,renderer);
         await candidateAbilities.prepare(cameraOwner.camera);
         if (renderQuery.get('portal') === 'off') candidate.portals.forEach(p => { p.root.visible = false; });
-        return graphics!.prepareLighting(resolved, candidate.root);
+        stage('lighting'); return graphics!.prepareLighting(resolved, candidate.root);
       },
     );
-    preparedEnemies = await enemyActors.prepare(createEncounter('playing', next.layout));
+    stage('enemies'); preparedEnemies = await enemyActors.prepare(createEncounter('playing', next.layout));
     if (presentation && performance.now() < fadeUntil) await new Promise(resolve => setTimeout(resolve, fadeUntil - performance.now()));
     const accepted = candidateOwner.accept(
       () => !closed && request === generation && (!canCommit || canCommit()),
@@ -822,17 +833,20 @@ async function changeArea(change: AreaChange): Promise<boolean> {
       cameraOwner.restoreView(savedView);
     }
     if (!frameLoop.running) frameLoop.start();
-    await waitFrames(2);
+    stage('first-frames'); await waitFrames(2);
+    stage('gpu-completion');
     await finishSubmittedFrame(renderer);
     if (closed || request !== generation) return false;
     if (token !== undefined && !await loadingScreen.ready(token)) return false;
     transitioning = false;
+    stage('ready');
     audio.update(encounter.player, paused());
     updateMs = performance.now() - started;
     renderer.domElement.focus();
     return true;
   } catch (error) {
     if (closed || request !== generation) return false;
+    stage('failed');
     areaErrors = [error instanceof Error ? error.message : String(error)];
     recordFailure(startup ? 'startup-area' : 'travel', error);
     if (startup) throw error;

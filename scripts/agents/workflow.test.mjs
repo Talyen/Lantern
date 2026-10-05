@@ -7,7 +7,7 @@ import { createInterface } from 'node:readline';
 import { promisify } from 'node:util';
 import { once } from 'node:events';
 import { join } from 'node:path';
-import { git, context, writeJSON, readJSON, taskPath, taskCapacity, spaceRequirement, processIdentity } from './state.mjs';
+import { git, context, writeJSON, readJSON, readTask, currentTask, taskPath, taskCapacity, spaceRequirement, processIdentity } from './state.mjs';
 import { startTask, finishTask, cleanupTask, recover, installedDependenciesMatch } from './workflow.mjs';
 import { acquire, childEnvironment, withResource, RESOURCE_LIMITS } from './resources.mjs';
 import { sessionPath, stopPreview, browserHistoryPath, recoverBrowsers } from './preview.mjs';
@@ -30,6 +30,57 @@ async function fixture() {
   return { ...await context(directory), dispose: () => rm(directory, { recursive: true, force: true }) };
 }
 async function edit(task, name, value) { await writeFile(join(task.path, name), value); }
+
+// A damaged or large unrelated history must not prevent stopping an owned preview.
+// Existing workflow fixtures exercise broad discovery, not isolated command lookup.
+test('single-task lookup ignores unrelated history and verifies its worktree registration', async () => {
+  const ctx = await fixture();
+  try {
+    const task = { id: 'selected', path: join(ctx.main, '.local/worktrees/selected'), status: 'working' };
+    await writeJSON(taskPath(ctx, task.id), task);
+    await writeFile(taskPath(ctx, 'unrelated'), 'unreadable historical JSON');
+    const owned = { ...ctx, cwd: task.path };
+    assert.deepEqual(await readTask(ctx, task.id), task);
+    assert.deepEqual(await currentTask(owned), task);
+    await assert.rejects(readTask(ctx, '../selected'), /Invalid task slug/);
+    await assert.rejects(currentTask(ctx), /returned worktree/);
+    await writeJSON(taskPath(ctx, task.id), { ...task, path: ctx.main });
+    await assert.rejects(currentTask(owned), /registration/);
+    await writeJSON(taskPath(ctx, task.id), { ...task, status: 'cleaned' });
+    await assert.rejects(currentTask(owned), /returned worktree/);
+  } finally { await ctx.dispose(); }
+});
+
+// Owner exit or a missing current record cannot certify cleanup. These cases
+// are outside the existing guardian/history fixtures and protect other sessions.
+for (const currentRecord of [false, true]) test(`stop verifies browser exit with ${currentRecord ? 'an exited owner' : 'no current preview record'}`, { timeout: 15000 }, async () => {
+  const ctx = await fixture();
+  const browser = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { detached: true, stdio: 'ignore' });
+  const unrelated = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { detached: true, stdio: 'ignore' });
+  const exits = [once(browser, 'exit'), once(unrelated, 'exit')];
+  let owner;
+  try {
+    const record = { pid: process.pid, started: 'exited owner', token: 'fixture', browserProcesses: [
+      { pid: browser.pid, started: await processIdentity(browser.pid) },
+      { pid: unrelated.pid, started: 'reused PID' },
+    ] };
+    await writeJSON(browserHistoryPath(ctx.main), [{ ...record, closed: true }]);
+    if (currentRecord) {
+      owner = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' });
+      const ownerExit = once(owner, 'exit');
+      await writeJSON(sessionPath(ctx.main), { ...record, pid: owner.pid, started: await processIdentity(owner.pid), status: 'starting' });
+      await stopPreview(ctx.main); await ownerExit;
+    } else await stopPreview(ctx.main);
+    assert.equal(await processIdentity(browser.pid), '');
+    await exits[0];
+    assert.ok(await processIdentity(unrelated.pid));
+    assert.equal(await readJSON(sessionPath(ctx.main), null), null);
+  } finally {
+    for (const child of [browser, unrelated]) if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
+    if (owner && owner.exitCode === null && owner.signalCode === null) { const exit = once(owner, 'exit'); owner.kill('SIGKILL'); await exit; }
+    await Promise.all(exits); await ctx.dispose();
+  }
+});
 
 test('dependency clones with missing or stale required packages are not ready', async () => {
   const ctx = await fixture();

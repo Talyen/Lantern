@@ -193,6 +193,12 @@ Loot roots own their local matrices: presentation composes them only when the un
 
 ## Graphics preparation
 
+Local diagnostic reports expose the pending session before startup completes,
+including the current destination/generation, preparation stage, up to sixteen
+pending asset identifiers, lighting stage, outstanding native compilations and
+completed-frame count. These fields distinguish asset, lighting and frame waits
+without exporting character snapshots or changing loading behavior.
+
 Graphics settings arrive as immutable snapshots. Ordinary values update once per presentation frame without resizing or clearing temporal history. Structural changes settle for 150 ms; closing Options flushes the latest request. The shared pipeline serializes candidate preparation, holds the last image while compiling, commits only the newest successful request and retains the working graph on failure. Resolution Quality resizes existing scene buffers; two recently used effect graphs are retained at most. Retired graphs release r186 render bindings for their own pass targets as well as node resources. Options remains HTML on the browser main thread; worker isolation is not implemented.
 
 ## Action bar and input ownership

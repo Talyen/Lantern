@@ -1,5 +1,7 @@
 import type { OrthographicCamera } from 'three';
 import type { WebGPURenderer } from 'three/webgpu';
+import { pendingNativeCompilations } from '../rendering/renderer';
+import { pendingAreaAssets } from '../levels/builder';
 import type { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { parseJson } from '../data/json';
 import type { RuntimeSnapshot } from '../diagnostics/report';
@@ -24,6 +26,7 @@ import type { WorldInteraction } from './world-interactions';
 
 // Live getters keep replaced areas and prepared graphics out of stale snapshots.
 type Context = {
+  readonly preparation: { generation: number; destination: string; stage: string };
   readonly currentArea: AreaDefinition;
   readonly active: AreaInstance | undefined;
   readonly graphics: Graphics | undefined;
@@ -72,12 +75,14 @@ export class ClearingDiagnostics {
 
   /** Reports deliberately select bounded fields, never the developer's character snapshot. */
   report(): RuntimeSnapshot {
-    const { audio, graphics, options, adventure } = this.context;
+    const { audio, graphics, options, adventure, preparation, renderer, renderedFrames } = this.context;
     const status = this.status();
     const sound = audio.diagnostics();
     const pipeline = graphics?.pipelineDiagnostics();
     return {
       ...status, backend: 'webgpu', missing: status.missing.slice(0, 16), errors: status.errors.slice(-16),
+      preparation: { ...preparation, pendingAssets: pendingAreaAssets(), lightingStage: graphics?.lightingDiagnostics().stage,
+        compilationPending: pendingNativeCompilations(renderer), completedFrames: renderedFrames },
       settings: options ? { ...options.settings } : undefined,
       audio: { state: sound.state, loaded: sound.loaded, loading: sound.loading, voices: sound.voices, errors: sound.errors.slice(-16) },
       persistence: adventure.saveDiagnostics(),

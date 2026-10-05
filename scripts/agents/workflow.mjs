@@ -205,6 +205,8 @@ export async function cleanupTask(ctx, task) {
     if (task.status !== 'integrated') throw new Error(`Preserving unfinished task ${task.id} (${task.status}).`);
     await clean(task.path);
     if (assetIdentity(await assetIndex(join(task.path, 'public/vendor'))) !== assetIdentity(task.assetIndex)) throw new Error('Task assets changed after integration; preserve and finish them before cleanup.');
+    const { stopPreview } = await import('./preview.mjs');
+    await stopPreview(task.path);
     await retainSources(ctx, task);
     await git(['worktree', 'remove', task.path], ctx.main);
     task.status = 'cleaned'; task.cleanedAt = new Date().toISOString(); await saveTask(ctx, task);

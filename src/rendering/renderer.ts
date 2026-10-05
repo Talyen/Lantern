@@ -129,7 +129,11 @@ export function renderNativeFrame(renderer: WebGPURenderer, render: () => void):
 }
 
 export function preparingNativeFrame(renderer: WebGPURenderer): boolean {
-  return (frameCompilation(renderer)?.pending.size ?? 0) > 0;
+  return pendingNativeCompilations(renderer) > 0;
+}
+
+export function pendingNativeCompilations(renderer: WebGPURenderer): number {
+  return frameCompilation(renderer)?.pending.size ?? 0;
 }
 
 /** Retry/another adventure owns a new frame lifetime on the retained renderer.

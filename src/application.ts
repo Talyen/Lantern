@@ -19,6 +19,7 @@ const store = new AdventureStore(() => localStorage);
 const preferences = new InputPreferences(() => localStorage);
 const audio = new GameAudio();
 let session: GameSession | undefined;
+let loadingReport: (() => ReturnType<GameSession['report']>) | undefined;
 let selected: SavedAdventure | undefined;
 let busy = false;
 let closing = false;
@@ -42,7 +43,7 @@ const front = new FrontEnd({
 });
 store.subscribe(() => front.refresh());
 if (!development) store.initialize();
-registerRuntimeSnapshot(() => session?.report() ?? { ready: !busy, backend: 'webgpu', persistence: { loaded: true, failures: 0, blockedByExisting: false, ...store.diagnostics() } });
+registerRuntimeSnapshot(() => session?.report() ?? loadingReport?.() ?? { ready: !busy, backend: 'webgpu', persistence: { loaded: true, failures: 0, blockedByExisting: false, ...store.diagnostics() } });
 
 async function start(record?: SavedAdventure): Promise<void> {
   if (busy || closing) return;
@@ -60,14 +61,17 @@ async function start(record?: SavedAdventure): Promise<void> {
     save: value => { if (accepted && operation === generation && !closing) store.save(record.slot, record.id, value); }, diagnostics: () => store.diagnostics(),
   }) : new Adventure();
   try {
-    const candidate = await createGameSession({ renderer, adventure, options, preferences, bindingsMenu: bindings, audio, development });
+    const candidate = await createGameSession({ renderer, adventure, options, preferences, bindingsMenu: bindings, audio, development,
+      reportLoading: report => { loadingReport = report; } });
     if (closing) { await candidate.dispose(); return; }
     session = candidate; selected = record;
+    loadingReport = undefined;
     accepted = true;
     if (record) store.save(record.slot, record.id, candidate.capture());
     options.setPlaying(!development); busy = false;
   } catch (error) {
     recordFailure('adventure-loading', error);
+    loadingReport = undefined;
     app.hidden = true; busy = false;
     if (development) { loadingScreen.fail(token, error); return; }
     loadingScreen.fail(token, error, {

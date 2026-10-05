@@ -11,9 +11,10 @@ const fixture = vi.hoisted(() => {
 });
 vi.mock('../src/assets/scenery-loader', () => ({ prepareSceneryLoader() {} }));
 vi.mock('../src/diagnostics/report', () => ({ recordFailure() {} }));
-vi.mock('three/webgpu', () => ({ WebGPURenderer: class {
+vi.mock('three/webgpu', async importOriginal => ({ ...await importOriginal<typeof import('three/webgpu')>(), WebGPURenderer: class {
   _getFallback = () => {};
   _initialized = true;
+  library = { fromMaterial: (material: unknown) => material, lightNodes: new WeakMap() };
   backend = {
     isWebGPUBackend: true,
     device: { queue: fixture.queue, addEventListener() {} },

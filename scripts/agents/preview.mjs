@@ -11,7 +11,7 @@ import { context, readJSON, writeJSON, processIdentity } from './state.mjs';
 import { acquire } from './resources.mjs';
 import { ownedBrowser, viewportExpression } from './browser.mjs';
 import { previewViewport } from './viewport.mjs';
-import { run, root } from '../lib/cli.mjs';
+import { run, root, isMain } from '../lib/cli.mjs';
 export const sessionPath = cwd => join(cwd, '.local/agents/preview.json');
 export const browserHistoryPath = cwd => join(cwd, '.local/agents/browser-history.json');
 const execute = promisify(execFile);
@@ -24,9 +24,9 @@ export async function recoverBrowsers(cwd) {
   const history = await readJSON(browserHistoryPath(cwd), []);
   let changed = false;
   for (const record of history) {
-    if (record.closed || !record.started || await processIdentity(record.pid) === record.started) continue;
+    if (!record.started || await processIdentity(record.pid) === record.started) continue;
     await cleanupBrowserGroups(record.browserProcesses);
-    record.closed = true; changed = true;
+    if (!record.closed) { record.closed = true; changed = true; }
   }
   if (changed) await writeJSON(browserHistoryPath(cwd), history);
 }
@@ -67,23 +67,26 @@ export async function livePreview(cwd) {
 }
 export async function stopPreview(cwd) {
   const record = await readJSON(sessionPath(cwd), null);
-  if (!record) return;
-  if (await processIdentity(record.pid) !== record.started) {
-    const lease = await acquire(previewResource(cwd), { cwd, tryOnly: true });
-    if (!lease) throw new Error('Preview cleanup is already owned; preserve its records and retry.');
-    try {
-      if ((await readJSON(sessionPath(cwd), null))?.token !== record.token) return;
-      await recoverBrowsers(cwd); await cleanupBrowserGroups(record.browserProcesses);
-      await rm(sessionPath(cwd)); return;
-    } finally { await lease.release(); }
+  if (record && await processIdentity(record.pid) === record.started) {
+    if (record.status !== 'starting' && !await livePreview(cwd)) throw new Error(`Preview identity could not be verified; preserve its session record: ${cwd}`);
+    process.kill(record.pid, 'SIGTERM');
+    for (let attempt = 0; attempt < 100 && await processIdentity(record.pid) === record.started; attempt++) {
+      await new Promise(accept => setTimeout(accept, 100));
+    }
+    if (await processIdentity(record.pid) === record.started) throw new Error('Owned preview did not stop; inspect its log.');
   }
-  if (record.status !== 'starting' && !await livePreview(cwd)) throw new Error(`Preview identity could not be verified; preserve its session record: ${cwd}`);
-  process.kill(record.pid, 'SIGTERM');
-  for (let attempt = 0; attempt < 100; attempt++) {
-    if (await processIdentity(record.pid) !== record.started) return;
-    await new Promise(accept => setTimeout(accept, 100));
-  }
-  throw new Error('Owned preview did not stop; inspect its log.');
+  // Owner exit is not proof that its guardian or browser groups have exited.
+  // Exclude a replacement preview while verifying durable cleanup, even when
+  // graceful shutdown already removed the current session record.
+  const lease = await acquire(previewResource(cwd), { cwd, tryOnly: true });
+  if (!lease) throw new Error('Preview cleanup is already owned; preserve its records and retry.');
+  try {
+    const current = await readJSON(sessionPath(cwd), null);
+    if (current && current.token !== record?.token) throw new Error('Preview changed during stop; preserve the replacement session.');
+    await recoverBrowsers(cwd);
+    await cleanupBrowserGroups(record?.browserProcesses);
+    if (current) await rm(sessionPath(cwd));
+  } finally { await lease.release(); }
 }
 export async function startPreview(cwd, { main = false, browser = false, author = false, area = 'clearing', lab = null, viewport, dpr } = {}) {
   const requestedViewport = browser ? previewViewport(viewport, dpr) : null;
@@ -157,7 +160,7 @@ async function serve() {
   const close = async () => {
     if (closing) return; closing = true;
     clearInterval(timer); clearInterval(browserTimer);
-    if (options.browser && lease) await trackBrowser().catch(error => console.error(error));
+    if (options.browser && lease) await trackBrowser();
     await server?.close();
     await lease?.release();
     await cleanupBrowserGroups(record.browserProcesses);
@@ -229,4 +232,4 @@ async function serve() {
     console.log(`Owned preview ${url}; session ${session}`);
   } catch (error) { console.error(error); await close(); }
 }
-if (process.argv[2] === '--serve') await serve();
+if (isMain(import.meta.url) && process.argv[2] === '--serve') await serve();
