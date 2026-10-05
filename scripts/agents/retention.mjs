@@ -51,6 +51,7 @@ export async function retentionFiles(base) {
 
 async function digest(file, cache) {
   let key = file.path + ':' + file.identity;
+  if (stamp(await info(file.path)) !== file.identity) throw new Error(`Source changed before verification: ${file.path}`);
   if (!cache.has(key)) {
     const hash = await hashFile(file.path);
     const after = stamp(await info(file.path));
@@ -80,13 +81,21 @@ async function publishSource(source, target, cache) {
   await safeRetentionPath(dirname(target), target);
   const value = await info(source);
   const before = await retentionFiles(source);
+  const expected = [];
+  for (const file of before) expected.push(await digest(file, cache));
   await mkdir(dirname(target), { recursive: true });
   async function matches(copy) {
-    const copied = await retentionFiles(copy);
+    const copied = await retentionFiles(copy), current = await retentionFiles(source);
+    if (before.length !== current.length) throw new Error(`Source changed during copying: ${source}`);
     if (before.length !== copied.length) return false;
+    const stable = identity => identity.split(':').filter((_, index) => index !== 2).join(':');
     for (let index = 0; index < before.length; index++) {
-      if (relative(source, before[index].path) !== relative(copy, copied[index].path)
-        || await digest(before[index], cache) !== await digest(copied[index], cache)) return false;
+      const prior = before[index], fresh = current[index];
+      // Copy/status metadata may change; original bytes, inode, size and mtime must not.
+      if (relative(source, prior.path) !== relative(source, fresh.path) || stable(prior.identity) !== stable(fresh.identity)
+        || await digest(fresh, cache) !== expected[index]) throw new Error(`Source changed during copying: ${source}`);
+      if (relative(source, prior.path) !== relative(copy, copied[index].path)
+        || expected[index] !== await digest(copied[index], cache)) return false;
     }
     return true;
   }
@@ -133,7 +142,8 @@ export async function retainSourceTree(source, canonical, { apply = false, remov
   }
   async function visit(from, to) {
     await safeRetentionPath(source, from); await safeRetentionPath(canonical, to);
-    const mine = await info(from), theirs = await info(to);
+    let mine = await info(from);
+    const theirs = await info(to);
     if (!mine) return;
     if (mine.isDirectory()) {
       if (!theirs && apply) { await publishSource(from, to, cache); report.publishedFiles += (await retentionFiles(to)).length; }
@@ -144,7 +154,10 @@ export async function retainSourceTree(source, canonical, { apply = false, remov
     }
     if (!mine.isFile()) throw new Error(`Preserving unsupported source: ${from}`);
     if (protectedSources.has(from)) { report.retainedReferences++; return; }
-    if (!theirs && apply) { await publishSource(from, to, cache); report.publishedFiles++; }
+    if (!theirs && apply) {
+      await publishSource(from, to, cache); report.publishedFiles++;
+      mine = await info(from);
+    }
     const a = { path: from, bytes: Number(mine.size), identity: stamp(mine) };
     const current = await info(to);
     if (!current?.isFile() || current.size !== mine.size) { await preserveVersion(a, to); return; }
