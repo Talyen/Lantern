@@ -9,7 +9,7 @@ import { once } from 'node:events';
 import { join } from 'node:path';
 import { git, context, writeJSON, readJSON, taskPath, taskCapacity, spaceRequirement, processIdentity } from './state.mjs';
 import { startTask, finishTask, cleanupTask, recover, installedDependenciesMatch } from './workflow.mjs';
-import { acquire, childEnvironment, withResource } from './resources.mjs';
+import { acquire, childEnvironment, withResource, RESOURCE_LIMITS } from './resources.mjs';
 import { sessionPath, stopPreview, browserHistoryPath, recoverBrowsers } from './preview.mjs';
 
 import { checkStages } from '../check.mjs';
@@ -204,7 +204,8 @@ test('light handoff excludes suites and builds even for packaging and workflow c
   assert.ok(!assets.includes('build'));
 });
 
-test('managed resources serialize, inherit leases and clean up without a second slot', { timeout: 15000 }, async () => {
+// Admission rationale: protects the two-GPU cap, inherited ownership and single-check cap.
+test('managed resources respect capacity, inherit leases and clean up', { timeout: 15000 }, async () => {
   const directory = await mkdtemp(join(tmpdir(), 'lantern-resources-'));
   const ctx = { main: directory, store: join(directory, 'state') };
   try {
@@ -218,38 +219,48 @@ test('managed resources serialize, inherit leases and clean up without a second 
         const { stdout } = await promisify(execFile)(process.execPath, ['--input-type=module', '-e', code], { env: { ...childEnvironment(), TEST_CTX: JSON.stringify(ctx) } });
         assert.equal(stdout.trim(), nested.record.token);
         // Use a separate process so AsyncLocalStorage does not intentionally reuse ownership.
-        const probe = `import {acquire} from ${JSON.stringify(new URL('./resources.mjs', import.meta.url).href)}; console.log(await acquire(${JSON.stringify(resource)}, {ctx:JSON.parse(process.env.TEST_CTX),tryOnly:true}));`;
+        const probe = `import {acquire} from ${JSON.stringify(new URL('./resources.mjs', import.meta.url).href)}; const lease=await acquire(${JSON.stringify(resource)}, {ctx:JSON.parse(process.env.TEST_CTX),tryOnly:true}); console.log(lease?.record.slot ?? null); await lease?.release();`;
         const result = await promisify(execFile)(process.execPath, ['--input-type=module', '-e', probe], { env: { ...process.env, LANTERN_LEASES: '{}', TEST_CTX: JSON.stringify(ctx) } });
-        assert.equal(result.stdout.trim(), 'null');
+        assert.equal(result.stdout.trim(), resource === 'gpu' ? '1' : 'null');
       }, { ctx });
       const lease = await acquire(resource, { ctx, tryOnly: true });
       assert.ok(lease);
+      let second;
+      try {
+        if (resource === 'gpu') {
+          second = await acquire(resource, { ctx, slot: 1, tryOnly: true });
+          assert.equal(second?.record.slot, 1);
+          assert.notEqual(second.record.token, lease.record.token);
+        }
+        assert.equal(await acquire(resource, { ctx, tryOnly: true }), null);
+      } finally { await second?.release(); }
       const marker = join(directory, `${resource}-cleanup`);
       lease.cleanup([process.execPath, '-e', `require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'cleaned')`]);
       await lease.release();
       assert.equal(await readFile(marker, 'utf8'), 'cleaned');
       assert.equal(await readJSON(join(ctx.store, 'leases', `${resource}-0.json`), null), null);
-      await assert.rejects(acquire(resource, { ctx, slots: 2 }), /require one slot/);
+      await assert.rejects(acquire(resource, { ctx, slots: RESOURCE_LIMITS[resource] + 1 }), /require .* slot/);
+      for (const slot of [-1, 0.5, RESOURCE_LIMITS[resource]]) await assert.rejects(acquire(resource, { ctx, slot }), /valid slot index/);
     }
   } finally { await rm(directory, { recursive: true, force: true }); }
 });
 
-test('retired GPU slot drains, remains blocked for old worktrees and releases on interruption', { timeout: 15000 }, async () => {
+test('retired check slot drains, remains blocked for old worktrees and releases on interruption', { timeout: 15000 }, async () => {
   const directory = await mkdtemp(join(tmpdir(), 'lantern-legacy-resource-'));
   const ctx = { main: directory, store: join(directory, 'state') };
   const native = new URL('./native.py', import.meta.url).pathname;
-  const legacy = spawn('python3', [native, 'lease', join(ctx.store, 'leases'), 'gpu', '--slots', '2', '--slot', '1', '--token', 'legacy-test'], { stdio: ['pipe', 'pipe', 'inherit'] });
+  const legacy = spawn('python3', [native, 'lease', join(ctx.store, 'leases'), 'checks', '--slots', '2', '--slot', '1', '--token', 'legacy-test'], { stdio: ['pipe', 'pipe', 'inherit'] });
   const lines = createInterface({ input: legacy.stdout });
   let lease;
   try {
     const [line] = await once(lines, 'line');
     assert.equal(JSON.parse(line).acquired.slot, 1);
-    assert.equal(await acquire('gpu', { ctx, tryOnly: true }), null);
-    const queued = spawn('python3', [native, 'lease', join(ctx.store, 'leases'), 'gpu', '--drain-slots', '2', '--token', 'queued-test'], { stdio: ['pipe', 'pipe', 'inherit'] });
+    assert.equal(await acquire('checks', { ctx, tryOnly: true }), null);
+    const queued = spawn('python3', [native, 'lease', join(ctx.store, 'leases'), 'checks', '--drain-slots', '2', '--token', 'queued-test'], { stdio: ['pipe', 'pipe', 'inherit'] });
     const queuedLines = createInterface({ input: queued.stdout });
     try {
       const [waiting] = await once(queuedLines, 'line');
-      assert.equal(JSON.parse(waiting).waiting, 'gpu');
+      assert.equal(JSON.parse(waiting).waiting, 'checks');
       const admitted = once(queuedLines, 'line');
       const exited = once(legacy, 'exit');
       legacy.stdin.end();
@@ -262,16 +273,16 @@ test('retired GPU slot drains, remains blocked for old worktrees and releases on
       queued.stdin.end();
       await exited;
     }
-    lease = await acquire('gpu', { ctx, tryOnly: true });
+    lease = await acquire('checks', { ctx, tryOnly: true });
     assert.ok(lease);
-    const { stdout } = await promisify(execFile)('python3', [native, 'lease', join(ctx.store, 'leases'), 'gpu', '--slots', '2', '--slot', '1', '--try-only', '--token', 'legacy-probe']);
-    assert.equal(JSON.parse(stdout).deferred, 'gpu');
+    const { stdout } = await promisify(execFile)('python3', [native, 'lease', join(ctx.store, 'leases'), 'checks', '--slots', '2', '--slot', '1', '--try-only', '--token', 'legacy-probe']);
+    assert.equal(JSON.parse(stdout).deferred, 'checks');
     const interrupted = once(lease.child, 'exit');
     lease.child.kill('SIGTERM');
     await interrupted;
     await assert.rejects(lease.release(), /guardian cleanup failed/);
     lease = undefined;
-    lease = await acquire('gpu', { ctx, tryOnly: true });
+    lease = await acquire('checks', { ctx, tryOnly: true });
     assert.ok(lease);
   } finally {
     lines.close();
@@ -290,7 +301,7 @@ test('local full gate and unrequested measurement reject before expensive work',
 
 test('queued previews can be stopped and concurrent startup keeps one owner', { timeout: 15000 }, async () => {
   const ctx = await fixture(), starters = [];
-  let lease;
+  let lease, second;
   const start = () => {
     const code = `import {startPreview} from ${JSON.stringify(new URL('./preview.mjs', import.meta.url).href)}; await startPreview(process.cwd(), {browser:true});`;
     const child = spawn(process.execPath, ['--input-type=module', '-e', code], { cwd: ctx.main, env: { ...process.env, LANTERN_LEASES: '{}' }, stdio: ['ignore','pipe','pipe'] });
@@ -298,6 +309,7 @@ test('queued previews can be stopped and concurrent startup keeps one owner', { 
   };
   try {
     lease = await acquire('gpu', { ctx });
+    second = await acquire('gpu', { ctx });
     start(); start();
     let record;
     for (let i = 0; i < 60; i++) {
@@ -316,7 +328,7 @@ test('queued previews can be stopped and concurrent startup keeps one owner', { 
   } finally {
     await stopPreview(ctx.main).catch(() => {});
     for (const child of starters) if (child.exitCode === null) { const exit = once(child, 'exit'); child.kill('SIGTERM'); await exit; }
-    await lease?.release(); await ctx.dispose();
+    await second?.release(); await lease?.release(); await ctx.dispose();
   }
 });
 
@@ -417,10 +429,11 @@ test('browser cleanup survives an abruptly exited preview owner', { timeout: 150
 test('later resource probes cannot overtake a queued GPU waiter', { timeout: 15000 }, async () => {
   const directory = await mkdtemp(join(tmpdir(), 'lantern-fifo-resource-'));
   const ctx = { main: directory, store: join(directory, 'state') };
-  let lease, waiter;
+  let lease, second, waiter;
   try {
     lease = await acquire('gpu', { ctx });
-    waiter = spawn('python3', [new URL('./native.py', import.meta.url).pathname, 'lease', join(ctx.store, 'leases'), 'gpu', '--token', 'first-waiter', '--drain-slots', '2'], { stdio: ['pipe','pipe','pipe'] });
+    second = await acquire('gpu', { ctx });
+    waiter = spawn('python3', [new URL('./native.py', import.meta.url).pathname, 'lease', join(ctx.store, 'leases'), 'gpu', '--token', 'first-waiter', '--slots', '2'], { stdio: ['pipe','pipe','pipe'] });
     waiter.stderr.resume();
     const lines = createInterface({ input: waiter.stdout });
     const [waiting] = await once(lines, 'line'); assert.equal(JSON.parse(waiting).waiting, 'gpu');
@@ -434,7 +447,7 @@ test('later resource probes cannot overtake a queued GPU waiter', { timeout: 150
     lines.close();
   } finally {
     if (waiter && waiter.exitCode === null) { waiter.kill('SIGCONT'); const exit = once(waiter, 'exit'); waiter.kill('SIGTERM'); await exit; }
-    await lease?.release(); await rm(directory, { recursive: true, force: true });
+    await second?.release(); await lease?.release(); await rm(directory, { recursive: true, force: true });
   }
 });
 

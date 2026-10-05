@@ -1,6 +1,6 @@
 # Performance and renderer evidence
 
-Ordinary feature work follows the [lean task workflow](DEVELOPMENT.md#working-alongside-other-agents): one relevant preview and fast sanity checks. Benchmarking and the matched protocol below require a specific user request or an evidenced performance defect. Routine feature work, audits, release-readiness gates and scheduled automation must not benchmark. Managed scripts queue one heavy operation, one check job and one agent GPU inspection while leaving the user's play session alone.
+Ordinary feature work follows the [lean task workflow](DEVELOPMENT.md#working-alongside-other-agents): one relevant preview and fast sanity checks. Benchmarking and the matched protocol below require a specific user request or an evidenced performance defect. Routine feature work, audits, release-readiness gates and scheduled automation must not benchmark. Managed scripts queue one heavy operation, one check job and up to two agent GPU inspections while leaving the user's play session alone.
 
 Use matched local measurements to judge changes; performance numbers are advisory, not CI gates. Browser resource smoke does not execute the renderer.
 

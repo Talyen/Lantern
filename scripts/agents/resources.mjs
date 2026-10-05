@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { resolve, join } from 'node:path';
 import { context, readJSON, processIdentity, reserveSpace } from './state.mjs';
 import { root } from '../lib/cli.mjs';
-export const RESOURCE_LIMITS = Object.freeze({ gpu: 1, checks: 1, heavy: 1 });
+export const RESOURCE_LIMITS = Object.freeze({ gpu: 2, checks: 1, heavy: 1 });
 const owned = new Map(), scope = new AsyncLocalStorage();
 const inheritedAtStart = JSON.parse(process.env.LANTERN_LEASES ?? '{}');
 const active = () => scope.getStore() ?? owned;
@@ -25,7 +25,8 @@ export function releaseChild(pid) {
 export async function acquire(resource, { cwd = root, ctx, slots = RESOURCE_LIMITS[resource] ?? 1, slot, tryOnly = false } = {}) {
   ctx ??= await context(cwd);
   if (!/^[a-z0-9-]+$/.test(resource)) throw new Error('Invalid resource name');
-  if (RESOURCE_LIMITS[resource] && (slots !== RESOURCE_LIMITS[resource] || (slot !== undefined && slot !== 0))) throw new Error(`Managed ${resource} operations require one slot.`);
+  const limit = RESOURCE_LIMITS[resource];
+  if (limit && (slots !== limit || (slot !== undefined && (!Number.isInteger(slot) || slot < 0 || slot >= limit)))) throw new Error(`Managed ${resource} operations require ${limit} slot${limit === 1 ? '' : 's'} and a valid slot index.`);
   const scoped = scope.getStore()?.get(resource);
   if (scoped?.store === ctx.store && (slot === undefined || scoped.record.slot === slot)) return { ...scoped, release: async () => {} };
   const inherited = JSON.parse(process.env.LANTERN_LEASES ?? '{}')[resource];
@@ -36,7 +37,7 @@ export async function acquire(resource, { cwd = root, ctx, slots = RESOURCE_LIMI
   }
   if (resource === 'heavy') await reserveSpace(ctx.main);
   const token = randomUUID();
-  const child = spawn('python3', [resolve(root, 'scripts/agents/native.py'), 'lease', join(ctx.store, 'leases'), resource, '--slots', String(slots), '--token', token, '--task', cwd, ...(['gpu', 'checks'].includes(resource) ? ['--drain-slots', '2'] : []), ...(slot === undefined ? [] : ['--slot',String(slot)]), ...(tryOnly ? ['--try-only'] : [])], { stdio: ['pipe', 'pipe', 'inherit'] });
+  const child = spawn('python3', [resolve(root, 'scripts/agents/native.py'), 'lease', join(ctx.store, 'leases'), resource, '--slots', String(slots), '--token', token, '--task', cwd, ...(resource === 'checks' ? ['--drain-slots', '2'] : []), ...(slot === undefined ? [] : ['--slot',String(slot)]), ...(tryOnly ? ['--try-only'] : [])], { stdio: ['pipe', 'pipe', 'inherit'] });
   const exited = new Promise(accept => child.once('exit', accept));
   const record = await new Promise((accept, reject) => {
     child.once('error', reject);
