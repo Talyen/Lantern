@@ -706,3 +706,34 @@ test('Codex pruning protects open, pinned and unrelated descendants and rechecks
     assert.deepEqual(applied.removed.map(t => t.id), ['safe']); assert.deepEqual(deleted, ['safe']);
   } finally { await ctx.dispose(); }
 });
+
+
+// Real copies can update status metadata; a stale pre-copy fingerprint rejected
+// verified originals during the source audit. Byte changes must still stop disposal.
+test('source publication refreshes copy stamps but rejects changing original bytes', async () => {
+  const ctx = await fixture();
+  try {
+    for (const name of ['agents', 'lib']) await cp(new URL('../' + name + '/', import.meta.url), join(ctx.main, 'scripts', name), { recursive: true });
+    const nativePath = join(ctx.main, 'scripts/agents/native.py'), native = await readFile(nativePath, 'utf8');
+    for (const mutateBytes of [false, true]) {
+      const source = join(ctx.main, '.local', mutateBytes ? 'changing' : 'metadata');
+      const target = join(ctx.main, '.local/canonical-' + (mutateBytes ? 'changing' : 'metadata'));
+      await mkdir(source, { recursive: true });
+      const file = join(source, 'master.fbx'); await writeFile(file, Buffer.alloc(128 * 1024, 42), { mode: 0o644 });
+      // Simulate a provider updating status metadata or bytes during its own copy.
+      // This helper belongs only to the disposable fixture, never the live project.
+      const mutation = mutateBytes ? "saved = probe.stat()\n        probe.write_bytes(bytes([43]) * (128 * 1024))\n        os.utime(probe, ns=(saved.st_atime_ns, saved.st_mtime_ns))" : 'os.chmod(probe, 0o600)';
+      await writeFile(nativePath, native.replace('    copy_entry(source, target)\n', `    copy_entry(source, target)\n    probe = Path(source) / 'master.fbx'\n    if probe.is_file():\n        ${mutation}\n`));
+      const code = `import { retainSourceTree } from './scripts/agents/retention.mjs'; console.log(JSON.stringify(await retainSourceTree(${JSON.stringify(source)}, ${JSON.stringify(target)}, { apply: true, removeDuplicates: true })));`;
+      const child = () => promisify(execFile)(process.execPath, ['--input-type=module', '-e', code], { cwd: ctx.main });
+      if (mutateBytes) {
+        await assert.rejects(child(), /Source changed/);
+        assert.equal((await readFile(file))[0], 43);
+      } else {
+        const result = JSON.parse((await child()).stdout);
+        assert.equal(result.duplicateFiles, 1);
+        assert.equal((await readFile(join(target, 'master.fbx')))[0], 42);
+      }
+    }
+  } finally { await ctx.dispose(); }
+});

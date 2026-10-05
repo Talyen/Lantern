@@ -50,6 +50,7 @@ export async function retentionFiles(base) {
 
 async function digest(file, cache) {
   const key = file.path + ':' + file.identity;
+  if (stamp(await info(file.path)) !== file.identity) throw new Error(`Source changed before verification: ${file.path}`);
   if (!cache.has(key)) {
     const hash = await hashFile(file.path);
     if (stamp(await info(file.path)) !== file.identity) throw new Error(`Source changed during verification: ${file.path}`);
@@ -71,15 +72,24 @@ async function publishSource(source, target, cache) {
   const temporary = target + '.retaining-' + randomUUID();
   const value = await info(source);
   const before = await retentionFiles(source);
+  const expected = [];
+  for (const file of before) expected.push(await digest(file, cache));
   await mkdir(dirname(target), { recursive: true });
   if (value.isDirectory()) await privateTree(source, temporary);
   else await privateCopy(source, temporary);
   try {
-    const copied = await retentionFiles(temporary);
+    const copied = await retentionFiles(temporary), current = await retentionFiles(source);
+    if (before.length !== current.length) throw new Error(`Source changed during copying: ${source}`);
     if (before.length !== copied.length) throw new Error(`Source copy is incomplete: ${source}`);
     for (let index = 0; index < before.length; index++) {
-      if (relative(source, before[index].path) !== relative(temporary, copied[index].path)
-        || await digest(before[index], cache) !== await digest(copied[index], cache)) throw new Error(`Source copy differs: ${source}`);
+      const prior = before[index], fresh = current[index];
+      const stable = identity => identity.split(':').filter((_, index) => index !== 2).join(':');
+      // A copy may update status metadata. Preserve inode/size/mtime and verify
+      // original bytes before and after copying instead of reusing an old stamp.
+      if (relative(source, prior.path) !== relative(source, fresh.path) || stable(prior.identity) !== stable(fresh.identity)
+        || await digest(fresh, cache) !== expected[index]) throw new Error(`Source changed during copying: ${source}`);
+      if (relative(source, prior.path) !== relative(temporary, copied[index].path)
+        || expected[index] !== await digest(copied[index], cache)) throw new Error(`Source copy differs: ${source}`);
     }
     if (await info(target)) throw new Error(`Canonical source appeared during retention: ${target}`);
     await rename(temporary, target);
@@ -111,7 +121,8 @@ export async function retainSourceTree(source, canonical, { apply = false, remov
   }
   async function visit(from, to) {
     await safeRetentionPath(source, from); await safeRetentionPath(canonical, to);
-    const mine = await info(from), theirs = await info(to);
+    let mine = await info(from);
+    const theirs = await info(to);
     if (!mine) return;
     if (mine.isDirectory()) {
       if (!theirs && apply) { await publishSource(from, to, cache); report.publishedFiles += (await retentionFiles(to)).length; }
@@ -122,7 +133,10 @@ export async function retainSourceTree(source, canonical, { apply = false, remov
     }
     if (!mine.isFile()) throw new Error(`Preserving unsupported source: ${from}`);
     if (protectedSources.has(from)) { report.retainedReferences++; return; }
-    if (!theirs && apply) { await publishSource(from, to, cache); report.publishedFiles++; }
+    if (!theirs && apply) {
+      await publishSource(from, to, cache); report.publishedFiles++;
+      mine = await info(from);
+    }
     const a = { path: from, bytes: Number(mine.size), identity: stamp(mine) };
     const current = await info(to);
     if (!current?.isFile() || current.size !== mine.size) { await preserveVersion(a, to); return; }
