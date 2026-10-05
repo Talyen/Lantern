@@ -81,7 +81,8 @@ export class LocalShadows {
       }
       if (caster.cursor !== caster.stamp.length) { caster.changed = true; caster.stamp.length = caster.cursor; }
       if (!visible) return;
-      if (caster.changed || caster.animated) {
+      // GPU deformation still refreshes depth below. Its unchanged CPU bounds need no rebuild.
+      if (caster.changed || object instanceof THREE.SkinnedMesh) {
         // Keep author-expanded deformation bounds on first registration.
         if (geometryChanged && caster.seen !== 0) geometry.computeBoundingSphere();
         if (object instanceof THREE.InstancedMesh) {
