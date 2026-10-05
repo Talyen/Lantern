@@ -2,6 +2,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { spawn } from 'node:child_process';
 import { createInterface } from 'node:readline';
 import { randomUUID } from 'node:crypto';
+import { existsSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { context, readJSON, processIdentity, reserveSpace } from './state.mjs';
 import { root } from '../lib/cli.mjs';
@@ -37,7 +38,9 @@ export async function acquire(resource, { cwd = root, ctx, slots = RESOURCE_LIMI
   }
   if (resource === 'heavy') await reserveSpace(ctx.main);
   const token = randomUUID();
-  const child = spawn('python3', [resolve(root, 'scripts/agents/native.py'), 'lease', join(ctx.store, 'leases'), resource, '--slots', String(slots), '--token', token, '--task', cwd, ...(resource === 'checks' ? ['--drain-slots', '2'] : []), ...(slot === undefined ? [] : ['--slot',String(slot)]), ...(tryOnly ? ['--try-only'] : [])], { stdio: ['pipe', 'pipe', 'inherit'] });
+  // Cleanup may have removed the calling checkout; its integrated tools remain on main.
+  const helper = existsSync(resolve(root, 'scripts/agents/native.py')) ? resolve(root, 'scripts/agents/native.py') : resolve(ctx.main, 'scripts/agents/native.py');
+  const child = spawn('python3', [helper, 'lease', join(ctx.store, 'leases'), resource, '--slots', String(slots), '--token', token, '--task', cwd, ...(resource === 'checks' ? ['--drain-slots', '2'] : []), ...(slot === undefined ? [] : ['--slot',String(slot)]), ...(tryOnly ? ['--try-only'] : [])], { cwd: ctx.main, stdio: ['pipe', 'pipe', 'inherit'] });
   const exited = new Promise(accept => child.once('exit', accept));
   const record = await new Promise((accept, reject) => {
     child.once('error', reject);

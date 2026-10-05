@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, writeFile, readFile, rm, symlink } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, readFile, rm, symlink, cp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { spawn, execFile } from 'node:child_process';
 import { createInterface } from 'node:readline';
@@ -621,5 +621,22 @@ test('retention report is read-only and apply expires evidence pairs while prese
     await writeFile(join(recent, 'captures/frame.png'), 'over budget'); await writeJSON(join(recent, 'captures/frame.json'), {});
     await pruneRetention(ctx, { apply: true, now, budget: 1, managedOnly: true });
     await assert.rejects(readFile(join(recent, 'captures/frame.png')), { code: 'ENOENT' });
+  } finally { await ctx.dispose(); }
+});
+
+// A caller may remove its own checkout. Existing cleanup fixtures import tools
+// from a surviving checkout and cannot catch post-removal helper/cwd failures.
+test('retention cleanup can finish from the checkout it removes', async () => {
+  const ctx = await fixture();
+  try {
+    for (const name of ['agents', 'lib']) await cp(new URL('../' + name + '/', import.meta.url), join(ctx.main, 'scripts', name), { recursive: true });
+    const id = 'self-cleanup', path = join(ctx.main, '.local/worktrees', id);
+    await git(['add', 'scripts'], ctx.main); await git(['commit', '-m', 'fixture tools'], ctx.main);
+    await git(['worktree', 'add', '-b', 'codex/self-cleanup', path], ctx.main);
+    const { assetIdentity } = await import('./assets.mjs');
+    await writeJSON(taskPath(ctx, id), { id, path, status: 'integrated', assetIndex: {}, candidate: await git(['rev-parse', 'HEAD'], ctx.main), mainAssetIdentity: assetIdentity({}) });
+    await promisify(execFile)(process.execPath, ['scripts/agents/cli.mjs', 'cleanup', '--task', id], { cwd: path, timeout: 15000 });
+    assert.equal((await readJSON(taskPath(ctx, id))).status, 'cleaned');
+    await assert.rejects(readFile(join(path, 'package.json')), { code: 'ENOENT' });
   } finally { await ctx.dispose(); }
 });
