@@ -46,6 +46,7 @@ export function createHud(onRetry: () => void) {
   const anchor = new THREE.Vector3();
   const damagedFor: Record<EnemyId,number> = {};
   let safe = false;
+  let resultDismissed = false;
   let showNumbers = true;
   const resources = new WeakMap<HTMLElement, { count: number; max: number }>();
   const enemyValues: Partial<Record<EnemyId, number>> = {};
@@ -67,6 +68,7 @@ export function createHud(onRetry: () => void) {
     orb.dataset.low = String(count > 0 && count / max <= .25);
   }
   function finish(won: boolean): void {
+    resultDismissed = false;
     resultTitle.textContent = won ? 'Victory' : 'Defeat'; resultCopy.textContent = '';
     retry.hidden = won; resultPanel.hidden = false;
   }
@@ -78,6 +80,7 @@ export function createHud(onRetry: () => void) {
       for(const [orb,name] of [[playerHealth,'Health'],[playerMana,'Mana']] as const) orb.title=visible ? `${name} · ${orb.getAttribute('aria-valuetext') ?? ''}` : name;
     },
     update(encounter: Encounter, events: EncounterEvent[]) {
+      if (encounter.phase !== 'won') resultDismissed = false;
       bars(encounter);
       combatText.encounter(events);
       for (const event of events) {
@@ -118,8 +121,13 @@ export function createHud(onRetry: () => void) {
       }
     },
     setSafe(value: boolean) { safe = value; if (safe) for (const bar of Object.values(healthBars)) bar.hidden=true; },
-    dismissResult: () => { resultPanel.hidden = true; },
-    reset: () => { combatText.clear(); resultPanel.hidden = true; for (const id of Object.keys(healthBars)) {damagedFor[id]=0;healthBars[id].hidden=true;} },
+    restore(encounter: Encounter): void {
+      this.update(encounter, []);
+      if (encounter.phase === 'lost') finish(false);
+      else if (!safe && encounter.phase === 'won' && !resultDismissed) finish(true);
+    },
+    dismissResult: () => { if (!resultPanel.hidden) resultDismissed = true; resultPanel.hidden = true; },
+    reset: () => { resultDismissed = false; combatText.clear(); resultPanel.hidden = true; for (const id of Object.keys(healthBars)) {damagedFor[id]=0;healthBars[id].hidden=true;} },
     adventure: (events: AdventureEvent[]) => combatText.adventure(events),
     applyCombatText: (settings: CombatTextSettings) => combatText.apply(settings),
     clearCombatText: () => combatText.clear(),

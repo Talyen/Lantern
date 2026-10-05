@@ -1,5 +1,5 @@
 import type { AreaChange, AreaChangeResult } from './area-change';
-import type { PreparedArea, AreaResources } from './area-candidate';
+import { PreparedArea, type AreaResources, type AreaSimulation, type AreaPresentationResources } from './area-candidate';
 
 export type AreaRequest = {
   generation: number;
@@ -24,6 +24,7 @@ export class AreaTransitionController {
   private generation = 0;
   private request?: AbortController;
   private active?: PreparedArea;
+  private simulation?: AreaSimulation;
   private activeReady = false;
   private deactivateActive?: () => void;
   private closed = false;
@@ -59,6 +60,12 @@ export class AreaTransitionController {
     return operation;
   }
 
+  /** Recovery candidates borrow simulation; rejected preparation cannot release it. */
+  prepare(change: AreaChange, build: (owner: PreparedArea) => Promise<AreaPresentationResources>): Promise<PreparedArea> {
+    if (change.kind === 'presentation-recovery' && !this.simulation) return Promise.reject(new Error('No committed area to recover.'));
+    return new PreparedArea(change.kind === 'presentation-recovery' ? this.simulation : undefined).prepare(build);
+  }
+
   invalidate(): void {
     this.generation++;
     this.request?.abort(new Error('Area transition superseded.'));
@@ -82,14 +89,17 @@ export class AreaTransitionController {
       }
       // The only precommit gameplay callback is an eligible shelter repair.
       if (change.kind === 'refresh') change.onCommit?.();
-      const previous = this.active, deactivatePrevious = this.deactivateActive;
+      const previous = this.active, previousSimulation = this.simulation, deactivatePrevious = this.deactivateActive;
+      if (change.kind === 'presentation-recovery' && candidate.simulationResources !== previousSimulation)
+        throw new Error('Presentation recovery cannot replace area simulation.');
+      this.simulation = candidate.promoteSimulation();
       this.active = candidate;
       this.activeReady = false;
       candidate = undefined;
       committed = true;
       this.deactivateActive = () => operation!.deactivate();
       try {
-        operation.commitGameplay(this.active);
+        if (change.kind !== 'presentation-recovery') operation.commitGameplay(this.active);
         deactivatePrevious?.();
         operation.activate(this.active);
       } catch (error) {
@@ -97,7 +107,10 @@ export class AreaTransitionController {
         deactivatePrevious?.();
         operation.deactivate();
         throw error;
-      } finally { previous?.dispose(); }
+      } finally {
+        previous?.dispose();
+        if (previousSimulation !== this.simulation) previousSimulation?.dispose();
+      }
       const ready = await operation.ready();
       if (ready && request.current()) this.activeReady = true;
       return { status: 'committed', readiness: ready && request.current() ? 'ready' : 'superseded' };
@@ -131,5 +144,6 @@ export class AreaTransitionController {
     await Promise.allSettled([...this.pending]);
     this.deactivateActive?.(); this.deactivateActive = undefined;
     this.active?.dispose(); this.active = undefined;
+    this.simulation?.dispose(); this.simulation = undefined;
   }
 }

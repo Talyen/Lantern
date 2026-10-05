@@ -102,6 +102,10 @@ export class CasterVisuals {
     this.charge.rotation.y += dt * 2;
     this.material.opacity = charging ? .55 + progress * .4 : this.flash / .12;
   }
+  restore(state: Encounter): void {
+    this.clear();
+    this.released = (state.enemies[this.id]?.contactIndex ?? 0) > 0;
+  }
   attach(parent: THREE.Object3D): void { parent.add(this.root); }
   detach(): void { this.root.removeFromParent(); }
   clear(): void { this.root.visible = false; this.flash = 0; this.released = false; }

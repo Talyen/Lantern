@@ -30,8 +30,21 @@ export class GatheringController {
     this.harvesting.register(area.area.id, area.resources);
     for (const resource of area.resources) {
       const felled = this.harvesting.state(area.area.id, resource.id)?.felled ?? false;
-      area.setResourceState(resource.id, felled);
       navigation.setTreeFelled(resource.id, felled);
+    }
+    this.restore(area);
+  }
+
+  /** Rebuild resource appearance without touching collision or harvesting clocks. */
+  restore(area: AreaInstance): void {
+    for (const resource of area.resources) area.setResourceState(resource.id, this.harvesting.state(area.area.id, resource.id)?.felled ?? false);
+    const swing = this.action.playback;
+    this.tools.show(swing?.kind ?? null);
+    if (swing) {
+      play(this.actor, swing.kind === 'tree' ? 'chop' : 'mine');
+      const action = this.actor.actions[swing.kind === 'tree' ? 'chop' : 'mine'];
+      if (action) action.time = swing.time;
+      this.actor.mixer?.update(0);
     }
   }
 

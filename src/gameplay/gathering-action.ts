@@ -29,6 +29,9 @@ export class GatheringAction {
   constructor(private readonly encounter: Encounter, private readonly adventure: Adventure, private readonly context: GatheringContext) {}
   get target(): ResourceDefinition | null { return this.selected; }
   get choppingId(): string | null { return this.swing?.resource.id ?? null; }
+  get playback(): { kind: ResourceDefinition['kind']; time: number } | undefined {
+    return this.swing ? { kind: this.swing.resource.kind, time: this.swing.time } : undefined;
+  }
   takeEvents(): GatheringEvent[] { const events = this.events; this.events = []; return events; }
 
   select(resource: ResourceDefinition): void { this.selected = resource; this.begin(resource); }

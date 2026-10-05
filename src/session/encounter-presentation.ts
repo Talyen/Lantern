@@ -1,7 +1,7 @@
 import { Vector3 } from 'three';
 import { abilities } from '../gameplay/abilities';
 import type { GameplayAudio } from '../audio/gameplay';
-import { type ActorId, type Encounter, type EncounterEvent } from '../gameplay/encounter';
+import { dodgeDuration, type Motion, type ActorState, type ActorId, type Encounter, type EncounterEvent } from '../gameplay/encounter';
 import type { WeaponSet } from '../gameplay/abilities';
 import type { CoreEffects } from '../rendering/effects';
 import type { createHud } from '../ui/hud';
@@ -14,6 +14,45 @@ type PresentationContext = {
 
 /** Presents committed simulation events; it never commits progress or cancels input. */
 export class EncounterPresentation {
+  private deathTimes = new WeakMap<ActorState, number>();
+
+  rememberPlayback(): void {
+    for (const [id, actor] of Object.entries(this.actors)) {
+      const state = id === 'player' ? this.encounter.player : this.encounter.enemies[id];
+      if (state.hp > 0) this.deathTimes.delete(state);
+      else this.deathTimes.set(state, actor.current === 'death' ? actor.actions.death?.time ?? 0 : duration(actor, 'death'));
+    }
+  }
+
+  /** Hydrate continuous poses; never feed synthetic events to audio, effects or HUD. */
+  restoreActors(safe: boolean): void {
+    for (const [id, actor] of Object.entries(this.actors)) {
+      const state = id === 'player' ? this.encounter.player : this.encounter.enemies[id];
+      actor.mixer?.stopAllAction(); actor.current = null; actor.previous = null; actor.velocity.set(0, 0);
+      actor.root.visible = id === 'player' || !safe && !!this.encounter.enemies[id].home;
+      actor.root.position.set(state.x, state.y + .04, state.z); actor.root.rotation.y = state.yaw;
+      let motion: Motion = 'idle', time = 0, rate = 1;
+      if (state.hp <= 0) { motion = 'death'; time = this.deathTimes.get(state) ?? duration(actor, 'death'); }
+      else if (id === 'player' && this.encounter.dodgeRemaining > 0) {
+        motion = 'dodge'; time = (1 - this.encounter.dodgeRemaining / dodgeDuration) * duration(actor, 'dodge');
+      } else if (id === 'player' && this.encounter.riposte) {
+        motion = 'riposte-stance'; time = (1 - this.encounter.riposte.remaining / .75) * duration(actor, motion);
+      } else if (state.attackTime >= 0) {
+        const action = id === 'player' ? this.encounter.playerAction : null;
+        motion = action?.ability ? abilities[action.ability].motion : 'attack';
+        rate = action?.rate ?? 1; time = state.attackTime * rate;
+      } else if (id !== 'player' && state.lock > 0) {
+        motion = 'hit'; time = duration(actor, 'hit') - state.lock;
+      } else if (id === 'player' && this.encounter.blocking) motion = 'block';
+      play(actor, motion, rate);
+      const animation = actor.actions[motion];
+      if (animation) {
+        animation.stopFading(); animation.time = Math.max(0, Math.min(time, animation.getClip().duration));
+      }
+      actor.mixer?.update(0);
+    }
+  }
+
   constructor(
     private readonly encounter: Encounter,
     private readonly actors: Record<ActorId, Actor>,
@@ -62,6 +101,7 @@ export class EncounterPresentation {
   }
 
   resetActors(safe: boolean): void {
+    this.deathTimes = new WeakMap();
     for (const actor of Object.values(this.actors)) {
       actor.mixer?.stopAllAction();
       actor.current = null;

@@ -15,12 +15,14 @@ export type AreaTravel = {
 };
 export type AreaChange = AreaTravel | {
   kind: 'refresh';
-  /** Rebuild the committed destination without entering or saving it again. */
-  presentationOnly?: true;
   spawn?: Spawn;
   appearance?: AreaAppearance;
   canCommit?: () => boolean;
   onCommit?: () => void;
+} | {
+  /** Replace presentation while retaining the committed simulation and save. */
+  kind: 'presentation-recovery';
+  canCommit?: () => boolean;
 };
 
 export type AreaChangeResult =

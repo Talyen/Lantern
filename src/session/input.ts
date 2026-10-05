@@ -15,11 +15,8 @@ export function createInput(
   let pointer: { x: number; y: number } | undefined;
   const menuOpen = () => !!document.querySelector('dialog[open]');
 
-  function clear(): void {
-    down.clear();
-    pointer = undefined;
-    onClear();
-  }
+  function clearHeld(): void { down.clear(); pointer = undefined; }
+  function clear(): void { clearHeld(); onClear(); }
 
   function trackPointer(event: PointerEvent): void {
     if (event.pointerType !== 'mouse' && event.pointerType !== 'pen') return;
@@ -93,7 +90,7 @@ export function createInput(
   const held = (action: InputAction) =>
     preferences.value[action].some(binding => binding !== null && down.has(binding));
   return {
-    clear,
+    clear, clearHeld,
     dispose: () => { listeners.abort(); clear(); },
     pointer: () => pointer,
     held,

@@ -72,6 +72,10 @@ export class EnemyActors {
     if (owned) previous?.dispose();
   }
   clear(): void { for (const entry of Object.values(this.active?.entries ?? {})) entry.caster?.clear(); }
+  restore(state: Encounter): void {
+    for (const entry of Object.values(this.active?.entries ?? {})) entry.caster?.restore(state);
+    this.sync(state, 0, true);
+  }
   sync(state: Encounter, dt: number, visible: boolean): void {
     if (!this.active) return;
     for (const id in this.active.entries) {
