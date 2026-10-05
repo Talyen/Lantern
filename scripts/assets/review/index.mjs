@@ -5,7 +5,7 @@ import { git, readJSON } from '../../agents/state.mjs';
 import { hashFile, assetPath, readGlb } from '../../lib/assets.mjs';
 import { root } from '../../lib/cli.mjs';
 import { itemDefinitions, arrowAsset } from '../../../src/gameplay/equipment.ts';
-import { appearanceId, emptyReviews, parseReviews, effectiveReview } from '../../../src/assets/asset-review.ts';
+import { appearanceId, emptyReviews, parseReviews, effectiveReview, reviewDecision } from '../../../src/assets/asset-review.ts';
 
 export const reviewsPath = cwd => resolve(cwd, 'assets/asset-reviews.json');
 export async function readReviews(cwd = root) { return parseReviews(await readJSON(reviewsPath(cwd), emptyReviews())); }
@@ -134,9 +134,38 @@ export async function reviewIndex(cwd = root, { revision, reviewed = true } = {}
     row.selected = data.selection.includes(row.libraryId);
     if (!row.catalogUrl) row.available = row.available && await stat(resolve(cwd, 'public', row.url.slice(1))).then(info => info.isFile()).catch(error => { if (error.code === 'ENOENT') return false; throw error; });
   }
-  const index = { assets: [...rows.values()], reviews, data, catalogEntries, refs, byLibrary, byUrl, cwd };
-  if (reviewed) for (const row of index.assets) if (reviews.decisions[row.id]?.state === 'approved') row.fingerprint = await fingerprint(index, row);
+  const families = new Map();
+  for (const row of rows.values()) families.set(row.familyId, [...(families.get(row.familyId) ?? []), row]);
+  const baseAssets = [...families.values()].map(family => {
+    const rank = row => row.id.endsWith('@original') ? 0 : row.id.endsWith('@gallery') ? 1 : row.id.endsWith('@gameplay') ? 2 : 3;
+    const base = [...family].sort((a, b) => rank(a) - rank(b) || a.id.localeCompare(b.id))[0];
+    for (const row of family) row.baseId = base.id;
+    return base;
+  });
+  const index = { assets: [...rows.values()], baseAssets, families, byBaseId: new Map(baseAssets.map(base => [base.id, base])), reviews, data, catalogEntries, refs, byLibrary, byUrl, cwd };
+  if (reviewed) for (const row of index.assets) if (reviewDecision(row, reviews)?.state === 'approved') await inspectReview(index, row);
   return index;
+}
+/** One source model per family, retaining usage and older rejection/deletion intent. */
+export function baseReviewAssets(index) {
+  return index.baseAssets.map(base => baseReviewAsset(index, base));
+}
+export function baseReviewAsset(index, base) {
+  const family = index.families.get(base.familyId);
+  const retained = family.find(row => index.reviews.decisions[row.id]?.state === 'delete-requested')
+    ?? family.find(row => index.reviews.decisions[row.id]?.state === 'denied');
+  const uses = new Map(family.flatMap(row => row.uses).map(use => [JSON.stringify(use), use]));
+  return { ...base, uses: [...uses.values()], selected: family.some(row => row.selected), variants: family.length - 1,
+    reviewDecisionId: index.reviews.decisions[base.id]?.scope === 'family' ? base.id : retained?.id ?? base.id };
+}
+/** Variant eligibility follows the source approval; its own inputs must still be available. */
+async function inspectReview(index, row) {
+  row.fingerprint = await fingerprint(index, row);
+  if (row.baseId !== row.id) {
+    const base = index.byBaseId.get(row.baseId);
+    if (base.fingerprint === null) base.fingerprint = await fingerprint(index, base);
+    row.baseFingerprint = base.fingerprint;
+  }
 }
 /** Hash the actual bytes and transitive appearance inputs only on inspection or eligibility checks. */
 export async function fingerprint(index, row, inputs = { readGlb, hashFile, readFile }) {
@@ -175,7 +204,7 @@ export async function fingerprint(index, row, inputs = { readGlb, hashFile, read
 export async function reviewBlockers(index, assets = index.assets.filter(row => row.uses.length || row.selected)) {
   const issues = [];
   for (const row of assets) {
-    row.fingerprint = await fingerprint(index, row);
+    await inspectReview(index, row);
     const decision = effectiveReview(row, index.reviews);
     if (decision.state !== 'approved') issues.push({ id: row.id, name: row.name, state: decision.state, changed: decision.changed, uses: row.uses, selected: row.selected });
     const seen = new Set();
@@ -184,12 +213,22 @@ export async function reviewBlockers(index, assets = index.assets.filter(row => 
       const entry = index.catalogEntries.get(id), dep = index.byLibrary.get(id);
       if (!entry || entry.status !== 'converted') issues.push({ id, name: id, state: 'missing dependency', uses: row.uses });
       if (index.reviews.deleted[`${id}@original`]) issues.push({ id, name: id, state: 'deleted dependency', uses: row.uses });
-      if (dep && (index.reviews.familyDenials[dep.familyId] || ['denied','delete-requested'].includes(index.reviews.decisions[dep.id]?.state) || index.reviews.deleted[dep.id])) issues.push({ id, name: dep.name, state: 'blocked dependency', uses: row.uses });
+      if (dep && ['denied','delete-requested'].includes(effectiveReview(dep, index.reviews).state)) issues.push({ id, name: dep.name, state: 'blocked dependency', uses: row.uses });
       for (const child of entry?.dependencies ?? []) visit(child);
     };
     row.dependencies.forEach(visit);
   }
   return issues;
+}
+/** Expand family requests for cleanup, including variants added after the decision. */
+export function deletionRequests(index) {
+  const active = new Set(index.assets.map(row => row.id));
+  const requests = new Map(Object.entries(index.reviews.decisions).filter(([id, row]) => {
+    const baseId = index.families.get(row.familyId)?.[0].baseId, base = index.reviews.decisions[baseId];
+    return row.state === 'delete-requested' && !index.reviews.deleted[id] && !active.has(id) && !(base?.scope === 'family' && base.state !== 'delete-requested');
+  }));
+  for (const row of index.assets) if (!index.reviews.deleted[row.id] && reviewDecision(row, index.reviews)?.state === 'delete-requested') requests.set(row.id, { ...reviewDecision(row, index.reviews), ...row, state: 'delete-requested', currentUrl: row.url });
+  return [...requests].map(([id, row]) => ({ ...row, id }));
 }
 export async function changedUses(cwd, base) {
   const current = await reviewIndex(cwd, { reviewed: false });

@@ -7,7 +7,7 @@ import { context, git, writeJSON, saveTask } from '../../agents/state.mjs';
 import { startTask } from '../../agents/workflow.mjs';
 import { reviewRevision, saveReview, finishReview } from './store.mjs';
 import { createReviewCache } from './cache.mjs';
-import { readReviews, reviewIndex, fingerprint } from './index.mjs';
+import { readReviews, reviewIndex, fingerprint, baseReviewAssets, reviewBlockers, deletionRequests } from './index.mjs';
 import { emptyReviews, effectiveReview } from '../../../src/assets/asset-review.ts';
 
 async function fixture() {
@@ -88,6 +88,48 @@ test('cached previews reject stale approval after a reexport with the same ID an
     const current = await readReviews(f.task.path); current.familyDenials[first.familyId] = { notes: 'Retired family', updatedAt: new Date().toISOString() };
     await writeJSON(join(f.task.path, 'assets/asset-reviews.json'), current);
     assert.equal(effectiveReview(changed, (await cache.get()).reviews).state, 'denied');
+  } finally { await f.dispose(); }
+});
+
+test('base decisions cover current and future variants without losing deletion intent or stale-art protection', async () => {
+  const f = await fixture();
+  try {
+    const id = 'fixture:assembly:tree', variant = { id, url: '/vendor/synty/library/assemblies/tree-painted.json' };
+    const manifestPath = join(f.task.path, 'assets/textures/environment/manifest.json');
+    await writeFile(join(f.task.path, 'public', variant.url.slice(1)), '{"nodes":[]}');
+    await writeJSON(manifestPath, { assets: [variant], showcase: { assets: [] }, areaAssets: {} });
+    const cache = createReviewCache(f.task.path), initial = await cache.snapshot(), base = await cache.asset(`${id}@original`);
+    assert.equal(initial.assets.length, 1);
+    assert.equal(initial.assets[0].variants, 1);
+    let saved = await saveReview(f.task.path, reviewRevision(initial.reviews), { type: 'decision', id: `${id}@gameplay`, state: 'delete-requested', fingerprint: null, notes: 'Older variant request' }, cache);
+    assert.equal(effectiveReview((await cache.snapshot()).assets[0], saved.reviews).state, 'delete-requested');
+    const retained = saved.reviews.decisions[`${id}@gameplay`];
+    saved = await saveReview(f.task.path, saved.revision, { type: 'decision', scope: 'family', id: base.id, state: 'approved', fingerprint: base.fingerprint, notes: 'Whole family' }, cache);
+    assert.deepEqual(saved.reviews.decisions[`${id}@gameplay`], retained, 'the new family choice supersedes the older request without discarding its notes');
+    let index = await reviewIndex(f.task.path);
+    assert.deepEqual(index.assets.map(row => effectiveReview(row, saved.reviews).state), ['approved', 'approved']);
+    assert.deepEqual(deletionRequests(index), []);
+    const future = { id, url: '/vendor/synty/library/assemblies/tree-future.json' };
+    await writeFile(join(f.task.path, 'public', future.url.slice(1)), '{"nodes":[]}');
+    await writeJSON(manifestPath, { assets: [variant], showcase: { assets: [] }, areaAssets: { clearing: [future] } });
+    index = await reviewIndex(f.task.path);
+    assert.deepEqual(await reviewBlockers(index, index.assets), []);
+    await writeFile(join(f.task.path, 'public', variant.url.slice(1)), '{"nodes":[{"name":"new material"}]}');
+    index = await reviewIndex(f.task.path);
+    assert.deepEqual(await reviewBlockers(index, index.assets), [], 'variant changes do not require independent approval');
+    await writeFile(join(f.task.path, 'public', base.url.slice(1)), '{"nodes":[{"name":"changed source"}]}');
+    index = await reviewIndex(f.task.path);
+    assert.equal((await reviewBlockers(index, index.assets)).length, 3);
+    await assert.rejects(saveReview(f.task.path, saved.revision, { type: 'decision', scope: 'family', id: base.id, state: 'approved', fingerprint: base.fingerprint, notes: '' }, cache), /changed or is unavailable/);
+    saved = await saveReview(f.task.path, saved.revision, { type: 'decision', scope: 'family', id: base.id, state: 'denied', fingerprint: null, notes: 'Wrong shape' }, cache);
+    assert.ok((await reviewIndex(f.task.path)).assets.every(row => effectiveReview(row, saved.reviews).state === 'denied'));
+    saved = await saveReview(f.task.path, saved.revision, { type: 'decision', scope: 'family', id: base.id, state: 'delete-requested', fingerprint: null, notes: 'Retire family' }, cache);
+    index = await reviewIndex(f.task.path);
+    assert.deepEqual(deletionRequests(index).map(row => row.id).sort(), index.assets.map(row => row.id).sort());
+    assert.equal(baseReviewAssets(index).length, 1);
+    assert.equal(await readFile(join(f.task.path, 'public', future.url.slice(1)), 'utf8'), '{"nodes":[]}');
+    saved = await saveReview(f.task.path, saved.revision, { type: 'decision', scope: 'family', id: base.id, state: 'unreviewed', fingerprint: null, notes: '' }, cache);
+    assert.ok((await reviewIndex(f.task.path)).assets.every(row => effectiveReview(row, saved.reviews).state === 'unreviewed'));
   } finally { await f.dispose(); }
 });
 

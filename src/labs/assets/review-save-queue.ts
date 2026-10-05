@@ -26,7 +26,7 @@ export class ReviewSaveQueue {
       for (const row of journal.pending) {
         const action = isRecord(row) && isRecord(row.action) ? row.action : undefined;
         if (!isRecord(row) || typeof row.name !== 'string' || !action || typeof action.id !== 'string' || typeof action.notes !== 'string' || action.notes.length > 4000
-          || !(action.type === 'family-deny' || action.type === 'family-clear' || action.type === 'decision' && reviewStates.some(state => state === action.state) && (action.fingerprint === null || typeof action.fingerprint === 'string'))) throw new Error('Invalid pending review action.');
+          || !(action.type === 'family-deny' || action.type === 'family-clear' || action.type === 'decision' && reviewStates.some(state => state === action.state) && (action.fingerprint === null || typeof action.fingerprint === 'string') && (action.scope === undefined || action.scope === 'family'))) throw new Error('Invalid pending review action.');
       }
       this.saved = { revision: journal.revision, reviews }; this.pending = journal.pending as PendingReview[];
       this.reconcile(saved);
@@ -55,8 +55,9 @@ export class ReviewSaveQueue {
     const expected = structuredClone(this.saved.reviews);
     if (action.type === 'decision') {
       const row = current.decisions[action.id];
-      if (!row || row.state !== action.state || row.notes !== action.notes || action.state === 'approved' && row.fingerprint !== action.fingerprint) return false;
+      if (!row || row.state !== action.state || row.notes !== action.notes || row.scope !== action.scope || action.state === 'approved' && row.fingerprint !== action.fingerprint) return false;
       expected.decisions[action.id] = row;
+      if (action.scope === 'family') delete expected.familyDenials[row.familyId];
     } else {
       const family = action.id.slice(0, action.id.indexOf('@'));
       if (action.type === 'family-deny') {

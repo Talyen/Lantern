@@ -3,7 +3,7 @@ import { cli, parseArgs, root } from '../../lib/cli.mjs';
 import { context, currentTask, tasks, saveTask } from '../../agents/state.mjs';
 import { startTask, ensureDependencies, cleanupTask } from '../../agents/workflow.mjs';
 import { startPreview, stopPreview } from '../../agents/preview.mjs';
-import { reviewIndex, reviewBlockers, changedUses } from './index.mjs';
+import { reviewIndex, reviewBlockers, changedUses, deletionRequests } from './index.mjs';
 import { finishReview } from './store.mjs';
 await cli(async () => {
   const args = parseArgs(process.argv.slice(2), { '--check': 'boolean', '--report': 'boolean', '--shipping': 'boolean', '--base': 'value', '--finish': 'boolean', '--stop': 'boolean', '--task': 'value', '--browser': 'boolean' });
@@ -11,7 +11,7 @@ await cli(async () => {
   if (args['--check'] || args['--report'] || args['--shipping'] || args['--base']) {
     const index = await reviewIndex(root), issues = await reviewBlockers(index);
     if (args['--report']) {
-      console.log(JSON.stringify({ blockers: issues, deletionRequests: Object.entries(index.reviews.decisions).filter(([id, row]) => row.state === 'delete-requested' && !index.reviews.deleted[id]).map(([id, decision]) => ({ id, ...decision, currentUrl: index.assets.find(row => row.id === id)?.url ?? decision.url, selected: index.assets.find(row => row.id === id)?.selected ?? false, dependencies: index.assets.find(row => row.id === id)?.dependencies ?? [], motions: index.assets.find(row => row.id === id)?.motions ?? {}, uses: index.assets.find(row => row.id === id)?.uses ?? [], dependents: index.assets.find(row => row.id === id)?.dependents ?? [] })), exclusions: index.reviews.deleted }, null, 2)); return;
+      console.log(JSON.stringify({ blockers: issues, deletionRequests: deletionRequests(index), exclusions: index.reviews.deleted }, null, 2)); return;
     }
     const fresh = args['--shipping'] ? issues : (await changedUses(root, args['--base'] ?? 'HEAD')).issues;
     if (fresh.length) throw new Error(`Asset approval required:\n${fresh.map(issue => `${issue.name}: ${issue.state}${issue.changed ? ' (changed artwork)' : ''}\n  ${issue.id}\n  ${issue.uses.map(use => `${use.sceneName}/${use.owner} (${use.role})`).slice(0, 5).join(', ')}${issue.selected ? '\n  Build selection: remove if obsolete, or approve before shipping.' : ''}`).join('\n')}`);

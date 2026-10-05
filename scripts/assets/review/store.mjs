@@ -27,12 +27,14 @@ export async function saveReview(cwd, revision, action, cache) {
     if (!asset) throw new Error('Asset is no longer in the active catalog. Reload the review session.');
     const updatedAt = new Date().toISOString();
     if (action.type === 'decision') {
-      if (!reviewStates.includes(action.state)) throw new Error('Invalid review decision.');
+      if (!reviewStates.includes(action.state) || !(action.scope === undefined || action.scope === 'family')) throw new Error('Invalid review decision.');
+      if (action.scope === 'family' && asset.baseId !== asset.id) throw new Error('Choose the base asset before reviewing its family.');
       const inspected = cache ? await cache.inspect(index, asset) : asset;
       const current = cache ? inspected.fingerprint : await fingerprint(index, inspected);
       if (action.state === 'approved' && (!inspected.available || !current || current !== action.fingerprint)) throw Object.assign(new Error('Prepared art changed or is unavailable. Reload this asset before approving.'), { status: 409 });
-      if (action.state === 'approved' && reviews.familyDenials[asset.familyId]) throw new Error('Clear the family denial before approving this appearance.');
-      reviews.decisions[asset.id] = { familyId: asset.familyId, url: asset.url, name: asset.name, state: action.state, fingerprint: current, notes: action.notes, updatedAt };
+      if (action.state === 'approved' && action.scope !== 'family' && reviews.familyDenials[asset.familyId]) throw new Error('Clear the family denial before approving this appearance.');
+      reviews.decisions[asset.id] = { familyId: asset.familyId, url: asset.url, name: asset.name, state: action.state, fingerprint: current, notes: action.notes, updatedAt, ...(action.scope ? { scope: action.scope } : {}) };
+      if (action.scope === 'family') delete reviews.familyDenials[asset.familyId];
     } else if (action.type === 'family-deny') reviews.familyDenials[asset.familyId] = { notes: action.notes, updatedAt };
     else if (action.type === 'family-clear') delete reviews.familyDenials[asset.familyId];
     else throw new Error('Unknown review action.');

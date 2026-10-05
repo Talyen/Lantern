@@ -1,6 +1,6 @@
 import { stat, readdir, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { reviewIndex, fingerprint, readReviews } from './index.mjs';
+import { reviewIndex, fingerprint, readReviews, baseReviewAssets, baseReviewAsset } from './index.mjs';
 import { hashFile, readGlb } from '../../lib/assets.mjs';
 
 async function identity(path) {
@@ -55,8 +55,8 @@ export function createReviewCache(cwd) {
   };
   return {
     get, inspect,
-    async asset(id) { const index = await get(), row = index.assets.find(asset => asset.id === id); if (!row) throw new Error('Asset no longer available. Reload records.'); return inspect(index, row); },
-    async snapshot() { const index = await get(); return { ...index, assets: await Promise.all(index.assets.map(row => index.reviews.decisions[row.id]?.state === 'approved' ? inspect(index, row) : row)) }; },
+    async asset(id) { const index = await get(), base = index.byBaseId.get(id), row = base ? baseReviewAsset(index, base) : index.assets.find(asset => asset.id === id); if (!row) throw new Error('Asset no longer available. Reload records.'); return inspect(index, row); },
+    async snapshot() { const index = await get(); return { ...index, assets: await Promise.all(baseReviewAssets(index).map(row => index.reviews.decisions[row.id]?.state === 'approved' ? inspect(index, row) : row)) }; },
     async catalog(id) {
       const index = await get(), row = index.assets.find(asset => asset.id === id);
       if (!row?.libraryId) throw new Error('Asset has no library catalog.');
