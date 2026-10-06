@@ -323,7 +323,7 @@ test('shelter repair consumes its exact recipe once and stash transfers retain o
   expect(()=>state.repairShelter()).toThrow();state.transferStash('wood',3,true);
   expect(state.character.stash[0].quantity).toBe(3);expect(state.character.loadout.main).toBe('axe');
   state.transferStash(state.character.stash[0].id,3,false);expect(state.character.stash).toHaveLength(0);
-  const restored=new Adventure(storage);expect(restored.character).toEqual(state.character);expect(restored.character.restedSeconds).toBe(1800);
+  const restored=new Adventure(storage);expect(restored.character).toEqual(state.capture());expect(restored.character.restedSeconds).toBe(1800);
 });
 
 test('Rested uses active time, refreshes on shelter entry, saves fractional XP and survives restart',()=>{

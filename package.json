@@ -87,6 +87,7 @@
     "@types/three": "0.186.0",
     "electron": "44.5.1",
     "eslint": "^10.11.0",
+    "fake-indexeddb": "6.2.5",
     "globals": "^17.13.0",
     "stylelint": "17.16.0",
     "tar": "7.5.22",

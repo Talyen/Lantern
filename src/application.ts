@@ -1,5 +1,6 @@
 import { Adventure } from './gameplay/adventure';
-import { AdventureStore, type SavedAdventure } from './gameplay/adventure-store';
+import type { SavedAdventure, SlotId } from './gameplay/adventure-store';
+import { TransactionalAdventureStore } from './gameplay/transactional-adventure-store';
 import { InputPreferences } from './input/bindings';
 import { createRenderer } from './rendering/renderer';
 import { createGameSession, type GameSession } from './session/session';
@@ -13,7 +14,7 @@ import { registerRuntimeSnapshot, recordFailure } from './diagnostics/report';
 const app = document.getElementById('app')!;
 const markup = app.innerHTML;
 const sceneMount = document.getElementById('scene')!;
-const store = new AdventureStore(() => localStorage);
+const store = new TransactionalAdventureStore(() => localStorage, () => indexedDB);
 const preferences = new InputPreferences(() => localStorage);
 const audio = new GameAudio();
 let session: GameSession | undefined;
@@ -35,13 +36,34 @@ const options = new Options({
 });
 const front = new FrontEnd({
   slots: () => store.views(),
-  continue: slot => { if (!busy) { const record = store.load(slot); if (record) void start(record).catch((error: unknown) => recordFailure('adventure-loading', error)); else front.showLoadError(); } },
-  create: (slot, name) => { if (!busy) { const record = store.create(slot, name); if (record) void start(record).catch((error: unknown) => recordFailure('adventure-loading', error)); else front.showPlay(); } },
-  delete: slot => store.delete(slot), options: () => options.open(), sound: () => audio.play('uiClick'),
+  continue: slot => { selectAdventure(slot).catch((error: unknown) => recordFailure('adventure-loading', error)); },
+  create: (slot, name) => { selectAdventure(slot, name).catch((error: unknown) => recordFailure('adventure-loading', error)); },
+  delete: slot => { deleteAdventure(slot).catch((error: unknown) => recordFailure('adventure-delete', error)); },
+  options: () => options.open(), sound: () => audio.play('uiClick'),
 });
 store.subscribe(() => front.refresh());
-if (!development) store.initialize();
-registerRuntimeSnapshot(() => session?.report() ?? loadingReport?.() ?? { ready: !busy, backend: 'webgpu', persistence: { loaded: true, failures: 0, blockedByExisting: false, ...store.diagnostics() } });
+if (!development) await store.initialize();
+registerRuntimeSnapshot(() => session?.report() ?? loadingReport?.() ?? { ready: !busy, backend: 'webgpu', persistence: { blockedByExisting: false, ...store.diagnostics() } });
+
+async function selectAdventure(slot: SlotId, name?: string): Promise<void> {
+  if (busy || closing) return;
+  busy = true; front.pending(name === undefined ? 'load' : 'create');
+  try {
+    const record = name === undefined ? await store.load(slot) : await store.create(slot, name);
+    if (closing) return;
+    busy = false;
+    if (record) await start(record);
+    else { loadingScreen.dismiss(); front.showLoadError(); }
+  } catch (error) { front.showLoadError(); throw error; }
+  finally { front.pending(); busy = false; }
+}
+async function deleteAdventure(slot: SlotId): Promise<void> {
+  if (busy || closing) return;
+  busy = true; front.pending('delete');
+  try { await store.delete(slot); await store.flush(); }
+  catch (error) { front.showLoadError(); throw error; }
+  finally { busy = false; front.pending(); }
+}
 
 async function start(record?: SavedAdventure): Promise<void> {
   if (busy || closing) return;
@@ -65,7 +87,7 @@ async function start(record?: SavedAdventure): Promise<void> {
     session = candidate; selected = record;
     loadingReport = undefined;
     accepted = true;
-    if (record) store.save(record.slot, record.id, candidate.capture());
+    if (record) candidate.save();
     options.setPlaying(!development); busy = false;
   } catch (error) {
     recordFailure('adventure-loading', error);
@@ -74,7 +96,7 @@ async function start(record?: SavedAdventure): Promise<void> {
     if (development) { loadingScreen.fail(token, error); return; }
     loadingScreen.fail(token, error, {
       kind: 'adventure',
-      retry: () => { if (!busy) { const latest = record ? store.load(record.slot) : undefined; if (!record || latest) void start(latest ?? undefined).catch((error: unknown) => recordFailure('adventure-loading', error)); else { loadingScreen.dismiss(); front.showPlay(); } } },
+      retry: () => { if (record) selectAdventure(record.slot).catch((error: unknown) => recordFailure('adventure-loading', error)); else start().catch((error: unknown) => recordFailure('adventure-loading', error)); },
       back: () => { loadingScreen.dismiss(); front.showPlay(); },
     });
   }
@@ -84,9 +106,9 @@ async function returnToTitle(): Promise<void> {
   busy = true;
   const previous = session;
   previous.clearInput();
-  if (selected) store.save(selected.slot, selected.id, previous.capture());
+  if (selected) previous.save();
   generation++;
-  store.flush(); options.close(); options.setPlaying(false);
+  await store.flush(); options.close(); options.setPlaying(false);
   session = undefined; selected = undefined;
   app.hidden = true; app.inert = true;
   await previous.dispose();
@@ -94,9 +116,15 @@ async function returnToTitle(): Promise<void> {
   app.replaceChildren();
   busy = false; front.showTitle();
 }
+function checkpointWhenHidden(): void {
+  if (!closing && session && selected && (document.hidden || document.documentElement.hasAttribute('data-window-hidden')))
+    session.save();
+}
+document.addEventListener('visibilitychange', checkpointWhenHidden);
+window.addEventListener('lanternvisibilitychange', checkpointWhenHidden);
 window.addEventListener('pagehide', () => {
+  if (session && selected) session.save();
   closing = true;
-  if (session && selected) store.save(selected.slot, selected.id, session.capture());
   store.close(); preferences.close(); audio.dispose();
   void (async () => { await session?.dispose(); await renderer.dispose(); })().catch((error: unknown) => console.error('Unable to release Lantern.', error));
 }, { once: true });

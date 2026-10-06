@@ -20,16 +20,20 @@ export function gatheringSafe(encounter: Encounter, kind: AreaDefinition['kind']
 /** Active-play depletion clock. Character resources and XP belong to Adventure. */
 export class Harvesting {
   private elapsed = 0;
+  private changedAreas = new Set<string>();
+  takeChangedAreas(): string[] { const changed = [...this.changedAreas]; this.changedAreas.clear(); return changed; }
   private nextRegrowthAt = Infinity;
   private readonly areas = new Map<string, Map<string, SessionResource>>();
   reset(): void {
     this.elapsed = 0;
     this.nextRegrowthAt = Infinity;
+    for (const id of this.areas.keys()) this.changedAreas.add(id);
     for (const nodes of this.areas.values()) for (const node of nodes.values()) {
       node.hits = 0; node.regrowAt = undefined;
     }
   }
   register(areaId: string, resources: (ResourceDefinition | TreeDefinition)[]): void {
+    this.changedAreas.add(areaId);
     const previous = this.areas.get(areaId);
     this.areas.set(areaId, new Map(resources.map(node => {
       const definition: ResourceDefinition = { kind: 'tree', level: gathering.resourceLevel, baseYield: gathering.baseYield, contacts: gathering.contacts, ...node };
@@ -45,6 +49,7 @@ export class Harvesting {
   }
   restore(elapsed: number, saved: Record<string, Record<string, SavedResource>>): void {
     this.elapsed = elapsed;
+    for (const id of this.areas.keys()) this.changedAreas.add(id);
     for (const [areaId, resources] of this.areas) for (const [id, node] of resources) {
       const state = saved[areaId]?.[id];
       node.hits = Math.min(state?.hits ?? 0, node.definition.contacts);
@@ -63,6 +68,7 @@ export class Harvesting {
   contact(areaId: string, id: string, point: Point, xp = 0): HarvestReward | undefined {
     const node = this.areas.get(areaId)?.get(id);
     if (!node || node.regrowAt !== undefined || this.distance(node.definition, point) > gathering.reach) return;
+    this.changedAreas.add(areaId);
     if (++node.hits >= node.definition.contacts) {
       node.regrowAt = this.elapsed + renewalSeconds;
       this.nextRegrowthAt = Math.min(this.nextRegrowthAt, node.regrowAt);
@@ -79,6 +85,7 @@ export class Harvesting {
       if (node.regrowAt > this.elapsed || !eligible(areaId, node.definition) || occupants.some(actor => actor.areaId === areaId && this.distance(node.definition, actor.position) < (actor.radius ?? .3) + .05)) {
         this.nextRegrowthAt = Math.min(this.nextRegrowthAt, Math.max(this.elapsed + .5, node.regrowAt)); continue;
       }
+      this.changedAreas.add(areaId);
       node.hits = 0; node.regrowAt = undefined; changes.push({ areaId, id, felled: false });
     }
     return changes;

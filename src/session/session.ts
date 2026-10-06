@@ -80,6 +80,7 @@ import '../ui/game.css';
 import '../ui/options.css';
 export type GameSession = {
   capture(): CharacterSave;
+  save(): void;
   actionBar(): ActionBar;
   clearInput(): void;
   applySettings(settings: GraphicsSettings): void;
@@ -479,7 +480,7 @@ function worldClick(clientX: number, clientY: number): boolean {
 }
 
 function syncAdventure(adventureEvents: AdventureEvent[] = adventure.takeEvents()): void {
-  areaState.visuals?.sync(adventure.session(areaState.definition.id).drops, adventure.portalPosition(areaState.definition), lootLabels.hovered, adventure.portalHeight(areaState.definition));
+  areaState.visuals?.sync(adventure.areaDrops(areaState.definition.id), adventure.portalPosition(areaState.definition), lootLabels.hovered, adventure.portalHeight(areaState.definition));
   for (const chest of areaState.definition.chests ?? []) areaState.instance?.setChestOpened(chest.id, adventure.chest(areaState.definition, chest).opened);
   for (const event of adventureEvents) if (event.type === 'enemyRenewed') {
     const actor = actors[event.id], state = encounter.enemies[event.id];
@@ -608,7 +609,7 @@ function drawFrame(dt: number): boolean {
   if (!paused() && pointer) { resolveAim(pointer); lootLabels.hovered = areaState.visuals?.pick(pointerAim.ray) ?? null; }
   const shake = impact.offset(options?.settings.cameraShake ?? true);
   cameraOwner.applyShake(shake.x,shake.y,mount.clientHeight);
-  lootLabels.sync(adventure.session(areaState.definition.id).drops, camera, [encounter.player.x, encounter.player.z], paused() || encounter.player.hp <= 0);
+  lootLabels.sync(adventure.areaDrops(areaState.definition.id), camera, [encounter.player.x, encounter.player.z], paused() || encounter.player.hp <= 0);
   hud.positionEnemy(encounter, camera, mount, paused() ? 0 : gameDt, inspecting || !!areaTransitions?.transitioning);
   areaState.instance?.update(camera, paused() ? 0 : gameDt);
   stageVegetationActors();
@@ -941,7 +942,7 @@ preset: () => {
 };
 const hot = hotSession;
 releases.push(() => { if (hotSession === hot) hotSession = undefined; });
-return { capture: () => adventure.capture(), actionBar: () => adventure.character.actionBar, clearInput, applySettings,
+return { capture: () => adventure.capture(), save: () => adventure.save(), actionBar: () => adventure.character.actionBar, clearInput, applySettings,
   applyCombatText: settings => hud.applyCombatText(settings), flushSettings: () => graphics?.flushSettings(),
   resetMeasurements: () => graphics?.resetMeasurements(), report: () => runtimeDiagnostics.report(), dispose };
 } catch (error) { await dispose(); throw error; }

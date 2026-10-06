@@ -19,7 +19,7 @@ export class LootLabels {
   hovered: string | null = null;
   private position = new THREE.Vector3();
   constructor(private host: HTMLElement, private select: (id: string) => void) { this.root.id = 'loot-labels'; host.append(this.root); }
-  sync(drops: GroundDrop[], camera: THREE.Camera, point: [number, number], hidden: boolean): void {
+  sync(drops: readonly GroundDrop[], camera: THREE.Camera, point: [number, number], hidden: boolean): void {
     if (this.root.hidden !== hidden) this.root.hidden = hidden;
     if (hidden) this.hovered = null;
     let changed = drops.length !== this.drops.size;

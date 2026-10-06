@@ -1,7 +1,7 @@
 import { advanceWeather } from './weather';
 import { resourceDefinitions, type ResourceDefinition } from '../levels/resources';
 import { Harvesting, type TreeChange } from './harvesting';
-import { renewalSeconds, renewalDistance, sameSource, type RewardSource, type SavedEnemy, type SavedChest, type OutingSave } from './outing';
+import { renewalSeconds, renewalDistance, sameSource, type RewardSource, type SavedEnemy, type SavedChest, type SavedArea } from './outing';
 import { enterAreaEncounter } from './area-encounter';
 import { chestRewards, enemyRewards } from './adventure-rewards';
 import {
@@ -89,6 +89,10 @@ export class Adventure {
   placeGround: (origin: Point, index: number) => { position: Point; height: number } = origin => ({ position: [...origin], height: 0 });
   canCollectGround: (drop: GroundDrop) => boolean = () => true;
   private sessions = new Map<string, AreaSession>();
+  private areaSnapshots: Record<string, SavedArea> = {};
+  private dirtyAreas = new Set<string>();
+  private saveDepth = 0;
+  private saveRequested = false;
   private sequence = 3;
   newId = (): string => `item-${++this.sequence}`;
   private readonly persistence: CharacterPersistence;
@@ -107,6 +111,8 @@ export class Adventure {
     this.elapsed = value.outing.elapsed;
     this.portal = value.outing.portal;
     this.sessions.clear();
+    this.areaSnapshots = structuredClone(value.outing.areas);
+    this.dirtyAreas.clear();
     for (const [id, area] of Object.entries(value.outing.areas)) {
       this.sessions.set(id, { enemies: structuredClone(area.enemies), chests: structuredClone(area.chests), drops: structuredClone(area.drops), dropRolled: Object.fromEntries(Object.entries(area.enemies).filter(([, enemy]) => enemy.rewarded).map(([id]) => [id, true])) });
       for (const drop of area.drops) for (const id of [drop.id, drop.instanceId])
@@ -126,7 +132,10 @@ export class Adventure {
   }
 
   configureAreas(definitions: Record<string, AreaDefinition>): void {
+    const resources = Object.fromEntries(Object.keys(this.definitions).map(id => [id, this.harvesting.snapshot(id)]));
     this.definitions = definitions;
+    this.areaSnapshots = Object.fromEntries(Object.entries(this.areaSnapshots).filter(([id]) => !!definitions[id]));
+    for (const id of this.sessions.keys()) this.dirtyAreas.add(id);
     this.templates.clear();
     for (const area of Object.values(definitions)) {
       this.templates.set(area.id, createEncounter('playing', area.layout));
@@ -139,7 +148,7 @@ export class Adventure {
       }
     }
     for (const id of this.sessions.keys()) if (!definitions[id]) this.sessions.delete(id);
-    this.harvesting.restore(this.elapsed, Object.fromEntries(Object.entries(this.character.outing.areas).map(([id, area]) => [id, area.resources])));
+    this.harvesting.restore(this.elapsed, { ...Object.fromEntries(Object.entries(this.character.outing.areas).map(([id, area]) => [id, area.resources])), ...resources });
     if (this.portal && !definitions[this.portal.area]) this.portal = null;
   }
 
@@ -153,11 +162,25 @@ export class Adventure {
     return { area: home, spawn: home.campfires![0].arrival };
   }
 
-  private snapshot(): void {
-    const previous = this.character.outing;
-    const areas: OutingSave['areas'] = {};
-    for (const area of Object.values(this.definitions)) this.session(area.id);
-    for (const [id, session] of this.sessions) {
+  /** Detached metadata and copy-on-write area records; taking a snapshot never mutates live state. */
+  private snapshot(): CharacterSave {
+    for (const id of this.harvesting.takeChangedAreas()) {
+      if (!this.definitions[id]) continue;
+      if (!this.sessions.has(id)) this.sessions.set(id, { drops: [], dropRolled: {}, chests: {}, enemies: {} });
+      this.dirtyAreas.add(id);
+    }
+    const active = this.currentArea, live = this.liveEncounter;
+    if (active && live) {
+      const saved = this.areaSnapshots[active]?.enemies;
+      if (live.enemyIds.some(id => {
+        const enemy = live.enemies[id];
+        return enemy.home && (enemy.hp !== saved?.[id]?.hp || enemy.lowestHp !== saved?.[id]?.lowestHp);
+      })) this.dirtyAreas.add(active);
+    }
+    let areas = this.areaSnapshots;
+    for (const id of this.dirtyAreas) {
+      const session = this.sessions.get(id);
+      if (!session) continue;
       const encounter = id === this.currentArea ? this.liveEncounter : session.encounter;
       if (encounter) for (const enemyId of encounter.enemyIds) {
         const enemy = encounter.enemies[enemyId];
@@ -166,16 +189,41 @@ export class Adventure {
         session.enemies[enemyId] = { hp: Math.max(0, enemy.hp), lowestHp: enemy.lowestHp, rewarded: !!session.dropRolled[enemyId],
           renewAt: enemy.hp <= 0 ? old?.renewAt ?? this.elapsed + renewalSeconds : undefined };
       }
-      areas[id] = { enemies: structuredClone(session.enemies), chests: structuredClone(session.chests), drops: structuredClone(session.drops), resources: this.definitions[id] ? this.harvesting.snapshot(id) : previous.areas[id]?.resources ?? {} };
+      if (areas === this.areaSnapshots) areas = { ...areas };
+      areas[id] = { enemies: structuredClone(session.enemies), chests: structuredClone(session.chests), drops: structuredClone(session.drops), resources: this.definitions[id] ? this.harvesting.snapshot(id) : this.areaSnapshots[id]?.resources ?? {} };
     }
+    this.areaSnapshots = areas;
+    this.dirtyAreas.clear();
+    const { outing, ...fields } = this.character;
+    const detached = structuredClone(fields);
+    const value = Object.assign(character(detached.items), detached);
     const e = this.liveEncounter;
-    this.character.outing = { weather: structuredClone(previous.weather), elapsed: this.elapsed, checkpoint: previous.checkpoint, portal: structuredClone(this.portal), areas,
-      cooldowns: e ? { abilityCooldowns: { ...e.abilityCooldowns }, ultimateCooldown: e.ultimateCooldown, potionCooldown: e.potionCooldown, dodgeCooldown: e.dodgeCooldown, attackCooldown: e.attackCooldown } : previous.cooldowns };
+    value.outing = { weather: structuredClone(outing.weather), elapsed: this.elapsed, checkpoint: outing.checkpoint, portal: structuredClone(this.portal), areas,
+      cooldowns: e ? { abilityCooldowns: { ...e.abilityCooldowns }, ultimateCooldown: e.ultimateCooldown, potionCooldown: e.potionCooldown, dodgeCooldown: e.dodgeCooldown, attackCooldown: e.attackCooldown } : structuredClone(outing.cooldowns) };
+    return value;
+  }
+  /** Batch synchronous mutations without moving the durability boundary past presentation. */
+  commit<T>(operation: () => T): T {
+    this.saveDepth++;
+    try { return operation(); }
+    finally {
+      if (--this.saveDepth === 0 && this.saveRequested) {
+        this.saveRequested = false;
+        this.save();
+      }
+    }
   }
   advanceWeather(seconds: number): void { advanceWeather(this.character.outing.weather, seconds); }
-  capture(): CharacterSave { this.snapshot(); return this.character; }
-  save(): void { this.snapshot(); if (this.sessionSave) this.sessionSave.save(this.character); else this.persistence.request(this.character); }
-  closeSave(): void { this.snapshot(); this.persistence.close(this.character); }
+  capture(): CharacterSave {
+    const { outing, ...fields } = structuredClone(this.snapshot());
+    return Object.assign(character(fields.items), fields, { outing });
+  }
+  save(): void {
+    if (this.saveDepth) { this.saveRequested = true; return; }
+    const value = this.snapshot();
+    if (this.sessionSave) this.sessionSave.save(value); else this.persistence.request(value);
+  }
+  closeSave(): void { this.persistence.close(this.snapshot()); }
   saveDiagnostics() { return this.sessionSave ? { loaded: true, failures: 0, blockedByExisting: false, ...this.sessionSave.diagnostics() } : this.persistence.diagnostics(); }
   setActionBar(bar: ActionBar): void {
     if (!validBar(bar) || bar.some(id=>id && !abilityUnlocked(id,this.character.xp))) throw new Error('Invalid action bar');
@@ -229,6 +277,8 @@ export class Adventure {
   /** Restart refreshes the outing while retaining permanent character progress. */
   restart(): void {
     this.sessions.clear();
+    this.areaSnapshots = {};
+    this.dirtyAreas.clear();
     this.harvesting.reset();
     this.elapsed = 0;
     this.nextRenewalAt = Infinity;
@@ -376,7 +426,9 @@ export class Adventure {
     this.replaceContainers(toStash ? next.source : next.destination, toStash ? next.destination : next.source);
   }
 
+  // A mutable session borrow invalidates its cached save. Presentation reads use areaDrops instead.
   session(id = this.currentArea!): AreaSession {
+    this.dirtyAreas.add(id);
     let session = this.sessions.get(id);
     if (!session) {
       session = { drops: [], dropRolled: {}, chests: {}, enemies: {} };
@@ -385,6 +437,9 @@ export class Adventure {
 
     return session;
   }
+
+  areaDrops(id: string): readonly GroundDrop[] { return this.sessions.get(id)?.drops ?? []; }
+  markAreaChanged(id: string): void { this.dirtyAreas.add(id); }
 
   /** Call only after destination resources are ready; failed loads cannot change these states. */
   enter(encounter: Encounter, area: AreaDefinition, arrival: ReturnSpawn = area.layout.player, recover = false, consumePortal?: PortalLink): void {

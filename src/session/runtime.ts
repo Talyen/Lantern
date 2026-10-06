@@ -21,7 +21,7 @@ export class SessionRuntime {
     private readonly gathering: GatheringAction, private readonly context: RuntimeContext) {}
 
   complete(events: EncounterEvent[]): void {
-    this.adventure.applyCombatEvents(this.encounter, events);
+    this.adventure.commit(() => this.adventure.applyCombatEvents(this.encounter, events));
     if (events.some(event => event.type === 'hit' && event.actor === 'player')) this.context.interruptApproach(false);
     if (events.some(event => event.type === 'outcome' && !event.won)) this.context.defeated();
     this.events.push(...events);
@@ -33,11 +33,12 @@ export class SessionRuntime {
     if (input.paused) return;
     if (this.encounter.pending?.kind === 'ability' && this.encounter.pending.ability === 'shield-basic' && !input.block) this.encounter.pending = null;
     const timing = this.context.timings(), movement = this.context.movement();
+    this.adventure.markAreaChanged(area.id);
     this.complete(this.encounter.phase === 'won' || area.kind === 'safe'
       ? stepExploration(this.encounter, dt, input, movement, timing)
       : stepEncounter(this.encounter, dt, input, timing, movement));
-    if (this.encounter.phase !== 'loading' && this.adventure.currentArea) this.adventure.step(this.encounter, area, dt);
-    if (this.encounter.player.hp > 0) this.gathering.advance(dt);
+    if (this.encounter.phase !== 'loading' && this.adventure.currentArea) this.adventure.commit(() => this.adventure.step(this.encounter, area, dt));
+    if (this.encounter.player.hp > 0) this.adventure.commit(() => this.gathering.advance(dt));
     if (this.encounter.player.hp > 0 && !['lost', 'loading'].includes(this.encounter.phase)) {
       this.advanceWeather(weatherDt);
       if (this.adventure.castRemaining === 0) return this.travel.check(area.gates, [this.encounter.player.x, this.encounter.player.z]);

@@ -1,4 +1,4 @@
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 import { Adventure, characterSaveKey } from '../src/gameplay/adventure';
 import { decodeCharacter } from '../src/gameplay/character-save';
 import { createEncounter } from '../src/gameplay/encounter';
@@ -91,4 +91,22 @@ test.each([false, true])('frame combat commits XP, unlocks and cooldowns with fa
     runtime.advance(0, { x: 0, z: 0, paused: false });
     expect(adventure.session().drops.filter(drop => drop.source?.id === 'enemy').map(drop => drop.id)).toEqual(loot.map(drop => drop.id));
   } finally { adventure.closeSave(); }
+});
+
+// Admission: a multi-target contact must publish one coherent XP/unlock/cooldown snapshot;
+// earlier single-target fixtures do not detect per-event backup churn inside one combat commit.
+test('one combat batch persists all proficiency events together before feedback', () => {
+  const { adventure, encounter, runtime, storage } = setup();
+  const write = vi.spyOn(storage, 'setItem');
+  try {
+    encounter.abilityCooldowns.sweep = 3;
+    runtime.complete([{ type: 'proficiency', family: 'sword', amount: 7 },
+      { type: 'proficiency', family: 'sword', amount: 8 }, { type: 'abilityCommitted', ability: 'sweep', id: 1 }]);
+    expect(write.mock.calls.filter(([key]) => key === characterSaveKey)).toHaveLength(1);
+    const saved = decodeCharacter(storage.getItem(characterSaveKey)!);
+    expect(saved.xp.sword).toBe(1005); expect(saved.actionBar).toContain('executioner');
+    expect(saved.outing.cooldowns.abilityCooldowns.sweep).toBe(3);
+    runtime.takeFeedback();
+    expect(write.mock.calls.filter(([key]) => key === characterSaveKey)).toHaveLength(1);
+  } finally { write.mockRestore(); adventure.closeSave(); }
 });

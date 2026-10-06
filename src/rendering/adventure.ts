@@ -43,7 +43,7 @@ export class AdventureVisuals {
   private cloth = createSurfaceMaterial({color:'#786657',roughness:1});
   private disposed = false;
   constructor(private parent: THREE.Object3D, private library: AssetLibrary) { this.highlight.rotation.x = -Math.PI / 2; this.highlight.visible = false; parent.add(this.highlight); }
-  sync(drops: GroundDrop[], portal: Point | null, hovered: string | null, portalHeight = 0): void {
+  sync(drops: readonly GroundDrop[], portal: Point | null, hovered: string | null, portalHeight = 0): void {
     const key = portal ? `${portal.join(',')}/${portalHeight}` : '';
     if (key !== this.portalKey) { this.portal?.dispose(); this.portal = portal ? new Portal({ id: 'return-portal', position: [portal[0], portalHeight + .02, portal[1]], yaw: Math.PI / 4, width: 1.4, height: 2.3 }, this.parent) : null; this.portalKey = key; }
     this.currentDrops.clear(); for (const drop of drops) this.currentDrops.set(drop.id, drop);

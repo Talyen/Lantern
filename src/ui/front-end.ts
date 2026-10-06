@@ -25,6 +25,7 @@ export class FrontEnd {
   private name: HTMLInputElement;
   private begin: HTMLButtonElement;
   private confirming: SlotId = 1;
+  private pendingAction?: 'load' | 'create' | 'delete';
   constructor(private ctx: Context) {
     const remembered = readPreference(selectedKey);
     if (slotIds.includes(remembered as SlotId)) this.selected = remembered as SlotId;
@@ -112,6 +113,12 @@ export class FrontEnd {
     this.loadError.hidden = false;
     this.primary.focus();
   }
+  pending(action?: 'load' | 'create' | 'delete'): void {
+    this.pendingAction = action;
+    this.root.setAttribute('aria-busy', String(!!action));
+    this.root.querySelectorAll<HTMLButtonElement>('button').forEach(button => { button.disabled = !!action; });
+    this.refresh();
+  }
   refresh(): void {
     const slots = this.ctx.slots();
     this.rows.forEach((row, index) => {
@@ -122,7 +129,8 @@ export class FrontEnd {
     });
     const current = this.current(), empty = current.state === 'empty';
     this.detailName.textContent = empty ? 'New Adventure' : current.name;
-    this.primary.textContent = empty ? 'New Adventure' : 'Continue'; this.deleteButton.hidden = empty;
+    this.primary.textContent = this.pendingAction === 'load' ? 'Loading…' : this.pendingAction === 'create' ? 'Creating…' : empty ? 'New Adventure' : 'Continue';
+    this.deleteButton.textContent = this.pendingAction === 'delete' ? 'Deleting…' : 'Delete'; this.deleteButton.hidden = empty;
     this.campfire.hidden = empty || !current.checkpoint;
     if (current.checkpoint) {
       const fire = Object.values(areas).flatMap(area => (area.campfires ?? []).map(fire => ({ key: `${area.id}/${fire.id}`, name: fire.name }))).find(fire => fire.key === current.checkpoint);
