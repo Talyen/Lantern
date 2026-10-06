@@ -12,11 +12,23 @@ export async function assetIndex(directory) {
     const info = await lstat(path, { bigint: true });
     if (info.isSymbolicLink()) throw new Error(`Runtime assets must be private files, not symlinks: ${path}`);
     if (info.isDirectory()) { for (const name of await readdir(path)) await walk(join(path, name)); }
-    else if (info.isFile()) result[relative(directory, path)] = `${info.size}:${info.mtimeNs}:${info.ctimeNs}:${info.ino}`;
+    else if (info.isFile()) {
+      const stamp = `${info.size}:${info.mtimeNs}:${info.ctimeNs}:${info.ino}`;
+      let cached = assetDigests.get(path);
+      if (cached?.stamp !== stamp) {
+        const digest = await hashFile(path), after = await lstat(path, { bigint: true });
+        if (`${after.size}:${after.mtimeNs}:${after.ctimeNs}:${after.ino}` !== stamp) throw new Error(`Asset changed while identifying its contents: ${path}. Retry when preparation settles.`);
+        cached = { stamp, digest }; assetDigests.set(path, cached);
+      }
+      // ctime includes clone/xattr changes. Verify it through the digest cache,
+      // but let content identity remain stable when those bytes are unchanged.
+      result[relative(directory, path)] = `${info.size}:${info.mtimeNs}:${info.ino}:${cached.digest}`;
+    }
   }
   if (existsSync(directory)) await walk(directory);
   return result;
 }
+const assetDigests = new Map();
 export function assetIdentity(index) { return createHash('sha256').update(JSON.stringify(Object.entries(index).sort())).digest('hex'); }
 export async function fileHash(path) {
   try { return await hashFile(path); }

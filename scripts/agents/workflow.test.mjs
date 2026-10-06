@@ -14,7 +14,7 @@ import { sessionPath, stopPreview, browserHistoryPath, recoverBrowsers } from '.
 import { retainSourceTree, restorePlayableSource, pruneRetention, sourceCloneBaseline, retainCurrentChecks } from './retention.mjs';
 
 import { selectCodexThreads, pruneCodex } from './codex-retention.mjs';
-import { assetIdentity } from './assets.mjs';
+import { assetIdentity, assetIndex } from './assets.mjs';
 
 import { checkStages } from '../check.mjs';
 
@@ -257,6 +257,20 @@ test('asset mutation during validation cannot promote the prepared snapshot', as
     assert.equal(await readFile(join(ctx.main, 'public/vendor/model.glb'), 'utf8'), 'original');
     assert.equal(await readFile(join(task.path, 'public/vendor/model.glb'), 'utf8'), 'modified');
   } finally { await ctx.dispose(); }
+});
+
+// Admission: real host metadata changes invalidated unchanged validated art.
+// Verify byte identity while still detecting a same-size replacement.
+test('metadata-only changes preserve asset identity while changed bytes invalidate it', { skip: process.platform !== 'darwin' }, async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'lantern-asset-identity-'));
+  try {
+    const path = join(directory, 'art.bin'); await writeFile(path, 'prepared');
+    const before = assetIdentity(await assetIndex(directory));
+    await promisify(execFile)('xattr', ['-w', 'com.lantern.fixture', 'metadata', path]);
+    assert.equal(assetIdentity(await assetIndex(directory)), before);
+    await writeFile(path, 'modified');
+    assert.notEqual(assetIdentity(await assetIndex(directory)), before);
+  } finally { await rm(directory, { recursive: true, force: true }); }
 });
 
 test('light handoff excludes suites and builds even for packaging and workflow changes', () => {
