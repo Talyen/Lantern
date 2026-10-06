@@ -110,7 +110,7 @@ export class ClearingDiagnostics {
       adventure: {
         persistence: adventure.saveDiagnostics(),
       resources: runtimeAssets(renderer).diagnostics(),
-      nativePreparation: nativePreparationDiagnostics(renderer), character: adventure.character, portal: adventure.portal, castRemaining: adventure.castRemaining,
+      nativePreparation: nativePreparationDiagnostics(renderer), character: adventure.capture(), portal: adventure.portal, castRemaining: adventure.castRemaining,
         drops: adventure.session(currentArea.id).drops, chests: adventure.session(currentArea.id).chests,
         fires: (currentArea.campfires ?? []).map(fire => ({ id: fire.id, safe: adventure.fireSafe(currentArea, fire, encounter) })),
       },
