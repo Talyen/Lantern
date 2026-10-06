@@ -29,7 +29,7 @@ This table is the canonical map read by `agent:context`. Owners are starting poi
 
 Gameplay commands enter through [SessionRuntime](../src/session/runtime.ts); input/presentation consumers borrow [readonly state views](../src/gameplay/state-view.ts). Domain owners remain responsible for their rules, while runtime orders commits before feedback.
 
-Session flow and slot ownership begin at [application](../src/application.ts), [transactional adventure store](../src/gameplay/transactional-adventure-store.ts) and [save recovery](RUNTIME.md#save-recovery); inspect these alongside the UI/gameplay owners for front-end changes.
+Session flow and slot ownership begin at [application](../src/application.ts), [session lifecycle](../src/session/lifecycle.ts), [transactional adventure store](../src/gameplay/transactional-adventure-store.ts) and [save recovery](RUNTIME.md#save-recovery); inspect these alongside the UI/gameplay owners for front-end changes.
 
 ## Desktop reporting
 

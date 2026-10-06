@@ -8,6 +8,8 @@ export type AreaRequest = {
   check(): void;
   wait<T>(promise: Promise<T>): Promise<T>;
 };
+export type AreaTransitionPhase = 'startup' | 'ready' | 'replacing' | 'recovering' | 'failed' | 'disposed';
+
 export type AreaOperation = {
   prepare(): Promise<PreparedArea>;
   commitGameplay(candidate: PreparedArea): void;
@@ -30,11 +32,19 @@ export class AreaTransitionController {
   private closed = false;
   private pending = new Set<Promise<AreaChangeResult>>();
   private blocked = false;
+  private pendingChange?: AreaChange['kind'];
   preparation = { generation: 0, destination: 'startup', stage: 'character' };
 
   constructor(private readonly begin: (change: AreaChange, request: AreaRequest) => AreaOperation) {}
   get current(): AreaResources | undefined { return this.active?.value; }
   get transitioning(): boolean { return this.blocked; }
+  /** Derived from the request and published bundle; no second readiness state. */
+  get phase(): AreaTransitionPhase {
+    if (this.closed) return 'disposed';
+    if (!this.active) return 'startup';
+    if (this.pendingChange) return this.pendingChange === 'presentation-recovery' ? 'recovering' : 'replacing';
+    return this.activeReady ? 'ready' : 'failed';
+  }
 
   change(change: AreaChange): Promise<AreaChangeResult> {
     if (this.closed) return Promise.resolve({ status: 'cancelled' });
@@ -42,6 +52,7 @@ export class AreaTransitionController {
     const controller = this.request = new AbortController(), generation = this.generation;
     const current = () => !this.closed && generation === this.generation;
     this.blocked = true;
+    this.pendingChange = change.kind;
     this.preparation = { generation, destination: change.kind === 'travel' ? change.area : this.active?.area.area.id ?? 'startup', stage: 'validation' };
     const request: AreaRequest = {
       generation, current,
@@ -69,6 +80,7 @@ export class AreaTransitionController {
   invalidate(): void {
     this.generation++;
     this.request?.abort(new Error('Area transition superseded.'));
+    this.pendingChange = undefined;
     this.blocked = !!this.active && !this.activeReady;
   }
 
@@ -131,6 +143,7 @@ export class AreaTransitionController {
       candidate?.dispose();
       if (request.current()) {
         this.blocked = !!this.active && !this.activeReady;
+        this.pendingChange = undefined;
         operation?.finish();
       }
     }

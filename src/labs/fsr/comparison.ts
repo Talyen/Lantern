@@ -20,7 +20,7 @@ function png(canvas: HTMLCanvasElement): string {
 /** Uses the actual coordinator, art, animation and shared visual graph. */
 export function attachFsrComparison(ctx: Context) {
   if (!import.meta.env.DEV || !fsrComparison) return;
-  let running = false, progress = 'Ready';
+  let running = false, progress = 'Ready', disposed = false;
   const controls = document.createElement('div'); controls.dataset.fsrComparison = '';
   controls.style.cssText = 'position:fixed;top:8px;right:8px;z-index:50;background:#17191f;color:white;padding:8px';
   const select = document.createElement('select'); select.ariaLabel = 'FSR comparison preset';
@@ -38,6 +38,7 @@ export function attachFsrComparison(ctx: Context) {
   const still = { x: 0, z: 0 };
   function cameraAt(position: Vector3): void { ctx.controls.target.copy(position); ctx.camera.position.copy(position).add(offset); ctx.controls.update(); }
   async function capture(record = true) {
+    if (disposed) throw new Error('Comparison session has closed.');
     if (running) throw new Error('A comparison capture is already running.');
     const initial = ctx.diagnostics();
     if (!initial.ready || initial.errors.length || initial.missing.length) throw new Error('Comparison requires ready, complete playable art.');
@@ -88,8 +89,13 @@ export function attachFsrComparison(ctx: Context) {
     } finally {
       video?.close(); running = false; ctx.freeze(true);
       // Remain frozen after review; the private fixture never resumes ordinary play.
-      controls.hidden = false; ctx.frameLoop.setManual(false);
+      if (!disposed) { controls.hidden = false; ctx.frameLoop.setManual(false); }
     }
   }
-  Object.assign(window, { lanternFsrComparison: { capture, select: choose, status: () => ({ running, progress, preset: comparisonPreset }) } });
+  const bridge = { capture, select: choose, status: () => ({ running, progress, preset: comparisonPreset }) };
+  Object.assign(window, { lanternFsrComparison: bridge });
+  return { dispose: () => {
+    disposed = true; controls.remove();
+    if (Reflect.get(window, 'lanternFsrComparison') === bridge) Reflect.deleteProperty(window, 'lanternFsrComparison');
+  } };
 }

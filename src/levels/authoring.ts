@@ -79,6 +79,7 @@ export function attachAuthoring(ctx: Context) {
   const setLantern = (lantern: boolean) => ctx.setAppearance({ lantern });
   panel.querySelector<HTMLInputElement>('[data-lantern]')!.onchange = event => { void setLantern((event.target as HTMLInputElement).checked).catch(appearanceFailed); };
   const bridge = {
+    dispose,
     setMaterialCalibration: compare, materialCalibration,
     setShelterRestored: (value: boolean) => ctx.setAppearance({ shelterRestored: value }),
     setSurfaces, setLantern, appearance: ctx.appearance, lighting: ctx.lighting, exportLighting: ctx.exportLighting,
@@ -94,6 +95,12 @@ export function attachAuthoring(ctx: Context) {
     zoom: (value:number) => {ctx.camera.zoom=value;ctx.camera.updateProjectionMatrix();ctx.invalidate();},
   };
   Object.assign(window,{lanternAuthoring:bridge}); refresh(); setView(ctx.appearance().surfaces === 'showcase' && ctx.area().id === 'clearing' ? 'entrance' : 'center');
-  const timer=setInterval(refresh,100);window.addEventListener('pagehide',()=>{resetMaterialCalibration();clearInterval(timer);clearOverlay();overlay.removeFromParent();panel.remove();},{once:true});
+  const timer = setInterval(refresh, 100);
+  window.addEventListener('pagehide', dispose, { once: true });
+  function dispose(): void {
+    window.removeEventListener('pagehide', dispose);
+    resetMaterialCalibration(); clearInterval(timer); clearOverlay(); overlay.removeFromParent(); panel.remove();
+    if (Reflect.get(window, 'lanternAuthoring') === bridge) Reflect.deleteProperty(window, 'lanternAuthoring');
+  }
   return bridge;
 }
