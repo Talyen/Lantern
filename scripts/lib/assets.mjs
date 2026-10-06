@@ -4,6 +4,7 @@ import { existsSync, createReadStream } from 'node:fs';
 import { resolve, relative, sep, extname, dirname } from 'node:path';
 import { root } from './cli.mjs';
 import { glbJsonLength } from './glb.mjs';
+import { runtimeArtIndex, runtimeArtURLs, runtimeArtRecord } from './runtime-art.mjs';
 export async function hashFile(path) {
   const hash = createHash('sha256');
   for await (const chunk of createReadStream(path)) hash.update(chunk);
@@ -88,10 +89,16 @@ export async function selectedLibrary(base = resolve(root, 'public/vendor/synty/
   return { selection, selected };
 }
 /** The build includes explicit gameplay inputs, never a copy of the development catalog. */
-export async function gameplayAssets(source = resolve(root, 'public')) {
+export async function gameplayAssets(source = resolve(root, 'public'), { originals = false } = {}) {
   const { selection, selected } = await selectedLibrary(resolve(source, 'vendor/synty/library'));
+  const runtime = originals ? undefined : await runtimeArtIndex(source);
   const paths = new Set();
   async function include(path) {
+    const derivative = runtimeArtRecord(runtime, source, path);
+    if (derivative) { for (const url of runtimeArtURLs(derivative)) await includePrepared(resolve(source, url.slice(1))); return; }
+    await includePrepared(path);
+  }
+  async function includePrepared(path) {
     if (paths.has(path) || !existsSync(path)) return; // Optional scenery and source-only builds remain supported.
     const info = await lstat(path);
     if (info.isSymbolicLink() || !info.isFile()) throw new Error(`Runtime asset must be a private file: ${path}`);
@@ -157,9 +164,13 @@ export async function gameplayAssets(source = resolve(root, 'public')) {
     if (!/^[a-f0-9]{64}$/.test(signature) || entry.url !== `/vendor/lighting/${signature}.json`) throw new Error('Invalid prepared lighting reference');
     await references(entry.url);
   }
-  return { selection, selected, paths };
+  if (runtime) {
+    for (const [sourceURL, record] of Object.entries(runtime.assets)) if (sourceURL.startsWith('/assets/')) for (const url of runtimeArtURLs(record)) await includePrepared(resolve(source, url.slice(1)));
+  }
+  return { selection, selected, paths, runtime };
 }
 export async function checkAssets(playable = false) {
+  await runtimeArtIndex(resolve(root, 'public'), { verify: true });
   const vendor = resolve(root, 'public/vendor');
   const { selection, selected } = await selectedLibrary();
   const characters = JSON.parse(await readFile(resolve(root, 'assets/playable-characters.json'), 'utf8'));

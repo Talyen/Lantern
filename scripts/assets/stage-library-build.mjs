@@ -5,11 +5,13 @@ import { resolve, relative } from 'node:path';
 import { cli, parseArgs, root } from '../lib/cli.mjs';
 import { privateCopy } from '../agents/copy.mjs';
 import { gameplayAssets, inventory, rejectArchives } from '../lib/assets.mjs';
+import { runtimeArtIndex } from '../lib/runtime-art.mjs';
 await cli(async () => {
   const args = parseArgs(process.argv.slice(2));
   if (args['--help']) { console.log('Usage: node scripts/assets/stage-library-build.mjs'); return; }
   const stage = resolve(root, '.local/build-public'), source = resolve(root, 'public');
-  const { selection, selected, paths } = await gameplayAssets(source);
+  await runtimeArtIndex(source, { verify: true });
+  const { selection, selected, paths, runtime } = await gameplayAssets(source);
   // Source-only CI exports no private art and cannot certify its appearance.
   // Any staged private content still requires the complete shipping review.
   if (paths.size) { await requireShippingEligibility(root); await validatePreparedLighting(root, undefined, true); }
@@ -26,7 +28,11 @@ await cli(async () => {
   if (selected.size) {
     const catalog = resolve(stage, 'vendor/synty/library/catalog.json');
     await mkdir(resolve(catalog, '..'), { recursive: true });
-    await writeFile(catalog, JSON.stringify({ version: 1, complete: true, assets: Object.fromEntries(selected) }));
+    await writeFile(catalog, JSON.stringify({ version: 1, complete: true, assets: Object.fromEntries([...selected].map(([id, asset]) => [id, { ...asset, url: runtime?.assets[asset.url]?.url ?? asset.url }])) }));
+  }
+  if (runtime) {
+    const indexPath = resolve(stage, 'vendor/runtime-art/index.json'); await mkdir(resolve(indexPath, '..'), { recursive: true });
+    await writeFile(indexPath, JSON.stringify(runtime));
   }
   const staged = await inventory(stage);
   rejectArchives(staged);

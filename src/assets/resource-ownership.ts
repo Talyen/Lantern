@@ -1,4 +1,14 @@
 import * as THREE from 'three';
+import type { ArtResource } from './art-cache';
+
+const sharedTextures = new WeakSet<THREE.Texture>();
+const sharedImageSources = new WeakSet<object>();
+const rootReleases = new WeakMap<THREE.Object3D, () => void>();
+export function shareTextureOwnership(texture: THREE.Texture): void { sharedTextures.add(texture); }
+export function shareImageOwnership(texture: THREE.Texture): void { sharedImageSources.add(texture.source); }
+export function registerArtRelease(root: THREE.Object3D, release: () => void): void {
+  const previous = rootReleases.get(root); rootReleases.set(root, previous ? () => { previous(); release(); } : release);
+}
 
 // Upstream instanceof declarations widen generic resources to any. These guards
 // retain the same constructor checks with the runtime's concrete resource types.
@@ -10,6 +20,7 @@ const owned = new WeakSet<THREE.Texture>();
 const imageOwners = new WeakMap<object, number>();
 /** Texture clones can share a bitmap. Close it only after the last owned texture is disposed. */
 export function ownTexture(texture: THREE.Texture): THREE.Texture {
+  if (sharedTextures.has(texture) || sharedImageSources.has(texture.source)) return texture;
   if (owned.has(texture)) return texture;
   owned.add(texture);
   const image = texture.image as { close?: () => void } | undefined;
@@ -50,7 +61,36 @@ export function disposeSceneInstances(root: THREE.Object3D, { skeletons = false 
 export function disposeSceneResources(root: THREE.Object3D): void {
   const { geometries, materials, textures } = sceneResources(root);
   disposeSceneInstances(root, { skeletons: true });
-  geometries.forEach(geometry => geometry.dispose()); materials.forEach(material => material.dispose()); textures.forEach(texture => texture.dispose());
+  geometries.forEach(geometry => geometry.dispose()); materials.forEach(material => material.dispose()); textures.forEach(texture => { if (!sharedTextures.has(texture)) texture.dispose(); });
+  const release = rootReleases.get(root); rootReleases.delete(root); release?.();
+}
+export function textureBytes(texture: THREE.Texture): number {
+  if (texture instanceof THREE.CompressedTexture) return texture.mipmaps.reduce((sum, mip) => sum + mip.data.byteLength, 0);
+  const image = texture.image as { width?: number; height?: number; depth?: number } | undefined;
+  if (!image?.width || !image.height) return 0;
+  const channels = texture.format === THREE.RedFormat ? 1 : texture.format === THREE.RGFormat ? 2 : 4;
+  const bytes = texture.type === THREE.FloatType ? 4 : texture.type === THREE.HalfFloatType || texture.type === THREE.UnsignedShortType ? 2 : 1;
+  return Math.ceil(image.width * image.height * (image.depth ?? 1) * channels * bytes * (texture.generateMipmaps ? 4 / 3 : 1));
+}
+/** Stable resource identities allow the idle budget to exclude active shared art. */
+export function artResources(root: THREE.Object3D): ArtResource[] {
+  const { geometries, textures } = sceneResources(root), records = new Map<object, ArtResource>();
+  for (const geometry of geometries) {
+    const attributes = [...Object.values(geometry.attributes), ...Object.values(geometry.morphAttributes).flat()];
+    if (geometry.index) attributes.push(geometry.index);
+    for (const attribute of attributes) { const buffer = (attribute instanceof THREE.InterleavedBufferAttribute ? attribute.data.array : attribute.array).buffer; records.set(buffer, { identity: buffer, kind: 'geometry', bytes: buffer.byteLength }); }
+  }
+  for (const texture of textures) for (const record of textureResources(texture)) records.set(record.identity, record);
+  return [...records.values()];
+}
+export function textureResources(texture: THREE.Texture): ArtResource[] {
+  const result: ArtResource[] = [{ identity: texture, kind: 'texture', bytes: textureBytes(texture) }];
+  if (texture instanceof THREE.CompressedTexture) for (const mip of texture.mipmaps) result.push({ identity: mip.data.buffer, kind: 'mips', bytes: mip.data.buffer.byteLength });
+  else if (texture.image) {
+    const image = texture.image as { width: number; height: number; data?: ArrayBufferView };
+    result.push(image.data ? { identity: image.data.buffer, kind: 'image', bytes: image.data.buffer.byteLength } : { identity: image, kind: 'image', bytes: image.width * image.height * 4 });
+  }
+  return result;
 }
 export function sceneResourceBytes(root: THREE.Object3D): number {
   let bytes = 0;

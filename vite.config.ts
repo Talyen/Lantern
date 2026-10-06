@@ -1,3 +1,4 @@
+import { runtimeArtURLPlugin } from './scripts/lib/runtime-art.mjs';
 import { validatePreparedLighting } from './scripts/levels/prepared-lighting.mjs';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -39,7 +40,7 @@ const buildIdentity = { version: (JSON.parse(readFileSync(resolve('package.json'
 export default defineConfig(({ command }) => ({
   define: { __LANTERN_BUILD__: JSON.stringify(buildIdentity) },
   publicDir: command === 'build' ? '.local/build-public' : 'public',
-  plugins: [privateLibrary(), assetReviewPlugin()],
+  plugins: [privateLibrary(), assetReviewPlugin(), runtimeArtURLPlugin()],
   build: { copyPublicDir: false }, // The build wrapper privately clones the staged public files once.
   // Scope exclusions to this checkout: task source lives beneath main's .local/worktrees.
   server: { watch: { ignored: [resolve('.local') + '/**', resolve('public/vendor') + '/**'] } },

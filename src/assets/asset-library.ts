@@ -1,6 +1,8 @@
-import { disposeSceneInstances, ownTexture, sceneTextures, isMesh, isTexture } from './resource-ownership';
+import { disposeSceneInstances, disposeSceneResources, ownTexture, sceneTextures, artResources, textureResources, isMesh, isTexture } from './resource-ownership';
 import * as THREE from 'three';
-import { cachedRequest } from '../data/cached-request';
+import { parseJson } from '../data/json';
+import { ArtCache, type ArtLease, type ArtResource } from './art-cache';
+import type { RuntimeAssets } from './runtime-assets';
 import { type MeshStandardNodeMaterial } from 'three/webgpu';
 import { createSurfaceMaterial, prepareStandardMaterials, prepareSurfaceMaterial, filterMaterialTexture } from '../rendering/surface-detail';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -21,154 +23,98 @@ interface MaterialSpec {
   textures: Partial<Record<'baseColor' | 'normal' | 'emissive', { id: string; scale: number[]; offset: number[] }>>;
 }
 type CachedModel = LibraryModel & { skinned: boolean };
-/** A library owns shared art. Instances release native bindings and skeletons independently. */
+type CachedMaterial = { material: MeshStandardNodeMaterial; release(): void };
+/** Instances lease immutable source art; a renderer-wide cache owns warm resources. */
 export class AssetLibrary {
-  private gltfs = new Map<string, Promise<CachedModel>>();
-  private json = new Map<string, Promise<unknown>>();
-  private textures = new Map<string, Promise<THREE.Texture>>();
-  private materials = new Map<string, Promise<MeshStandardNodeMaterial>>();
-  private ownedTextures = new Set<THREE.Texture>();
-  private ownedMaterials = new Set<THREE.Material>();
   private instances = new Set<() => void>();
-  private loader = new GLTFLoader();
+  private loader: GLTFLoader;
+  private cache: ArtCache;
   private disposed = false;
   private disposal?: Promise<void>;
   private pending = new Set<Promise<unknown>>();
-  constructor(private catalogUrl = '/vendor/synty/library/catalog.json') {}
+  constructor(private catalogUrl = '/vendor/synty/library/catalog.json', private scope?: RuntimeAssets) {
+    this.loader = scope?.loader ?? new GLTFLoader(); this.cache = scope?.cache ?? new ArtCache();
+  }
   private track<T>(promise: Promise<T>): Promise<T> {
     this.pending.add(promise); promise.then(() => this.pending.delete(promise), () => this.pending.delete(promise)); return promise;
   }
-  /** Share successful requests; failed preparation remains eligible for a fresh retry. */
-  private cached<T>(cache: Map<string, Promise<T>>, key: string, load: () => Promise<T>): Promise<T> {
-    return this.track(cachedRequest(cache, key, load));
-  }
-  private async fetchJson<T>(url: string): Promise<T> {
-    const response = await fetch(url); if (!response.ok) throw new Error(`Asset unavailable (${response.status}): ${url}`); return response.json() as Promise<T>;
+  private async json<T>(url: string): Promise<T> {
+    let bytes = 0;
+    const lease = this.cache.acquire(`json:${url}`, async () => {
+      const read = async () => { const response = await fetch(url); if (!response.ok) throw new Error(`Asset unavailable (${response.status}): ${url}`); return response.text(); };
+      const text = this.scope ? await this.scope.transfers.run(read) : await read(); bytes = text.length * 2; return parseJson(text) as T;
+    }, value => [{ identity: value as object, kind: 'metadata', bytes }], () => {});
+    try { return await lease.ready; } finally { lease.release(); }
   }
   getCatalog(): Promise<AssetCatalog> {
     if (this.disposed) throw new Error('Asset library disposed');
-    return this.cached(this.json, `catalog:${this.catalogUrl}`, async () => {
-      const catalog = await this.fetchJson<AssetCatalog>(this.catalogUrl);
-      if (catalog.version !== 1) throw new Error('Unsupported asset catalog version');
-      return catalog;
-    }) as Promise<AssetCatalog>;
+    return this.track(this.json<AssetCatalog>(this.catalogUrl).then(catalog => { if (catalog.version !== 1) throw new Error('Unsupported asset catalog version'); return catalog; }));
   }
-
   private async entry(id: string): Promise<LibraryAsset> {
-    const asset = (await this.getCatalog()).assets[id];
-    if (!asset || asset.status !== 'converted') throw new Error(`Asset not converted: ${id}`);
-    return asset;
+    const asset = (await this.getCatalog()).assets[id]; if (!asset || asset.status !== 'converted') throw new Error(`Asset not converted: ${id}`); return asset;
   }
-  private async data<T>(id: string): Promise<T> {
-    const asset = await this.entry(id);
-    return this.cached(this.json, `asset:${id}`, () => this.fetchJson(asset.url)) as Promise<T>;
-  }
-  private async gltf(id: string): Promise<CachedModel> {
-    const asset = await this.entry(id);
-    return this.cached(this.gltfs, id, async () => {
+  private model(asset: LibraryAsset): ArtLease<CachedModel> {
+    return this.cache.acquire(`model:${this.catalogUrl}:${asset.id}:${asset.sourceHash}`, async () => {
       const gltf = await this.loader.loadAsync(asset.url);
-      prepareStandardMaterials(gltf.scene);
-      sceneTextures(gltf.scene);
-      let skinned = false;
-      gltf.scene.traverse(object => { if (object instanceof THREE.SkinnedMesh) skinned = true; });
-      const metadata = gltf.parser.json as { meshes?: { extras?: { bindposes?: number[] } }[] };
-      return { scene: gltf.scene, bindposes: metadata.meshes?.[0]?.extras?.bindposes, skinned };
-    });
+      try {
+        prepareStandardMaterials(gltf.scene, this.scope?.surfaceTemplates); sceneTextures(gltf.scene);
+        let skinned = false; gltf.scene.traverse(object => { if (object instanceof THREE.SkinnedMesh) skinned = true; });
+        const metadata = gltf.parser.json as { meshes?: { extras?: { bindposes?: number[] } }[] };
+        return { scene: gltf.scene, bindposes: metadata.meshes?.[0]?.extras?.bindposes, skinned };
+      } catch (error) { disposeSceneResources(gltf.scene); throw error; }
+    }, model => artResources(model.scene), model => disposeSceneResources(model.scene));
   }
-  private async texture(id: string, color: boolean): Promise<THREE.Texture> {
-    const key = `${id}:${color}`;
-    return this.cached(this.textures, key, async () => {
-      const asset = await this.entry(id), texture = await new THREE.TextureLoader().loadAsync(asset.url);
-      texture.colorSpace = color ? THREE.SRGBColorSpace : THREE.NoColorSpace; texture.flipY = false;
-      filterMaterialTexture(texture); texture.wrapS = texture.wrapT = THREE.RepeatWrapping; ownTexture(texture); this.ownedTextures.add(texture); return texture;
-    });
-  }
-  private async material(id: string): Promise<MeshStandardNodeMaterial> {
-    return this.cached(this.materials, id, async () => {
-      const spec = await this.data<MaterialSpec>(id);
-      const material = createSurfaceMaterial({ name: spec.name, roughness: spec.roughness ?? 0.9, metalness: spec.metalness ?? 0,
+  private material(id: string): ArtLease<CachedMaterial> {
+    return this.cache.acquire(`material:${this.catalogUrl}:${id}`, async () => {
+      const asset = await this.entry(id), spec = await this.json<MaterialSpec>(asset.url), releases: (() => void)[] = [];
+      const material = createSurfaceMaterial({ name: spec.name, roughness: spec.roughness ?? .9, metalness: spec.metalness ?? 0,
         side: spec.doubleSided || spec.effectRole === 'foliage' ? THREE.DoubleSide : THREE.FrontSide, transparent: spec.alphaMode === 'BLEND',
-        depthWrite: spec.alphaMode !== 'BLEND', alphaTest: spec.alphaMode === 'MASK' || spec.effectRole === 'foliage' && !!spec.textures.baseColor ? spec.alphaCutoff ?? 0.5 : 0 });
-      this.ownedMaterials.add(material);
-      if (spec.color) { material.color.fromArray(spec.color); material.opacity = spec.color[3] ?? 1; }
-      if (spec.emissive && spec.textures.emissive) material.emissive.fromArray(spec.emissive);
-      for (const channel of ['baseColor', 'normal', 'emissive'] as const) {
-        const mapping = spec.textures[channel]; if (!mapping) continue;
-        // UV transforms belong to this material; do not mutate the cached texture.
-        const texture = ownTexture((await this.texture(mapping.id, channel !== 'normal')).clone()); this.ownedTextures.add(texture);
-        texture.repeat.fromArray(mapping.scale); texture.offset.set(mapping.offset[0], 1 - mapping.scale[1] - mapping.offset[1]);
-        if (channel === 'baseColor') material.map = texture; else if (channel === 'normal') material.normalMap = texture; else material.emissiveMap = texture;
-      }
-      material.userData.effectRole = spec.effectRole;
-      prepareSurfaceMaterial(material);
-      return material;
-    });
-  }
-  private async assembly(id: string): Promise<THREE.Group> {
-    return assembleAsset(id, await this.data<AssemblySpec>(id), {
-      model: id => this.gltf(id), material: id => this.material(id),
-    });
+        depthWrite: spec.alphaMode !== 'BLEND', alphaTest: spec.alphaMode === 'MASK' || spec.effectRole === 'foliage' && !!spec.textures.baseColor ? spec.alphaCutoff ?? .5 : 0 });
+      try {
+        if (spec.color) { material.color.fromArray(spec.color); material.opacity = spec.color[3] ?? 1; }
+        if (spec.emissive && spec.textures.emissive) material.emissive.fromArray(spec.emissive);
+        for (const channel of ['baseColor', 'normal', 'emissive'] as const) {
+          const mapping = spec.textures[channel]; if (!mapping) continue;
+          const input = await this.entry(mapping.id);
+          const base = this.scope ? await this.scope.texture(input.url, channel !== 'normal') : undefined;
+          let texture = base ? base.texture.clone() : ownTexture(await new THREE.TextureLoader().loadAsync(input.url));
+          texture.colorSpace = channel === 'normal' ? THREE.NoColorSpace : THREE.SRGBColorSpace; texture.flipY = false;
+          texture.wrapS = texture.wrapT = THREE.RepeatWrapping; texture.repeat.fromArray(mapping.scale); texture.offset.set(mapping.offset[0], 1 - mapping.scale[1] - mapping.offset[1]); filterMaterialTexture(texture);
+          if (this.scope) { const view = this.scope.textureView(texture); texture = view.texture; releases.push(view.release); base?.release(); }
+          else releases.push(() => texture.dispose());
+          if (channel === 'baseColor') material.map = texture; else if (channel === 'normal') material.normalMap = texture; else material.emissiveMap = texture;
+        }
+        material.userData.effectRole = spec.effectRole; prepareSurfaceMaterial(material, undefined, 0, 2, this.scope?.surfaceTemplates);
+        return { material, release: () => { material.dispose(); releases.forEach(release => release()); } };
+      } catch (error) { material.dispose(); releases.forEach(release => release()); throw error; }
+    }, value => Object.values(value.material).flatMap((map: unknown): ArtResource[] => isTexture(map) ? textureResources(map) : []), value => value.release());
   }
   loadAsset(id: string, options: LoadAssetOptions = {}): Promise<AssetInstance> {
-    if (this.disposed) return Promise.reject(new Error('Asset library disposed'));
-    return this.track(this.instantiate(id, options));
+    if (this.disposed) return Promise.reject(new Error('Asset library disposed')); return this.track(this.instantiate(id, options));
   }
   private async instantiate(id: string, options: LoadAssetOptions): Promise<AssetInstance> {
-    const asset = await this.entry(id);
+    const asset = await this.entry(id), leases: { release(): void }[] = [];
     if (!['model', 'assembly', 'mesh'].includes(asset.kind)) throw new Error(`Not a placeable asset: ${id}`);
-    let object: THREE.Group;
-    if (asset.kind === 'assembly') object = await this.assembly(id);
-    else {
-      const model = await this.gltf(id);
-      // SkeletonUtils builds two node lookup maps and walks the hierarchy twice
-      // after cloning. Static props need only the identical ordinary clone.
-      object = new THREE.Group().add(model.skinned ? cloneSkeleton(model.scene) : model.scene.clone(true));
-    }
+    let object: THREE.Group | undefined;
     try {
-      if (this.disposed) throw new Error('Asset library disposed during load');
-      const variants = options.materialVariant ? await Promise.all(options.materialVariant.map(id => this.material(id))) : undefined;
-      if (this.disposed) throw new Error('Asset library disposed during load');
-      object.traverse(node => {
-        if (!isMesh(node)) return;
-        node.castShadow = node.receiveShadow = options.shadows ?? true;
-        if (variants) node.material = variants.length === 1 ? variants[0] : variants;
+      if (asset.kind === 'assembly') object = await assembleAsset(id, await this.json<AssemblySpec>(asset.url), {
+        model: async id => { const lease = this.model(await this.entry(id)); leases.push(lease); return lease.ready; },
+        material: async id => { const lease = this.material(id); leases.push(lease); return (await lease.ready).material; },
       });
-      prepareStandardMaterials(object);
-      object.traverse(node => { if (node instanceof THREE.SkinnedMesh) object.userData.lodSkinned = true; });
+      else { const lease = this.model(asset); leases.push(lease); const model = await lease.ready; object = new THREE.Group().add(model.skinned ? cloneSkeleton(model.scene) : model.scene.clone(true)); }
+      if (this.disposed) throw new Error('Asset library disposed during load');
+      const variants = options.materialVariant ? await Promise.all(options.materialVariant.map(async id => { const lease = this.material(id); leases.push(lease); return (await lease.ready).material; })) : undefined;
+      const root = object;
+      root.traverse(node => { if (!isMesh(node)) return; node.castShadow = node.receiveShadow = options.shadows ?? true; if (variants) node.material = variants.length === 1 ? variants[0] : variants; });
+      prepareStandardMaterials(root); root.traverse(node => { if (node instanceof THREE.SkinnedMesh) root.userData.lodSkinned = true; });
       let released = false;
-      const release = () => {
-        if (released) return;
-        released = true;
-        object.removeFromParent();
-        disposeSceneInstances(object, { skeletons: true });
-        this.instances.delete(release);
-      };
-      this.instances.add(release);
-      return { object, asset, release };
-    } catch (error) {
-      disposeSceneInstances(object, { skeletons: true });
-      throw error;
-    }
+      const release = () => { if (released) return; released = true; root.removeFromParent(); disposeSceneInstances(root, { skeletons: true }); leases.forEach(lease => lease.release()); this.instances.delete(release); };
+      this.instances.add(release); return { object: root, asset, release };
+    } catch (error) { if (object) disposeSceneInstances(object, { skeletons: true }); leases.forEach(lease => lease.release()); throw error; }
   }
-  dispose(): Promise<void> {
-    this.disposed = true;
-    return this.disposal ??= this.releaseResources();
-  }
+  dispose(): Promise<void> { this.disposed = true; return this.disposal ??= this.releaseResources(); }
   private async releaseResources(): Promise<void> {
-    // Accepted loads can start nested material/texture requests while settling.
-    while (this.pending.size) await Promise.allSettled([...this.pending]);
-    this.instances.forEach(release => release());
-    const geometries = new Set<THREE.BufferGeometry>();
-    for (const pending of this.gltfs.values()) { const result = await pending.catch(() => null); result?.scene.traverse((o) => {
-      if (isMesh(o)) { geometries.add(o.geometry); const materials = Array.isArray(o.material) ? o.material : [o.material];
-        for (const material of materials) this.ownedMaterials.add(material); }
-    }); }
-    // Inspect each shared material once, after every accepted load has settled.
-    for (const material of this.ownedMaterials) for (const value of Object.values(material)) if (isTexture(value)) this.ownedTextures.add(value);
-    geometries.forEach((g) => g.dispose()); this.ownedMaterials.forEach((m) => m.dispose()); this.ownedTextures.forEach((t) => t.dispose());
-    this.gltfs.clear(); this.json.clear(); this.textures.clear(); this.materials.clear();
-    this.ownedMaterials.clear(); this.ownedTextures.clear();
+    while (this.pending.size) await Promise.allSettled([...this.pending]); this.instances.forEach(release => release());
+    if (!this.scope) await this.cache.dispose();
   }
 }
-export const assetLibrary = new AssetLibrary();
-export const loadAsset = (id: string, options?: LoadAssetOptions): Promise<AssetInstance> => assetLibrary.loadAsset(id, options);

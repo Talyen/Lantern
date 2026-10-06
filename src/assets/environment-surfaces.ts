@@ -1,4 +1,5 @@
-import { ownTexture, sceneTextures, isMesh } from './resource-ownership';
+import { ownTexture, sceneTextures, isMesh, registerArtRelease } from './resource-ownership';
+import type { RuntimeAssets } from './runtime-assets';
 import * as THREE from 'three';
 import { type MeshStandardNodeMaterial } from 'three/webgpu';
 import manifest from '../../assets/textures/environment/manifest.json';
@@ -28,7 +29,7 @@ export function copyStandardNodeMaterial(source: THREE.MeshStandardMaterial | Me
   return material;
 }
 /** The area cache owns material textures, including optional relief sidecars. */
-export async function prepareEnvironmentMaterials(root: THREE.Object3D, sourceUrl?: string): Promise<void> {
+export async function prepareEnvironmentMaterials(root: THREE.Object3D, sourceUrl?: string, resources?: RuntimeAssets): Promise<void> {
   const materials = new Map<THREE.Material, MeshStandardNodeMaterial>();
   const sources: string[] = [], missing: string[] = [];
   const asset = [...manifest.assets, ...manifest.showcase.assets, ...Object.values(manifest.areaAssets).flat()].find(asset => asset.url === sourceUrl);
@@ -56,12 +57,19 @@ export async function prepareEnvironmentMaterials(root: THREE.Object3D, sourceUr
     if (descriptor?.version === 3) data = material.roughnessMap ?? undefined;
     else if (descriptor?.url && [1, 2].includes(descriptor.version) && descriptor.url.startsWith('/vendor/synty/environment/') && !descriptor.url.includes('..')) {
       try {
-        const loader = new THREE.ImageBitmapLoader().setOptions({ premultiplyAlpha: 'none', colorSpaceConversion: 'none' });
-        const bitmap = await loader.loadAsync(descriptor.url); data = ownTexture(new THREE.Texture(bitmap)); data.needsUpdate = true; data.flipY = false;
-        data.channel = material.map?.channel ?? 0; data.colorSpace = THREE.NoColorSpace; sources.push(descriptor.url);
+        if (resources) {
+          const base = await resources.texture(descriptor.url, false, { repeat: false });
+          const view = base.texture.clone(); view.channel = material.map?.channel ?? 0;
+          const lease = resources.textureView(view); base.release(); data = lease.texture; registerArtRelease(root, lease.release);
+        } else {
+          const loader = new THREE.ImageBitmapLoader().setOptions({ premultiplyAlpha: 'none', colorSpaceConversion: 'none' });
+          const bitmap = await loader.loadAsync(descriptor.url); data = ownTexture(new THREE.Texture(bitmap)); data.needsUpdate = true; data.flipY = false;
+          data.channel = material.map?.channel ?? 0; data.colorSpace = THREE.NoColorSpace;
+        }
+        sources.push(descriptor.url);
       } catch { missing.push(descriptor.url); }
     }
-    prepareSurfaceMaterial(material, data, descriptor?.depth ?? 0, descriptor?.version === 3 ? 3 : descriptor?.version === 1 ? 1 : 2);
+    prepareSurfaceMaterial(material, data, descriptor?.depth ?? 0, descriptor?.version === 3 ? 3 : descriptor?.version === 1 ? 1 : 2, resources?.surfaceTemplates);
   }));
   root.traverse(object => {
     if (!isMesh(object)) return;
