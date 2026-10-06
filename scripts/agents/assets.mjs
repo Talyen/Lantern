@@ -22,6 +22,20 @@ export async function fileHash(path) {
   try { return await hashFile(path); }
   catch (error) { if (error.code === 'ENOENT') return null; throw error; }
 }
+/** Freeze before validation: APFS cloning can change the source's ctime. */
+export async function checkedAssetSnapshot(source, target) {
+  const before = await assetIndex(source);
+  await privateTree(source, target);
+  const after = await assetIndex(source);
+  // Accept clone metadata changes only with identical staged/source bytes.
+  for (const name of new Set([...Object.keys(before), ...Object.keys(after)])) {
+    if (before[name] === after[name]) continue;
+    const [live, frozen] = await Promise.all([fileHash(safeAsset(source, name)), fileHash(safeAsset(target, name))]);
+    if (live !== frozen) throw new Error('Candidate assets changed while preparing the promotion snapshot; retry finish.');
+  }
+  if (assetIdentity(await assetIndex(source)) !== assetIdentity(after)) throw new Error('Candidate assets changed while verifying the promotion snapshot; retry finish.');
+  return after;
+}
 export function safeAsset(base, name) {
   const path = resolve(base, name);
   if (!name || !path.startsWith(resolve(base) + sep)) throw new Error(`Invalid asset path: ${name}`);

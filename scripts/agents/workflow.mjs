@@ -6,7 +6,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { git, taskCapacity, taskPath, readJSON, saveTask, writeJSON, clean, reserveSpace, freeSpace } from './state.mjs';
 import { withResource } from './resources.mjs';
 import { privateTree } from './copy.mjs';
-import { snapshotAssets, prepareAssets, assetIndex, assetIdentity, retainSources } from './assets.mjs';
+import { snapshotAssets, prepareAssets, checkedAssetSnapshot, assetIndex, assetIdentity, retainSources } from './assets.mjs';
 import { run } from '../lib/cli.mjs';
 import { pruneRetention } from './retention.mjs';
 export async function recover(ctx) {
@@ -158,13 +158,20 @@ export async function finishTask(ctx, task, { paths = [], message = `feat: ${tas
         throw new Error(`Resolve the rebase in ${task.path}, run git rebase --continue, then retry agent:finish. ${error.message}`, { cause: error });
       }
       task.base = base; task.status = 'checking'; await saveTask(ctx, task);
-      const assets = await withResource('promotion', async () => {
+      let assets = await withResource('promotion', async () => {
         await recover(ctx);
         if (await git(['rev-parse', 'HEAD'], ctx.main) !== base) return null;
         return prepareAssets(ctx, task, base, resolvedAssets);
       }, { ctx });
       if (assets === null) continue;
       await ensureDependencies(task);
+      const transaction = join(ctx.store, 'transactions', randomUUID());
+      await mkdir(transaction, { recursive: true });
+      const nextVendor = join(transaction, 'vendor'), oldVendor = join(transaction, 'old-vendor');
+      if (task.assetChanges.length) {
+        task.assetIndex = await checkedAssetSnapshot(join(task.path, 'public/vendor'), nextVendor);
+        assets = assetIdentity(task.assetIndex); await saveTask(ctx, task);
+      }
       const candidate = await git(['rev-parse', 'HEAD'], task.path);
       try { await run(process.execPath, ['scripts/check.mjs', '--base', base, ...(task.assetChanges.length ? ['--assets'] : [])], { cwd: task.path }); }
       catch (error) { task.status = 'needs-check-repair'; await saveTask(ctx, task); throw error; }
@@ -175,10 +182,6 @@ export async function finishTask(ctx, task, { paths = [], message = `feat: ${tas
       }
       await clean(task.path);
       if (await git(['rev-parse', 'HEAD'], task.path) !== candidate || assetIdentity(await assetIndex(join(task.path, 'public/vendor'))) !== assets) throw new Error('Candidate changed during checks; retry after completing edits.');
-      const transaction = join(ctx.store, 'transactions', randomUUID());
-      await mkdir(transaction, { recursive: true });
-      const nextVendor = join(transaction, 'vendor'), oldVendor = join(transaction, 'old-vendor');
-      if (task.assetChanges.length) await privateTree(join(task.path, 'public/vendor'), nextVendor);
       const promoted = await withResource('promotion', async () => {
         await recover(ctx);
         if (await git(['rev-parse', 'HEAD'], ctx.main) !== base || assetIdentity(await assetIndex(join(ctx.main, 'public/vendor'))) !== task.mainAssetIdentity) return false;

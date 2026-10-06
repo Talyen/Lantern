@@ -222,8 +222,12 @@ test('native APFS clones are independent and overlapping asset changes require e
     assert.equal(spaceRequirement(ctx.main, true), 20 * 1024 ** 3);
     const first = await startTask(ctx, 'asset-first'), second = await startTask(ctx, 'asset-second');
     await writeFile(join(first.path, 'public/vendor/model.glb'), 'first model');
+    // Admission: newly prepared art must survive APFS source-metadata changes
+    // during snapshotting; existing cloned inputs alone missed this boundary.
+    await writeFile(join(first.path, 'public/vendor/runtime.ktx2'), 'prepared runtime art');
     assert.equal(await readFile(join(ctx.main, 'public/vendor/model.glb'), 'utf8'), 'original model');
     await finishTask(ctx, first);
+    assert.equal(await readFile(join(ctx.main, 'public/vendor/runtime.ktx2'), 'utf8'), 'prepared runtime art');
     await writeFile(join(second.path, 'public/vendor/model.glb'), 'second combined model');
     await assert.rejects(finishTask(ctx, second), /Asset conflicts/);
     assert.equal(await readFile(join(ctx.main, 'public/vendor/model.glb'), 'utf8'), 'first model');
@@ -236,6 +240,24 @@ test('native APFS clones are independent and overlapping asset changes require e
   } finally { await ctx.dispose(); }
 });
 
+
+// Admission: moving snapshot creation ahead of checks must still reject genuine
+// asset mutation by a check, rather than promote a stale frozen copy.
+test('asset mutation during validation cannot promote the prepared snapshot', async () => {
+  const ctx = await fixture();
+  try {
+    await mkdir(join(ctx.main, 'public/vendor'), { recursive: true });
+    await writeFile(join(ctx.main, 'public/vendor/model.glb'), 'original');
+    const task = await startTask(ctx, 'changing-art');
+    await writeFile(join(task.path, 'public/vendor/model.glb'), 'prepared');
+    await edit(task, 'scripts/check.mjs', "import {writeFileSync} from 'node:fs'; writeFileSync('public/vendor/model.glb', 'modified');\n");
+    const head = await git(['rev-parse', 'HEAD'], ctx.main);
+    await assert.rejects(finishTask(ctx, task, { paths: ['scripts/check.mjs'] }), /Candidate changed during checks/);
+    assert.equal(await git(['rev-parse', 'HEAD'], ctx.main), head);
+    assert.equal(await readFile(join(ctx.main, 'public/vendor/model.glb'), 'utf8'), 'original');
+    assert.equal(await readFile(join(task.path, 'public/vendor/model.glb'), 'utf8'), 'modified');
+  } finally { await ctx.dispose(); }
+});
 
 test('light handoff excludes suites and builds even for packaging and workflow changes', () => {
   const names = (files, args) => checkStages(files, args).map(([name]) => name);
