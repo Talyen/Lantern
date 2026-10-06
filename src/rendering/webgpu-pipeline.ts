@@ -2,7 +2,7 @@ import { indirectDiffuseAttachment, type IndirectContext } from './indirect-ligh
 import { syncDisplayResolution } from './display-resolution';
 import { prepareNative, cancelNativePreparation } from './native-preparation';
 import { renderNativeFrame, preparingNativeFrame } from './renderer';
-import { ACESFilmicToneMapping, HalfFloatType, FloatType, RGFormat, RedFormat, CustomBlending, OneFactor, OneMinusSrcAlphaFactor, DataUtils, RenderPipeline, BlendMode, NormalBlending, Color, Vector2, Vector3, Vector4, Matrix4, Plane, type Node, type OrthographicCamera, type PerspectiveCamera, type Scene, type WebGPURenderer, type TextureNode, type QuadMesh, type Texture } from 'three/webgpu';
+import { ACESFilmicToneMapping, HalfFloatType, FloatType, RGFormat, RedFormat, CustomBlending, OneFactor, ZeroFactor, OneMinusSrcColorFactor, DataUtils, RenderPipeline, BlendMode, NormalBlending, Color, Vector2, Vector3, Vector4, Matrix4, Plane, type Node, type OrthographicCamera, type PerspectiveCamera, type Scene, type WebGPURenderer, type TextureNode, type QuadMesh, type Texture } from 'three/webgpu';
 import { Fn, context, dot, float, mix, mrt, orthographicDepthToViewZ, perspectiveDepthToViewZ, output, pass, rtt, screenUV, smoothstep, toneMapping, uniform, uv, vec2, vec3, vec4, velocity, positionWorld, select } from 'three/tsl';
 import { ao } from 'three/addons/tsl/display/GTAONode.js';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
@@ -91,9 +91,17 @@ class PipelineGraph {
     const sceneMRT = mrt({ output, velocity, coverage,
       ...(settings.ao > 0 ? { indirectDiffuse: diffuse } : {}),
       ...(settings.outlines ? { outline: vec4(outlineStrength(), 0, 0, output.a) } : {}) });
+    // PassNode otherwise clones RGBA16F for every attachment: AO + outlines
+    // exceed WebGPU's default 32-byte sample limit (40 bytes). Keep the same
+    // half-float precision in the consumed channels, for at most 30 bytes.
+    scenePass.getTexture('velocity').format = RGFormat;
+    scenePass.getTexture('coverage').format = RedFormat;
     sceneMRT.setClearColor('coverage', 0, 0);
     const coverageBlend = new BlendMode(CustomBlending);
-    coverageBlend.blendSrc = OneFactor; coverageBlend.blendDst = OneMinusSrcAlphaFactor;
+    // Coverage's red output equals fragment alpha: c + previous * (1 - c).
+    // A scalar output cannot use source-alpha blend factors.
+    coverageBlend.blendSrc = OneFactor; coverageBlend.blendDst = OneMinusSrcColorFactor;
+    coverageBlend.blendSrcAlpha = OneFactor; coverageBlend.blendDstAlpha = ZeroFactor;
     sceneMRT.setBlendMode('coverage', coverageBlend);
     if (settings.ao > 0) { sceneMRT.setClearColor('indirectDiffuse', 0, 0); sceneMRT.setBlendMode('indirectDiffuse', new BlendMode(NormalBlending)); }
     if (settings.outlines) {

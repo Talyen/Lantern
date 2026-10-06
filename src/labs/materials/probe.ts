@@ -97,7 +97,10 @@ export async function runMaterialProbe() {
       if (kind === 'transform-reference') material.colorNode = Fn(builder => texture(albedo).bias(surfaceBias(builder)).rgb.mul(color(material.color)))();
       const mesh = new THREE.Mesh(geometry, material); scene.add(mesh);
       const pipeline = new WebGPUPipeline(renderer, scene, camera, new THREE.Vector3());
-      pipeline.configure({ ...defaults(), upscaleQuality: 'native', dof: 'off', ao: aoFixture && !kind.endsWith('reference') ? 1 : 0, bloom: 0, outlines: false, textureDepth: kind !== 'depth-off' && kind !== 'masked-off' }, 1, kind.endsWith('-owned') || aoFixture ? { ...look, probes: { position: [0,0,0], size: [10,10,10], resolution: [2,2,2], intensity: 1, bounces: 1 } } : look);
+      // Exercise all five scene attachments on the real default-limit device.
+      // This unmarked mesh has zero outline strength, preserving the AO pixel
+      // comparison while catching the Safari startup failure from AO + outlines.
+      pipeline.configure({ ...defaults(), upscaleQuality: 'native', dof: 'off', ao: aoFixture && !kind.endsWith('reference') ? 1 : 0, bloom: 0, outlines: kind === 'ao-direct', textureDepth: kind !== 'depth-off' && kind !== 'masked-off' }, 1, kind.endsWith('-owned') || aoFixture ? { ...look, probes: { position: [0,0,0], size: [10,10,10], resolution: [2,2,2], intensity: 1, bounces: 1 } } : look);
       try {
         await pipeline.ready();
         // Shader skips are not warmup frames. Capture only after 32 completed
