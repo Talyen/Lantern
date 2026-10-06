@@ -814,6 +814,7 @@ function beginAreaChange(change: AreaChange, request: AreaRequest): AreaOperatio
   return {
     prepare: () => areaTransitions!.prepare(change, async owner => {
       await cancelNativePreparation(renderer); request.check();
+      try {
       const errors = validateDefinitions(definitions);
       if (!next || !resolved || errors.length) throw new Error(errors.join('\n') || `Unknown area: ${id}`);
       request.stage('content-hash');
@@ -841,6 +842,14 @@ function beginAreaChange(change: AreaChange, request: AreaRequest): AreaOperatio
       return { area, abilities, lighting, enemies, visuals, interactions, renewalVisibility,
         lightingDefinition: resolved.lighting, contentHash: hash,
         appearance: { surfaces: nextSurfaces, shelterRestored: Boolean(area.root.userData.shelterRestored) } };
+      } catch (error) {
+        // PreparedArea releases its sources after this callback rejects. Keep
+        // submitted native work alive until its borrowed resources are idle.
+        const native = nativePreparation(renderer);
+        await native.builders.idle(); await native.pipelines.idle();
+        await finishSubmittedFrame(renderer);
+        throw error;
+      }
     }),
     commitGameplay: () => {
       lanternEnabled = appearance?.lantern ?? lanternEnabled;
@@ -899,11 +908,6 @@ function beginAreaChange(change: AreaChange, request: AreaRequest): AreaOperatio
       request.check();
       if (choice === 'back') { areaErrors = []; if (await request.wait(loadingScreen.ready(token))) renderer.domElement.focus(); }
       return choice;
-    },
-    settlePreparation: async () => {
-      const native = nativePreparation(renderer);
-      await native.builders.idle(); await native.pipelines.idle();
-      await finishSubmittedFrame(renderer);
     },
     finish: () => { clearInput(); recoveringPresentation = false; audio.update(encounter.player, paused()); },
   };
