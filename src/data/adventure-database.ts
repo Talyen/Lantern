@@ -1,13 +1,13 @@
-import type { CharacterSave } from '../gameplay/character';
+import type { CharacterSnapshot, StateView } from '../gameplay/state-view';
 import type { SavedArea } from '../gameplay/outing';
 import type { SlotId } from '../gameplay/adventure-store';
 import { isRecord } from './json';
 
 export type AdventureIdentity = { id: string; name: string; deleted: boolean };
 /** These snapshots are detached by Adventure and must never be mutated after publication. */
-export type AdventureCommit = { identity: AdventureIdentity; revision: number; current?: CharacterSave; backup?: CharacterSave };
-type Header = { identity: AdventureIdentity; revision: number; current?: CharacterSave; backup?: CharacterSave; currentAreas: string[]; backupAreas: string[] };
-type AreaRecord = { primary?: SavedArea; backup?: SavedArea };
+export type AdventureCommit = StateView<{ identity: AdventureIdentity; revision: number; current?: CharacterSnapshot; backup?: CharacterSnapshot }>;
+type Header = { identity: AdventureIdentity; revision: number; current?: CharacterSnapshot; backup?: CharacterSnapshot; currentAreas: string[]; backupAreas: string[] };
+type AreaRecord = { primary?: StateView<SavedArea>; backup?: StateView<SavedArea> };
 export type DatabaseRead = { commit?: AdventureCommit; damaged?: unknown };
 export const adventureDatabaseName = 'lantern.adventures.v2';
 
@@ -24,7 +24,7 @@ function completed(tx: IDBTransaction): Promise<void> {
     tx.onerror = () => { /* Abort owns the terminal result. */ };
   });
 }
-function metadata(value?: CharacterSave): CharacterSave | undefined {
+function metadata(value?: CharacterSnapshot): CharacterSnapshot | undefined {
   return value && { ...value, outing: { ...value.outing, areas: {} } };
 }
 export function areaChanges(next: AdventureCommit, previous?: AdventureCommit): string[] {
@@ -78,8 +78,8 @@ export class AdventureDatabase {
       };
       // The store validates whole candidates, retaining the exact raw transaction for archival on recovery.
       return { commit: { identity: header.identity, revision: header.revision,
-        current: assemble(header.current, header.currentAreas, 'primary') as CharacterSave | undefined,
-        backup: assemble(header.backup, header.backupAreas, 'backup') as CharacterSave | undefined }, damaged: { header: raw, keys, records } };
+        current: assemble(header.current, header.currentAreas, 'primary') as CharacterSnapshot | undefined,
+        backup: assemble(header.backup, header.backupAreas, 'backup') as CharacterSnapshot | undefined }, damaged: { header: raw, keys, records } };
     } catch (error) { await done; throw error; }
   }
   async write(slot: SlotId, next: AdventureCommit, previous?: AdventureCommit, damaged?: unknown): Promise<void> {

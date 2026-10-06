@@ -1,3 +1,4 @@
+import type { CharacterSnapshot, StateView } from './state-view';
 import { AdventureDatabase, type AdventureCommit, type AdventureIdentity } from '../data/adventure-database';
 import { archiveUnreadable } from '../data/preferences';
 import { isRecord, parseJson } from '../data/json';
@@ -8,19 +9,19 @@ import { copyCharacter } from './character-save';
 import type { SavedArea } from './outing';
 
 type Storage = Pick<globalThis.Storage, 'getItem' | 'setItem' | 'removeItem'>;
-type Delta = { metadata: CharacterSave; areaIds: string[]; areas: Record<string, SavedArea> };
+type Delta = { metadata: CharacterSnapshot; areaIds: string[]; areas: Record<string, StateView<SavedArea>> };
 type Journal = { version: 1; baseIdentity?: string; identity: AdventureIdentity; revision: number; current?: Delta; backup?: Delta };
 type Slot = { state: AdventureSlot['state']; latest?: AdventureCommit; persisted?: AdventureCommit; damaged?: unknown; journalBlocked?: boolean };
 export const indexedAdventureKey = (slot: SlotId) => `lantern.adventure.${slot}.indexed.v2`;
 export const pendingAdventureKey = (slot: SlotId) => `lantern.adventure.${slot}.pending.v2`;
 
-function delta(value: CharacterSave | undefined, baseline: CharacterSave | undefined): Delta | undefined {
+function delta(value: CharacterSnapshot | undefined, baseline: CharacterSnapshot | undefined): Delta | undefined {
   if (!value) return;
   const areas = value.outing.areas;
   return { metadata: { ...value, outing: { ...value.outing, areas: {} } }, areaIds: Object.keys(areas),
     areas: Object.fromEntries(Object.entries(areas).filter(([id, area]) => area !== baseline?.outing.areas[id])) };
 }
-function restoreDelta(value: unknown, baseline?: CharacterSave): CharacterSave | undefined {
+function restoreDelta(value: unknown, baseline?: CharacterSnapshot): CharacterSave | undefined {
   if (value === undefined) return;
   if (!isRecord(value) || !isRecord(value.metadata) || !isRecord(value.metadata.outing) || !isRecord(value.areas)
     || !Array.isArray(value.areaIds) || !value.areaIds.every(id => typeof id === 'string')
@@ -177,7 +178,7 @@ export class TransactionalAdventureStore {
     return this.load(slot);
   }
   /** Only detached, immutable snapshots from Adventure's commit boundary may be published. */
-  save(slot: SlotId, id: string, value: CharacterSave): void {
+  save(slot: SlotId, id: string, value: CharacterSnapshot): void {
     const previous = this.slots[slot].latest;
     if (this.closed || previous?.identity.id !== id || previous.identity.deleted) return;
     this.publish(slot, { identity: previous.identity, revision: previous.revision + 1, current: value, backup: previous.current });

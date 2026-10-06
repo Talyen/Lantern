@@ -44,6 +44,6 @@ test.each(['sound', 'particles'] as const)('failed gathering %s retains saved de
     expect(collided).toBe(true);
     action.advance(.1);
     expect(action.takeEvents()).toEqual([]);
-    expect(adventure.session().drops.map(drop => drop.id)).toEqual(drops.map(drop => drop.id));
+    expect(adventure.areaDrops().map(drop => drop.id)).toEqual(drops.map(drop => drop.id));
   } finally { adventure.closeSave(); }
 });

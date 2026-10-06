@@ -1,3 +1,4 @@
+import type { StateView } from './state-view';
 import type { RewardSource } from './outing';
 import { near, type Point } from './area';
 import type { ItemId } from './equipment';
@@ -23,6 +24,8 @@ export type GroundDrop = {
   harvestXp?: { skill: GatheringSkill; perUnit: number };
 };
 
+export type GroundDropView = StateView<GroundDrop>;
+
 export type DropOptions = Partial<Pick<GroundDrop, 'source' | 'claim' | 'instanceId' | 'blocked' | 'harvestXp'>>;
 export type LootEvent = {
   type: 'lootDrop' | 'lootLand' | 'lootPickup';
@@ -34,9 +37,9 @@ export const lootEvent = (type: LootEvent['type'], drop: GroundDrop): LootEvent 
 
 /** Commit only the quantity that fits, after optional reward preparation succeeds. */
 export function collectGroundDrop(
-  drops: GroundDrop[], id: string, point: Point,
+  drops: GroundDrop[], id: string, point: Readonly<Point>,
   character: Pick<CharacterSave, 'items' | 'gold' | 'campClaims'>,
-  newId: () => string, reachable: (drop: GroundDrop) => boolean, manual: boolean,
+  newId: () => string, reachable: (drop: GroundDropView) => boolean, manual: boolean,
   prepare?: (drop: GroundDrop, amount: number) => void,
 ): { collected: true; drop: GroundDrop; amount: number } | { collected: false; notice?: string } {
   const drop = drops.find(drop => drop.id === id);
@@ -64,12 +67,17 @@ export function collectGroundDrop(
 export function advanceGroundDrops(
   drops: GroundDrop[], point: Point, dt: number,
   emit: (event: LootEvent) => void, pickup: (id: string, point: Point) => boolean,
+  changed: () => void = () => {},
 ): void {
   // Collection removes entries, so iterate a snapshot of this frame's drops.
   for (const drop of [...drops]) {
     if (drop.age < dropLandingSeconds && drop.age + dt >= dropLandingSeconds) emit(lootEvent('lootLand', drop));
-    drop.age += dt;
-    if (drop.blocked && !near(point, drop.position, pickupRadius)) drop.blocked = false;
+    const unblock = drop.blocked && !near(point, drop.position, pickupRadius);
+    if (dt !== 0 || unblock) {
+      drop.age += dt;
+      if (unblock) drop.blocked = false;
+      changed(); // Invalidate before pickup can publish this frame's changes.
+    }
     if (drop.item === 'gold' || lootDefinitions[drop.item].stackable) pickup(drop.id, point);
   }
 }

@@ -90,7 +90,7 @@ test.each([false, true])('frame combat commits XP, unlocks and cooldowns with fa
     // A display rebuild consumes feedback only; the next tick cannot roll this kill again.
     presentation.fail = false; present();
     runtime.advance(0, { x: 0, z: 0, paused: false });
-    expect(adventure.session().drops.filter(drop => drop.source?.id === 'enemy').map(drop => drop.id)).toEqual(loot.map(drop => drop.id));
+    expect(adventure.areaDrops().filter(drop => drop.source?.id === 'enemy').map(drop => drop.id)).toEqual(loot.map(drop => drop.id));
   } finally { adventure.closeSave(); }
 });
 

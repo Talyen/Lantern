@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { lootDefinitions } from '../gameplay/inventory';
-import type { GroundDrop } from '../gameplay/ground-loot';
+import type { GroundDropView } from '../gameplay/ground-loot';
 
 type LabelLayout = {
   label: HTMLButtonElement;
@@ -13,13 +13,13 @@ type LabelLayout = {
 export class LootLabels {
   private root = document.createElement('div');
   private labels = new Map<string, LabelLayout>();
-  private drops = new Map<string, GroundDrop>();
+  private drops = new Map<string, GroundDropView>();
   private order: string[] = [];
   private visible: LabelLayout[] = [];
   hovered: string | null = null;
   private position = new THREE.Vector3();
   constructor(private host: HTMLElement, private select: (id: string) => void) { this.root.id = 'loot-labels'; host.append(this.root); }
-  sync(drops: readonly GroundDrop[], camera: THREE.Camera, point: [number, number], hidden: boolean): void {
+  sync(drops: readonly GroundDropView[], camera: THREE.Camera, point: [number, number], hidden: boolean): void {
     if (this.root.hidden !== hidden) this.root.hidden = hidden;
     if (hidden) this.hovered = null;
     let changed = drops.length !== this.drops.size;

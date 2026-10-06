@@ -160,7 +160,6 @@ export class SessionRuntime {
     if (input.paused) return;
     if (this.encounter.pending?.kind === 'ability' && this.encounter.pending.ability === 'shield-basic' && !input.block) this.encounter.pending = null;
     const timing = this.context.timings(), movement = this.context.movement();
-    this.adventure.markAreaChanged(area.id);
     this.complete(this.encounter.phase === 'won' || area.kind === 'safe'
       ? stepExploration(this.encounter, dt, input, movement, timing)
       : stepEncounter(this.encounter, dt, input, timing, movement));

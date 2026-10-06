@@ -303,7 +303,7 @@ releases.push(() => lootLabels.dispose());
 function selectLoot(id: string): void {
   if (paused() || encounter.player.hp <= 0) return;
   renderer.domElement.focus();
-  if (!adventure.session().drops.some(drop => drop.id === id)) return;
+  if (!adventure.areaDrops().some(drop => drop.id === id)) return;
   runtime.clearInput();
   approach.selectLoot(id, areaState.movement);
 }

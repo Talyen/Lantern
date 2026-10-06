@@ -1,3 +1,4 @@
+import { landLoot } from './helpers/adventure';
 import { memory } from './helpers/storage';
 import { isRecord, parseJson } from '../src/data/json';
 // Admission: renewal and save boundaries can duplicate rewards, lose ground items or reset finite XP budgets.
@@ -24,12 +25,12 @@ test('individual enemy deadlines defer safely and renew only their own life and 
   const { adventure, encounter } = setup();
   encounter.enemies.enemy.hp = 0; encounter.enemies.enemy.lowestHp = 0;
   adventure.step(encounter, areas.clearing, 0);
-  const old = adventure.session().drops[0];
+  const old = adventure.areaDrops()[0];
   const independent = adventure.spawnDrop('wood', 1, [0, 0]);
   adventure.advanceRenewal(encounter, areas.clearing, 60);
   encounter.enemies.caster.hp = 0; encounter.enemies.caster.lowestHp = 0;
   adventure.step(encounter, areas.clearing, 0);
-  const casterLoot = adventure.session().drops.filter(drop => drop.source?.id === 'caster').map(drop => drop.id);
+  const casterLoot = adventure.areaDrops().filter(drop => drop.source?.id === 'caster').map(drop => drop.id);
   adventure.advanceRenewal(encounter, areas.clearing, renewalSeconds - 60);
   expect(encounter.enemies.enemy.hp).toBe(0); // Visible/nearby eligibility has not been granted.
   adventure.canRenew = (_source, point) => point !== old.position;
@@ -39,10 +40,10 @@ test('individual enemy deadlines defer safely and renew only their own life and 
   adventure.advanceRenewal(encounter, areas.clearing, 1);
   expect(encounter.enemies.enemy).toMatchObject({ hp: enemyMaxHealth, lowestHp: enemyMaxHealth, engaged: false, attackTime: -1 });
   expect(encounter.enemies.caster.hp).toBe(0);
-  expect(adventure.session().drops.map(drop => drop.id)).toEqual([independent.id, ...casterLoot]);
+  expect(adventure.areaDrops().map(drop => drop.id)).toEqual([independent.id, ...casterLoot]);
   encounter.enemies.enemy.hp = 0;
   adventure.step(encounter, areas.clearing, 0);
-  expect(adventure.session().drops.filter(drop => drop.source?.id === 'enemy').map(drop => drop.item)).toEqual(['scroll', 'gold', 'axe']);
+  expect(adventure.areaDrops().filter(drop => drop.source?.id === 'enemy').map(drop => drop.item)).toEqual(['scroll', 'gold', 'axe']);
 });
 
 test('chests open with living enemies, renew independently and never repeat collected equipment claims', () => {
@@ -50,19 +51,19 @@ test('chests open with living enemies, renew independently and never repeat coll
   const chest = areas.clearing.chests![0];
   encounter.player.x = chest.position[0]; encounter.player.z = chest.position[1];
   expect(adventure.openChest(encounter, areas.clearing, chest)).toBe(true);
-  const sword = adventure.session().drops.find(drop => drop.item === 'sword')!;
-  sword.age = 1;
+  const sword = adventure.areaDrops().find(drop => drop.item === 'sword')!;
+  landLoot(adventure, encounter, areas.clearing);
   expect(adventure.pickup(sword.id, chest.position, true)).toBe(true);
   const retained = adventure.spawnDrop('stone', 2, [25, 25]);
   encounter.player.x = 30; encounter.player.z = 30;
   adventure.canRenew = () => true;
   adventure.advanceRenewal(encounter, areas.clearing, renewalSeconds);
   expect(adventure.chest(areas.clearing, chest).opened).toBe(false);
-  expect(adventure.session().drops.map(drop => drop.id)).toEqual([retained.id]);
+  expect(adventure.areaDrops().map(drop => drop.id)).toEqual([retained.id]);
   encounter.player.x = chest.position[0]; encounter.player.z = chest.position[1];
   expect(adventure.openChest(encounter, areas.clearing, chest)).toBe(true);
-  expect(adventure.session().drops.some(drop => drop.item === 'sword')).toBe(false);
-  expect(adventure.session().drops.some(drop => drop.item === 'shield')).toBe(true);
+  expect(adventure.areaDrops().some(drop => drop.item === 'sword')).toBe(false);
+  expect(adventure.areaDrops().some(drop => drop.item === 'shield')).toBe(true);
 });
 
 test('saved outings retain resources, partial loot, wounded budgets, portal, cooldowns and clock without offline progress', () => {
@@ -71,7 +72,11 @@ test('saved outings retain resources, partial loot, wounded budgets, portal, coo
   const point: [number, number] = [node.position[0], node.position[2]];
   for (let hit = 0; hit < node.contacts; hit++) adventure.harvesting.contact('clearing', node.id, point);
   adventure.grantHarvest('stone', 3, 'mining', 10, point, { kind: 'resource', id: node.id });
-  adventure.session().drops[0].quantity = 2; // Remaining quantity after partial collection.
+  adventure.character.items.push({ id: 'stone-stack', item: 'stone', quantity: 98, slot: 'bag', x: 2, y: 0 });
+  for (let cell = 3; cell < 96; cell++) adventure.character.items.push({ id: `full-${cell}`, item: 'scroll', quantity: 99, slot: 'bag', x: cell % 12, y: Math.floor(cell / 12) });
+  landLoot(adventure, encounter, areas.clearing);
+  expect(adventure.pickup(adventure.areaDrops()[0].id, point, true)).toBe(true);
+  expect(adventure.areaDrops()[0].quantity).toBe(2);
   encounter.enemies.enemy.hp = 120; encounter.enemies.enemy.lowestHp = 75;
   encounter.ultimateCooldown = 27; encounter.abilityCooldowns['sweep'] = 4;
   encounter.player.x = 4; encounter.player.z = 4;
@@ -88,16 +93,16 @@ test('saved outings retain resources, partial loot, wounded budgets, portal, coo
   restored.enter(next, areas.clearing);
   expect(next.enemies.enemy).toMatchObject({ hp: 120, lowestHp: 75, engaged: false, attackTime: -1 });
   expect(restored.harvesting.isDepleted('clearing', node.id)).toBe(true);
-  expect(restored.session().drops[0]).toMatchObject({ quantity: 2, harvestXp: { skill: 'mining', perUnit: 10 } });
+  expect(restored.areaDrops()[0]).toMatchObject({ quantity: 2, harvestXp: { skill: 'mining', perUnit: 10 } });
   expect(restored.portal).toEqual(adventure.portal);
   expect(restored.character.scrolls).toBe(adventure.character.scrolls);
-  expect(restored.character.outing.elapsed).toBe(adventure.character.outing.elapsed);
+  expect(restored.character.outing.elapsed).toBe(adventure.capture().outing.elapsed);
   const independent = restored.spawnDrop('wood', 1, [30, 30]);
-  expect(independent.id).not.toBe(restored.session().drops[0].id);
+  expect(independent.id).not.toBe(restored.areaDrops()[0].id);
   restored.canRenew = () => true;
   restored.advanceRenewal(next, areas.clearing, renewalSeconds);
   expect(restored.harvesting.isDepleted('clearing', node.id)).toBe(false);
-  expect(restored.session().drops.map(drop => drop.id)).toEqual([independent.id]);
+  expect(restored.areaDrops().map(drop => drop.id)).toEqual([independent.id]);
 });
 
 test('a save between lethal XP and loot generation resumes the reward exactly once', () => {
@@ -109,11 +114,11 @@ test('a save between lethal XP and loot generation resumes the reward exactly on
   const next = createEncounter('playing'); restored.enter(next, areas.clearing);
   next.player.x = 30; next.player.z = 30;
   restored.step(next, areas.clearing, 0);
-  expect(restored.session().drops.filter(drop => drop.source?.id === 'enemy').map(drop => drop.item)).toEqual(['scroll', 'gold', 'axe']);
+  expect(restored.areaDrops().filter(drop => drop.source?.id === 'enemy').map(drop => drop.item)).toEqual(['scroll', 'gold', 'axe']);
   restored.closeSave();
   const again = new Adventure(storage, () => 0); again.configureAreas(areas); again.enter(next, areas.clearing);
   again.step(next, areas.clearing, 0);
-  expect(again.session().drops.filter(drop => drop.source?.id === 'enemy').map(drop => drop.item)).toEqual(['scroll', 'gold', 'axe']);
+  expect(again.areaDrops().filter(drop => drop.source?.id === 'enemy').map(drop => drop.item)).toEqual(['scroll', 'gold', 'axe']);
   expect(again.character.xp.axeCombat).toBe(10);
 });
 
@@ -176,15 +181,15 @@ test('expired inactive enemies renew on entry while the arrival protects nearby 
   const spawn = encounter.enemies.enemy.home!;
   encounter.enemies.enemy.hp = 0; encounter.enemies.caster.hp = 0;
   adventure.step(encounter, areas.clearing, 0);
-  const nearLoot = adventure.session().drops.filter(drop => drop.source?.id === 'enemy').map(drop => drop.id);
+  const nearLoot = adventure.areaDrops().filter(drop => drop.source?.id === 'enemy').map(drop => drop.id);
   adventure.enter(encounter, areas.homestead);
   adventure.advanceRenewal(encounter, areas.homestead, renewalSeconds);
   adventure.enter(encounter, areas.clearing, spawn);
   expect(encounter.enemies.enemy.hp).toBe(0);
   expect(encounter.enemies.caster.hp).toBe(enemyMaxHealth);
   expect(encounter.phase).toBe('playing');
-  expect(adventure.session().drops.filter(drop => drop.source?.id === 'enemy').map(drop => drop.id)).toEqual(nearLoot);
-  expect(adventure.session().drops.some(drop => drop.source?.id === 'caster')).toBe(false);
+  expect(adventure.areaDrops().filter(drop => drop.source?.id === 'enemy').map(drop => drop.id)).toEqual(nearLoot);
+  expect(adventure.areaDrops().some(drop => drop.source?.id === 'caster')).toBe(false);
 });
 
 test('a failed pickup save retries character and ground state together without duplicating currency', async () => {
@@ -192,7 +197,7 @@ test('a failed pickup save retries character and ground state together without d
   const { adventure, encounter, storage } = setup();
   try {
     const point: [number, number] = [encounter.player.x, encounter.player.z];
-    const drop = adventure.spawnDrop('gold', 3, point); drop.age = 1;
+    const drop = adventure.spawnDrop('gold', 3, point); landLoot(adventure, encounter, areas.clearing);
     adventure.save();
     const previous = storage.data.get(characterSaveKey);
     const write = storage.setItem;
@@ -206,7 +211,7 @@ test('a failed pickup save retries character and ground state together without d
     expect(adventure.saveDiagnostics().pending).toBe(false);
     const restored = new Adventure(storage); restored.configureAreas(areas); restored.enter(encounter, areas.clearing);
     expect(restored.character.gold).toBe(3);
-    expect(restored.session().drops.some(entry => entry.id === drop.id)).toBe(false);
+    expect(restored.areaDrops().some(entry => entry.id === drop.id)).toBe(false);
     restored.closeSave();
   } finally { adventure.closeSave(); vi.useRealTimers(); }
 });

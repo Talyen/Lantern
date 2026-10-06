@@ -3,7 +3,7 @@ import { MeshBasicNodeMaterial } from 'three/webgpu';
 import { createSurfaceMaterial } from './surface-detail';
 import { Portal } from './portal';
 import type { Point } from '../gameplay/area';
-import { dropLandingSeconds, type GroundDrop } from '../gameplay/ground-loot';
+import { dropLandingSeconds, type GroundDropView } from '../gameplay/ground-loot';
 import { equipmentCatalog, itemDefinitions, type HandItem } from '../gameplay/equipment';
 import { type AssetInstance, type AssetLibrary } from '../assets/asset-library';
 import { disposeSceneInstances } from '../assets/resource-ownership';
@@ -18,7 +18,7 @@ export class AdventureVisuals {
   get portalTarget(): THREE.Object3D | null {return this.portal?.root ?? null;}
   private portalKey = '';
   private drops = new Map<string, DropVisual>();
-  private currentDrops = new Map<string, GroundDrop>();
+  private currentDrops = new Map<string, GroundDropView>();
   private pickCandidates: THREE.Object3D[] = [];
   private pickHits: THREE.Intersection[] = [];
   private pickPoint = new THREE.Vector3();
@@ -43,7 +43,7 @@ export class AdventureVisuals {
   private cloth = createSurfaceMaterial({color:'#786657',roughness:1});
   private disposed = false;
   constructor(private parent: THREE.Object3D, private library: AssetLibrary) { this.highlight.rotation.x = -Math.PI / 2; this.highlight.visible = false; parent.add(this.highlight); }
-  sync(drops: readonly GroundDrop[], portal: Point | null, hovered: string | null, portalHeight = 0): void {
+  sync(drops: readonly GroundDropView[], portal: Point | null, hovered: string | null, portalHeight = 0): void {
     const key = portal ? `${portal.join(',')}/${portalHeight}` : '';
     if (key !== this.portalKey) { this.portal?.dispose(); this.portal = portal ? new Portal({ id: 'return-portal', position: [portal[0], portalHeight + .02, portal[1]], yaw: Math.PI / 4, width: 1.4, height: 2.3 }, this.parent) : null; this.portalKey = key; }
     this.currentDrops.clear(); for (const drop of drops) this.currentDrops.set(drop.id, drop);
@@ -122,13 +122,13 @@ export class AdventureVisuals {
       box(slot === 'belt' ? [.1,.03,.08] : [.065,.05,.065],[0,.06,slot === 'belt' ? -.23 : -.13],slot === 'amulet' ? this.ribbon : this.metal);
     }
   }
-  private async loadPotion(drop: GroundDrop, visual: DropVisual): Promise<void> {
+  private async loadPotion(drop: GroundDropView, visual: DropVisual): Promise<void> {
     let instance: AssetInstance | undefined;
     try { instance=await this.library.loadAsset('generic:model:sm-gen-prop-potion-01'); if(this.disposed || this.drops.get(drop.id)!==visual){instance.release();return;}
       const object=instance.object;object.updateMatrixWorld(true);const size=new THREE.Box3().setFromObject(object).getSize(new THREE.Vector3());object.scale.multiplyScalar(.28/Math.max(size.x,size.y,size.z));object.updateMatrixWorld(true);const bounds=new THREE.Box3().setFromObject(object),center=bounds.getCenter(new THREE.Vector3());object.position.sub(new THREE.Vector3(center.x,bounds.min.y,center.z));disposeSceneInstances(visual.model);visual.model.clear();visual.model.add(object);visual.instance=instance;visual.boundsValid=false;
     } catch { instance?.release(); }
   }
-  private async loadGear(drop: GroundDrop, visual: DropVisual): Promise<void> {
+  private async loadGear(drop: GroundDropView, visual: DropVisual): Promise<void> {
     let instance: AssetInstance | undefined;
     try {
       instance = await this.library.loadAsset(itemDefinitions[drop.item as HandItem].asset);

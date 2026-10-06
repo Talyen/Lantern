@@ -1,10 +1,12 @@
+import { landLoot } from './helpers/adventure';
 import { IDBFactory, IDBObjectStore } from 'fake-indexeddb';
 import { expect, test, vi } from 'vitest';
-import { AdventureDatabase, adventureDatabaseName, type AdventureCommit } from '../src/data/adventure-database';
+import { AdventureDatabase, adventureDatabaseName, areaChanges, type AdventureCommit } from '../src/data/adventure-database';
 import { Adventure } from '../src/gameplay/adventure';
 import { AdventureStore, slotKey } from '../src/gameplay/adventure-store';
 import { TransactionalAdventureStore, pendingAdventureKey, indexedAdventureKey } from '../src/gameplay/transactional-adventure-store';
-import { character, type CharacterSave } from '../src/gameplay/character';
+import type { CharacterSnapshot } from '../src/gameplay/state-view';
+import { character } from '../src/gameplay/character';
 import { createEncounter } from '../src/gameplay/encounter';
 import { resourceDefinitions } from '../src/levels/resources';
 import { areas } from '../src/levels/registry';
@@ -111,7 +113,7 @@ test('damaged IDB primary recovers its matching backup and archives original rec
 test('inactive areas retain their snapshots while active rewards and metadata survive reload', async () => {
   const { store } = fixture(), first = store();
   await first.initialize(); const saved = (await first.create(1, 'Areas'))!; await first.flush();
-  const commits: CharacterSave[] = [];
+  const commits: CharacterSnapshot[] = [];
   const adventure = new Adventure(undefined, () => 0, { character: saved.character,
     save: value => { commits.push(value); first.save(1, saved.id, value); }, diagnostics: () => first.diagnostics() });
   const encounter = createEncounter('playing', areas.clearing.layout);
@@ -131,6 +133,51 @@ test('inactive areas retain their snapshots while active rewards and metadata su
     expect(loaded.outing.areas.clearing.resources[tree.id].hits).toBe(1);
     expect(loaded.outing.areas.clearing.drops).toEqual([expect.objectContaining({ item: 'wood', quantity: 2 })]);
     expect(loaded.outing.areas.homestead.drops).toEqual([]);
+  } finally { restored.close(); }
+});
+
+// Admission: missing area revisions can omit chest/loot mutations from incremental writes.
+// Earlier round trips do not check reader purity or immutable snapshots retained by pending writes.
+test('readonly queries preserve snapshots while chest and pickup mutations publish isolated area changes', async () => {
+  const { store } = fixture(), first = store();
+  const saved = (await first.create(1, 'Ownership'))!;
+  const commits: CharacterSnapshot[] = [];
+  const adventure = new Adventure(undefined, () => 1, { character: saved.character,
+    save: value => { commits.push(value); first.save(1, saved.id, value); }, diagnostics: () => first.diagnostics() });
+  const area = areas.clearing, chest = area.chests![0], encounter = createEncounter('playing', area.layout);
+  adventure.configureAreas(areas); adventure.enter(encounter, area, { position: chest.position, yaw: 0 });
+  try {
+    const original = commits.at(-1)!;
+    adventure.areaDrops(); adventure.areaChests(); adventure.chest(area, chest);
+    adventure.fireSafe(area, area.campfires![0]);
+    adventure.fireSafe(areas['graveyard-ruins'], areas['graveyard-ruins'].campfires![0]);
+    adventure.areaDrops('unknown'); adventure.areaChests('unknown');
+    adventure.grantWeaponXp('axe', 12);
+    const unchanged = commits.at(-1)!;
+    const identity = { id: saved.id, name: saved.name, deleted: false };
+    const prior = { identity, revision: 1, current: original, backup: original };
+    expect(areaChanges({ ...prior, revision: 2, current: unchanged }, prior)).toEqual([]);
+    expect(unchanged.outing.areas.unknown).toBeUndefined();
+
+    expect(adventure.openChest(encounter, area, chest)).toBe(true);
+    const opened = commits.at(-1)!;
+    expect(areaChanges({ ...prior, revision: 2, current: opened }, prior)).toEqual(['clearing']);
+    expect(original.outing.areas.clearing.chests[chest.id].opened).toBe(false);
+    expect(original.outing.areas.clearing.drops).toEqual([]);
+    landLoot(adventure, encounter, area); adventure.save();
+    expect(opened.outing.areas.clearing.drops.every(drop => drop.age === 0)).toBe(true);
+    const sword = adventure.areaDrops().find(drop => drop.item === 'sword')!;
+    expect(adventure.pickup(sword.id, sword.position, true)).toBe(true);
+    expect(opened.outing.areas.clearing.drops.some(drop => drop.id === sword.id)).toBe(true);
+    await first.flush();
+  } finally { first.close(); }
+  const restored = store();
+  try {
+    const loaded = (await restored.load(1))!.character;
+    expect(loaded.xp.axeCombat).toBe(12);
+    expect(loaded.outing.areas.clearing.chests[chest.id].opened).toBe(true);
+    expect(loaded.items.some(item => item.item === 'sword')).toBe(true);
+    expect(loaded.outing.areas.clearing.drops.some(drop => drop.item === 'sword')).toBe(false);
   } finally { restored.close(); }
 });
 

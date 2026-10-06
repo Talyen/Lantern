@@ -44,7 +44,7 @@ export class ClickApproach {
   }
 
   selectLoot(id: string, navigation: MovementWorld | undefined): void {
-    const drop = this.adventure.session().drops.find(drop => drop.id === id);
+    const drop = this.adventure.areaDrops().find(drop => drop.id === id);
     if (!drop) return;
     this.cancel();
     const point: Point = [this.encounter.player.x, this.encounter.player.z];
@@ -89,7 +89,7 @@ export class ClickApproach {
     const loot = route.target.kind === 'loot';
     if (route.target.kind === 'loot') {
       const id = route.target.id;
-      const drop = this.adventure.session().drops.find(drop => drop.id === id);
+      const drop = this.adventure.areaDrops().find(drop => drop.id === id);
       if (!this.adventure.pickupTarget || !drop) { this.cancel(); return; }
       if (near(point, drop.position, pickupRadius) && this.adventure.canCollectGround(drop)) {
         if (drop.age >= dropLandingSeconds) { this.runtime.pickup(drop.id, point); this.cancel(); }

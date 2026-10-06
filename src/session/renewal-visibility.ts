@@ -27,7 +27,7 @@ export class RenewalVisibility {
       cache({ kind: 'enemy', id }, actor.root, actor.root.position.x, actor.root.position.y, actor.root.position.z);
     }
   }
-  eligible(camera: THREE.Camera, encounter: EncounterView, source: RewardSource, position: Point, height: number, radius: number, arriving = false): boolean {
+  eligible(camera: THREE.Camera, encounter: EncounterView, source: RewardSource, position: Readonly<Point>, height: number, radius: number, arriving = false): boolean {
     const cached = this.bounds.get(`${source.kind}/${source.id}`);
     this.offset.set(position[0], height, position[1]);
     if (cached) this.box.copy(cached).translate(this.offset);

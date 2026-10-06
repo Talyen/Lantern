@@ -5,3 +5,6 @@ import type { Encounter } from './encounter-model';
 export type StateView<T> = T extends object ? { readonly [K in keyof T]: StateView<T[K]> } : T;
 export type CharacterView = StateView<CharacterSave>;
 export type EncounterView = StateView<Encounter>;
+
+/** Detached publication; immutable across later gameplay and asynchronous persistence. */
+export type CharacterSnapshot = StateView<CharacterSave>;

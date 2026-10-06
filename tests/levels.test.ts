@@ -194,16 +194,16 @@ test('gathering retries after attack cooldown and cancels a newly pursuing threa
     state.attackCooldown = 0;
     gathering.advance(.05); gathering.advance(.35);
     expect(gathering.choppingId).toBe('tree');
-    expect(adventure.session().drops.map(drop=>[drop.item,drop.quantity])).toEqual([['wood',1]]);
+    expect(adventure.areaDrops().map(drop=>[drop.item,drop.quantity])).toEqual([['wood',1]]);
     gathering.cancel();
     const unsafeArea = { ...grassArea, kind: 'encounter' as const };
     const threatened = new GatheringAction(state,adventure,{...context,area:()=>unsafeArea});
     for (const enemy of Object.values(state.enemies)) { enemy.engaged = false; enemy.x = 30; enemy.z = 30; }
     threatened.select(node);
     Object.assign(state.enemies[state.enemyIds[0]], { hp: 200, home: { position: [30, 30], yaw: 0 }, engaged: true });
-    const drops = adventure.session().drops.length;
+    const drops = adventure.areaDrops().length;
     threatened.advance(.35);
-    expect(adventure.session().drops).toHaveLength(drops);
+    expect(adventure.areaDrops()).toHaveLength(drops);
     expect(threatened.target).toBeNull();
   } finally { adventure.closeSave(); }
 });

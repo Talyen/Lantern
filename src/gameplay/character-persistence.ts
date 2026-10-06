@@ -1,3 +1,4 @@
+import type { CharacterSnapshot } from './state-view';
 import { archiveUnreadable } from '../data/preferences';
 import { character, type CharacterSave } from './character';
 import { RetryTimer, storageRetryDelays } from '../data/retry';
@@ -64,7 +65,7 @@ export class CharacterPersistence {
     }
     return null;
   }
-  request(value: CharacterSave): void {
+  request(value: CharacterSnapshot): void {
     if (!this.source || this.closed) return;
     this.pending = JSON.stringify(value);
     if (!this.retry.scheduled) this.flush();
@@ -106,7 +107,7 @@ export class CharacterPersistence {
       }
     }
   }
-  close(value: CharacterSave): void {
+  close(value: CharacterSnapshot): void {
     if (this.closed) return;
     this.retry.cancel();
     this.closed = true;

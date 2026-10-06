@@ -186,7 +186,7 @@ export class MovementWorld implements Movement {
     return next ? { x: next[0] - from.x, z: next[2] - from.z } : { x: 0, z: 0 };
   }
   /** Independent pickup paths never replace the enemy's pursuit-path cache. */
-  pickupPath(from: ActorState, point: [number, number], height: number): [number, number][] | null {
+  pickupPath(from: ActorState, point: readonly [number, number], height: number): [number, number][] | null {
     if (!this.navigationReady) return null;
     const result = findPath(this.nav, [from.x, from.y, from.z], [point[0], height, point[1]], [.6, 1, .6], DEFAULT_QUERY_FILTER);
     const end = result.path.at(-1)?.position;
@@ -197,10 +197,10 @@ export class MovementWorld implements Movement {
     return result.path.map(p => [p.position[0], p.position[2]]);
   }
   /** Include the final ground segment, even when navigation ends beside the drop. */
-  pickupReachable(from: ActorState, point: [number, number], height: number, reach: number): boolean {
+  pickupReachable(from: ActorState, point: readonly [number, number], height: number, reach: number): boolean {
     const path = this.pickupPath(from, point, height);
     if (!path) return false;
-    let length = 0, previous: [number, number] = [from.x, from.z];
+    let length = 0, previous: readonly [number, number] = [from.x, from.z];
     for (const waypoint of [...path, point]) {
       length += Math.hypot(waypoint[0] - previous[0], waypoint[1] - previous[1]);
       previous = waypoint;

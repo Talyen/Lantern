@@ -77,7 +77,7 @@ export class DevelopmentSession {
     };
     const renewal = {
       diagnostics: () => ctx.diagnostics(),
-      snapshot: () => { ctx.adventure.save(); return structuredClone(ctx.adventure.character.outing); },
+      snapshot: () => { ctx.adventure.save(); return ctx.adventure.capture().outing; },
       advance: (seconds: number) => {
         if (!Number.isFinite(seconds) || seconds < 0) throw new Error('Invalid clock advance');
         if (this.disposed) return;

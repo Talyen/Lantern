@@ -4,7 +4,7 @@ import type { EnemyRewards } from './economy';
 import type { Loadout } from './equipment';
 /** Ground-plane geometry and gate state; no browser or renderer dependencies. */
 export type Point = [number, number];
-export const near = (point: Point, target: Point, radius: number) => Math.hypot(point[0] - target[0], point[1] - target[1]) <= radius;
+export const near = (point: Readonly<Point>, target: Readonly<Point>, radius: number) => Math.hypot(point[0] - target[0], point[1] - target[1]) <= radius;
 export type Boundary = { kind: 'circle'; center: Point; radius: number } | { kind: 'polygon'; points: Point[] };
 export type Spawn = { position: Point; yaw: number };
 export type EnemyRig = 'enemy' | 'skeleton';
