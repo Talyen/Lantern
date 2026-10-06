@@ -32,11 +32,6 @@ def export(name, character, config, motions_only=False):
     rig, error = gallery.prepare(row, max_texture_size=None)
     if error:
         raise RuntimeError(error)
-    if identity == 'owner-b1-adventurer':
-        b1_spec = importlib.util.spec_from_file_location('b1', Path(__file__).with_name('b1.py'))
-        b1 = importlib.util.module_from_spec(b1_spec)
-        b1_spec.loader.exec_module(b1)
-        b1.prepare(rig)
     if identity == 'mixamo-d0496a75-08b9-4f4e-9f1d-f65820323cc2':
         quiver_spec = importlib.util.spec_from_file_location('erika', Path(__file__).with_name('erika.py'))
         erika = importlib.util.module_from_spec(quiver_spec)
@@ -70,7 +65,7 @@ def export(name, character, config, motions_only=False):
     wanted = list(dict.fromkeys(role for profile in config['profiles'].values() for role in profile.values())) + config.get('audit', []) + config.get('comparison', [])
     results = []
     by_id = {clip['id']: clip for clip in source_pack['clips']}
-    preparation_hash = hashlib.sha256(Path(__file__).read_bytes() + Path(__file__).with_name('export.py').read_bytes() + (Path(__file__).with_name('b1.py').read_bytes() if identity == 'owner-b1-adventurer' else b'')).hexdigest()
+    preparation_hash = hashlib.sha256(Path(__file__).read_bytes() + Path(__file__).with_name('export.py').read_bytes()).hexdigest()
     baker_hash = hashlib.sha256((ROOT / 'scripts/assets/mixamo/baker.py').read_bytes()).hexdigest()
     for index, key in enumerate(wanted):
         recipe = MANIFEST['clips'][key]
@@ -96,7 +91,7 @@ def export(name, character, config, motions_only=False):
                 sample_range = tuple(action.frame_range[0] + time * fps for time in trim) if trim else None
                 if sample_range and (sample_range[0] < action.frame_range[0] or sample_range[1] > action.frame_range[1]):
                     raise RuntimeError(f'Invalid trim for {key}: {trim}')
-                meta = gallery.baker.bake(rig, source, action, clip['name'], destination, mapping=mapping, sample_range=sample_range, output_duration=recipe.get('duration'), align_rest_pose=identity == 'owner-b1-adventurer')
+                meta = gallery.baker.bake(rig, source, action, clip['name'], destination, mapping=mapping, sample_range=sample_range, output_duration=recipe.get('duration'))
                 gallery.write_json(record, {'signature': signature, **meta})
             finally:
                 for obj in list(bpy.data.objects):

@@ -883,15 +883,6 @@
       "notes": "",
       "updatedAt": "2026-10-04T22:06:27.402Z"
     },
-    "character:owner-b1-adventurer@gameplay": {
-      "familyId": "character:owner-b1-adventurer",
-      "url": "/vendor/characters/b1/authored-playable.glb",
-      "name": "B1 Adventurer",
-      "state": "approved",
-      "fingerprint": "e57bb3b722db4ffb5f795af2df5fb75e88181acaeb178dafe342284370557410",
-      "notes": "Owner explicitly supplied and selected B1 Adventurer to replace Erika. Successfully displayed at gameplay scale in the owned native WebGPU/FSR Homestead preview; movement, Axe attack and dodge exercised. Actual-rig inspection covered Axe, Bow, Staff, Sword/Shield, running and authored lantern visibility. A-pose and wrist-frame mismatches were corrected. Source garment-clearance warnings and substantial model cost remain documented; this is appearance selection, not universal cloth or cross-platform performance certification.",
-      "updatedAt": "2026-10-05T04:54:49.880Z"
-    },
     "character:mixamo-9da313dd-67a7-4677-8515-7a24b8035a69@gallery": {
       "familyId": "character:mixamo-9da313dd-67a7-4677-8515-7a24b8035a69",
       "url": "/vendor/character-gallery/mixamo-9da313dd-67a7-4677-8515-7a24b8035a69/model.glb",
@@ -26087,6 +26078,51 @@
       "familyId": "goblin-war-camp:model:props-sm-prop-bedroll-02",
       "url": "/vendor/synty/environment/clearing/props-sm-prop-bedroll-02.glb",
       "deletedAt": "2026-10-05T18:15:02.430Z"
+    },
+    "hearthwood-furniture:model:loot-bookshelf@original": {
+      "familyId": "hearthwood-furniture:model:loot-bookshelf",
+      "url": "/vendor/synty/library/models/hearthwood-furniture/loot_bookshelf.glb",
+      "deletedAt": "2026-10-06T04:31:39.363Z"
+    },
+    "blackthorn-interiors:model:interior-hanging-tapestry@original": {
+      "familyId": "blackthorn-interiors:model:interior-hanging-tapestry",
+      "url": "/vendor/synty/library/models/blackthorn-interiors/interior_hanging_tapestry.glb",
+      "deletedAt": "2026-10-06T04:31:39.363Z"
+    },
+    "gothic-loot-debris:model:08-10-coin-scatter@original": {
+      "familyId": "gothic-loot-debris:model:08-10-coin-scatter",
+      "url": "/vendor/synty/library/models/gothic-loot-debris/08_10_Coin_Scatter.glb",
+      "deletedAt": "2026-10-06T04:31:39.363Z"
+    },
+    "gothic-loot-debris:model:08-13-discarded-chains@original": {
+      "familyId": "gothic-loot-debris:model:08-13-discarded-chains",
+      "url": "/vendor/synty/library/models/gothic-loot-debris/08_13_Discarded_Chains.glb",
+      "deletedAt": "2026-10-06T04:31:39.363Z"
+    },
+    "outdoor-crypt-lootables:model:crypt-bone-pile@original": {
+      "familyId": "outdoor-crypt-lootables:model:crypt-bone-pile",
+      "url": "/vendor/synty/library/models/outdoor-crypt-lootables/crypt_bone_pile.glb",
+      "deletedAt": "2026-10-06T04:31:39.363Z"
+    },
+    "outdoor-crypt-lootables:model:crypt-offering-box@original": {
+      "familyId": "outdoor-crypt-lootables:model:crypt-offering-box",
+      "url": "/vendor/synty/library/models/outdoor-crypt-lootables/crypt_offering_box.glb",
+      "deletedAt": "2026-10-06T04:31:39.363Z"
+    },
+    "outdoor-crypt-lootables:model:outdoor-supply-cart@original": {
+      "familyId": "outdoor-crypt-lootables:model:outdoor-supply-cart",
+      "url": "/vendor/synty/library/models/outdoor-crypt-lootables/outdoor_supply_cart.glb",
+      "deletedAt": "2026-10-06T04:31:39.363Z"
+    },
+    "character:owner-b1-adventurer@gameplay": {
+      "familyId": "character:owner-b1-adventurer",
+      "url": "/vendor/characters/b1/authored-playable.glb",
+      "deletedAt": "2026-10-06T04:31:39.363Z"
+    },
+    "character:owner-b1-adventurer@original": {
+      "familyId": "character:owner-b1-adventurer",
+      "url": "/vendor/characters/b1/authored.glb",
+      "deletedAt": "2026-10-06T04:31:39.363Z"
     }
   }
 }

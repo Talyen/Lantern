@@ -36,7 +36,7 @@ Inventory, equipment, wallet/buyback, all skill XP, collected equipment claims, 
 
 Gather Wood, Stone and Iron to repair the Homestead shelter, unlock its stash and refresh Rested. See [gathering and shelter](Docs/GATHERING.md).
 
-The public repository contains source and original generated surface/UI art. Playable B1 Adventurer, Goblin and Skeleton art and their compatible Mixamo animations must be prepared privately; missing required character art produces an actionable import message. Optional scenery can be absent. See the [asset workflow](Docs/ASSET_PREPARATION.md).
+The public repository contains source and original generated surface/UI art. Playable Erika Archer, Goblin and Skeleton art and their compatible Mixamo animations must be prepared privately; missing required character art produces an actionable import message. Optional scenery can be absent. See the [asset workflow](Docs/ASSET_PREPARATION.md).
 
 ```sh
 npm run check       # change-aware local sanity gate

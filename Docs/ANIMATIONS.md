@@ -1,6 +1,6 @@
 # Animation authoring
 
-Lantern uses Mixamo motions baked independently to B1 Adventurer, Goblin D Shareyko and the graveyard Skeleton rig. Current player preparation and acceptance belong to [protagonist appearance](PROTAGONISTS.md). Weapon models come from the converted Synty library. Aim for readable preparation, decisive contact, short recovery and footwork that agrees with movement while the player faces the cursor.
+Lantern uses Mixamo motions baked independently to Erika Archer, Goblin D Shareyko and the graveyard Skeleton rig. Current player preparation and acceptance belong to [protagonist appearance](PROTAGONISTS.md). Weapon models come from the converted Synty library. Aim for readable preparation, decisive contact, short recovery and footwork that agrees with movement while the player faces the cursor.
 
 ## Source selection
 
@@ -64,7 +64,7 @@ Drag to orbit, right-drag to pan and scroll for close inspection. Space toggles 
 
 The viewer uses the same native WebGPU/FSR pipeline and shared Golden lighting. Inspection disables lens blur and bloom, without changing saved gameplay graphics preferences. The optional **Player lantern** uses the gameplay belt attachment and owner-bounce recipe, follows the selected rig and changes no save data. Gathering previews use the gameplay temporary Axe/Pickaxe attachments and do not overwrite the Staff arm pose during chopping/mining. Hidden lanes retain their comparison state and are resized before rendering again.
 
-B1 Adventurer is the sole player appearance, with her authored outfit, facial controls, lantern and all compatible player profiles. Her supplied outfit has no quiver; Bow still uses the existing equipment and compatible motion profile. See [protagonist preparation and acceptance](PROTAGONISTS.md).
+Erika Archer is the prototype player appearance, with her authored outfit and compatible player profiles. Her separated authored quiver is visible only with a committed Bow-family loadout. See [protagonist preparation and acceptance](PROTAGONISTS.md).
 
 ## Comparison and acceptance
 

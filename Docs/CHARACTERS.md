@@ -35,7 +35,7 @@ After changing the workflow, inspect one affected character or gallery interacti
 
 ## Playable characters
 
-Gameplay and the animation lab use the authored B1 Adventurer player, Goblin and Skeleton models. `assets/playable-characters.json` owns their model URLs, heights and per-rig motion catalogs. Gameplay selects complete equipment profiles; animation experimentation belongs in the development lab.
+Gameplay and the animation lab use the authored Erika Archer player, Goblin and Skeleton models. `assets/playable-characters.json` owns their model URLs, heights and per-rig motion catalogs. Gameplay selects complete equipment profiles; animation experimentation belongs in the development lab.
 
 `npm run assets:export-character` updates the three playable entries in an existing gallery catalog, or creates a minimal playable catalog if the full gallery is absent. After a full gallery export, run that command with `--motions-only` to refresh the playable entries. `--player-only` limits preparation to B1. Its packed defaults retain dodge.
 
@@ -47,7 +47,7 @@ The eight projected Paladin palettes and their original inputs/recipes are priva
 
 ## Playable skeletons
 
-Graveyard Ruins and Graveyard Crypt use the existing Synty Generic **Skeleton 01** body at 1.8 m, while the Clearing retains its Goblin and the player uses B1 Adventurer. All motion providers remain Mixamo. `assets/playable-characters.json` owns the skeleton model/catalog; `assets/motion-profiles.json` owns its sword and staff profiles. The canonical exporter isolates the skeleton mesh, restores its authored Generic palette, checks canonical bones and independently bakes idle, locomotion, slash/cast, hit and death motions. Source art and prepared output remain private.
+Graveyard Ruins and Graveyard Crypt use the existing Synty Generic **Skeleton 01** body at 1.8 m, while the Clearing retains its Goblin and the player uses Erika Archer. All motion providers remain Mixamo. `assets/playable-characters.json` owns the skeleton model/catalog; `assets/motion-profiles.json` owns its sword and staff profiles. The canonical exporter isolates the skeleton mesh, restores its authored Generic palette, checks canonical bones and independently bakes idle, locomotion, slash/cast, hit and death motions. Source art and prepared output remain private.
 
 Run `npm run assets:export-character -- --skeleton-only` after cloning the animation-pack and Synty-library sources into the owned task; `--motions-only` reuses the authored body. The runtime uses `/vendor/characters/skeleton/`, never the development-gallery model path. The sword slash has a 1.05 s duration, a reviewed 0.44 s contact and a 0.16 s commitment window, independent of the player's faster slash. Check weapon sockets and motion at gameplay scale. Skeleton reactions use dry existing foley, without Goblin vocals.
 
