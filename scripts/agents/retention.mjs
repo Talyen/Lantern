@@ -17,6 +17,7 @@ async function info(path) {
   catch (error) { if (error.code === 'ENOENT') return null; throw error; }
 }
 const stamp = value => `${value.size}:${value.mtimeNs}:${value.ctimeNs}:${value.ino}`;
+const contentStamp = value => value.split(':').filter((_, index) => index !== 2).join(':');
 
 /** Check every parent, including the boundary; never traverse private symlinks. */
 export async function safeRetentionPath(base, path) {
@@ -50,8 +51,14 @@ export async function retentionFiles(base) {
 }
 
 async function digest(file, cache) {
+  const current = stamp(await info(file.path));
+  if (current !== file.identity) {
+    if (contentStamp(current) !== contentStamp(file.identity)) throw new Error(`Source changed before verification: ${file.path}`);
+    // Refresh metadata-only changes before forming the cache key. The new
+    // identity forces a fresh digest; publication still checks its saved hash.
+    file.identity = current;
+  }
   let key = file.path + ':' + file.identity;
-  if (stamp(await info(file.path)) !== file.identity) throw new Error(`Source changed before verification: ${file.path}`);
   if (!cache.has(key)) {
     const hash = await hashFile(file.path);
     const after = stamp(await info(file.path));
@@ -88,11 +95,10 @@ async function publishSource(source, target, cache) {
     const copied = await retentionFiles(copy), current = await retentionFiles(source);
     if (before.length !== current.length) throw new Error(`Source changed during copying: ${source}`);
     if (before.length !== copied.length) return false;
-    const stable = identity => identity.split(':').filter((_, index) => index !== 2).join(':');
     for (let index = 0; index < before.length; index++) {
       const prior = before[index], fresh = current[index];
       // Copy/status metadata may change; original bytes, inode, size and mtime must not.
-      if (relative(source, prior.path) !== relative(source, fresh.path) || stable(prior.identity) !== stable(fresh.identity)
+      if (relative(source, prior.path) !== relative(source, fresh.path) || contentStamp(prior.identity) !== contentStamp(fresh.identity)
         || await digest(fresh, cache) !== expected[index]) throw new Error(`Source changed during copying: ${source}`);
       if (relative(source, prior.path) !== relative(copy, copied[index].path)
         || expected[index] !== await digest(copied[index], cache)) return false;
