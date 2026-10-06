@@ -2,7 +2,8 @@ import { unmatchedMotionNode } from '../../animation/rig-bindings';
 import * as THREE from 'three';
 import { MeshStandardNodeMaterial } from 'three/webgpu';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import type { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { runtimeAssets } from '../../assets/runtime-assets';
 import type { ReviewAsset } from '../../assets/asset-review';
 import { disposeSceneResources } from '../../assets/resource-ownership';
 import { createRenderer, waitForPresentedFrames } from '../../rendering/renderer';
@@ -30,7 +31,7 @@ export class ReviewStage {
   private renderer: Awaited<ReturnType<typeof createRenderer>>;
   private pipeline: WebGPUPipeline;
   private lighting: AreaLightingResources;
-  private pool = new PreparedAssets();
+  private pool: PreparedAssets;
   private active?: PreparedReviewAsset;
   private pipelines = new Map<string, WebGPUPipeline>();
   private compilation: Promise<void> = Promise.resolve();
@@ -42,7 +43,7 @@ export class ReviewStage {
   private content?: THREE.Group;
     private mixer?: THREE.AnimationMixer;
   private clips = new Map<string, THREE.AnimationClip>();
-  private loader = new GLTFLoader();
+  private loader: GLTFLoader;
   private generation = 0;
   private frame = 0;
   private completedFrames = 0;
@@ -54,7 +55,7 @@ export class ReviewStage {
   private paused = false;
   private motionGeneration = 0;
   private constructor(private mount: HTMLElement, renderer: Awaited<ReturnType<typeof createRenderer>>, private onError: (error: unknown) => void, private settings: GraphicsSettings) {
-    this.renderer = renderer;
+    this.renderer = renderer; this.loader = runtimeAssets(renderer).loader; this.pool = new PreparedAssets(runtimeAssets(renderer));
     const look = resolveLighting();
     this.game = createCamera(renderer.domElement); this.game.controls.enabled = false; this.game.setDistance(settings.cameraDistance); this.camera = this.game.camera;
     this.scene.background = new THREE.Color(look.background); this.scene.fog = new THREE.Fog(look.background, look.fogNear, look.fogFar);

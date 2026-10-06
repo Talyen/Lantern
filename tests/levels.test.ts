@@ -8,6 +8,7 @@ import type { NavMesh } from 'navcat';
 import { expect, test, vi } from 'vitest';
 import * as THREE from 'three';
 import { GLTFLoader, type GLTF } from 'three/addons/loaders/GLTFLoader.js';
+import type { RuntimeAssets } from '../src/assets/runtime-assets';
 import { AssetLibrary, type AssetCatalog, type LibraryAsset } from '../src/assets/asset-library';
 import { isMesh } from '../src/assets/resource-ownership';
 import homestead from '../src/levels/areas/homestead.json';
@@ -215,7 +216,7 @@ test('early area construction failure releases allocated geometry and material',
   try {
     const area = structuredClone(grassArea); area.grass=[]; area.effects={...area.effects,fires:[],portals:[]}; area.scatter=[];
     area.props=[{id:'broken-tree',primitive:{kind:'box',size:[0,0,0],color:'#514031'},harvest:{kind:'tree',radius:.3},position:[0,0,0],yaw:0,height:1,scale:[1,1,1],castShadow:true,receiveShadow:true}];
-    await expect(buildArea(area)).rejects.toThrow('model has no visible height');
+    await expect(buildArea(area, 'projected', false, { library: new AssetLibrary() } as unknown as RuntimeAssets)).rejects.toThrow('model has no visible height');
     expect(geometry).toHaveBeenCalled(); expect(material).toHaveBeenCalled();
   } finally { geometry.mockRestore(); material.mockRestore(); }
 });
@@ -367,7 +368,8 @@ test('missing destination skeleton art retains the committed actors and reports 
   const state=createEncounter('playing',{...grassArea.layout,enemies:[{id:'guard',position:[1,1],yaw:0,kind:'raider',rig:'skeleton',loadout:{main:'sword',off:null}}]});
   const scene=new THREE.Scene(),player=makeActor(scene,state.player),actors={player};
   const loader=new GLTFLoader();vi.spyOn(loader,'loadAsync').mockRejectedValue(new Error('Missing skeleton model'));
-  const roster=new EnemyActors(scene,loader,actors);
+  const resources = { acquireRig: (url: string) => ({ ready: loader.loadAsync(url), release() {} }) } as unknown as RuntimeAssets;
+  const roster=new EnemyActors(scene,loader,actors,resources);
   await expect(roster.prepare(state)).rejects.toThrow('Prepare Skeleton 01 with npm run assets:export-character');
   expect(scene.children).toEqual([player.root]);expect(Object.keys(actors)).toEqual(['player']);
   roster.dispose();vi.restoreAllMocks();
@@ -425,10 +427,9 @@ test('scene cleanup closes a shared bitmap only after its last owned texture is 
 // Protect in-flight shader compilation when cleanup is repeated; no existing test covers review-pool leases.
 test('review cleanup waits for each distinct holder even if one releases twice', async () => {
   const { PreparedAssets } = await import('../src/labs/assets/prepared-assets');
-  const { sceneryLoader } = await import('../src/assets/scenery-loader');
   const gltf = await new GLTFLoader().parseAsync(JSON.stringify({asset:{version:'2.0'},scenes:[{}],scene:0}), '');
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial()); gltf.scene.add(mesh);
-  const load = vi.spyOn(sceneryLoader, 'loadAsync').mockResolvedValue(gltf), disposed = vi.spyOn(mesh.geometry, 'dispose');
+  const load = vi.spyOn(GLTFLoader.prototype, 'loadAsync').mockResolvedValue(gltf), disposed = vi.spyOn(mesh.geometry, 'dispose');
   const pool = new PreparedAssets();
   try {
     const asset = await pool.get({ id: 'fixture', familyId: 'fixture', name: 'Fixture', appearance: '', pack: '', category: 'Other', kind: 'model', url: '/fixture.glb', available: true, warnings: [], uses: [], selected: false, dependencies: [], dependents: [], fingerprint: 'fixture' });

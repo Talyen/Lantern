@@ -10,6 +10,12 @@ import { mappedSurfaceNormal, surfaceSample } from './surface-detail';
 import { materialRecipes } from './material-recipes';
 import { calibrationGain } from './material-calibration';
 
+export const stoneTextureInputs = (study: boolean): [string, boolean, string][] => [
+  [study ? stoneV2 : stoneV1, false, `/assets/textures/environment/${study ? 'showcase/stone-v2.png' : 'stone-v1.png'}`],
+  [study ? normalV2 : normalV1, true, `/assets/textures/environment/ground/${study ? 'stone-v2-normal.png' : 'stone-v1-normal.png'}`],
+  [study ? fieldV2 : fieldV1, true, `/assets/textures/environment/ground/${study ? 'stone-v2-surface.png' : 'stone-v1-surface.png'}`],
+];
+
 export const stoneSurfaceRecipe = materialRecipes.stoneProjection;
 
 /** Color and material fields share each local projection; blended normals are

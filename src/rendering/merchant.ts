@@ -1,14 +1,17 @@
 import { unmatchedMotionNode } from '../animation/rig-bindings';
 import * as THREE from 'three';
-import { sceneryLoader } from '../assets/scenery-loader';
-import { disposeSceneResources, isMesh } from '../assets/resource-ownership';
+import type { RuntimeAssets } from '../assets/runtime-assets';
+import { disposeSceneInstances, isMesh } from '../assets/resource-ownership';
+import { clone } from 'three/addons/utils/SkeletonUtils.js';
 import { markOutline } from './outlines';
 import type { Shop } from '../levels/types';
 
 /** One area-owned NPC with its own verified, packed Mixamo idle. */
-export async function createMerchant(shop: Shop) {
-  const gltf = await sceneryLoader.loadAsync(shop.merchant.model);
-  const root = new THREE.Group(), model = gltf.scene;
+export async function createMerchant(shop: Shop, resources: RuntimeAssets) {
+  const lease = resources.acquireRig(shop.merchant.model, false);
+  let gltf: Awaited<typeof lease.ready>;
+  try { gltf = await lease.ready; } catch (error) { lease.release(); throw error; }
+  const root = new THREE.Group(), model = clone(gltf.scene);
   root.name = 'merchant'; root.userData.transient = true; root.add(model);
   const mixer = new THREE.AnimationMixer(model);
   try {
@@ -26,7 +29,7 @@ export async function createMerchant(shop: Shop) {
     model.traverse(object => { if (isMesh(object)) { object.castShadow = true; object.receiveShadow = true; } });
     markOutline(model, 'actor');
     return { root, update: (dt: number) => mixer.update(dt), dispose: () => {
-      mixer.stopAllAction(); mixer.uncacheRoot(model); root.removeFromParent(); disposeSceneResources(model);
+      mixer.stopAllAction(); mixer.uncacheRoot(model); root.removeFromParent(); disposeSceneInstances(model, { skeletons: true }); lease.release();
     } };
-  } catch (error) { mixer.stopAllAction(); mixer.uncacheRoot(model); disposeSceneResources(model); throw error; }
+  } catch (error) { mixer.stopAllAction(); mixer.uncacheRoot(model); disposeSceneInstances(model, { skeletons: true }); lease.release(); throw error; }
 }

@@ -1,8 +1,9 @@
+import { runtimeAssets } from '../../assets/runtime-assets';
 /* Development gallery: compare silhouettes and authored materials under shared Golden lighting. */
 import * as THREE from 'three';
 import { MeshStandardNodeMaterial } from 'three/webgpu';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { assetLibrary, type AssetInstance } from '../../assets/asset-library';
+import { type AssetInstance } from '../../assets/asset-library';
 import { createRenderer } from '../../rendering/renderer';
 import { resizeDisplay } from '../../rendering/display-resolution';
 import { attachPreviewGraphics, renderPreview, previewGraphicsView } from '../../rendering/preview-graphics';
@@ -27,10 +28,6 @@ const scale = element<HTMLSelectElement>('weapon-size');
 const view = element<HTMLSelectElement>('weapon-view');
 const status = element<HTMLElement>('weapon-status');
 for (const [id, name] of Object.entries(weaponNames)) kind.add(new Option(name, id));
-const catalog = await assetLibrary.getCatalog();
-const existing = Object.values(catalog.assets).filter(asset => asset.status === 'converted' && asset.kind === 'model' && /(?:^|_)Wep_/i.test(asset.name)).sort((a, b) => a.pack.localeCompare(b.pack) || a.name.localeCompare(b.name));
-current.add(new Option('No counterpart', ''));
-for (const entry of existing) current.add(new Option(`${entry.pack} · ${entry.name.replaceAll('_', ' ')}`, entry.id));
 const settings = readSettings();
 settings.dof = 'off'; settings.bloom = 0;
 const look = resolveLighting();
@@ -58,6 +55,10 @@ for (const index of [0, 1]) {
   applyShadowQuality(scene, settings.shadowQuality); pipeline.configure(settings, look.saturation ?? 1, look); await pipeline.ready();
   lanes.push({ scene, mount, renderer, camera: laneCamera, lighting, pipeline, floor, instance: undefined as AssetInstance | undefined });
 }
+const catalog = await runtimeAssets(lanes[0].renderer).library.getCatalog();
+const existing = Object.values(catalog.assets).filter(asset => asset.status === 'converted' && asset.kind === 'model' && /(?:^|_)Wep_/i.test(asset.name)).sort((a, b) => a.pack.localeCompare(b.pack) || a.name.localeCompare(b.name));
+current.add(new Option('No counterpart', ''));
+for (const entry of existing) current.add(new Option(`${entry.pack} · ${entry.name.replaceAll('_', ' ')}`, entry.id));
 function reset(): void { lanes.forEach(lane => lane.pipeline.resetHistory()); }
 function resize(): void {
   for (const lane of lanes) { resizeDisplay(lane.renderer, Math.max(1, lane.mount.clientWidth), Math.max(1, lane.mount.clientHeight)); lane.pipeline.resize(); }
@@ -89,7 +90,7 @@ async function refresh(): Promise<void> {
   const request = ++generation, weapon = kind.value as ArmoryWeapon, counterpart = current.value;
   loading = true; previewError = '';
   status.textContent = 'Loading comparison…';
-  const results = await Promise.allSettled([counterpart ? assetLibrary.loadAsset(counterpart) : Promise.resolve(undefined), asterfallLibrary.loadAsset(`asterfall:${weapon}`)]);
+  const results = await Promise.allSettled([counterpart ? runtimeAssets(lanes[0].renderer).library.loadAsset(counterpart) : Promise.resolve(undefined), asterfallLibrary(runtimeAssets(lanes[1].renderer)).loadAsset(`asterfall:${weapon}`)]);
   if (request === generation) loading = false;
   const loaded = results.map(result => result.status === 'fulfilled' ? result.value : undefined);
   if (disposed || request !== generation || results.some(result => result.status === 'rejected')) {
@@ -128,7 +129,6 @@ window.addEventListener('resize', resize);
 window.addEventListener('pagehide', () => {
   disposed = true; generation++; observer.disconnect(); controls.dispose();
   lanes.forEach(lane => { lane.instance?.release(); lane.floor.geometry.dispose(); lane.floor.material.dispose(); lane.pipeline.dispose(); lane.lighting.dispose(); void lane.renderer.dispose().catch(console.error); });
-  void Promise.all([assetLibrary.dispose(), asterfallLibrary.dispose()]).catch(console.error);
 }, { once: true });
 function tick(): void {
   if (disposed) return;

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Fn, color, mix, positionLocal, positionPrevious, sin, uniform, uv, vec3 } from 'three/tsl';
 import { MeshBasicNodeMaterial } from 'three/webgpu';
-import { assetLibrary, type AssetInstance } from '../assets/asset-library';
+import { type AssetInstance, type AssetLibrary } from '../assets/asset-library';
 import { disposeSceneInstances } from '../assets/resource-ownership';
 import { arrowAsset } from '../gameplay/equipment';
 import type { Projectile, Encounter } from '../gameplay/encounter';
@@ -25,7 +25,7 @@ export class ProjectileVisuals {
   private previousRibbonClock = uniform(0);
   private ribbonGeometry = new THREE.PlaneGeometry(.27, 1.05, 1, 8);
   private ribbonMaterial = new MeshBasicNodeMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide });
-  constructor(parent: THREE.Object3D) {
+  constructor(parent: THREE.Object3D, private library: AssetLibrary) {
     this.root.userData.transient = true; parent.add(this.root);
     this.ribbonGeometry.rotateX(-Math.PI / 2); this.ribbonGeometry.translate(0, 0, -.53);
     const positions = this.ribbonGeometry.getAttribute('position');
@@ -42,7 +42,7 @@ export class ProjectileVisuals {
     this.fireRibbonMaterial.positionNode=this.ribbonMaterial.positionNode;
   }
   prepareArrow(): Promise<void> {
-    return this.loading ??= assetLibrary.loadAsset(arrowAsset).then(instance => {
+    return this.loading ??= this.library.loadAsset(arrowAsset).then(instance => {
       if (this.disposed) { instance.release(); return; }
       this.arrows = instance; instance.object.scale.setScalar(.7); instance.object.updateMatrixWorld(true);
     }).catch((error: unknown) => { this.loading = undefined; throw error; });

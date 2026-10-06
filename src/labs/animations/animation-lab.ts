@@ -1,9 +1,9 @@
 import { readPreference, savePreference } from '../../data/preferences';
 import { isRecord } from '../../data/json';
-import { disposeSceneInstances, disposeSceneResources, sceneTextures } from '../../assets/resource-ownership';
+import { disposeSceneInstances } from '../../assets/resource-ownership';
 import { applyShadowQuality } from '../../rendering/quality-presets';
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { runtimeAssets } from '../../assets/runtime-assets';
 import { clone } from 'three/addons/utils/SkeletonUtils.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createRenderer } from '../../rendering/renderer';
@@ -20,8 +20,7 @@ import { PlayerLantern } from '../../rendering/player-lantern';
 import { GatheringTools } from '../../rendering/gathering-tools';
 import { asterfallLibrary, armoryDefinitions } from '../weapons/armory';
 import { itemDefinitions } from '../../gameplay/equipment';
-import { assetLibrary } from '../../assets/asset-library';
-import { getMotionCatalog, loadEquipmentMotions, loadMotionClip, holdStaffArm, type MotionCatalog, type MotionClip, type MotionPack } from '../../animation/combat-animations';
+import { getMotionCatalog, loadEquipmentMotions, loadMotionClip, releaseMotionClip, releaseCombatMotions, holdStaffArm, type MotionCatalog, type MotionClip, type MotionPack } from '../../animation/combat-animations';
 import type { RigId } from '../../animation/combat-animations';
 import type { Loadout } from '../../gameplay/equipment';
 import './animation-lab.css';
@@ -31,7 +30,7 @@ type Clip = MotionClip & { mappedBones?: number; auditRole?: string };
 type Pack = Omit<MotionPack, 'clips'> & { license?: string; url?: string; clips: Clip[] };
 type Catalog = Omit<MotionCatalog, 'packs'> & { character: string; characterLabel: string; motion: string; packs: Pack[] };
 type Favorite = { pack: string; clip: string };
-type Lane = { group: THREE.Group; rig: RigId; rigLoading: boolean; previewLoading?: boolean; error?: string; weaponSource: HTMLSelectElement; weaponScale: HTMLSelectElement; catalog?: Catalog; source?: THREE.Group; equipment?: Equipment; lantern?: PlayerLantern; tools?: GatheringTools; loadout: Loadout; model?: THREE.Group; mixer?: THREE.AnimationMixer; action?: THREE.AnimationAction; clip?: Clip; pack?: Pack; generation: number; rigSelect: HTMLSelectElement; loadoutSelect: HTMLSelectElement; packSelect: HTMLSelectElement; clipSelect: HTMLSelectElement; search: HTMLInputElement; info: HTMLElement; favorite: HTMLButtonElement; timing: HTMLElement };
+type Lane = { group: THREE.Group; rig: RigId; rigLoading: boolean; previewLoading?: boolean; error?: string; weaponSource: HTMLSelectElement; weaponScale: HTMLSelectElement; catalog?: Catalog; source?: THREE.Group; releaseSource?: () => void; equipment?: Equipment; lantern?: PlayerLantern; tools?: GatheringTools; loadout: Loadout; model?: THREE.Group; mixer?: THREE.AnimationMixer; action?: THREE.AnimationAction; clip?: Clip; pack?: Pack; generation: number; rigSelect: HTMLSelectElement; loadoutSelect: HTMLSelectElement; packSelect: HTMLSelectElement; clipSelect: HTMLSelectElement; search: HTMLInputElement; info: HTMLElement; favorite: HTMLButtonElement; timing: HTMLElement };
 const loadouts: Record<string, Loadout> = { axe: { main: 'axe', off: null }, 'axe-shield': { main: 'axe', off: 'shield' }, sword: { main: 'sword', off: null }, 'sword-shield': { main: 'sword', off: 'shield' }, bow: { main: 'bow', off: null }, staff: { main: 'staff', off: null } };
 const loadoutNames: Record<string, string> = { axe: 'Axe', 'axe-shield': 'Axe + Shield', sword: 'Sword', 'sword-shield': 'Sword + Shield', bow: 'Bow', staff: 'Staff' };
 document.title = 'Lantern — Animations';
@@ -155,9 +154,8 @@ const resetHistories = () => { previews.forEach((preview) => preview.pipeline.re
 controls.addEventListener('change', () => frameLoop.invalidate());
 document.addEventListener('visibilitychange', () => frameLoop.visibilityChanged());
 window.addEventListener('lanternvisibilitychange', () => frameLoop.visibilityChanged());
-window.addEventListener('pagehide', () => { disposed = true; observer.disconnect(); window.removeEventListener('resize', resize); frameLoop.dispose(); controls.dispose(); lanes.forEach(clearLane); void Promise.allSettled(characterCache.values()).then(results => results.forEach(result => { if (result.status === 'fulfilled') disposeSceneResources(result.value); })).catch((error: unknown) => console.error('Unable to release character models.', error)); void asterfallLibrary.dispose().catch((error: unknown) => console.error('Unable to release Asterfall assets.', error)); void assetLibrary.dispose().catch((error: unknown) => console.error('Unable to release lab assets.', error)); previews.forEach(({ pipeline, renderer, lighting }) => { pipeline.dispose(); lighting.dispose(); void renderer.dispose().catch((error: unknown) => console.error('Unable to release graphics.', error)); }); }, { once: true });
-const loader = new GLTFLoader();
-const characterCache = new Map<string, Promise<THREE.Group>>();
+window.addEventListener('pagehide', () => { disposed = true; observer.disconnect(); window.removeEventListener('resize', resize); frameLoop.dispose(); controls.dispose(); lanes.forEach(lane => { clearLane(lane); lane.releaseSource?.(); }); previews.forEach(({ pipeline, renderer, lighting }) => { pipeline.dispose(); lighting.dispose(); void renderer.dispose().catch((error: unknown) => console.error('Unable to release graphics.', error)); }); }, { once: true });
+const assetsFor = (lane: Lane) => runtimeAssets(renderers[lanes.indexOf(lane)]);
 function updatePlaybackControls(): void { updateStatus(); const disabled = !lanes.some((lane) => lane.action); pause.disabled = restart.disabled = step.disabled = scrub.disabled = disabled; }
 function saved(lane: Lane): boolean { return favorites.some((f) => f.pack === lane.pack?.id && f.clip === lane.clip?.id); }
 function updateFavorite(lane: Lane): void { lane.favorite.textContent = saved(lane) ? '★ Saved favorite' : '☆ Save favorite'; lane.favorite.setAttribute('aria-pressed', String(saved(lane))); }
@@ -237,27 +235,29 @@ async function selectClip(lane: Lane): Promise<void> {
   let lantern: PlayerLantern | undefined;
   let tools: GatheringTools | undefined;
   let model: THREE.Group | undefined;
+  let sourceMotion: THREE.AnimationClip | undefined;
   try {
-    const motion = (await loadMotionClip(loader, clip)).clone();
+    sourceMotion = await loadMotionClip(assetsFor(lane).loader, clip);
+    const motion = sourceMotion.clone();
     if (lane.loadout.main==='staff' && !clip.audit && !['hit','death','dodge','chop','mine'].includes(clip.category)) {
-      const preparedMotions=await loadEquipmentMotions(loader,lane.rig,lane.rig==='player' ? lane.loadout : {main:'axe',off:null},lane.source);
-      if (lane.rig==='player') holdStaffArm(motion,preparedMotions.clips.idle);
+      const preparedMotions=await loadEquipmentMotions(assetsFor(lane).loader,lane.rig,lane.rig==='player' ? lane.loadout : {main:'axe',off:null},lane.source);
+      try { if (lane.rig==='player') holdStaffArm(motion,preparedMotions.clips.idle); } finally { releaseCombatMotions(preparedMotions); }
     }
     if (generation !== lane.generation || disposed) return;
     const asterfall = lane.weaponSource.value === 'asterfall';
-    const definitions = asterfall ? await armoryDefinitions(lane.weaponScale.value === 'authored') : itemDefinitions;
+    const definitions = asterfall ? await armoryDefinitions(lane.weaponScale.value === 'authored', assetsFor(lane)) : itemDefinitions;
     if (generation !== lane.generation || disposed) return;
-    model = fitModel(lane); equipment = new Equipment(model, lane.rig, asterfall ? asterfallLibrary : assetLibrary, definitions);
+    model = fitModel(lane); equipment = new Equipment(model, lane.rig, asterfall ? asterfallLibrary(assetsFor(lane)) : assetsFor(lane).library, definitions);
     const prepared = await equipment.stage(lane.loadout);
     if (generation !== lane.generation || disposed) { equipment.dispose(); disposeSceneInstances(model, { skeletons: true }); return; }
     equipment.commit(prepared);
     if (lane.rig === 'player') {
-      lantern = new PlayerLantern(model, el<HTMLInputElement>('lab-lantern').checked);
+      lantern = new PlayerLantern(model, el<HTMLInputElement>('lab-lantern').checked, assetsFor(lane));
       await lantern.initialize();
       if (generation !== lane.generation || disposed) { lantern.dispose(); equipment.dispose(); disposeSceneInstances(model, { skeletons: true }); return; }
     }
     if (lane.rig === 'player' && ['chop', 'mine'].includes(clip.category)) {
-      tools = new GatheringTools(model, equipment); await tools.prepare();
+      tools = new GatheringTools(model, equipment, assetsFor(lane).library); await tools.prepare();
       if (generation !== lane.generation || disposed) { tools.dispose(); lantern?.dispose(); equipment.dispose(); disposeSceneInstances(model, { skeletons: true }); return; }
       tools.show(clip.category === 'chop' ? 'tree' : 'stone');
     }
@@ -278,7 +278,7 @@ async function selectClip(lane: Lane): Promise<void> {
     equipment?.dispose();
     if (model && model !== lane.model) disposeSceneInstances(model, { skeletons: true });
     if (generation === lane.generation) { lane.error = String(error); lane.info.textContent = `Preview unavailable: ${lane.error}`; }
-  } finally { if (generation === lane.generation) lane.previewLoading = false; }
+  } finally { if (sourceMotion) releaseMotionClip(sourceMotion); if (generation === lane.generation) lane.previewLoading = false; }
 }
 async function fillClips(lane: Lane, preferred?: string): Promise<void> {
   if (lane.rigLoading) return;
@@ -302,19 +302,21 @@ async function selectRig(lane: Lane, rig: RigId): Promise<void> {
   lane.error = undefined; lane.rigLoading = true; lane.info.textContent = 'Loading character…';
   lane.rigSelect.disabled = lane.loadoutSelect.disabled = lane.packSelect.disabled = lane.clipSelect.disabled = lane.search.disabled = true;
   try {
-    const gameplayCatalog = await getMotionCatalog(rig) as Catalog;
+    const gameplayCatalog = await getMotionCatalog(rig, assetsFor(lane).loader) as Catalog;
     // Comparison clips live outside the gameplay catalog and build dependency closure.
-    const response = await fetch(characters[rig].catalog.replace(/catalog\.json$/, 'study.json'));
-    let comparisons: Clip[] = [];
-    if (response.ok) {
+    const comparisons = await assetsFor(lane).transfers.run(async () => {
+      const response = await fetch(characters[rig].catalog.replace(/catalog\.json$/, 'study.json'));
+      if (!response.ok) { if (response.status === 404) return []; throw new Error('Unable to load comparison motions. Reload to retry.'); }
       const study = await response.json() as { version: number; clips: Clip[] };
       if (study.version !== 1 || !Array.isArray(study.clips) || study.clips.some(clip => clip.category !== 'study')) throw new Error('Prepare comparison motions with npm run assets:export-character.');
-      comparisons = study.clips;
-    } else if (response.status !== 404) throw new Error('Unable to load comparison motions. Reload to retry.');
+      return study.clips;
+    });
     const catalog: Catalog = { ...gameplayCatalog, packs: gameplayCatalog.packs.map(pack => ({ ...pack, clips: [...pack.clips, ...(pack.id === 'mixamo' ? comparisons : [])] })) };
-    if (!characterCache.has(catalog.character)) characterCache.set(catalog.character, loader.loadAsync(catalog.character).then(gltf => { sceneTextures(gltf.scene); return gltf.scene; }).catch((error: unknown) => { characterCache.delete(catalog.character); throw error; }));
-    const source = await characterCache.get(catalog.character)!;
-    if (disposed || generation !== lane.generation) return;
+    const lease = assetsFor(lane).acquireRig(catalog.character);
+    let source: THREE.Group;
+    try { source = (await lease.ready).scene; } catch (error) { lease.release(); throw error; }
+    if (disposed || generation !== lane.generation) { lease.release(); return; }
+    clearLane(lane); lane.releaseSource?.(); lane.releaseSource = lease.release;
     lane.rig = rig; lane.catalog = catalog; lane.source = source; lane.rigSelect.value = rig; lane.rigLoading = false;
     lane.packSelect.replaceChildren(...catalog.packs.filter(pack => pack.id === 'mixamo').map(pack => new Option(`${pack.label} (${pack.clips.length})`, pack.id)));
     lane.packSelect.value = 'mixamo'; lane.packSelect.disabled = false;

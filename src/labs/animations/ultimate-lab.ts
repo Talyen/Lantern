@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { runtimeAssets } from '../../assets/runtime-assets';
 import { clone } from 'three/addons/utils/SkeletonUtils.js';
 import { createRenderer } from '../../rendering/renderer';
 import { resizeDisplay } from '../../rendering/display-resolution';
@@ -8,7 +8,7 @@ import { CoreEffects } from '../../rendering/effects';
 import { cameraDistanceMultipliers } from '../../rendering/graphics-settings';
 import { readSettings } from '../../rendering/graphics-settings';
 import { createCamera } from '../../session/camera';
-import { createWorld, buildArea, disposeAreaCache, type AreaInstance } from '../../levels/builder';
+import { createWorld, buildArea, type AreaInstance } from '../../levels/builder';
 import { resolveAreaLighting } from '../../levels/lighting';
 import { areas } from '../../levels/registry';
 import { Equipment } from '../../rendering/equipment';
@@ -16,7 +16,7 @@ import { PlayerLantern } from '../../rendering/player-lantern';
 import { markOutline } from '../../rendering/outlines';
 import { prepareStandardMaterials } from '../../rendering/surface-detail';
 import { disposeSceneResources, disposeSceneInstances, isMesh, sceneTextures } from '../../assets/resource-ownership';
-import { loadEquipmentMotions } from '../../animation/combat-animations';
+import { loadEquipmentMotions, releaseCombatMotions, type CombatMotions } from '../../animation/combat-animations';
 import { GameAudio } from '../../audio/audio';
 import characters from '../../../assets/playable-characters.json';
 import { UltimateEffects, ultimateSequences, ultimateTargets, type UltimateKind } from './ultimate-effects';
@@ -51,10 +51,10 @@ let effects: UltimateEffects | undefined;
 let player: PreviewActor | undefined;
 const targets: PreviewActor[] = [];
 const sources: THREE.Group[] = [];
+const motionSources: CombatMotions[] = [];
 const world = createWorld(), scene = world.scene;
 const ambientEffects = new CoreEffects(); scene.add(ambientEffects.root);
 const audio = new GameAudio();
-const loader = new GLTFLoader();
 const yaw = authored.layout.player.yaw;
 const forward = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
 const origin = new THREE.Vector3(camp.position[0], .04, camp.position[1]).add(new THREE.Vector3(0, 0, -2.5).applyQuaternion(forward));
@@ -78,19 +78,20 @@ async function actor(source: THREE.Group, clips: THREE.AnimationClip[], location
   root.position.copy(location); root.rotation.y = actorYaw;
   const mixer = new THREE.AnimationMixer(model), idleClip = clips.find(c => c.name === 'idle');
   if (!idleClip) throw new Error('Compatible idle motion is missing.');
-  const equipment = new Equipment(root, rig), result: PreviewActor = { root, model, mixer, idle: action(mixer, idleClip), actions: new Map(), equipment, location: location.clone() };
+  const equipment = new Equipment(root, rig, runtimeAssets(renderer!).library), result: PreviewActor = { root, model, mixer, idle: action(mixer, idleClip), actions: new Map(), equipment, location: location.clone() };
   const hit = clips.find(c => c.name === 'hit'); if (hit) result.hit = action(mixer, hit);
   scene.add(root); return result;
 }
 async function initialize(): Promise<void> {
   renderer = await createRenderer(mount);
+  const assets = runtimeAssets(renderer), loader = assets.loader;
   cameraOwner = createCamera(renderer.domElement); cameraOwner.setDistance(readSettings().cameraDistance);
   resizeDisplay(renderer, Math.max(1, mount.clientWidth), Math.max(1, mount.clientHeight)); cameraOwner.resize(mount.clientWidth, mount.clientHeight);
   const look = resolveAreaLighting(authored), settings = readSettings();
   const lighting = { definition: look, fires: [] as THREE.PointLight[], shadow: null as THREE.PointLight | null };
   graphics = new Graphics({ ...world, camera: cameraOwner.camera, renderer, controls: cameraOwner.controls, mount, invalidate() {}, lighting }, settings, ambientEffects);
   status.textContent = 'Preparing Forest Clearing…';
-  area = await buildArea(authored); scene.add(area.root); area.activate(ambientEffects); lighting.fires = area.fires; lighting.shadow = area.shadow;
+  area = await buildArea(authored, 'projected', false, assets); scene.add(area.root); area.activate(ambientEffects); lighting.fires = area.fires; lighting.shadow = area.shadow;
   if (area.missing.length) throw new Error(`Prepared woodland art is incomplete: ${area.missing.join(', ')}`);
   ambientEffects.setQuality(settings.particleQuality); ambientEffects.setAtmosphericParticles(settings.atmosphericParticles);
   const ground = area.root.getObjectByName('woodland-ground');
@@ -99,21 +100,24 @@ async function initialize(): Promise<void> {
   const playerSource = await loader.loadAsync(characters.player.model); sources.push(playerSource.scene); sceneTextures(playerSource.scene);
   player = await actor(playerSource.scene, playerSource.animations, origin, yaw, 'player');
   const bow = await loadEquipmentMotions(loader, 'player', { main: 'bow', off: null }, player.model);
+  motionSources.push(bow);
   player.actions.set('arrow-rain', action(player.mixer,bow.clips['arrow-rain']!));
   const bowIdle = action(player.mixer, bow.clips.idle);
   const sword=await loadEquipmentMotions(loader,'player',{main:'sword',off:null},player.model);
+  motionSources.push(sword);
   player.actions.set('executioner',action(player.mixer,sword.clips.executioner!));
   player.actions.set('onslaught',action(player.mixer,sword.clips.onslaught!));
   const swordIdle=action(player.mixer,sword.clips.idle);
   player.idle.setEffectiveWeight(0); player.idle = bowIdle;
   const enemySource = await loader.loadAsync(characters.enemy.model); sources.push(enemySource.scene); sceneTextures(enemySource.scene);
   const enemy = await loadEquipmentMotions(loader, 'enemy', { main: 'axe', off: null });
+  motionSources.push(enemy);
   const enemyClips = ['idle', 'hit'].map(role => { const clip = enemy.clips[role as 'idle' | 'hit'].clone(); clip.name = role; return clip; });
   for (const position of ultimateTargets) {
     const target = await actor(enemySource.scene, enemyClips, at(position), yaw + Math.PI, 'enemy'); targets.push(target);
     target.equipment.commit(await target.equipment.stage({ main: 'axe', off: null }));
   }
-  player.lantern = new PlayerLantern(player.root, true); await player.lantern.initialize();
+  player.lantern = new PlayerLantern(player.root, true, assets); await player.lantern.initialize();
   effects = new UltimateEffects(ground, origin.clone().setY(0), yaw, settings.particleQuality, renderer, scene); scene.add(effects.root); await effects.prepare();
   await changeKind('arrow-rain'); effects.stageMaterials(cameraOwner.camera);
   // Set up the same pipeline and prepared Golden lighting used by gameplay.
@@ -227,7 +231,7 @@ async function cleanup(): Promise<void> {
   if (cleaned) return; cleaned = true;
   observer?.disconnect(); window.removeEventListener('resize', resize); cancelAnimationFrame(frame); audio.dispose();
   for (const actor of [player, ...targets]) if (actor) { actor.lantern?.dispose(); actor.equipment.dispose(); actor.mixer.stopAllAction(); actor.mixer.uncacheRoot(actor.mixer.getRoot()); disposeSceneInstances(actor.root, { skeletons: true }); actor.root.removeFromParent(); }
-  effects?.dispose(); graphics?.dispose(); area?.dispose(); cameraOwner?.controls.dispose(); sources.forEach(disposeSceneResources); await disposeAreaCache();
+  effects?.dispose(); graphics?.dispose(); area?.dispose(); cameraOwner?.controls.dispose(); sources.forEach(disposeSceneResources); motionSources.forEach(releaseCombatMotions);
   await renderer?.dispose();
 }
 const preparing = initialize();

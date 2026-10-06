@@ -15,7 +15,7 @@ export type ProbeCoefficients = { dimensions: [number, number, number]; flameEmi
 
 
 /** Render inputs only: gameplay names, arrivals, enemies and rewards do not invalidate GI. */
-export async function lightingBakeSignature(area: ResolvedAreaDefinition, root: THREE.Group): Promise<string> {
+export async function lightingBakeSignature(area: ResolvedAreaDefinition, root: THREE.Group, progress: (stage: string) => void = () => {}): Promise<string> {
   root.updateMatrixWorld(true);
   const meshes: string[] = [];
   const visible = (object: THREE.Object3D) => { for (let parent: THREE.Object3D | null = object; parent; parent = parent.parent) if (!parent.visible || parent.userData.transient || parent instanceof THREE.Light) return false; return true; };
@@ -56,7 +56,8 @@ export async function lightingBakeSignature(area: ResolvedAreaDefinition, root: 
   };
   const objects: THREE.Mesh[] = [];
   root.traverse(object => { if (isMesh(object) && !(object instanceof THREE.SkinnedMesh) && visible(object)) objects.push(object); });
-  for (const mesh of objects) {
+  for (const [meshIndex, mesh] of objects.entries()) {
+    progress(`fingerprint:geometry:${meshIndex + 1}/${objects.length}`);
     const attributes: Record<string, string> = {};
     for (const [name, attribute] of Object.entries(mesh.geometry.attributes)) {
       const array = attribute instanceof THREE.InterleavedBufferAttribute ? attribute.data.array : attribute.array;
@@ -87,6 +88,7 @@ export async function lightingBakeSignature(area: ResolvedAreaDefinition, root: 
   // Two fresh source reads overlap I/O without retaining the whole area's
   // GLB/normal-atlas bytes at once. Preserve complete, uncached byte hashes.
   for (let start = 0; start < urls.length; start += 2) {
+    progress(`fingerprint:sources:${start + 1}/${urls.length}`);
     sources.push(...await Promise.all(urls.slice(start, start + 2).map(async url => {
       const response = await fetch(url, { cache: 'no-store' });
       if (!response.ok) throw new Error(`Cannot fingerprint lighting source: ${url}`);
@@ -97,6 +99,7 @@ export async function lightingBakeSignature(area: ResolvedAreaDefinition, root: 
   const payload = { version: lightingBakeVersion, three: THREE.REVISION, materialRecipes,
     sun: look.sun, environment: look.environment, probes: look.probes, emitters: staticFlameEmitters(root), meshes: meshes.sort(), sources: sources.sort(),
     procedural: ((root.userData.lightingProcedural as unknown[] | undefined) ?? []).map((value: unknown) => JSON.stringify(value)).sort(), surfaces: (root.userData.surfaceMode as string | undefined) ?? 'authored' };
+  progress('fingerprint:summary');
   return digest(new TextEncoder().encode(JSON.stringify(payload)));
 }
 

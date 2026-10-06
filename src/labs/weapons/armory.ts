@@ -1,9 +1,10 @@
 import * as THREE from 'three';
-import { AssetLibrary } from '../../assets/asset-library';
+import type { RuntimeAssets } from '../../assets/runtime-assets';
+import { type AssetLibrary } from '../../assets/asset-library';
 import { gatheringToolAssets, itemDefinitions } from '../../gameplay/equipment';
 import type { HandItem } from '../../gameplay/equipment';
 
-export const asterfallLibrary = new AssetLibrary('/vendor/asterfall/catalog.json');
+export function asterfallLibrary(resources: RuntimeAssets): AssetLibrary { return resources.libraryFor('/vendor/asterfall/catalog.json'); }
 export const weaponNames = { sword: 'Sword', axe: 'Axe', mace: 'Mace', pickaxe: 'Pickaxe', bow: 'Bow', shield: 'Shield', greatsword: 'Greatsword', greathammer: 'Greathammer', crossbow: 'Crossbow', staff: 'Staff', wand: 'Wand' };
 export type ArmoryWeapon = keyof typeof weaponNames;
 export const counterparts: Partial<Record<ArmoryWeapon, string>> = {
@@ -12,8 +13,8 @@ export const counterparts: Partial<Record<ArmoryWeapon, string>> = {
   pickaxe: gatheringToolAssets.pickaxe, greathammer: 'viking-realm:model:sm-wep-hammer-01',
 };
 /** Lab-only model definitions preserve gameplay identities and authored attachment pivots. */
-export async function armoryDefinitions(authored: boolean): Promise<typeof itemDefinitions> {
-  const catalog = await asterfallLibrary.getCatalog();
+export async function armoryDefinitions(authored: boolean, resources: RuntimeAssets): Promise<typeof itemDefinitions> {
+  const catalog = await asterfallLibrary(resources).getCatalog();
   const definitions = { ...itemDefinitions };
   for (const item of ['axe','sword','bow','staff','shield'] as HandItem[]) {
     const entry = catalog.assets[`asterfall:${item}`];

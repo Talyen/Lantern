@@ -1,17 +1,13 @@
+import { installSurfaceShadowTemplates } from './surface-detail';
 import { installIndirectLighting } from './indirect-lighting';
 import { displayPixelRatio, watchDisplayResolution } from './display-resolution';
 import { recordFailure } from '../diagnostics/report';
+import { installNativePreparation, nativePreparation, trackNative, snapshotNativeDescriptor, cancelNativePreparation, type NativePipelineDescriptor, type NativePipelineDevice } from './native-preparation';
 import { prepareSceneryLoader } from '../assets/scenery-loader';
 import * as THREE from 'three';
 import { WebGPURenderer } from 'three/webgpu';
 
-type FrameCompilation = { generation: number; asynchronous: boolean; pending: Set<Promise<void>>; failure?: Error };
-// Vite can load different timestamped copies of this owner during a reload.
-// Keep the state on the native renderer so every shared graph sees its lifetime.
-const frameCompilationKey = Symbol.for('lantern.nativeFrameCompilation');
-function frameCompilation(renderer: WebGPURenderer): FrameCompilation | undefined {
-  return Reflect.get(renderer, frameCompilationKey) as FrameCompilation | undefined;
-}
+const frameCompilation = nativePreparation;
 
 /** Native WebGPU is a requirement, including labs and authoring previews. */
 export async function createRenderer(mount: HTMLElement): Promise<WebGPURenderer> {
@@ -28,38 +24,51 @@ export async function createRenderer(mount: HTMLElement): Promise<WebGPURenderer
     if (Reflect.get(renderer, '_initialized')) await renderer.dispose().catch((cleanupError: unknown) => console.error('Unable to release failed graphics.', cleanupError));
     throw error;
   }
-  // r186 resolves asynchronous shader compilation even when backend creation
-  // failed. Add a rejecting promise so the shared graph can stop startup.
+  // Snapshot native descriptors synchronously while r186's current pass is
+  // valid. Each queued submission owns a device validation scope, popped before
+  // awaiting compilation, so out-of-order completion cannot steal another error.
   const backend = renderer.backend as unknown as {
+    device: NativePipelineDevice;
     createRenderPipeline: (object: { pipeline: object }, promises?: Promise<unknown>[] | null) => void;
     get: (pipeline: object) => { error?: boolean };
   };
   const createPipeline = backend.createRenderPipeline.bind(backend);
-  const frames: FrameCompilation = { generation: 0, asynchronous: false, pending: new Set() };
-  Reflect.set(renderer, frameCompilationKey, frames);
+  const frames = installNativePreparation(renderer);
   backend.createRenderPipeline = (object, promises) => {
-    // Live graph rendering must not synchronously block Safari on first-use
-    // shaders. Explicit compileAsync and probe captures keep their own policy.
-    const deferredFrame = promises === null && frames.asynchronous;
-    const compilations = deferredFrame ? [] : promises;
-    const first = compilations?.length ?? 0;
-    createPipeline(object, compilations);
-    if (compilations) {
-      const pipeline = object.pipeline;
-      const ready = Promise.all(compilations.slice(first)).then(() => {
-        if (backend.get(pipeline).error) throw new Error('WebGPU shader compilation failed.');
-      });
-      if (deferredFrame) {
-        const generation = frames.generation;
-        frames.pending.add(ready);
-        ready.then(() => frames.pending.delete(ready), (error: unknown) => {
-          frames.pending.delete(ready);
-          if (generation !== frames.generation) return;
-          frames.failure = error instanceof Error ? error : new Error(String(error));
-          recordFailure('gpu-compilation', frames.failure);
-        });
-      } else compilations.push(ready);
-    }
+    if (promises === null && !frames.asynchronous) { createPipeline(object, promises); return; }
+    const nativeDevice = backend.device, pipeline = object.pipeline, compilations: Promise<unknown>[] = [];
+    let filter: 'validation' = 'validation', validation = Promise.resolve<{ message?: string } | null>(null);
+    const scoped = new Proxy(nativeDevice, { get(target, property) {
+      if (property === 'pushErrorScope') return (value: 'validation') => { filter = value; };
+      if (property === 'popErrorScope') return () => validation;
+      if (property === 'createRenderPipelineAsync') return (descriptor: NativePipelineDescriptor) => {
+        const snapshot = snapshotNativeDescriptor(descriptor);
+        let finishValidation!: (error: { message?: string } | null) => void;
+        validation = new Promise(resolve => { finishValidation = resolve; });
+        return frames.pipelines.run(async () => {
+          nativeDevice.pushErrorScope(filter);
+          let pipeline: Promise<object>;
+          try { pipeline = nativeDevice.createRenderPipelineAsync(snapshot); }
+          catch (error) { pipeline = Promise.reject(error); }
+          const scope = nativeDevice.popErrorScope();
+          // Pop now; waiting would nest scopes across concurrent compilations.
+          const results = await Promise.allSettled([pipeline, scope]);
+          const checked = results[1]; finishValidation(checked.status === 'fulfilled' ? checked.value : null);
+          if (checked.status === 'rejected') throw checked.reason;
+          const result = results[0]; if (result.status === 'rejected') throw result.reason;
+          return result.value;
+        }, 0, frames.abort.signal).catch((error: unknown) => { finishValidation(null); throw error; });
+      };
+      const value: unknown = Reflect.get(target, property, target);
+      return typeof value === 'function' ? value.bind(target) as unknown : value;
+    } });
+    backend.device = scoped;
+    try { createPipeline(object, compilations); } finally { backend.device = nativeDevice; }
+    const ready = Promise.all(compilations).then(() => {
+      if (backend.get(pipeline).error) throw new Error('WebGPU shader compilation failed.');
+    });
+    void trackNative(renderer, ready).catch(() => {});
+    if (promises) promises.push(ready);
   };
   const device = Reflect.get(renderer.backend, 'device') as (EventTarget & { lost?: Promise<{ reason: string; message: string }> }) | undefined;
   device?.addEventListener('uncapturederror', event => {
@@ -75,8 +84,8 @@ export async function createRenderer(mount: HTMLElement): Promise<WebGPURenderer
     mount.dataset.renderError = message;
     recordFailure('gpu-device-lost', message);
   }).catch((error: unknown) => recordFailure('gpu-device-lost', error));
-  installIndirectLighting(renderer);
-  prepareSceneryLoader(renderer);
+  installIndirectLighting(renderer); installSurfaceShadowTemplates(renderer);
+  await prepareSceneryLoader(renderer);
   watchDisplayResolution(); renderer.setPixelRatio(displayPixelRatio());
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -141,7 +150,8 @@ export function pendingNativeCompilations(renderer: WebGPURenderer): number {
 export function resetNativeFrameCompilation(renderer: WebGPURenderer): void {
   const frames = frameCompilation(renderer);
   if (!frames) throw new Error('Native WebGPU compilation tracking is unavailable.');
-  frames.generation++;
-  frames.pending.clear();
-  frames.failure = undefined;
+  frames.generation++; frames.abort.abort(); frames.abort = new AbortController();
+  frames.pending.clear(); frames.building.clear(); frames.failure = undefined;
 }
+
+export { cancelNativePreparation };

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { assetLibrary, type AssetInstance, type AssetLibrary } from '../assets/asset-library';
+import { type AssetInstance, type AssetLibrary } from '../assets/asset-library';
 import { itemDefinitions, normalizeLoadout, weaponFamily, type HandItem, type Loadout } from '../gameplay/equipment';
 import { markOutline } from './outlines';
 
@@ -16,7 +16,7 @@ export class Equipment {
   private current: PreparedEquipment | null = null;
   private candidates = new Set<PreparedEquipment>();
   private disposed = false;
-  constructor(private actor: THREE.Group, private rig: 'player' | 'enemy' | 'skeleton' = 'player', private library: AssetLibrary = assetLibrary, private definitions: typeof itemDefinitions = itemDefinitions) {}
+  constructor(private actor: THREE.Group, private rig: 'player' | 'enemy' | 'skeleton' = 'player', private library: AssetLibrary, private definitions: typeof itemDefinitions = itemDefinitions) {}
   async stage(requested: Loadout): Promise<PreparedEquipment> {
     if (this.disposed) throw new Error('Equipment has been closed.');
     const loadout = normalizeLoadout(requested);

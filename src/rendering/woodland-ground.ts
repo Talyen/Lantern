@@ -19,6 +19,17 @@ import { calibrationGain } from './material-calibration';
 
 export const woodlandLayerUrls: Record<GroundLayer, string> = { earth: earthUrl, litter: litterUrl, 'rocky-soil': rockyUrl };
 const fields = { earth: [earthNormal, earthData], litter: [litterNormal, litterData], 'rocky-soil': [rockyNormal, rockyData] };
+export const woodlandTextureInputs: [string, boolean, string][] = [
+  [earthUrl, false, '/assets/textures/environment/showcase/earth-v2.png'],
+  [litterUrl, false, '/assets/textures/environment/showcase/litter-v2.png'],
+  [rockyUrl, false, '/assets/textures/environment/showcase/rocky-soil-v2.png'],
+  [earthNormal, true, '/assets/textures/environment/ground/earth-normal.png'],
+  [earthData, true, '/assets/textures/environment/ground/earth-surface.png'],
+  [litterNormal, true, '/assets/textures/environment/ground/litter-normal.png'],
+  [litterData, true, '/assets/textures/environment/ground/litter-surface.png'],
+  [rockyNormal, true, '/assets/textures/environment/ground/rocky-soil-normal.png'],
+  [rockyData, true, '/assets/textures/environment/ground/rocky-soil-surface.png'],
+];
 export const woodlandGroundRecipe = { ...materialRecipes.ground.default, edge: 1.1, heightBlend: .12 };
 type WoodlandGroundRecipe = typeof woodlandGroundRecipe;
 // Clearing is the first composed material study. Other areas retain their

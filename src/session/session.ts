@@ -1,4 +1,7 @@
 import { resizeDisplay } from '../rendering/display-resolution';
+import { cancelNativePreparation } from '../rendering/renderer';
+import { nativePreparation } from '../rendering/native-preparation';
+import { attachPreviewGraphics } from '../rendering/preview-graphics';
 import { loadRigArt } from '../assets/rig-art';
 import { RenewalVisibility } from './renewal-visibility';
 import { finishSubmittedFrame, resetNativeFrameCompilation } from '../rendering/renderer';
@@ -28,7 +31,7 @@ import { AreaTransitionController, type AreaOperation, type AreaRequest } from '
 import type { AreaChange, AreaChangeResult } from './area-change';
 import { MenuController } from './menu-controller';
 import { InteractionActions, areaChangeFailed } from './interaction-actions';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { runtimeAssets } from '../assets/runtime-assets';
 import { createEncounter, resetEncounter, type EncounterEvent, type ActorId, type AimPoint } from '../gameplay/encounter';
 import { readSettings } from '../rendering/graphics-settings';
 import type { WebGPURenderer } from 'three/webgpu';
@@ -108,6 +111,7 @@ const preparation = { generation: 0, destination: 'startup', stage: 'character' 
 async function dispose(): Promise<void> {
   if (closed) return;
   closed = true; lifecycle.abort();
+  await cancelNativePreparation(ctx.renderer);
   await areaTransitions?.dispose();
   for (const release of releases.reverse()) {
     try { await release(); } catch (error) { console.error('Unable to release adventure resources.', error); }
@@ -198,17 +202,18 @@ const encounter = createEncounter('loading', areaState.definition.layout);
 const impact = new CombatImpact();
 releases.push(() => { impact.clear(); cameraOwner.clearShake(); });
 const player = makeActor(scene, encounter.player);
-releases.push(() => { player.mixer?.stopAllAction(); if (player.mixer) player.mixer.uncacheRoot(player.mixer.getRoot()); disposeSceneInstances(player.root, { skeletons: true }); });
+releases.push(() => { player.mixer?.stopAllAction(); if (player.mixer) player.mixer.uncacheRoot(player.mixer.getRoot()); disposeSceneInstances(player.root, { skeletons: true }); playerArtRelease(); });
 const actors: Record<ActorId, Actor> = { player };
-const loader = new GLTFLoader();
+const resources = runtimeAssets(renderer), loader = resources.loader;
+let playerArtRelease = () => {};
 const approach = new ClickApproach(adventure, encounter);
-const playerEquipment = new Equipment(player.root);
+const playerEquipment = new Equipment(player.root, 'player', resources.library);
 releases.push(() => playerEquipment.dispose());
-const enemyActors = new EnemyActors(scene, loader, actors);
+const enemyActors = new EnemyActors(scene, loader, actors, resources);
 releases.push(() => enemyActors.dispose());
-const gatheringTools = new GatheringTools(player.root,playerEquipment);
+const gatheringTools = new GatheringTools(player.root,playerEquipment, resources.library);
 releases.push(() => gatheringTools.dispose());
-const projectileVisuals = new ProjectileVisuals(scene);
+const projectileVisuals = new ProjectileVisuals(scene, resources.library);
 releases.push(() => projectileVisuals.dispose());
 const harvesting = adventure.harvesting;
 adventure.canRenew = (source, position, height, radius, arriving) => !!areaState.instance && (arriving || !areaTransitions?.transitioning && !frozen && !inspecting)
@@ -218,6 +223,7 @@ adventure.canCollectGround = drop => !!areaState.movement?.pickupReachable(encou
 const interactionHighlight=new InteractionHighlight(scene);
 releases.push(() => interactionHighlight.dispose());
 const equipmentSets = new EquipmentSets(player, playerEquipment, loader, () => projectileVisuals.prepareArrow());
+releases.push(() => equipmentSets.dispose());
 const preferences = ctx.preferences;
 let hoveredInteraction: WorldInteraction | null=null;
 const audio = ctx.audio;
@@ -666,6 +672,11 @@ const runtimeDiagnostics = new ClearingDiagnostics({
 });
 ctx.reportLoading?.(() => runtimeDiagnostics.report());
 const diagnostics = () => runtimeDiagnostics.snapshot();
+attachPreviewGraphics(() => {
+  if (closed || !graphics) return [];
+  const view = graphics.previewGraphics(!!runtimeDiagnostics.report().ready);
+  return view ? [view] : [];
+});
 const previewWeather = (phase: WeatherPhase | 'live', wetness = 0) => {
   if (!['live','dry','gathering','shower','clearing'].includes(phase) || !Number.isFinite(wetness) || wetness < 0 || wetness > 1) throw new Error('Invalid weather preview');
   weatherPreview = phase === 'live' ? undefined : { ...structuredClone(adventure.character.outing.weather), phase, elapsed: 0, wetness };
@@ -686,7 +697,8 @@ if (import.meta.env.DEV) Object.assign(window, { lanternWeather: {
 if (import.meta.env.DEV) releases.push(() => { Reflect.deleteProperty(window, 'lanternRenewal'); Reflect.deleteProperty(window, 'lanternWeather'); });
 try {
   loadingScreen.preparing(loadingScreen.current, 'Preparing character');
-  const character = await loadRigArt(loader, characters.player.model);
+  const playerArt = loadRigArt(resources, characters.player.model); playerArtRelease = playerArt.release;
+  const character = await playerArt.ready;
   sceneTextures(character.scene);
   attachCharacter(player, character.scene, character.animations, characters.player.height);
   loadingScreen.preparing(loadingScreen.current, 'Preparing equipment');
@@ -704,7 +716,7 @@ try {
 {
   loadingScreen.preparing(loadingScreen.current, 'Preparing lighting');
   preparation.stage = 'lighting';
-  personalLantern = new PlayerLantern(player.root, lanternEnabled); releases.push(() => personalLantern?.dispose()); await personalLantern.initialize();
+  personalLantern = new PlayerLantern(player.root, lanternEnabled, resources); releases.push(() => personalLantern?.dispose()); await personalLantern.initialize();
   const effects = new CoreEffects(); scene.add(effects.root);
   const lighting = { get definition() { return areaState.lighting; }, get fires() { return areaState.instance?.fires ?? []; }, get shadow() { return areaState.instance?.shadow ?? null; } };
   applySettings(options.settings);
@@ -801,13 +813,14 @@ function beginAreaChange(change: AreaChange, request: AreaRequest): AreaOperatio
   let hash = '';
   return {
     prepare: () => areaTransitions!.prepare(change, async owner => {
+      await cancelNativePreparation(renderer); request.check();
       const errors = validateDefinitions(definitions);
       if (!next || !resolved || errors.length) throw new Error(errors.join('\n') || `Unknown area: ${id}`);
       request.stage('content-hash');
       const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify({ ...resolved, surfaces: nextSurfaces })));
       hash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join(''); request.check();
       request.stage('area-assets');
-      const area = owner.own(await buildArea(next, nextSurfaces, appearance?.shelterRestored ?? adventure.character.shelterRestored), value => value.dispose()); request.check();
+      const area = owner.own(await buildArea(next, nextSurfaces, appearance?.shelterRestored ?? adventure.character.shelterRestored, resources), value => value.dispose()); request.check();
       if (!presentationOnly) {
         request.stage('navigation');
         owner.ownSimulation(await MovementWorld.create(next.layout.boundary, traversalWithTrees(next))); request.check();
@@ -820,7 +833,7 @@ function beginAreaChange(change: AreaChange, request: AreaRequest): AreaOperatio
       const lighting = owner.own(await graphics!.prepareLighting(resolved, area.root), value => value.release()); request.check();
       request.stage('enemies');
       const enemies = owner.own(await enemyActors.prepare(presentationOnly ? encounter : createEncounter('playing', next.layout)), value => value.dispose()); request.check();
-      const visuals = owner.own(new AdventureVisuals(area.root), value => value.dispose());
+      const visuals = owner.own(new AdventureVisuals(area.root, resources.library), value => value.dispose());
       const interactions = new WorldInteractions(next, area, [player.root, ...Object.values(enemies.entries).map(entry => entry.actor.root)]);
       if (showLoading && performance.now() < fadeUntil) await request.wait(new Promise(resolve => setTimeout(resolve, fadeUntil - performance.now())));
       const renewalVisibility = new RenewalVisibility();
@@ -870,6 +883,7 @@ function beginAreaChange(change: AreaChange, request: AreaRequest): AreaOperatio
       if (token !== undefined && await request.wait(loadingScreen.ready(token))) renderer.domElement.focus();
     },
     failed: async (error, committed) => {
+      await cancelNativePreparation(renderer); request.check();
       areaErrors = [error instanceof Error ? error.message : String(error)];
       recordFailure(startup ? 'startup-area' : 'travel', error);
       if (startup) return 'back';
@@ -885,6 +899,11 @@ function beginAreaChange(change: AreaChange, request: AreaRequest): AreaOperatio
       request.check();
       if (choice === 'back') { areaErrors = []; if (await request.wait(loadingScreen.ready(token))) renderer.domElement.focus(); }
       return choice;
+    },
+    settlePreparation: async () => {
+      const native = nativePreparation(renderer);
+      await native.builders.idle(); await native.pipelines.idle();
+      await finishSubmittedFrame(renderer);
     },
     finish: () => { clearInput(); recoveringPresentation = false; audio.update(encounter.player, paused()); },
   };

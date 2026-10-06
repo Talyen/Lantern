@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { AssetLibrary } from '../../assets/asset-library';
 import type { ReviewAsset } from '../../assets/asset-review';
-import { sceneryLoader } from '../../assets/scenery-loader';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import type { RuntimeAssets } from '../../assets/runtime-assets';
 import { disposeSceneResources, sceneResourceBytes } from '../../assets/resource-ownership';
 import { prepareEnvironmentMaterials } from '../../assets/environment-surfaces';
 import { prepareStandardMaterials } from '../../rendering/surface-detail';
@@ -10,6 +11,7 @@ import { markOutline } from '../../rendering/outlines';
 export type PreparedReviewAsset = { asset: ReviewAsset; object: THREE.Group; content: THREE.Group; size: THREE.Vector3; bytes: number; compiled: Set<string>; release(): void };
 /** Current, two successors and one recent asset; large entries evict speculative work. */
 export class PreparedAssets {
+  constructor(private resources?: RuntimeAssets, private loader = resources?.loader ?? new GLTFLoader()) {}
   private entries = new Map<string, { promise: Promise<PreparedReviewAsset>; loaded?: PreparedReviewAsset }>();
   private pinned?: string;
   private leases = new WeakMap<PreparedReviewAsset, { count: number; retired: boolean }>();
@@ -63,12 +65,12 @@ export class PreparedAssets {
     let content: THREE.Group, release: () => void;
     if (asset.libraryId) {
       // The server supplies only this root and its dependencies, not the entire library.
-      const library = new AssetLibrary(`/__asset-review/catalog?id=${encodeURIComponent(asset.id)}&revision=${asset.fingerprint}`);
+      const library = new AssetLibrary(`/__asset-review/catalog?id=${encodeURIComponent(asset.id)}&revision=${asset.fingerprint}`, this.resources);
       try { const instance = await library.loadAsset(asset.libraryId); content = instance.object; release = () => { instance.release(); library.dispose().catch((error: unknown) => console.error(error)); }; }
       catch (error) { await library.dispose(); throw error; }
     } else {
-      const gltf = await sceneryLoader.loadAsync(asset.url); content = gltf.scene; release = () => disposeSceneResources(content);
-      try { if (asset.url.startsWith('/vendor/synty/environment/')) await prepareEnvironmentMaterials(content, asset.url); prepareStandardMaterials(content); }
+      const gltf = await this.loader.loadAsync(asset.url); content = gltf.scene; release = () => disposeSceneResources(content);
+      try { if (asset.url.startsWith('/vendor/synty/environment/')) await prepareEnvironmentMaterials(content, asset.url, this.resources); prepareStandardMaterials(content); }
       catch (error) { release(); throw error; }
     }
     try {

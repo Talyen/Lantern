@@ -1,5 +1,5 @@
 import { Object3D } from 'three';
-import { loadEquipmentMotions, type CombatMotions } from '../animation/combat-animations';
+import { loadEquipmentMotions, releaseCombatMotions, type CombatMotions } from '../animation/combat-animations';
 import { abilities, abilityIds, type WeaponSet } from '../gameplay/abilities';
 import type { ActorTiming } from '../gameplay/encounter';
 import { weaponFamily, type Loadout } from '../gameplay/equipment';
@@ -19,6 +19,7 @@ export class EquipmentSets {
 
   async prepare(items: InventoryItem[], active: WeaponSet): Promise<void> {
     const candidates: PreparedEquipment[] = [];
+    const motionCandidates: CombatMotions[] = [];
     let next: [PreparedSet, PreparedSet];
     try {
       const prepare = async (set: WeaponSet): Promise<PreparedSet> => {
@@ -28,6 +29,7 @@ export class EquipmentSets {
         candidates.push(equipment);
         const rig=this.actor.mixer?.getRoot();
         const motions=await loadEquipmentMotions(this.loader,'player',loadout,rig instanceof Object3D ? rig : undefined);
+        motionCandidates.push(motions);
         return { equipment, motions, loadout };
       };
       next = [await prepare(0), await prepare(1)];
@@ -35,9 +37,10 @@ export class EquipmentSets {
       this.equipment.commit(next[active].equipment, true);
     } catch (error) {
       for (const candidate of candidates) this.equipment.discard(candidate);
+      motionCandidates.forEach(releaseCombatMotions);
       throw error;
     }
-    for (const previous of this.sets ?? []) this.equipment.discard(previous.equipment);
+    for (const previous of this.sets ?? []) { this.equipment.discard(previous.equipment); releaseCombatMotions(previous.motions); }
     this.sets = next;
     this.refreshTimings();
   }
@@ -48,6 +51,7 @@ export class EquipmentSets {
     this.equipment.commit(prepared.equipment, true);
     installMotions(this.actor, prepared.motions);
   }
+  dispose(): void { for (const set of this.sets ?? []) { this.equipment.discard(set.equipment); releaseCombatMotions(set.motions); } this.sets = undefined; }
 
   abilityTimings(): Readonly<NonNullable<ActorTiming['abilities']>> {
     // Simulation reads these values; only replacing prepared sets changes them.

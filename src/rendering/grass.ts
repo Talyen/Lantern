@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { assetLibrary, type AssetInstance } from '../assets/asset-library';
+import { type AssetInstance, type AssetLibrary } from '../assets/asset-library';
 import { isMesh } from '../assets/resource-ownership';
 import { generateGrass, grassMask, grassCellSize, grassClearance, isGrassPlacement, type GrassFootprints } from '../levels/grass';
 import type { AreaDefinition, Placement } from '../levels/types';
@@ -9,7 +9,7 @@ import type { Vegetation } from './vegetation';
 type Prototype = { bounds: THREE.Box3; meshes: THREE.Mesh[]; radiusPerHeight: number; height: number };
 
 /** One borrowed source per botanical type; only cell instance buffers belong to the area. */
-export async function createGrass(area: AreaDefinition, vegetation: Vegetation) {
+export async function createGrass(area: AreaDefinition, vegetation: Vegetation, library: AssetLibrary) {
   const root = new THREE.Group(); root.name = 'grass-clumps'; root.userData.transient = true;
   const patches = area.grass ?? [], wetBanks = area.effects.water.length > 0;
   const mask = patches.length || wetBanks ? grassMask(area, patches) : null;
@@ -36,7 +36,7 @@ export async function createGrass(area: AreaDefinition, vegetation: Vegetation) 
   }
   try {
     const ids = [...new Set((area.grassVariants ?? []).map(v => v.asset.libraryId))];
-    const loaded = await Promise.allSettled(ids.map(id => assetLibrary.loadAsset(id, { shadows: false })));
+    const loaded = await Promise.allSettled(ids.map(id => library.loadAsset(id, { shadows: false })));
     leases.push(...loaded.flatMap(result => result.status === 'fulfilled' ? [result.value] : []));
     for (let i = 0; i < loaded.length; i++) {
       const result = loaded[i];

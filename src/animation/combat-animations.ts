@@ -3,10 +3,11 @@ import { skywardShot } from './arrow-rain-motion';
 import { heldShot } from './held-shot';
 import type { AbilityMotion } from '../gameplay/abilities';
 import * as THREE from 'three';
-import { cachedRequest } from '../data/cached-request';
 import motionProfiles from '../../assets/motion-profiles.json';
 import { type GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import characters from '../../assets/playable-characters.json';
+import { assetsForLoader } from '../assets/runtime-assets';
+import { ArtCache, type ArtResource } from '../assets/art-cache';
 import type { Motion } from '../gameplay/encounter';
 import { weaponFamily, type Loadout } from '../gameplay/equipment';
 
@@ -18,34 +19,51 @@ export type MotionClip = { id: string; name: string; description?: string; categ
 export type MotionPack = { id: string; label: string; clips: MotionClip[] };
 export type MotionCatalog = { version: number; packs: MotionPack[]; defaults: Record<AnimationRole, string>; profiles: Record<string, Partial<Record<AnimationRole, string>>> };
 export type CombatMotions = { clips: Record<MotionState, THREE.AnimationClip> & Partial<Record<AnimationRole, THREE.AnimationClip>>; contacts: number[]; commitLead?: number; runSpeed: number; speeds: Partial<Record<AnimationRole, number>>; chopContact: number; mineContact: number; skillContacts: Partial<Record<AbilityMotion,number[]>>; phases: Partial<Record<AnimationRole, number>> };
-const cache = new Map<string, Promise<THREE.AnimationClip>>();
-const joinedShots = new Map<string, THREE.AnimationClip>();
-const catalogs = new Map<string, Promise<MotionCatalog>>();
-export function getMotionCatalog(who: RigId): Promise<MotionCatalog> {
+const fallbackCaches = new WeakMap<GLTFLoader, ArtCache>();
+const clipReleases = new WeakMap<THREE.AnimationClip, () => void>();
+function motionCache(loader: GLTFLoader): ArtCache {
+  const resources = assetsForLoader(loader); if (resources) return resources.cache;
+  let cache = fallbackCaches.get(loader); if (!cache) { cache = new ArtCache(); fallbackCaches.set(loader, cache); } return cache;
+}
+function clipResources(clip: THREE.AnimationClip): ArtResource[] {
+  return clip.tracks.flatMap(track => [track.times.buffer, track.values.buffer].map(buffer => ({ identity: buffer, kind: 'motion' as const, bytes: buffer.byteLength })));
+}
+export function releaseMotionClip(clip: THREE.AnimationClip): void { const release = clipReleases.get(clip); clipReleases.delete(clip); release?.(); }
+export function releaseCombatMotions(motions: CombatMotions): void { new Set(Object.values(motions.clips)).forEach(releaseMotionClip); }
+export function getMotionCatalog(who: RigId, loader: GLTFLoader): Promise<MotionCatalog> {
   const url = characters[who].catalog;
-  return cachedRequest(catalogs, url, () => fetch(url).then(async response => {
-    if (!response.ok) throw new Error('Prepare compatible Mixamo motions with npm run assets:export-character.');
-    const catalog = await response.json() as MotionCatalog;
+  const resources = assetsForLoader(loader);
+  const read = async () => {
+    const transfer = async () => {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Prepare compatible Mixamo motions with npm run assets:export-character.');
+      return response.json() as Promise<MotionCatalog>;
+    };
+    const catalog = resources ? await resources.transfers.run(transfer) : await transfer();
     if (catalog.version !== 1 || !catalog.profiles || !catalog.packs?.some(pack => pack.id === 'mixamo')) throw new Error('Prepare the curated Mixamo motion profiles with npm run assets:export-character.');
     return catalog;
-  }));
+  };
+  const lease = motionCache(loader).acquire(`motion-catalog:${url}`, read,
+    catalog => [{ identity: catalog, kind: 'metadata', bytes: JSON.stringify(catalog).length * 2 }], () => {});
+  return lease.ready.finally(lease.release);
 }
 export async function loadMotionClip(loader: GLTFLoader, clip: MotionClip): Promise<THREE.AnimationClip> {
   const url = clip.url;
-  const source = await cachedRequest(cache, url, () => loader.loadAsync(url).then(gltf => {
+  const lease = motionCache(loader).acquire(`motion:${url}`, () => loader.loadAsync(url).then(gltf => {
     try {
       if (gltf.animations.length !== 1) throw new Error(`Invalid motion: ${clip.name}`);
       return gltf.animations[0];
     } finally { disposeSceneResources(gltf.scene); }
-  }));
+  }), clipResources, () => {});
   // Playback state belongs to each clip/action; keyframe buffers stay read-only.
-  return independentClip(source);
+  try { const clip = independentClip(await lease.ready); clipReleases.set(clip, lease.release); return clip; }
+  catch (error) { lease.release(); throw error; }
 }
 function independentClip(source: THREE.AnimationClip): THREE.AnimationClip {
   return new THREE.AnimationClip(source.name, source.duration, source.tracks.slice(), source.blendMode);
 }
 export async function loadEquipmentMotions(loader: GLTFLoader, who: RigId, loadout: Loadout, sourceRig?: THREE.Object3D): Promise<CombatMotions> {
-  const catalog = await getMotionCatalog(who);
+  const catalog = await getMotionCatalog(who, loader);
   const profile = catalog.profiles[`${weaponFamily(loadout.main) ?? 'unarmed'}${loadout.off ? '-shield' : ''}`];
   const pack = catalog.packs.find(item => item.id === 'mixamo');
   if (!profile || !pack) throw new Error('Compatible weapon motions are unavailable.');
@@ -60,9 +78,14 @@ export async function loadEquipmentMotions(loader: GLTFLoader, who: RigId, loado
     if(profile[role] && !clip)throw new Error(`Unavailable ${role} motion. Prepare compatible Mixamo motions.`);
     if (clip) all[role] = clip;
   }
-  const clips = Object.fromEntries(await Promise.all(Object.entries(all).map(async ([role, source]) => {
+  const loaded = await Promise.allSettled(Object.entries(all).map(async ([role, source]) => {
     const clip = await loadMotionClip(loader, source); clip.name = role; return [role, clip];
-  }))) as CombatMotions['clips'];
+  }));
+  const fulfilled = loaded.flatMap(result => result.status === 'fulfilled' ? [result.value] : []);
+  const failure = loaded.find(result => result.status === 'rejected');
+  if (failure) { fulfilled.forEach(([, clip]) => releaseMotionClip(clip as THREE.AnimationClip)); throw failure.reason; }
+  const clips = Object.fromEntries(fulfilled) as CombatMotions['clips'];
+  try {
   // Every contact owner uses the same numeric/clip-boundary check before gameplay can consume it.
   const contactsFor = (role: AnimationRole, multiple = false): number[] => {
     const source = all[role], clip = clips[role];
@@ -81,9 +104,9 @@ export async function loadEquipmentMotions(loader: GLTFLoader, who: RigId, loado
     // Joining is deterministic for the cached source pair. Retain its keyframes
     // once, with a separate wrapper/action for each prepared equipment profile.
     const key = JSON.stringify([all.pierceDraw!.url, all.pierceRelease!.url]);
-    let joined = joinedShots.get(key);
-    if (!joined) { joined = joinShot(clips.pierceDraw, clips.pierceRelease); joinedShots.set(key, joined); }
-    clips.pierce = independentClip(joined);
+    const draw = clips.pierceDraw, release = clips.pierceRelease;
+    const lease = motionCache(loader).acquire(`joined:${key}`, async () => joinShot(draw, release), clipResources, () => {});
+    try { clips.pierce = independentClip(await lease.ready); clipReleases.set(clips.pierce, lease.release); } catch (error) { lease.release(); throw error; }
     skillContacts.pierce = [clips.pierceDraw.duration + contactsFor('pierceRelease')[0]];
   }
   const motions: CombatMotions = { clips, contacts, commitLead: (motionProfiles.clips as Record<string,{commitLead?:number}>)[base.attack.id]?.commitLead ?? 0, runSpeed: base.run.speed ?? 4,
@@ -104,6 +127,7 @@ export async function loadEquipmentMotions(loader: GLTFLoader, who: RigId, loado
     for (const [role,clip] of Object.entries(motions.clips)) if (!['death','dodge','grip','chop','mine'].includes(role)) holdStaffArm(clip,motions.clips.idle,gripPose);
   }
   return motions;
+  } catch (error) { Object.values(clips).forEach(releaseMotionClip); throw error; }
 }
 
 /** A Mixamo carrying arm keeps the staff steady while the free arm casts. */

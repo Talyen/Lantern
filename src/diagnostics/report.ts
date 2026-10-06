@@ -1,3 +1,6 @@
+import type { nativePreparationDiagnostics } from '../rendering/native-preparation';
+import type { RuntimeAssets } from '../assets/runtime-assets';
+
 /** Reporting is local and deliberately never consumes character/save snapshots. */
 export type RuntimeSnapshot = {
   area?: string; ready?: boolean; backend?: string; missing?: string[]; errors?: string[];
@@ -5,6 +8,8 @@ export type RuntimeSnapshot = {
   graphics?: { ready: boolean; method: string; sceneWidth: number; sceneHeight: number; outputWidth: number; outputHeight: number };
   audio?: { state: string; loaded: number; loading: number; voices: number; errors: string[] };
   persistence?: { pending: boolean; loaded: boolean; failures: number; blockedByExisting: boolean; error: string };
+  nativePreparation?: ReturnType<typeof nativePreparationDiagnostics>;
+  resources?: ReturnType<RuntimeAssets['diagnostics']>;
   preparation?: { generation: number; destination: string; stage: string; pendingAssets: string[]; lightingStage?: string; compilationPending: number; completedFrames: number };
 };
 type Failure = { at: string; kind: string; message: string };

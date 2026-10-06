@@ -4,7 +4,7 @@ import { disposeSceneResources, isMesh } from '../../assets/resource-ownership';
 import { applyShadowQuality } from '../../rendering/quality-presets';
 import * as THREE from 'three';
 import { MeshStandardNodeMaterial } from 'three/webgpu';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { runtimeAssets } from '../../assets/runtime-assets';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createRenderer, waitForPresentedFrames } from '../../rendering/renderer';
 import { resizeDisplay } from '../../rendering/display-resolution';
@@ -57,7 +57,6 @@ if (!response.ok) {
 const catalog = await response.json() as Catalog;
 if (catalog.version !== 1 || !Array.isArray(catalog.characters)) throw new Error('Unsupported character catalog.');
 for (const name of [...new Set(catalog.characters.map(row => row.family))].sort()) family.add(new Option(name, name));
-const loader = new GLTFLoader();
 const settings = defaults();
 // Shared Golden lighting; focus blur is disabled for close asset inspection.
 settings.dof = 'off'; settings.bloom = 0; settings.ao = 0.3;
@@ -123,7 +122,7 @@ async function applyMotion(index: number, generation: number): Promise<void> {
   try {
     let clip = stage.clips.get(role);
     if (!clip) {
-      const gltf = await loader.loadAsync(row.motions[role].url);
+      const gltf = await runtimeAssets(stage.renderer).loader.loadAsync(row.motions[role].url);
       clip = gltf.animations[0];
       if (!clip) throw new Error('Motion has no animation');
       disposeSceneResources(gltf.scene);
@@ -144,7 +143,7 @@ async function select(index: number, id: string): Promise<void> {
   stage.release(); stage.model = undefined; stage.mixer = undefined; stage.action = undefined; stage.clips.clear(); stage.character = row; stage.error = 'Loading…'; refreshCaption(index);
   try {
     if (row.status !== 'ready') throw new Error(row.error ?? 'Model not converted');
-    const gltf = await loader.loadAsync(row.url);
+    const gltf = await runtimeAssets(stage.renderer).loader.loadAsync(row.url);
     if (stage.generation !== generation || disposed) { disposeSceneResources(gltf.scene); return; }
     const model = gltf.scene;
     model.updateMatrixWorld(true);

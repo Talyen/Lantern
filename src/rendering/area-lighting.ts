@@ -112,7 +112,7 @@ export class AreaLightingResources {
         if (!check.valid) throw new Error(check.error ?? 'Prepared lighting needs refreshing.');
       }
       this.stage = this.renderer.domElement.dataset.lightingStage = authoring ? 'fingerprint' : 'prepared-load';
-      const signature = spec ? authoring ? await lightingBakeSignature(area, root) : indexed?.[0] ?? '' : '';
+      const signature = spec ? authoring ? await lightingBakeSignature(area, root, stage => { this.stage = this.renderer.domElement.dataset.lightingStage = stage; }) : indexed?.[0] ?? '' : '';
       if (this.disposed) throw new Error('Lighting resources are closed.');
       if (spec) {
         probe = this.probes.acquire(signature);

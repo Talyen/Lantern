@@ -1,6 +1,6 @@
 import { disposeSceneResources, sceneTextures, isMesh } from '../assets/resource-ownership';
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import type { RuntimeAssets } from '../assets/runtime-assets';
 import { resolveLocalLight } from '../levels/local-lighting';
 import { MeshStandardNodeMaterial } from 'three/webgpu';
 import characters from '../../assets/playable-characters.json';
@@ -14,7 +14,7 @@ export class PlayerLantern {
   private hook: THREE.Mesh | null = null;
   private authoredLantern: THREE.Object3D | null = null;
   private disposed = false;
-  constructor(private actor: THREE.Group, enabled: boolean) {
+  constructor(private actor: THREE.Group, enabled: boolean, private resources: RuntimeAssets) {
     const recipe = resolveLocalLight({ role: 'lantern' });
     this.light = new THREE.PointLight(recipe.color, recipe.intensity, recipe.distance, 2);
     // Lift the effective emitter toward the chest and forward of the torso.
@@ -36,7 +36,7 @@ export class PlayerLantern {
     if (this.authoredLantern) this.authoredLantern.visible = this.root.visible;
     const url = characters.player.lanternModel;
     if (!this.authoredLantern) try {
-      const { scene } = await new GLTFLoader().loadAsync(url); sceneTextures(scene);
+      const { scene } = await this.resources.loader.loadAsync(url); sceneTextures(scene);
       this.model = scene;
       const height = new THREE.Box3().setFromObject(scene).getSize(new THREE.Vector3()).y;
       if (height > 0) scene.scale.multiplyScalar(.22 / height);

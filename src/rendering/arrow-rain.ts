@@ -5,8 +5,8 @@ import { arrowRainSequence } from '../gameplay/arrow-rain-sequence';
 import { MeshBasicNodeMaterial, type WebGPURenderer, type Node } from 'three/webgpu';
 import { color, mx_noise_float, smoothstep, uniform, uv } from 'three/tsl';
 import { DecalGeometry } from 'three/addons/geometries/DecalGeometry.js';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { assetLibrary, type AssetInstance } from '../assets/asset-library';
+import { runtimeAssets } from '../assets/runtime-assets';
+import { type AssetInstance } from '../assets/asset-library';
 import { isMesh, disposeSceneInstances, disposeSceneResources } from '../assets/resource-ownership';
 import { arrowAsset } from '../gameplay/equipment';
 import { particlePresets, type QualityLevel } from './quality-presets';
@@ -27,7 +27,7 @@ export class ArrowRainEffects {
   private rainOpacity = uniform(0);
   private materials = new Set<THREE.Material>();
   private geometries = new Set<THREE.BufferGeometry>();
-  private textures = new Set<THREE.Texture>();
+  private textureReleases = new Set<() => void>();
   private rainFootprint?: THREE.Mesh;
   private particles?: ArrowRainParticles;
   private impactEvents: ImpactEvent[] = [];
@@ -63,8 +63,9 @@ export class ArrowRainEffects {
     const dust = data.recipes.find(r => r.id === 'Impact_Small')?.emitters.find(e => /Dust/.test(e.name));
     const spark = data.recipes.find(r => r.id === 'SwordSlash')?.emitters.find(e => e.mesh);
     if (!dust?.material.texture || !spark?.mesh) throw new Error('Synty dust texture or spark mesh is missing.');
-    const map = await new THREE.TextureLoader().loadAsync(dust.material.texture); map.colorSpace = THREE.SRGBColorSpace; this.textures.add(map);
-    const gltf = await new GLTFLoader().loadAsync(spark.mesh); gltf.scene.updateMatrixWorld(true);
+    const textureLease = await runtimeAssets(this.renderer).texture(dust.material.texture, true, { repeat: false, flipY: true, materialFiltering: false });
+    const map = textureLease.texture; this.textureReleases.add(textureLease.release);
+    const gltf = await runtimeAssets(this.renderer).loader.loadAsync(spark.mesh); gltf.scene.updateMatrixWorld(true);
     let sparkGeometry: THREE.BufferGeometry | undefined;
     gltf.scene.traverse(object => { if (isMesh(object) && !sparkGeometry) sparkGeometry = object.geometry.clone().applyMatrix4(object.matrixWorld); });
     disposeSceneResources(gltf.scene);
@@ -72,7 +73,7 @@ export class ArrowRainEffects {
     this.particles = new ArrowRainParticles(this.renderer, this.root, map, this.ownGeometry(sparkGeometry), this.density);
     this.scene.add(this.particles.root); await this.particles.prepare();
     this.buildGroundEffects();
-    const instance = await assetLibrary.loadAsset(arrowAsset);
+    const instance = await runtimeAssets(this.renderer).library.loadAsset(arrowAsset);
     if (this.disposed) { instance.release(); this.release(); return; }
     this.arrowAsset = instance;
     const size = new THREE.Box3().setFromObject(instance.object).getSize(new THREE.Vector3());
@@ -199,6 +200,6 @@ export class ArrowRainEffects {
     if (this.rainFootprint) {this.rainFootprint.removeFromParent(); this.geometries.delete(this.rainFootprint.geometry); this.rainFootprint.geometry.dispose(); const material=this.rainFootprint.material as THREE.Material; this.materials.delete(material); material.dispose();}
     this.buildGroundEffects(); this.reset();
   }
-  private release(): void { this.particles?.dispose(); disposeSceneInstances(this.root); this.root.clear(); this.arrowAsset?.release(); this.arrowAsset = undefined; this.textures.forEach(t => t.dispose()); this.geometries.forEach(g => g.dispose()); this.materials.forEach(m => m.dispose()); this.textures.clear(); this.geometries.clear(); this.materials.clear(); }
+  private release(): void { this.particles?.dispose(); disposeSceneInstances(this.root); this.root.clear(); this.arrowAsset?.release(); this.arrowAsset = undefined; this.textureReleases.forEach(release => release()); this.geometries.forEach(g => g.dispose()); this.materials.forEach(m => m.dispose()); this.textureReleases.clear(); this.geometries.clear(); this.materials.clear(); }
   dispose(): void { this.disposed = true; this.root.removeFromParent(); const release = () => this.release(); if (this.ready) void this.ready.then(release, release); else release(); }
 }

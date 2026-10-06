@@ -1,5 +1,6 @@
 import { indirectDiffuseAttachment, type IndirectContext } from './indirect-lighting';
 import { syncDisplayResolution } from './display-resolution';
+import { prepareNative, cancelNativePreparation } from './native-preparation';
 import { renderNativeFrame, preparingNativeFrame } from './renderer';
 import { ACESFilmicToneMapping, HalfFloatType, FloatType, RGFormat, RedFormat, CustomBlending, OneFactor, OneMinusSrcAlphaFactor, DataUtils, RenderPipeline, BlendMode, NormalBlending, Color, Vector2, Vector3, Vector4, Matrix4, Plane, type Node, type OrthographicCamera, type PerspectiveCamera, type Scene, type WebGPURenderer, type TextureNode, type QuadMesh, type Texture } from 'three/webgpu';
 import { Fn, context, dot, float, mix, mrt, orthographicDepthToViewZ, perspectiveDepthToViewZ, output, pass, rtt, screenUV, smoothstep, toneMapping, uniform, uv, vec2, vec3, vec4, velocity, positionWorld, select } from 'three/tsl';
@@ -237,7 +238,7 @@ class PipelineGraph {
       const update = Reflect.get(RenderPipeline.prototype, '_update') as () => void;
       update.call(post);
       const quad = Reflect.get(post, '_quadMesh') as QuadMesh;
-      await this.renderer.compileAsync(quad, quad.camera);
+      await prepareNative(this.renderer, () => this.renderer.compileAsync(quad, quad.camera));
       if (generation === this.generation) {
         await this.fsr?.historyReady();
         if (generation !== this.generation) return;
@@ -353,7 +354,11 @@ class PipelineGraph {
       const start = performance.now();
       const rendered = renderNativeFrame(this.renderer, () => this.post.render());
       this.cpuRenderMs = performance.now() - start;
-      if (!rendered) { this.resetHistory(); return false; }
+      if (!rendered) {
+        // A skipped depth draw cannot validate a cached shadow on the reveal frame.
+        this.scene.traverse(object => { if ('isLight' in object && Reflect.get(object, 'castShadow')) { const shadow = Reflect.get(object, 'shadow') as { needsUpdate: boolean } | undefined; if (shadow) shadow.needsUpdate = true; } });
+        this.resetHistory(); return false;
+      }
       this.successfulFrames++;
       const canvas = this.renderer.domElement, scene = this.scenePass!.renderTarget;
       const resolution = `${scene.width}×${scene.height} → ${canvas.width}×${canvas.height}`;
@@ -420,7 +425,7 @@ export class WebGPUPipeline {
       }
       const candidate = new PipelineGraph(this.renderer, this.scene, this.camera, this.target);
       try { candidate.configure(request.settings, request.saturation, request.look); await candidate.ready(); }
-      catch (error) { candidate.dispose(); throw error; }
+      catch (error) { await cancelNativePreparation(this.renderer); candidate.dispose(); throw error; }
       return { commit: () => {
         this.active = candidate; this.cache.set(key, candidate); this.clearSettingsError();
       }, dispose: () => candidate.dispose() };
@@ -440,6 +445,7 @@ export class WebGPUPipeline {
   configure(settings: GraphicsSettings, saturation: number, look = this.look, delay = 0): void {
     if (this.disposed) return;
     this.look = look;
+    if (this.queue.busy) void cancelNativePreparation(this.renderer).catch((error: unknown) => console.error('Unable to retire superseded graphics preparation.', error));
     this.queue.request({ settings: { ...settings }, saturation, look }, delay);
   }
   update(settings: GraphicsSettings, saturation: number, look = this.look): void {

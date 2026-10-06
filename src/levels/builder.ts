@@ -3,7 +3,6 @@ import { waterTerrain } from './water-terrain';
 import { createMerchant } from '../rendering/merchant';
 
 import { lightingOnly, includeCutawayShadows } from '../rendering/cutaway';
-import { SceneCache } from '../assets/scene-cache';
 import { pendingCachedRequests } from '../data/cached-request';
 import { disposeSceneInstances, isMesh } from '../assets/resource-ownership';
 import { MeshStandardNodeMaterial, type Node } from 'three/webgpu';
@@ -11,18 +10,18 @@ import { createSurfaceMaterial } from '../rendering/surface-detail';
 import { texture, mix, vec2, positionWorld, color, sin, smoothstep, uniform } from 'three/tsl';
 import environmentManifest from '../../assets/textures/environment/manifest.json';
 import * as THREE from 'three';
-import { sceneryLoader as loader, disposeSceneryLoader } from '../assets/scenery-loader';
+import type { RuntimeAssets } from '../assets/runtime-assets';
 import { environmentOutlineEligible, environmentSurface, prepareEnvironmentMaterials, type SurfaceMode } from '../assets/environment-surfaces';
 import { markOutline } from '../rendering/outlines';
-import { assetLibrary, type AssetInstance } from '../assets/asset-library';
+import { type AssetInstance } from '../assets/asset-library';
 import { updateAssetLods } from '../rendering/asset-lods';
-import { stoneSurface, stoneSurfaceRecipe } from '../rendering/stone-surface';
+import { stoneSurface, stoneSurfaceRecipe, stoneTextureInputs } from '../rendering/stone-surface';
 import { createGrass } from '../rendering/grass';
 import { isGrassPlacement } from './grass';
 import { Vegetation } from '../rendering/vegetation';
 import { TreeFelling } from '../rendering/tree-felling';
 import { vegetationProfile } from './vegetation';
-import { woodlandGroundRecipeFor, woodlandMaterial } from '../rendering/woodland-ground';
+import { woodlandGroundRecipeFor, woodlandMaterial, woodlandTextureInputs } from '../rendering/woodland-ground';
 import { Portal } from '../rendering/portal';
 import { resolveLocalLight, resolveWorldFlame } from './local-lighting';
 import type { CoreEffects } from '../rendering/effects';
@@ -32,21 +31,20 @@ import { resourceDefinitions } from './resources';
 import { gathering } from '../gameplay/skills';
 import { treeDefinitions } from './trees';
 import type { AreaDefinition, AssetRef, Placement, Primitive, GroundPatch } from './types';
-const cache = new SceneCache();
-export const pendingAreaAssets = (): string[] => [...pendingCachedRequests(), ...cache.pendingAssets()].slice(0, 16);
-export async function disposeAreaCache(): Promise<void> { await cache.dispose(); await assetLibrary.dispose(); disposeSceneryLoader(); }
+export const pendingAreaAssets = (resources: RuntimeAssets): string[] => [...pendingCachedRequests(), ...resources.cache.pending()].slice(0, 16);
 export function createWorld() {
   const scene = new THREE.Scene();
   const ambient = new THREE.HemisphereLight(); const sun = new THREE.DirectionalLight(); sun.castShadow = true; sun.shadow.mapSize.set(4096, 4096); sun.shadow.camera.near = .5; sun.shadow.camera.far = 80; sun.shadow.normalBias = .025; sun.shadow.bias = -.00015; sun.shadow.radius = 3;
   includeCutawayShadows(sun);
   scene.add(ambient, sun, sun.target); return { scene, ambient, sun };
 }
-export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode = 'projected', shelterRestored = false) {
+export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode = 'projected', shelterRestored = false, assets: RuntimeAssets) {
+  const assetLibrary = assets.library;
   const root = new THREE.Group(); root.name = area.id; root.userData.surfaceMode = surfaceMode; root.userData.shelterRestored = shelterRestored;
   const weatherShelters = rainShelters(area, shelterRestored), rainWetness = uniform(0);
   root.userData.rainWetness = rainWetness;
   const exposedWetness = area.effects.weather ? rainWetness.mul(.6).mul(rainExposureNode(weatherShelters)) : undefined;
-  const lightingSources = new Set<string>(), textureReady: Promise<void>[] = [];
+  const lightingSources = new Set<string>();
   root.userData.lightingSources = [];
   const lightingProcedural: unknown[] = [];
   root.userData.lightingProcedural = lightingProcedural;
@@ -69,20 +67,19 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
   const portals: Portal[] = [];
   const missing: string[] = [], foliage: THREE.Object3D[] = [], fires: THREE.PointLight[] = []; let shadow: THREE.PointLight | null = null;
   try {
-    grass = await createGrass(area, vegetation); root.add(grass.root); missing.push(...grass.missing);
+    grass = await createGrass(area, vegetation, assetLibrary); root.add(grass.root); missing.push(...grass.missing);
     for (const definition of area.effects.portals ?? []) {
       const portal = new Portal(definition, root); portals.push(portal); portal.root.userData.transient = true;
     }
     const showcase = import.meta.env.DEV && surfaceMode === 'showcase' && area.id === environmentManifest.showcase.area ? environmentManifest.showcase : undefined;
     const groundMaps = new Map<string, THREE.Texture>();
-    const groundMap = (url: string, data: boolean): THREE.Texture => {
-      const existing = groundMaps.get(url); if (existing) return existing;
-      let resolveTexture!: () => void, rejectTexture!: (error: unknown) => void;
-      const ready = new Promise<void>((resolve, reject) => { resolveTexture = resolve; rejectTexture = reject; });
-      const map = new THREE.TextureLoader().load(url, resolveTexture, undefined, rejectTexture);
-      ready.catch(() => {}); textureReady.push(ready); lightingSources.add(url);
-      map.colorSpace = data ? THREE.NoColorSpace : THREE.SRGBColorSpace;
-      map.wrapS = map.wrapT = THREE.RepeatWrapping; ownedTextures.add(map); groundMaps.set(url, map); return map;
+    const inputs = area.props.flatMap(prop => prop.primitive?.surface === 'stone' ? stoneTextureInputs(area.id === 'clearing') : prop.primitive?.surface === 'woodland' ? woodlandTextureInputs : []);
+    await Promise.all([...new Map(inputs.map(input => [input[0], input])).values()].map(async ([url, data, source]) => {
+      const lease = await assets.texture(url, !data, { flipY: true, source });
+      groundMaps.set(url, lease.texture); sceneLeases.push(lease.release); lightingSources.add(lease.url);
+    }));
+    const groundMap = (url: string): THREE.Texture => {
+      const map = groundMaps.get(url); if (!map) throw new Error(`Ground texture was not prepared: ${url}`); return map;
     };
     const groundPatches: GroundPatch[] = area.props.flatMap(p => {
       const id = p.asset && ('libraryId' in p.asset ? p.asset.libraryId : p.asset.url);
@@ -162,12 +159,12 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
         const instance = await assetLibrary.loadAsset(ref.libraryId); instances.push(instance);
         instance.object.traverse(object => { for (const issue of (object.userData.materialIssues as string[] | undefined) ?? []) if (!missing.includes(issue)) missing.push(issue); });
         const catalog = await assetLibrary.getCatalog(), visited = new Set<string>();
-        const source = (id: string) => { if (visited.has(id)) return; visited.add(id); const entry = catalog.assets[id]; if (entry) { lightingSources.add(entry.url); entry.dependencies.forEach(source); } };
+        const source = (id: string) => { if (visited.has(id)) return; visited.add(id); const entry = catalog.assets[id]; if (entry) { lightingSources.add(assets.resolveURL(entry.url)); if (entry.kind === 'texture') { lightingSources.add(assets.resolveURL(entry.url, true)); lightingSources.add(assets.resolveURL(entry.url, false)); } entry.dependencies.forEach(source); } };
         source(instance.asset.id); return instance.object;
       }
-      const lease = cache.acquire(ref.url, () => loader.loadAsync(ref.url).then(async gltf => { if (ref.url.startsWith('/vendor/synty/environment/')) await prepareEnvironmentMaterials(gltf.scene, ref.url); return gltf.scene; }));
+      const lease = assets.acquireScene(ref.url, async root => { if (ref.url.startsWith('/vendor/synty/environment/')) await prepareEnvironmentMaterials(root, ref.url, assets); });
       sceneLeases.push(lease.release);
-      const object = (await lease.scene).clone(true); lightingSources.add(ref.url);
+      const object = (await lease.ready).clone(true); lightingSources.add(assets.resolveURL(ref.url));
       for (const url of (object.userData.surfaceSources as string[] | undefined) ?? []) lightingSources.add(url);
       for (const url of (object.userData.surfaceMissing as string[] | undefined) ?? []) if (!missing.includes(url)) missing.push(url);
       return object;
@@ -282,13 +279,12 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
         shelter=createShelter(area.shelter,shelterRestored,chest); root.add(shelter.root); interactables.set('shelter',shelter.root); if(shelterRestored)interactables.set('stash',chest); shelter.root.traverse(object=>animated.add(object));
         lightingProcedural.push({shelter:area.shelter,restored:shelterRestored});
       }
-      await Promise.all(textureReady);
     root.userData.lightingSources = [...lightingSources];
     // Batch opaque repeated asset primitives without flattening skins, wind or native LOD ownership.
     const staticBatches = new Map<string, THREE.Mesh[]>();
     if (area.shop) {
       try {
-        merchant = await createMerchant(area.shop); root.add(merchant.root);
+        merchant = await createMerchant(area.shop, assets); root.add(merchant.root);
         merchant.root.traverse(object => animated.add(object));
         interactables.set(`merchant/${area.shop.id}`, merchant.root);
       } catch (error) { missing.push(`Merchant: ${error instanceof Error ? error.message : String(error)}`); }
@@ -367,7 +363,6 @@ export async function buildArea(area: AreaDefinition, surfaceMode: SurfaceMode =
     return { root, rainWetness, weatherShelters, area, missing, grass: grass.stats, fires, portals, trees, interactables, resources, pickResource, setResourceState, vegetation, treeFelling, fellTree, get shadow() { return shadow; }, update, setChestOpened, setTreeState, treeHit, activate, dispose };
   } catch (error) {
     // Texture callbacks can still be pending when another construction stage fails.
-    await Promise.allSettled(textureReady);
     dispose(); throw error;
   }
   function dispose(): void {

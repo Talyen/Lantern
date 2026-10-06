@@ -2,6 +2,8 @@ import type { OrthographicCamera } from 'three';
 import type { WebGPURenderer } from 'three/webgpu';
 import { pendingNativeCompilations } from '../rendering/renderer';
 import { pendingAreaAssets } from '../levels/builder';
+import { nativePreparationDiagnostics } from '../rendering/native-preparation';
+import { runtimeAssets } from '../assets/runtime-assets';
 import type { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { parseJson } from '../data/json';
 import type { RuntimeSnapshot } from '../diagnostics/report';
@@ -81,11 +83,13 @@ export class ClearingDiagnostics {
     const pipeline = graphics?.pipelineDiagnostics();
     return {
       ...status, backend: 'webgpu', missing: status.missing.slice(0, 16), errors: status.errors.slice(-16),
-      preparation: { ...preparation, pendingAssets: pendingAreaAssets(), lightingStage: graphics?.lightingDiagnostics().stage,
+      preparation: { ...preparation, pendingAssets: pendingAreaAssets(runtimeAssets(renderer)), lightingStage: graphics?.lightingDiagnostics().stage,
         compilationPending: pendingNativeCompilations(renderer), completedFrames: renderedFrames },
       settings: options ? { ...options.settings } : undefined,
       audio: { state: sound.state, loaded: sound.loaded, loading: sound.loading, voices: sound.voices, errors: sound.errors.slice(-16) },
       persistence: adventure.saveDiagnostics(),
+      resources: runtimeAssets(renderer).diagnostics(),
+      nativePreparation: nativePreparationDiagnostics(renderer),
       graphics: pipeline && 'sceneWidth' in pipeline ? { ready: pipeline.ready, method: pipeline.method, sceneWidth: pipeline.sceneWidth ?? 0, sceneHeight: pipeline.sceneHeight ?? 0,
         outputWidth: pipeline.outputWidth ?? 0, outputHeight: pipeline.outputHeight ?? 0 } : undefined,
     };
@@ -104,7 +108,9 @@ export class ClearingDiagnostics {
       fluids: graphics?.effects.fluids.snapshot(),
       vegetation: active?.vegetation.diagnostics(), grass: active?.grass, treeFalls: active?.treeFelling.diagnostics(),
       adventure: {
-        persistence: adventure.saveDiagnostics(), character: adventure.character, portal: adventure.portal, castRemaining: adventure.castRemaining,
+        persistence: adventure.saveDiagnostics(),
+      resources: runtimeAssets(renderer).diagnostics(),
+      nativePreparation: nativePreparationDiagnostics(renderer), character: adventure.character, portal: adventure.portal, castRemaining: adventure.castRemaining,
         drops: adventure.session(currentArea.id).drops, chests: adventure.session(currentArea.id).chests,
         fires: (currentArea.campfires ?? []).map(fire => ({ id: fire.id, safe: adventure.fireSafe(currentArea, fire, encounter) })),
       },

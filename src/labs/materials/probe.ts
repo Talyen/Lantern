@@ -11,8 +11,8 @@ import { runFsrExposureProbe } from '../fsr/exposure-probe';
 
 type Sampler = { maxAnisotropy?: number; magFilter?: string; minFilter?: string; mipmapFilter?: string };
 type Device = { createSampler(descriptor: Sampler): unknown; queue: { onSubmittedWorkDone(): Promise<void> } };
-type Case = 'ao-direct' | 'ao-direct-reference' | 'ao-coat' | 'ao-coat-reference' | 'env-diffuse' | 'env-diffuse-owned' | 'env-metal' | 'env-metal-owned' | 'env-coat' | 'env-coat-owned' | 'legacy' | 'mapped' | 'reference' | 'tangents' | 'back' | 'back-reference' | 'transform' | 'transform-reference' | 'depth' | 'depth-off' | 'masked' | 'masked-off' | 'highlight-dry' | 'highlight-dry-reference' | 'highlight-metal' | 'highlight-metal-reference' | 'highlight-smooth' | 'highlight-smooth-reference';
-const cases: Case[] = ['ao-direct','ao-direct-reference','ao-coat','ao-coat-reference','env-diffuse','env-diffuse-owned','env-metal','env-metal-owned','env-coat','env-coat-owned','legacy', 'mapped', 'reference', 'tangents', 'back', 'back-reference', 'transform', 'transform-reference', 'depth', 'depth-off', 'masked', 'masked-off', 'highlight-dry', 'highlight-dry-reference', 'highlight-metal', 'highlight-metal-reference', 'highlight-smooth', 'highlight-smooth-reference'];
+type Case = 'roles-shared' | 'roles-split' | 'roles-reference' | 'ao-direct' | 'ao-direct-reference' | 'ao-coat' | 'ao-coat-reference' | 'env-diffuse' | 'env-diffuse-owned' | 'env-metal' | 'env-metal-owned' | 'env-coat' | 'env-coat-owned' | 'legacy' | 'mapped' | 'reference' | 'tangents' | 'back' | 'back-reference' | 'transform' | 'transform-reference' | 'depth' | 'depth-off' | 'masked' | 'masked-off' | 'highlight-dry' | 'highlight-dry-reference' | 'highlight-metal' | 'highlight-metal-reference' | 'highlight-smooth' | 'highlight-smooth-reference';
+const cases: Case[] = ['roles-shared','roles-split','roles-reference','ao-direct','ao-direct-reference','ao-coat','ao-coat-reference','env-diffuse','env-diffuse-owned','env-metal','env-metal-owned','env-coat','env-coat-owned','legacy', 'mapped', 'reference', 'tangents', 'back', 'back-reference', 'transform', 'transform-reference', 'depth', 'depth-off', 'masked', 'masked-off', 'highlight-dry', 'highlight-dry-reference', 'highlight-metal', 'highlight-metal-reference', 'highlight-smooth', 'highlight-smooth-reference'];
 
 function pixels(renderer: WebGPURenderer) {
   const canvas = document.createElement('canvas'); canvas.width = canvas.height = 128;
@@ -50,7 +50,8 @@ export async function runMaterialProbe() {
       const sun = new THREE.DirectionalLight(look.sun.color, look.sun.intensity); sun.position.fromArray(look.sun.position); scene.add(sun, new THREE.HemisphereLight(look.ambient.sky, look.ambient.ground, look.ambient.intensity));
       const aoFixture = kind.startsWith('ao-');
       const enclosure = kind.startsWith('env-') || aoFixture;
-      const highlight = kind.startsWith('highlight-') || enclosure;
+      const roles = kind.startsWith('roles-');
+      const highlight = kind.startsWith('highlight-') || enclosure || roles;
       let sky: THREE.DataTexture | undefined;
       if (enclosure) {
         const pixels = new Float32Array(128 * 64 * 4).fill(1); sky = new THREE.DataTexture(pixels, 128, 64, THREE.RGBAFormat, THREE.FloatType);
@@ -71,18 +72,24 @@ export async function runMaterialProbe() {
       }
       const normal = new THREE.DataTexture(bytes, 64, 64), albedo = new THREE.DataTexture(colors, 64, 64), data = new THREE.DataTexture(fields, 64, 64);
       for (const map of [normal, albedo, data]) { map.channel = 2; map.generateMipmaps = true; map.needsUpdate = true; map.wrapS = map.wrapT = THREE.RepeatWrapping; }
-      albedo.colorSpace = THREE.SRGBColorSpace;
+      albedo.colorSpace = roles ? THREE.NoColorSpace : THREE.SRGBColorSpace;
       const transform = kind.startsWith('transform'), depth = kind.startsWith('depth') || kind.startsWith('masked');
       if (transform) { albedo.repeat.set(2, 1); albedo.offset.set(.13, .07); albedo.rotation = .5; }
       const source = new MeshStandardNodeMaterial({ color: '#888888', roughness: highlight ? kind.includes('smooth') ? .25 : .9 : 1,
-        metalness: kind.includes('highlight-metal') || kind.includes('env-metal') || kind.includes('env-coat') ? 1 : 0,
+        metalness: roles || kind.includes('highlight-metal') || kind.includes('env-metal') || kind.includes('env-coat') ? 1 : 0,
         normalMap: highlight || transform || depth ? null : normal, map: !highlight && (transform || depth) ? albedo : null,
-        roughnessMap: depth ? data : null, side: kind.startsWith('back') ? THREE.DoubleSide : THREE.FrontSide });
+        roughnessMap: roles ? kind === 'roles-shared' ? data : normal : depth ? data : null, metalnessMap: roles ? kind === 'roles-shared' ? data : albedo : null, side: kind.startsWith('back') ? THREE.DoubleSide : THREE.FrontSide });
       const material = kind.startsWith('highlight-') && kind.endsWith('reference') ? source : createSurfaceMaterial().copy(source);
       if (material !== source) source.dispose();
       if ((kind.includes('env-coat') || kind.startsWith('ao-coat')) && material instanceof MeshPhysicalNodeMaterial) { material.clearcoat = 1; material.clearcoatRoughness = .2; }
       if (aoFixture) material.emissive.set('#4c210b');
-      prepareSurfaceMaterial(material, depth ? data : undefined, depth ? .12 : 0, 3);
+      if (kind === 'roles-reference') {
+        prepareSurfaceMaterial(material);
+        // Independent fixed bindings, with the same sampling policy as the
+        // shared template, provide the expected draw for the split maps.
+        material.roughnessNode = Fn(builder => texture(normal, uv(2)).bias(surfaceBias(builder)).g.mul(material.roughness))();
+        material.metalnessNode = Fn(builder => texture(albedo, uv(2)).bias(surfaceBias(builder)).b.mul(material.metalness))();
+      } else prepareSurfaceMaterial(material, depth ? data : undefined, depth ? .12 : 0, 3);
       if (kind === 'legacy' || kind === 'reference' || kind === 'back-reference') material.normalNode = Fn(builder => {
         const scale = surfaceBias(builder).exp2();
         return normalMap(texture(normal, uv(2)).grad(dFdx(uv(2)).mul(scale), dFdy(uv(2)).mul(scale)), vec2(1));
@@ -102,6 +109,9 @@ export async function runMaterialProbe() {
     }
     const fsrExposure = await runFsrExposureProbe(renderer);
     const checks = {
+      // Admission: a shared graph must keep separate bindings after an earlier
+      // material packed roughness/metalness into one image. Compare native pixels.
+      materialRoleBindings: difference(images['roles-split'].rgba, images['roles-reference'].rgba).maximum <= 2,
       fsrExposureDomain: fsrExposure.passed,
       aoDirectEmissionPreserved: difference(interior(images['ao-direct'].rgba), interior(images['ao-direct-reference'].rgba)).maximum <= 1 && difference(images['ao-direct'].rgba, images['ao-direct-reference'].rgba).mean < .3,
       aoClearcoatPreserved: difference(interior(images['ao-coat'].rgba), interior(images['ao-coat-reference'].rgba)).maximum <= 1 && difference(images['ao-coat'].rgba, images['ao-coat-reference'].rgba).mean < .3,

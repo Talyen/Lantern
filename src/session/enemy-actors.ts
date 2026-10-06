@@ -1,16 +1,18 @@
 import { loadRigArt } from '../assets/rig-art';
 import * as THREE from 'three';
-import type { GLTF, GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import type { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import type { RuntimeAssets, RigArt } from '../assets/runtime-assets';
+import type { ArtLease } from '../assets/art-cache';
 import characters from '../../assets/playable-characters.json';
 import type { Encounter } from '../gameplay/encounter';
 import type { EnemyRig } from '../gameplay/area';
-import { loadEquipmentMotions } from '../animation/combat-animations';
+import { loadEquipmentMotions, releaseCombatMotions, type CombatMotions } from '../animation/combat-animations';
 import { disposeSceneInstances } from '../assets/resource-ownership';
 import { Equipment } from '../rendering/equipment';
 import { CasterVisuals } from '../rendering/projectiles';
 import { attachCharacter, makeActor, installMotions, type Actor } from './actors';
 
-type EnemyPresentation = { actor: Actor; equipment: Equipment; caster?: CasterVisuals };
+type EnemyPresentation = { actor: Actor; equipment: Equipment; caster?: CasterVisuals; motions?: CombatMotions };
 export type PreparedEnemies = { entries: Record<string, EnemyPresentation>; dispose(): void };
 
 /** Area-owned actor instances borrow cached rig art; preparation never replaces the active actors. */
@@ -18,33 +20,37 @@ export class EnemyActors {
   private active?: PreparedEnemies;
   private disposed = false;
   private ownsActive = true;
-  constructor(private scene: THREE.Scene, private loader: GLTFLoader, private actors: Record<string, Actor>) {}
+  constructor(private scene: THREE.Scene, private loader: GLTFLoader, private actors: Record<string, Actor>, private resources: RuntimeAssets) {}
 
-  private source(rig: EnemyRig): Promise<GLTF> {
-    return loadRigArt(this.loader, characters[rig].model).catch((error: unknown) => {
+  private source(rig: EnemyRig): ArtLease<RigArt> {
+    const lease = loadRigArt(this.resources, characters[rig].model);
+    return { ...lease, ready: lease.ready.catch((error: unknown) => {
       throw new Error(`Prepare ${characters[rig].name} with npm run assets:export-character. ${String(error)}`, { cause: error });
-    });
+    }) };
   }
 
   async prepare(state: Encounter): Promise<PreparedEnemies> {
     const root = new THREE.Scene(), entries: PreparedEnemies['entries'] = {};
+    const rigLeases: ArtLease<RigArt>[] = [];
     let released = false;
     const dispose = () => {
       if (released) return;
       released = true;
-      for (const { actor, equipment, caster } of Object.values(entries)) {
+      for (const { actor, equipment, caster, motions } of Object.values(entries)) {
         equipment.dispose(); caster?.dispose();
         actor.mixer?.stopAllAction();
         if (actor.mixer) actor.mixer.uncacheRoot(actor.mixer.getRoot());
         disposeSceneInstances(actor.root, { skeletons: true }); actor.root.removeFromParent();
+        if (motions) releaseCombatMotions(motions);
       }
+      rigLeases.forEach(lease => lease.release());
     };
     const results = await Promise.allSettled(state.enemyIds.filter(id => state.enemies[id].home).map(async id => {
-      const enemy = state.enemies[id], source = await this.source(enemy.rig);
-      const actor = makeActor(root, enemy), equipment = new Equipment(actor.root, 'enemy');
+      const enemy = state.enemies[id], lease = this.source(enemy.rig); rigLeases.push(lease); const source = await lease.ready;
+      const actor = makeActor(root, enemy), equipment = new Equipment(actor.root, 'enemy', this.resources.library);
       entries[id] = { actor, equipment };
       attachCharacter(actor, source.scene, source.animations, characters[enemy.rig].height);
-      installMotions(actor, await loadEquipmentMotions(this.loader, enemy.rig, enemy.loadout));
+      const motions = await loadEquipmentMotions(this.loader, enemy.rig, enemy.loadout); entries[id].motions = motions; installMotions(actor, motions);
       equipment.commit(await equipment.stage(enemy.loadout));
       if (enemy.kind === 'caster') entries[id].caster = new CasterVisuals(root, actor.root, id);
     }));
