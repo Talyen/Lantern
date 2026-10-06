@@ -39,3 +39,29 @@ The current clearing has Graphics and Sound Options and a version-pinned r186 FS
 ## Unresolved validation limits
 
 Safari cold-start variability, native-output frame targets and target-platform acceptance remain unresolved. Safari world entry has exceeded the host memory limit; the current investigation and retained evidence are owned by the friction log. Smaller-viewport Chromium samples and warmed reloads do not establish foreground Safari acceptance. Prepared lighting and local checks do not establish 60 fps, release readiness or cross-platform performance. Investigate current failures against [.agents/FRICTION_LOG.md](../.agents/FRICTION_LOG.md); perform measurements only for an explicit request or evidenced defect.
+
+## Browser startup memory work — October 5, 2026
+
+The Safari memory termination defect authorizes this focused investigation. Implementation is in the private `browser-memory-safe` task; target-platform acceptance remains open. Sources and licensed captures stay private. Preparation selects 49 validated runtime derivatives, including B1, with the recipe and lossless exceptions in [asset preparation](ASSET_PREPARATION.md#memory-safe-runtime-derivatives).
+
+Matched Chromium Homestead entry at 1920×1080 CSS/physical pixels, DPR 1, FSR Quality (1280×720 internal), High shadows/particles, sharpening 0.5, exposure 1.25, warmth 0.85, fog 0.7, bloom 0.25, AO off, soft DOF and texture depth off created 1,375,364,038 estimated GPU texture bytes versus 4,366,946,114 in the investigation baseline: 68.5% less. These are cumulative creation estimates, not Safari peak resident GPU or process memory. Application resources were reloaded on the isolated owned origin; OS/driver shader caches were not cleared. Runs used Chromium 152 on the target Mac, rather than foreground Safari. Folder relocation caused development reloads; interrupted runs are excluded. Loading variation and browser visibility prevent treating these measurements as Safari acceptance.
+
+| Acceptance target | Recorded result | Status |
+| --- | --- | --- |
+| Safari entry without reload/device loss | Implementation flow not exercised; computer control still reported a locked Mac after unlock confirmation and reconnect | Pending |
+| Safari process peak ≤4 GiB, settled ≤3 GiB | No accepted implementation process-footprint measurement | Pending |
+| First-entry texture creation ≥60% lower | 68.5% lower in matched Chromium trace | Chromium target met |
+| Equivalent texture views share storage | Focused two-GLTF ownership, UV-transform and color/data fixtures pass | Fixture proof; Safari pending |
+| Native compilations ≤4 active | Observed queue peak 4 | Chromium target met |
+| Shader preparation ≤1 active | Observed builder queue peak 1 | Chromium target met |
+| Image decode/transcode ≤2 active | Observed queue peak 2 | Chromium target met |
+| Transfers ≤4 and GLTF parses ≤1 | Observed peaks 4 and 1 | Chromium target met |
+| Transient image admission 128 MiB | Queue reservations configured at 128 MiB; oversized-alone fixture passes | Admission proof; measured transient peak pending |
+| Shared inactive art ≤512 MiB | First-entry inactive estimate 47,985,832 bytes; repeated travel plateau not measured | First-entry target met; circuit pending |
+| Fresh entry ≤10 seconds | Recorded entries varied 11–25 seconds; final resource-cached Continue 10.281 seconds | Unmet |
+| Cached entry/travel ≤3 seconds | Final resource-cached Continue 10.281 seconds; travel acceptance not completed | Unmet/pending |
+| Safari three fresh, three cached, two four-area circuits and interactions | Not completed | Pending |
+
+Final entry ledger estimates 1,638,482,330 bytes of unique art storage: 790,487,678 GPU texture bytes, 667,248,848 transcoded mip bytes, 92,429,120 decoded image bytes, and geometry/motion/metadata. This excludes other rendering allocations and OS/browser overhead. Encoded-source retention settled at zero with a 39,911,963-byte recorded peak. Actual selected compressed material formats were ASTC 4×4, with explicitly lossless RGBA exceptions. Queue counters are numeric; diagnostics do not retain scenes or shader source strings.
+
+The last sampled generation created 931 shader builders, including 610 single-target shadow builders and 310 physical beauty/MRT builders. This remains a substantial startup allocation path. Continue investigation with build identities, pass/light/geometry variants and retained node-builder data before changing fidelity, readiness or targets. Do not close the Safari friction entry from Chromium creation totals or static proof. The task checkpoint and bounded private evidence are retained under `.local/inspection/`; integration requires current native material proof, visual comparison and Safari acceptance. The final change-aware sanity check passed rendering policy, documentation, types, lint, prepared lighting, level/material references and material contracts, but failed the native-proof freshness gate after the latest shadow-template edit. The prior 19-check native probe passed before that edit. A fresh owned authoring preview remained in equipment preparation, so its proof could not be refreshed during wrap-up. The final focused ownership/readiness run passed 18 tests. The previously completed production build passed; final edits have not established a new production/native proof.
