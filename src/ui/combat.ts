@@ -1,8 +1,7 @@
+import type { EncounterView, CharacterView } from '../gameplay/state-view';
 import { abilityMana } from '../gameplay/mastery';
 import { abilityCooldown } from '../gameplay/action-commit';
 import { abilities, abilitySet, abilityUnlocked, type AbilityId, type ActionBar } from '../gameplay/abilities';
-import type { CharacterSave } from '../gameplay/character';
-import type { Encounter } from '../gameplay/encounter';
 import { bindingLabel, actionSlotInputs, type InputPreferences } from '../input/bindings';
 import { abilityIcon } from './ability-icons';
 import { hudFrame, hudIcon } from './hud-art';
@@ -11,7 +10,7 @@ import { setText, setAttribute, setDisabled } from './dom';
 import { bindMenuDismissal } from './menu';
 import './combat.css';
 
-type Context={paused():boolean;character():CharacterSave;encounter():Encounter;preferences:InputPreferences;activate(id:AbilityId):void;potion():void;portal():void;canEdit():boolean;portalReady():boolean;assign(bar:ActionBar):void;clear():void;focus():void};
+type Context={paused():boolean;character():CharacterView;encounter():EncounterView;preferences:InputPreferences;activate(id:AbilityId):void;potion():void;portal():void;canEdit():boolean;portalReady():boolean;assign(bar:ActionBar):void;clear():void;focus():void};
 type Drag={id:AbilityId;slot?:number;x:number;y:number;active:boolean;pointer:number};
 type SlotElements={button:HTMLButtonElement;icon:HTMLElement;cooldown:HTMLElement;key:HTMLElement;caption:HTMLElement};
 type UtilityElements={button:HTMLButtonElement;count:Element;key:Element};

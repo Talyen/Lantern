@@ -1,5 +1,6 @@
+import type { EncounterView } from '../gameplay/state-view';
 import * as THREE from 'three';
-import { type ActorId, type AimPoint, type Encounter } from '../gameplay/encounter';
+import { type ActorId, type AimPoint } from '../gameplay/encounter';
 
 export type PointerPosition = { x: number; y: number };
 
@@ -36,7 +37,7 @@ export class PointerAim {
     if (this.ray.ray.intersectPlane(this.plane, this.point)) return { x: this.point.x, z: this.point.z };
   }
 
-  attack(pointer: PointerPosition, encounter: Encounter, safe: boolean, actors: Record<ActorId, { root: THREE.Object3D }>): AimPoint | undefined {
+  attack(pointer: PointerPosition, encounter: EncounterView, safe: boolean, actors: Record<ActorId, { root: THREE.Object3D }>): AimPoint | undefined {
     const ground = this.resolve(pointer, encounter.player.y);
     // Body pixels project beyond an enemy on the ground plane; commit its centre instead.
     let picked: { x: number; z: number; distance: number } | undefined;

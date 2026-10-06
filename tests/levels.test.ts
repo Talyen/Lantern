@@ -68,7 +68,7 @@ test('click approach finishes the last step into interaction range before discar
   const navigation = {
     navigationReady: true, interactionPath: () => [[0, -.914]], interactionVisible: () => true,
   } as unknown as MovementWorldType;
-  const approach = new ClickApproach(new Adventure(), encounter), interact = vi.fn();
+  const approach = new ClickApproach(new Adventure(), encounter, { selectPickup: () => {}, pickup: () => {} }), interact = vi.fn();
   const frame = { movement: { x: 0, z: 0 }, block: false, navigation, targets: () => [target], error: () => '', interact };
   approach.selectWorld(target, navigation);
   expect(approach.update(.05, frame)?.movement.z).toBeGreaterThan(.1);

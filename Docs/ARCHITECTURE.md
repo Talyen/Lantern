@@ -27,6 +27,8 @@ This table is the canonical map read by `agent:context`. Owners are starting poi
 | `tooling` | Agent workflow, checks and scripts | [agent CLI](../scripts/agents/cli.mjs), [checks](../scripts/check.mjs), [CLI helpers](../scripts/lib/cli.mjs) | [resources](DEVELOPMENT_REFERENCE.md#private-assets-and-resource-use), [script conventions](DEVELOPMENT_REFERENCE.md#script-conventions), [checks](DEVELOPMENT_REFERENCE.md#commands-and-handoff), [reads](DEVELOPMENT_REFERENCE.md#read-only-agent-tools) | `npm run agent:status` | One relevant observable command outcome |
 | `docs` | Repository guidance and roadmap | [guide](../AGENTS.md), [workflow](DEVELOPMENT.md), [roadmap](../ROADMAP.md) | [workflow](DEVELOPMENT.md), [change method](RUNTIME.md#change-method) | — | Link check and task diff review |
 
+Gameplay commands enter through [SessionRuntime](../src/session/runtime.ts); input/presentation consumers borrow [readonly state views](../src/gameplay/state-view.ts). Domain owners remain responsible for their rules, while runtime orders commits before feedback.
+
 Session flow and slot ownership begin at [application](../src/application.ts), [transactional adventure store](../src/gameplay/transactional-adventure-store.ts) and [save recovery](RUNTIME.md#save-recovery); inspect these alongside the UI/gameplay owners for front-end changes.
 
 ## Desktop reporting

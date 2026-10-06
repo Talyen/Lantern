@@ -1,4 +1,4 @@
-import type { CharacterSave } from '../gameplay/character';
+import type { CharacterView } from '../gameplay/state-view';
 import { equipmentCatalog, type ItemId } from '../gameplay/equipment';
 import { lootDefinitions, type InventoryItem } from '../gameplay/inventory';
 import { skillProgress } from '../gameplay/skills';
@@ -9,7 +9,8 @@ import { bindMenuDismissal } from './menu';
 import './smithing.css';
 
 type Context = {
-  character():CharacterSave;
+  present(feedback: () => void): void;
+  character():CharacterView;
   backgrounded():boolean;
   clear():void;
   focus():void;
@@ -129,7 +130,7 @@ export class SmithingPanel {
       reward.textContent='+'+smithingXp(character,smithing.reclaimXp).toLocaleString()+' Smithing XP';
       const error=reclaimError(character,selected.id,selected.container);
       action.textContent='Reclaim';action.disabled=!!error;
-      action.onclick=()=>{if(this.pending||action.disabled)return;try{const previous=character.xp.smithing,name=lootDefinitions[entry.item].name,learned=this.ctx.reclaim(selected.id,selected.container);this.selection=null;this.render();this.announce('Reclaimed '+name+' · '+Object.entries(returns).map(([material,quantity])=>'+'+quantity+' '+(material==='gold' ? 'Gold' : lootDefinitions[material as 'iron' | 'wood'].name)).join(', ')+' · +'+(this.ctx.character().xp.smithing-previous).toLocaleString()+' Smithing XP',learned);this.ctx.sound('equip');}catch(error){this.status.textContent=error instanceof Error?error.message:'Unable to reclaim.';}};
+      action.onclick=()=>{if(this.pending||action.disabled)return;try{const previous=character.xp.smithing,name=lootDefinitions[entry.item].name,learned=this.ctx.reclaim(selected.id,selected.container);this.ctx.present(()=>{this.selection=null;this.render();this.announce('Reclaimed '+name+' · '+Object.entries(returns).map(([material,quantity])=>'+'+quantity+' '+(material==='gold' ? 'Gold' : lootDefinitions[material as 'iron' | 'wood'].name)).join(', ')+' · +'+(this.ctx.character().xp.smithing-previous).toLocaleString()+' Smithing XP',learned);this.ctx.sound('equip');});}catch(error){this.status.textContent=error instanceof Error?error.message:'Unable to reclaim.';}};
       const heading=document.createElement('h4');heading.textContent='Recovered Materials';this.details.append(heading,materials,reward);
       const destroy=document.createElement('p');destroy.className='smith-destroy';destroy.textContent='Destroys this item.';this.details.append(destroy);
       if(error){const notice=document.createElement('p');notice.className='smith-error';notice.textContent=error;this.details.append(notice);}this.details.append(action);
@@ -147,7 +148,7 @@ export class SmithingPanel {
       if(this.progress)this.progress.value=pending.elapsed;
       if(pending.elapsed>=smithing.forgeSeconds){
         this.pending=null;this.frameId=0;
-        try{const previous=this.ctx.character().xp.smithing,learned=this.ctx.forge(pending.item);this.render();this.announce('Forged '+equipmentCatalog[pending.item].name+' · +'+(this.ctx.character().xp.smithing-previous).toLocaleString()+' Smithing XP',learned);this.ctx.sound('equip');}
+        try{const previous=this.ctx.character().xp.smithing,learned=this.ctx.forge(pending.item);this.ctx.present(()=>{this.render();this.announce('Forged '+equipmentCatalog[pending.item].name+' · +'+(this.ctx.character().xp.smithing-previous).toLocaleString()+' Smithing XP',learned);this.ctx.sound('equip');});}
         catch(error){this.render();this.status.textContent=error instanceof Error?error.message:'Unable to forge. Materials retained.';}
         return;
       }

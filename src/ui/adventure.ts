@@ -1,6 +1,6 @@
 import { bindMenuDismissal } from './menu';
 import { InventoryPanel, type InventoryContext } from './inventory-panel';
-import type { CharacterSave } from '../gameplay/character';
+import type { CharacterView } from '../gameplay/state-view';
 import { lootDefinitions } from '../gameplay/inventory';
 import { canRepairShelter, shelterMaterials } from '../gameplay/homestead-transactions';
 import { setText } from './dom';
@@ -14,7 +14,7 @@ export class AdventureMenus {
   private repair = document.getElementById('repair-dialog') as HTMLDialogElement;
   private travel = document.getElementById('travel-dialog') as HTMLDialogElement;
   private prompt = document.getElementById('interaction-prompt')!;
-  private character: CharacterSave | null = null;
+  private character: CharacterView | null = null;
   private repairing = false;
   constructor(private clearInput: () => void, private focus: () => void, cast: (id: string) => void,
     private context: InventoryMenuContext, private sound?: (cue: 'menuOpen' | 'menuClose') => void) {
@@ -37,9 +37,9 @@ export class AdventureMenus {
     document.getElementById('shelter-repair')!.onclick = async () => {
       if (this.repairing) return;
       this.repairing = true; this.refreshRepair(); document.getElementById('repair-error')!.textContent = '';
-      try { await this.context.repair(); this.repairing = false; this.close(); }
+      try { await this.context.repair(); this.repairing = false; this.context.present(() => this.close()); }
       catch (error) { document.getElementById('repair-error')!.textContent = error instanceof Error ? error.message : 'Unable to repair shelter.'; }
-      finally { this.repairing = false; this.refreshRepair(); }
+      finally { this.repairing = false; this.context.present(() => this.refreshRepair()); }
     };
   }
   dispose(): void { this.panel.dispose(); this.travel.close(); this.repair.close(); }
@@ -79,7 +79,7 @@ export class AdventureMenus {
   update(_scrolls: number, canUse: boolean, prompt: string, casting: number): void {
     this.panel.updateScroll(canUse); setText(this.prompt, casting > 0 ? `Scroll of Return · ${casting.toFixed(1)}s` : prompt);
   }
-  updateCharacter(character: CharacterSave): void {
+  updateCharacter(character: CharacterView): void {
     this.character = character; this.panel.updateCharacter(character); if (this.repair.open) this.refreshRepair();
   }
   private refreshRepair(): void {

@@ -1,6 +1,5 @@
 import type { Harvesting } from '../gameplay/harvesting';
 import type { GatheringAction, GatheringEvent } from '../gameplay/gathering-action';
-import type { MovementWorld } from '../gameplay/movement';
 import type { AreaInstance } from '../levels/builder';
 import type { ResourceDefinition } from '../levels/resources';
 import type { CoreEffects } from '../rendering/effects';
@@ -23,17 +22,6 @@ export class GatheringController {
   ) {}
   get target(): ResourceDefinition | null { return this.action.target; }
   get choppingId(): string | null { return this.action.choppingId; }
-  select(resource: ResourceDefinition): void { this.action.select(resource); }
-  cancel(releaseLock = true): void { this.action.cancel(releaseLock); }
-
-  register(area: AreaInstance, navigation: MovementWorld): void {
-    this.harvesting.register(area.area.id, area.resources);
-    for (const resource of area.resources) {
-      const felled = this.harvesting.state(area.area.id, resource.id)?.felled ?? false;
-      navigation.setTreeFelled(resource.id, felled);
-    }
-    this.restore(area);
-  }
 
   /** Rebuild resource appearance without touching collision or harvesting clocks. */
   restore(area: AreaInstance): void {

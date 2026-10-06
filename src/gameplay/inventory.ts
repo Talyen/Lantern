@@ -78,14 +78,14 @@ function returnShieldToBag(items: InventoryItem[], set: WeaponSet): void {
 }
 
 export function moveItem(
-  items: InventoryItem[],
+  items: readonly InventoryItem[],
   id: string,
   x: number,
   y: number,
   quantity: number,
   makeId: () => string,
 ): InventoryItem[] {
-  const next = structuredClone(items), entry = selectedQuantity(next, id, quantity);
+  const next = structuredClone([...items]), entry = selectedQuantity(next, id, quantity);
   const set = entry.weaponSet ?? 0;
   const target = next.find((i) => i.slot === 'bag' && i.id !== id && i.x === x && i.y === y);
   if (target?.item === entry.item && lootDefinitions[entry.item].stackable) {
@@ -109,12 +109,12 @@ export function moveItem(
   return next;
 }
 export function equipInstance(
-  items: InventoryItem[],
+  items: readonly InventoryItem[],
   id: string,
   slot: EquipmentSlot,
   set: WeaponSet = 0,
 ): InventoryItem[] {
-  const next = structuredClone(items),
+  const next = structuredClone([...items]),
     entry = next.find((i) => i.id === id);
   if (!entry || !isItemId(entry.item))
     throw new Error('That item cannot be equipped.');
@@ -137,11 +137,11 @@ export function equipInstance(
   return next;
 }
 export function removeQuantity(
-  items: InventoryItem[],
+  items: readonly InventoryItem[],
   id: string,
   quantity: number,
 ): InventoryItem[] {
-  const next = structuredClone(items), entry = selectedQuantity(next, id, quantity);
+  const next = structuredClone([...items]), entry = selectedQuantity(next, id, quantity);
   const main = entry.slot === 'main',
     set = entry.weaponSet ?? 0;
   entry.quantity -= quantity;
@@ -149,8 +149,8 @@ export function removeQuantity(
   if (main) returnShieldToBag(remaining, set);
   return remaining;
 }
-export function sortedItems(items: InventoryItem[]): InventoryItem[] {
-  const next = structuredClone(items), fixed = next.filter(entry => entry.slot !== 'bag'), bag = next.filter(entry => entry.slot === 'bag');
+export function sortedItems(items: readonly InventoryItem[]): InventoryItem[] {
+  const next = structuredClone([...items]), fixed = next.filter(entry => entry.slot !== 'bag'), bag = next.filter(entry => entry.slot === 'bag');
   const quantities = new Map<LootItem, number>();
   for (const entry of bag) if (lootDefinitions[entry.item].stackable)
     quantities.set(entry.item, (quantities.get(entry.item) ?? 0) + entry.quantity);
@@ -178,14 +178,14 @@ export function sortedItems(items: InventoryItem[]): InventoryItem[] {
 }
 /** Both containers commit together. Partial transfers preserve the source remainder. */
 export function transferItem(
-  source: InventoryItem[],
-  destination: InventoryItem[],
+  source: readonly InventoryItem[],
+  destination: readonly InventoryItem[],
   id: string,
   quantity: number,
   makeId: () => string,
   point?: { x: number; y: number },
 ): { source: InventoryItem[]; destination: InventoryItem[] } {
-  const { source: nextSource, destination: nextDestination } = structuredClone({ source, destination });
+  const { source: nextSource, destination: nextDestination } = structuredClone({ source: [...source], destination: [...destination] });
   const entry = selectedQuantity(nextSource, id, quantity, 'Move equipped gear into the bag first.');
   if (entry.slot !== 'bag' && entry.slot !== 'overflow') throw new Error('Move equipped gear into the bag first.');
   const stackable = lootDefinitions[entry.item].stackable;

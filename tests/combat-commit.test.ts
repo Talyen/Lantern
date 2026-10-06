@@ -25,11 +25,13 @@ function setup() {
   const enemy = encounter.enemies.enemy;
   enemy.x = 0; enemy.z = 1.4; enemy.hp = enemy.lowestHp = 20;
   const presentation = { fail: false };
+  const controls = { holding: false };
   const gathering = new GatheringAction(encounter, adventure, {
     area: () => areas.clearing, paused: () => false, timing: () => undefined, visible: () => true, setTreeFelled: () => {},
   });
-  const runtime = new SessionRuntime(encounter, adventure, gathering, {
+  const runtime: SessionRuntime = new SessionRuntime(encounter, adventure, gathering, {
     area: () => areas.clearing, movement: () => undefined, timings: () => combat.timings(),
+    paused: () => false, impactHolding: () => controls.holding, equipmentBlocked: () => false,
     interruptApproach: () => {}, defeated: () => {},
   });
   const present = () => {
@@ -37,16 +39,15 @@ function setup() {
     if (presentation.fail) throw new Error('Presentation unavailable');
     return feedback;
   };
-  const combat = new CombatController(encounter, adventure, {},
+  const combat = new CombatController({},
     { movement: () => ({ x: 0, z: 0 }), pointer: () => undefined, held: () => false, suppress: () => {} },
     { resolve: () => undefined, attack: () => undefined },
     { abilityTimings: () => ({ sweep: { attack: 1, contacts: [.2] } }) },
     {
-      paused: () => false, impactHolding: () => false, safeArea: () => false,
-      interruptApproach: () => {}, clearHold: () => {}, blocking: () => false,
-      complete: events => runtime.complete(events),
-    });
-  return { adventure, encounter, combat, runtime, storage, presentation, present };
+      paused: () => false, safeArea: () => false,
+      clearHold: () => {}, blocking: () => false,
+    }, runtime);
+  return { adventure, encounter, combat, runtime, storage, presentation, present, controls };
 }
 
 test('an immediate ability swap saves the accepted weapon set before presentation fails', () => {
@@ -96,17 +97,38 @@ test.each([false, true])('frame combat commits XP, unlocks and cooldowns with fa
 // Admission: a multi-target contact must publish one coherent XP/unlock/cooldown snapshot;
 // earlier single-target fixtures do not detect per-event backup churn inside one combat commit.
 test('one combat batch persists all proficiency events together before feedback', () => {
-  const { adventure, encounter, runtime, storage } = setup();
+  const { adventure, encounter, storage } = setup();
   const write = vi.spyOn(storage, 'setItem');
   try {
     encounter.abilityCooldowns.sweep = 3;
-    runtime.complete([{ type: 'proficiency', family: 'sword', amount: 7 },
-      { type: 'proficiency', family: 'sword', amount: 8 }, { type: 'abilityCommitted', ability: 'sweep', id: 1 }]);
+    adventure.commit(() => adventure.applyCombatEvents(encounter, [{ type: 'proficiency', family: 'sword', amount: 7 },
+      { type: 'proficiency', family: 'sword', amount: 8 }, { type: 'abilityCommitted', ability: 'sweep', id: 1 }]));
     expect(write.mock.calls.filter(([key]) => key === characterSaveKey)).toHaveLength(1);
     const saved = decodeCharacter(storage.getItem(characterSaveKey)!);
     expect(saved.xp.sword).toBe(1005); expect(saved.actionBar).toContain('executioner');
     expect(saved.outing.cooldowns.abilityCooldowns.sweep).toBe(3);
-    runtime.takeFeedback();
-    expect(write.mock.calls.filter(([key]) => key === characterSaveKey)).toHaveLength(1);
   } finally { write.mockRestore(); adventure.closeSave(); }
+});
+
+// Admission: moving the pending utility clock must preserve accepted combat commands
+// through recovery without consuming a cancelled potion. The domain-only action tests
+// do not exercise physical-input clearing and runtime buffering together.
+test('recovery preserves a buffered ability and cancels the uncommitted utility request', () => {
+  const { adventure, encounter, combat, runtime, controls, storage } = setup();
+  try {
+    controls.holding = true;
+    combat.startAbility('sweep');
+    const potions = adventure.character.potions, saved = storage.data.get(characterSaveKey);
+    runtime.usePotion();
+    expect(encounter.pending).toMatchObject({ kind: 'ability', ability: 'sweep' });
+    expect(storage.data.get(characterSaveKey)).toBe(saved);
+    runtime.clearInput(true);
+    controls.holding = false;
+    runtime.flushUtility();
+    runtime.advance(.25, { x: 0, z: 0, paused: false });
+    expect(encounter.playerAction?.ability).toBe('sweep');
+    expect(decodeCharacter(storage.data.get(characterSaveKey)!).activeSet).toBe(1);
+    expect(adventure.character.potions).toBe(potions);
+    expect(encounter.potionCooldown).toBe(0);
+  } finally { adventure.closeSave(); }
 });

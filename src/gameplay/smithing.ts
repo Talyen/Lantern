@@ -1,3 +1,4 @@
+import type { StateView } from './state-view';
 import type { CharacterSave } from './character';
 import { equipmentCatalog, isItemId, type ItemId, type SalvageReturns } from './equipment';
 import { consumeMaterial, countItem, receive, validatedContainers, type InventoryItem } from './inventory';
@@ -15,10 +16,11 @@ export const smithingRecipes: readonly SmithingRecipe[] = [
 export const smithing = { forgeSeconds:2, reclaimXp:20, heatLevel:skillTree.passives[0], heatResistance:.15, hammerLevel:skillTree.passives[1], hammerDamage:.05, reach:1.8 };
 export const smithingMeleeMultiplier = (xp:number) => skillLevel(xp)>=smithing.hammerLevel ? 1+smithing.hammerDamage : 1;
 export type SmithingState = Pick<CharacterSave,'items' | 'stash' | 'gold' | 'xp' | 'restedSeconds' | 'shelterRestored'>;
+type SmithingView = StateView<SmithingState>;
 export type SmithingContainer = 'bag' | 'stash';
 export const learnedRecipes = (xp:number) => smithingRecipes.filter(recipe => skillLevel(xp) >= recipe.level);
 export const smithingXp = (state:Pick<SmithingState,'restedSeconds'>,amount:number) => earnedSkillXp(amount,state.restedSeconds);
-export function recipeMaterials(state:SmithingState,recipe:SmithingRecipe) {
+export function recipeMaterials(state:SmithingView,recipe:SmithingRecipe) {
   const carried = state.items.filter(entry => entry.slot === 'bag');
   return (Object.entries(recipe.materials) as [SmithingMaterial,number][]).map(([item,cost]) => {
     const bag=countItem(carried,item);
@@ -27,8 +29,8 @@ export function recipeMaterials(state:SmithingState,recipe:SmithingRecipe) {
   });
 }
 /** Forge and reclaim detach containers and award XP before spending any inputs. */
-function candidate(state: SmithingState, amount: number): SmithingState {
-  return { ...state, ...structuredClone({ items: state.items, stash: state.stash }),
+function candidate(state: SmithingView, amount: number): SmithingState {
+  return { ...state, ...structuredClone({ items: [...state.items], stash: [...state.stash] }),
     xp: withSkillXp(state.xp, 'smithing', amount, state.restedSeconds) };
 }
 function checked(state: SmithingState): SmithingState {
@@ -36,7 +38,7 @@ function checked(state: SmithingState): SmithingState {
   return state;
 }
 /** Candidates include placement and XP; callers publish exactly once after the forge completes. */
-export function forged(state:SmithingState,item:ItemId,newId:()=>string):SmithingState {
+export function forged(state:SmithingView,item:ItemId,newId:()=>string):SmithingState {
   const recipe = learnedRecipes(state.xp.smithing).find(recipe => recipe.item === item);
   if (!recipe) throw new Error('Recipe is not learned.');
   for (const material of recipeMaterials(state,recipe))
@@ -51,29 +53,29 @@ export function forged(state:SmithingState,item:ItemId,newId:()=>string):Smithin
   if (receive(next.items,item,1,newId)!==1) throw new Error('Not enough room in Bag.');
   return checked(next);
 }
-function previewIds(state:SmithingState):()=>string {
+function previewIds(state:SmithingView):()=>string {
   const used=new Set([...state.items,...state.stash].map(entry=>entry.id));let sequence=0;
   return()=>{let id;do{id='smithing-preview-'+(++sequence);}while(used.has(id));used.add(id);return id;};
 }
-export function forgeError(state:SmithingState,item:ItemId):string {
+export function forgeError(state:SmithingView,item:ItemId):string {
   try { forged(state,item,previewIds(state)); return ''; }
   catch(error) { return error instanceof Error ? error.message : 'Cannot forge this recipe.'; }
 }
 export function salvageReturns(item:unknown):SalvageReturns | undefined {
   return isItemId(item) ? equipmentCatalog[item].salvage : undefined;
 }
-function reclaimEntries(state: SmithingState, container: SmithingContainer): InventoryItem[] {
+function reclaimEntries(state: SmithingView, container: SmithingContainer): readonly InventoryItem[] {
   return container === 'bag' ? state.items : state.shelterRestored ? state.stash : [];
 }
 function canReclaim(entry: InventoryItem): boolean {
   return (entry.slot === 'bag' || entry.slot === 'overflow') && !!salvageReturns(entry.item);
 }
-export function reclaimable(state:SmithingState) {
+export function reclaimable(state:SmithingView) {
   return (['bag', 'stash'] as const).flatMap(container =>
     reclaimEntries(state, container).filter(canReclaim).map(entry => ({ entry, container })));
 }
 /** Removal, matching returns and XP are indivisible; equipped and stale IDs never qualify. */
-export function reclaimed(state:SmithingState,id:string,container:SmithingContainer,newId:()=>string):SmithingState {
+export function reclaimed(state:SmithingView,id:string,container:SmithingContainer,newId:()=>string):SmithingState {
   const selected = reclaimEntries(state, container).find(entry => entry.id === id && canReclaim(entry));
   if (!selected) throw new Error('Select unequipped metal gear.');
   const returns=salvageReturns(selected.item)!;
@@ -89,7 +91,7 @@ export function reclaimed(state:SmithingState,id:string,container:SmithingContai
   }
   return checked(next);
 }
-export function reclaimError(state:SmithingState,id:string,container:SmithingContainer):string {
+export function reclaimError(state:SmithingView,id:string,container:SmithingContainer):string {
   try { reclaimed(state,id,container,previewIds(state)); return ''; }
   catch(error) { return error instanceof Error ? error.message : 'Cannot reclaim this item.'; }
 }

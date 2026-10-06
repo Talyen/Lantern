@@ -1,4 +1,5 @@
-import type { ActorId, ActorState, Encounter, EncounterEvent, Motion } from '../gameplay/encounter';
+import type { EncounterView } from '../gameplay/state-view';
+import type { ActorId, ActorState, EncounterEvent, Motion } from '../gameplay/encounter';
 import type { AdventureEvent } from '../gameplay/adventure';
 import type { AreaDefinition } from '../levels/types';
 import { type GameAudio, type SoundPosition } from './audio';
@@ -25,7 +26,7 @@ export class GameplayAudio {
   private nearestFlames: AmbientFlame[] = [];
   private loopKeys = new Set<string>();
   constructor(readonly audio: GameAudio) {}
-  encounter(events: EncounterEvent[], state: Encounter): void {
+  encounter(events: EncounterEvent[], state: EncounterView): void {
     for (const event of events) {
       if (event.type==='impact' && event.periodic) continue;
       if (event.type === 'action') {

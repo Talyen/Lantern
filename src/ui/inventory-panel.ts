@@ -1,4 +1,4 @@
-import type { CharacterSave } from '../gameplay/character';
+import type { CharacterView } from '../gameplay/state-view';
 import type { WeaponSet } from '../gameplay/abilities';
 import { preferredEquipmentSlot, isEquipmentSlot, isItemId, supportsShield, type EquipmentSlot } from '../gameplay/equipment';
 import { bagWidth, bagHeight, emptyPosition, equipInstance, lootDefinitions, moveItem, sortedItems, transferItem, itemLoadout, stackLimit, type InventoryItem } from '../gameplay/inventory';
@@ -11,8 +11,9 @@ import { placeInventoryItem } from './inventory-item';
 import './inventory.css';
 
 export type InventoryContext = {
+  present(feedback: () => void): void;
   change(items: InventoryItem[]): Promise<void>;
-  changeContainers(items: InventoryItem[], stash: InventoryItem[]): void;
+  changeContainers(items: readonly InventoryItem[], stash: readonly InventoryItem[]): void;
   transfer(id: string, quantity: number, toStash: boolean, point?: { x: number; y: number }): void;
   drop(id: string, quantity: number): Promise<void>;
   recover(id: string): void;
@@ -41,7 +42,7 @@ export class InventoryPanel {
   private readonly lifecycle = new AbortController();
   dispose(): void { this.lifecycle.abort(); this.cancelDrag(); this.hideTooltip(); this.dialog.close(); }
   readonly dialog = document.getElementById('inventory-dialog') as HTMLDialogElement;
-  private character: CharacterSave | null = null;
+  private character: CharacterView | null = null;
   private key = '';
   private viewSet: WeaponSet = 0;
   private stashMode = false;
@@ -156,15 +157,15 @@ export class InventoryPanel {
     this.cancelDrag(); this.dialog.close(); this.stashMode = false; this.clear(); this.focus(); this.sound?.('menuClose');
   }
   updateScroll(canUse: boolean): void { this.scrollReady = canUse; }
-  updateCharacter(character: CharacterSave): void {
+  updateCharacter(character: CharacterView): void {
     this.character = character;
     if (!this.open) return;
     const key = JSON.stringify([character.items, character.stash, character.activeSet]);
     if (key !== this.key) this.refresh();
   }
-  private contents(container: Container): InventoryItem[] { return container === 'stash' ? this.character!.stash : this.character!.items; }
-  private entries(): InventoryItem[] { return this.character ? [...this.character.items, ...(this.stashMode ? this.character.stash : [])] : []; }
-  private entry(id?: string): InventoryItem | undefined { return this.entries().find(item => item.id === id); }
+  private contents(container: Container): readonly InventoryItem[] { return container === 'stash' ? this.character!.stash : this.character!.items; }
+  private entries(): Readonly<InventoryItem>[] { return this.character ? [...this.character.items, ...(this.stashMode ? this.character.stash : [])] : []; }
+  private entry(id?: string): Readonly<InventoryItem> | undefined { return this.entries().find(item => item.id === id); }
   private source(id: string): Container { return this.character?.stash.some(item => item.id === id) ? 'stash' : 'bag'; }
 
   private button(entry: InventoryItem): HTMLButtonElement {
@@ -337,7 +338,7 @@ export class InventoryPanel {
       if (!point || !target) throw new Error('Item does not fit.');
       const next = this.placedItems(drag, target.container, point, this.ctx.newId);
       return drag.container === 'bag' && target.container === 'bag'
-        ? this.ctx.change(next.items) : this.ctx.changeContainers(next.items, next.stash);
+        ? this.ctx.change([...next.items]) : this.ctx.changeContainers(next.items, next.stash);
     });
   }
   private openSplit(entry: InventoryItem): void {
@@ -370,8 +371,11 @@ export class InventoryPanel {
     try { await operation(); }
     catch (error) { this.error.textContent = error instanceof Error ? error.message : 'Unable to move item.'; }
     finally {
-      this.busy = false; this.dialog.querySelectorAll<HTMLButtonElement>('button').forEach(button => { button.disabled = false; }); this.refresh();
-      if (focused) this.dialog.querySelector<HTMLButtonElement>(`[data-instance="${CSS.escape(focused)}"]`)?.focus();
+      this.busy = false;
+      this.ctx.present(() => {
+        this.dialog.querySelectorAll<HTMLButtonElement>('button').forEach(button => { button.disabled = false; }); this.refresh();
+        if (focused) this.dialog.querySelector<HTMLButtonElement>(`[data-instance="${CSS.escape(focused)}"]`)?.focus();
+      });
     }
   }
 }

@@ -1,10 +1,10 @@
+import type { EncounterView } from '../gameplay/state-view';
+import type { SessionRuntime } from './runtime';
 import type { GameAudio } from '../audio/audio';
 import { homeArea, type Adventure } from '../gameplay/adventure';
-import type { Encounter } from '../gameplay/encounter';
 import type { AreaDefinition } from '../levels/types';
 import type { AdventureMenus } from '../ui/adventure';
 import type { AreaTravel, AreaChangeResult } from './area-change';
-import type { GatheringController } from './gathering';
 import { interactionError, type WorldInteraction } from './world-interactions';
 
 type InteractionContext = {
@@ -21,11 +21,11 @@ type InteractionContext = {
 export class InteractionActions {
   constructor(
     private readonly adventure: Adventure,
-    private readonly encounter: Encounter,
+    private readonly encounter: EncounterView,
     private readonly menus: Pick<AdventureMenus, 'openRepair' | 'openInventory' | 'openTravel'>,
-    private readonly gathering: Pick<GatheringController, 'select'>,
     private readonly audio: Pick<GameAudio, 'play'>,
     private readonly context: InteractionContext,
+    private readonly runtime: SessionRuntime,
   ) {}
 
   execute(target: WorldInteraction): void {
@@ -36,19 +36,19 @@ export class InteractionActions {
     const error = interactionError(target, area, adventure, encounter);
     if (error) { adventure.message(error); return; }
     switch (target.type) {
-      case 'resource': this.gathering.select(target.resource); break;
+      case 'resource': this.runtime.selectGathering(target.resource); break;
       case 'shelter': this.menus.openRepair(); break;
       case 'shop': context.openShop(); break;
       case 'smithing': context.openSmithing(); break;
       case 'stash': this.menus.openInventory(true); break;
-      case 'chest': adventure.openChest(encounter, area, target.chest); break;
+      case 'chest': this.runtime.openChest(target.chest); break;
       case 'fire': {
-        adventure.discover(area, [encounter.player.x, encounter.player.z]);
+        this.runtime.discover();
         const sourceFire = target.fire;
         this.menus.openTravel(sourceFire.name, adventure.destinations(context.definitions()).map(({ area: destination, fire }) => ({
           name: fire.name,
           travel: () => {
-            const allowed = () => adventure.canTravel(encounter, area, sourceFire, destination, fire);
+            const allowed = () => this.runtime.canTravel(area, sourceFire, destination, fire);
             if (allowed()) void context.changeArea({ kind: 'travel', area: destination.id, transition: true, spawn: fire.arrival, canCommit: allowed }).then(result => {
               if (result.status === 'committed' && result.readiness === 'ready') this.audio.play('fireTravel');
             }).catch(areaChangeFailed);

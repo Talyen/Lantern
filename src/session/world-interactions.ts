@@ -1,7 +1,7 @@
+import type { EncounterView } from '../gameplay/state-view';
 import type * as THREE from 'three';
 import { homeArea, type Adventure } from '../gameplay/adventure';
 import type { Point } from '../gameplay/area';
-import type { Encounter } from '../gameplay/encounter';
 import { gatheringSafe, type Harvesting } from '../gameplay/harvesting';
 import { gathering, progression } from '../gameplay/skills';
 import type { AreaInstance } from '../levels/builder';
@@ -115,7 +115,7 @@ export class WorldInteractions {
   }
 }
 
-export function interactionError(target: WorldInteraction, area: AreaDefinition, adventure: Adventure, encounter: Encounter): string {
+export function interactionError(target: WorldInteraction, area: AreaDefinition, adventure: Adventure, encounter: EncounterView): string {
   if (adventure.castRemaining > 0) return 'Scroll of Return is casting';
   if (target.type === 'resource' && !gatheringSafe(encounter, area.kind)) return 'Enemies nearby';
   return '';

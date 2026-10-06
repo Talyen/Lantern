@@ -1,5 +1,5 @@
 import { smithingMeleeMultiplier } from '../gameplay/smithing';
-import type { CharacterSave } from '../gameplay/character';
+import type { CharacterView } from '../gameplay/state-view';
 import type { WeaponSet } from '../gameplay/abilities';
 import { resolveCombatStats, type CombatStats } from '../gameplay/combat-stats';
 import { equipmentCatalog, isItemId, type Bonuses, type EquipmentSlot } from '../gameplay/equipment';
@@ -62,7 +62,7 @@ export function renderItemProperties(details: HTMLElement, entry: InventoryItem)
 /** Trading retains its effective-loadout comparison. */
 export function renderEquipmentDetails(
   details: HTMLElement, comparison: HTMLElement, entry: InventoryItem,
-  character: CharacterSave, set: WeaponSet, slot: EquipmentSlot,
+  character: CharacterView, set: WeaponSet, slot: EquipmentSlot,
 ): void {
   if (!isItemId(entry.item)) return;
   renderItemProperties(details, entry);

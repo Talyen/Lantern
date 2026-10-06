@@ -1,3 +1,4 @@
+import type { EncounterView } from './state-view';
 import { advanceWeather } from './weather';
 import { resourceDefinitions, type ResourceDefinition } from '../levels/resources';
 import { Harvesting, type TreeChange } from './harvesting';
@@ -483,21 +484,22 @@ export class Adventure {
     }
   }
 
-  fireSafe(area: AreaDefinition, fire: Campfire, active?: Encounter): boolean {
+  fireSafe(area: AreaDefinition, fire: Campfire, active?: EncounterView): boolean {
     if (area.kind === 'safe') return true;
     const session = this.session(area.id);
     const live = active ?? (this.currentArea === area.id ? this.liveEncounter : undefined);
-    const encounter = live ?? session.encounter ?? createEncounter('playing', area.layout);
-    if (!live && !session.encounter) for (const [id, saved] of Object.entries(session.enemies)) {
-      if (encounter.enemies[id]) encounter.enemies[id].hp = saved.hp;
+    const restored = !live && !session.encounter ? createEncounter('playing', area.layout) : undefined;
+    if (restored) for (const [id, saved] of Object.entries(session.enemies)) {
+      if (restored.enemies[id]) restored.enemies[id].hp = saved.hp;
     }
+    const encounter = live ?? session.encounter ?? restored!;
     return encounter.enemyIds.every(id => {
       const enemy = encounter.enemies[id];
       return enemy.hp <= 0 || (!enemy.engaged && !enemy.returning && !near([enemy.x, enemy.z], fire.position, 10));
     });
   }
 
-  canTravel(encounter: Encounter, sourceArea: AreaDefinition, source: Campfire, targetArea: AreaDefinition, target: Campfire): boolean {
+  canTravel(encounter: EncounterView, sourceArea: AreaDefinition, source: Campfire, targetArea: AreaDefinition, target: Campfire): boolean {
     return this.currentArea === sourceArea.id && encounter.player.hp > 0 && this.castRemaining === 0
       && near([encounter.player.x, encounter.player.z], source.position, 3) && this.fireSafe(sourceArea, source, encounter)
       && this.character.campfires.includes(fireKey(targetArea.id, target.id));

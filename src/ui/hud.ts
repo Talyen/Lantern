@@ -1,6 +1,7 @@
+import type { EncounterView } from '../gameplay/state-view';
 import { hudFrame } from './hud-art';
 import * as THREE from 'three';
-import { enemyMaxHealth, type EnemyId, type Encounter, type EncounterEvent } from '../gameplay/encounter';
+import { enemyMaxHealth, type EnemyId, type EncounterEvent } from '../gameplay/encounter';
 import './orbs.css';
 import { CombatText } from './combat-text';
 import type { CombatTextSettings } from './combat-text-settings';
@@ -20,7 +21,7 @@ export function createHud(onRetry: () => void) {
   enemyHealth.hidden = true;
   const roster: EnemyId[] = [];
   const rosterMembers = new Set<EnemyId>();
-  function bars(encounter: Encounter): void {
+  function bars(encounter: EncounterView): void {
     const ids = encounter.enemyIds;
     // Compare values so in-place roster edits and reordered/replaced arrays work.
     let unchanged = roster.length === ids.length;
@@ -79,7 +80,7 @@ export function createHud(onRetry: () => void) {
       document.documentElement.dataset.resourceNumbers=String(visible);
       for(const [orb,name] of [[playerHealth,'Health'],[playerMana,'Mana']] as const) orb.title=visible ? `${name} · ${orb.getAttribute('aria-valuetext') ?? ''}` : name;
     },
-    update(encounter: Encounter, events: EncounterEvent[]) {
+    update(encounter: EncounterView, events: EncounterEvent[]) {
       if (encounter.phase !== 'won') resultDismissed = false;
       bars(encounter);
       combatText.encounter(events);
@@ -100,7 +101,7 @@ export function createHud(onRetry: () => void) {
         if (enemy.hp <= 0) { damagedFor[id]=0; if (!bar.hidden) bar.hidden=true; }
       }
     },
-    positionEnemy(encounter: Encounter, camera: THREE.Camera, mount: HTMLElement, dt: number, obscured: boolean) {
+    positionEnemy(encounter: EncounterView, camera: THREE.Camera, mount: HTMLElement, dt: number, obscured: boolean) {
       combatText.update(camera, dt, obscured);
       let width: number | undefined, height = 0;
       for (const id of encounter.enemyIds) {
@@ -121,7 +122,7 @@ export function createHud(onRetry: () => void) {
       }
     },
     setSafe(value: boolean) { safe = value; if (safe) for (const bar of Object.values(healthBars)) bar.hidden=true; },
-    restore(encounter: Encounter): void {
+    restore(encounter: EncounterView): void {
       this.update(encounter, []);
       if (encounter.phase === 'lost') finish(false);
       else if (!safe && encounter.phase === 'won' && !resultDismissed) finish(true);

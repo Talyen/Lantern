@@ -1,3 +1,4 @@
+import type { EncounterView } from './state-view';
 import { stepCombatEffects } from './encounter-effects';
 import { baseStats, resolveCombatStats } from './combat-stats';
 import { legacyLayout, type EncounterLayout } from './area';
@@ -32,7 +33,7 @@ const enemyReadiness = new WeakMap<Encounter, {
   locks: Record<EnemyId, number>;
 }>();
 const explorationTimings: Timings = { player: explorationTiming, enemy: explorationTiming, caster: explorationTiming };
-export const inCombat = (state: Encounter): boolean => state.enemyIds.some(id => state.enemies[id].hp > 0 && (state.enemies[id].engaged || state.enemies[id].returning)) || state.projectiles.some(p => p.owner !== 'player');
+export const inCombat = (state: EncounterView): boolean => state.enemyIds.some(id => state.enemies[id].hp > 0 && (state.enemies[id].engaged || state.enemies[id].returning)) || state.projectiles.some(p => p.owner !== 'player');
 export function createEncounter(phase: Phase = 'loading', layout: EncounterLayout = legacyLayout, enemyKind: EnemyKind = 'raider'): Encounter {
   const actor = (x: number, z: number, hp: number, speed: number): ActorState => ({ x, y: 0, z, yaw: 0, hp, speed, lock: 0, attackTime: -1, contactIndex: 0 });
   const player = actor(...layout.player.position, phase === 'loading' ? 0 : playerMaxHealth, baseStats.moveSpeed);

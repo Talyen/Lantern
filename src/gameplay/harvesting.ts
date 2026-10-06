@@ -1,8 +1,8 @@
+import type { EncounterView } from './state-view';
 import { renewalSeconds, type SavedResource } from './outing';
 import type { TreeDefinition } from '../levels/trees';
 import { resourceItem, resourceSkill, type ResourceDefinition } from '../levels/resources';
 import type { Point } from './area';
-import { type Encounter } from './encounter';
 import type { AreaDefinition } from '../levels/types';
 import { gathering, harvestQuantity, progression, skillLevel, type GatheringSkill } from './skills';
 export type TreeState = { hits: number; felled: boolean };
@@ -10,7 +10,7 @@ export type TreeChange = { areaId: string; id: string; felled: boolean };
 export type HarvestReward = { item: 'wood' | 'stone' | 'iron'; quantity: number; skill: GatheringSkill; xpPerUnit: number; felled: boolean };
 type SessionResource = { definition: ResourceDefinition; hits: number; regrowAt?: number };
 /** Gathering shares one threat rule across starting, continuing and interaction prompts. */
-export function gatheringSafe(encounter: Encounter, kind: AreaDefinition['kind']): boolean {
+export function gatheringSafe(encounter: EncounterView, kind: AreaDefinition['kind']): boolean {
   return kind === 'safe' || !encounter.enemyIds.some(id => {
     const enemy = encounter.enemies[id];
     return enemy.home && enemy.hp > 0 && ((enemy.engaged && !enemy.returning) || Math.hypot(enemy.x - encounter.player.x, enemy.z - encounter.player.z) <= gathering.threatRadius);

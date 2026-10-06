@@ -1,10 +1,10 @@
+import type { EncounterView } from '../gameplay/state-view';
 import * as THREE from 'three';
 import { Fn, color, mix, positionLocal, positionPrevious, sin, uniform, uv, vec3 } from 'three/tsl';
 import { MeshBasicNodeMaterial } from 'three/webgpu';
 import { type AssetInstance, type AssetLibrary } from '../assets/asset-library';
 import { disposeSceneInstances } from '../assets/resource-ownership';
 import { arrowAsset } from '../gameplay/equipment';
-import type { Projectile, Encounter } from '../gameplay/encounter';
 
 /** Presentation reads simulation projectiles; it never resolves hits or lifetime. */
 export class ProjectileVisuals {
@@ -47,7 +47,7 @@ export class ProjectileVisuals {
       this.arrows = instance; instance.object.scale.setScalar(.7); instance.object.updateMatrixWorld(true);
     }).catch((error: unknown) => { this.loading = undefined; throw error; });
   }
-  sync(projectiles: Projectile[], dt = 0): void {
+  sync(projectiles: EncounterView['projectiles'], dt = 0): void {
     this.previousRibbonClock.value = this.ribbonClock.value;
     this.ribbonClock.value += dt;
     this.liveIds.clear();
@@ -83,7 +83,7 @@ export class CasterVisuals {
   private released = false;
   private hand?: THREE.Object3D;
   constructor(parent: THREE.Object3D, private actor: THREE.Object3D, private id = 'caster') { this.root.userData.transient = true; this.root.add(this.charge); parent.add(this.root); this.clear(); }
-  sync(state: Encounter, release: number, dt: number, visible: boolean): void {
+  sync(state: EncounterView, release: number, dt: number, visible: boolean): void {
     const enemy = state.enemies[this.id];
     if (!visible || !enemy || !enemy.home || enemy.hp <= 0 || state.phase === 'lost') { this.clear(); return; }
     this.material.color.set(enemy.damageType==='burn' ? '#ffc477' : '#b0eff4');
@@ -102,7 +102,7 @@ export class CasterVisuals {
     this.charge.rotation.y += dt * 2;
     this.material.opacity = charging ? .55 + progress * .4 : this.flash / .12;
   }
-  restore(state: Encounter): void {
+  restore(state: EncounterView): void {
     this.clear();
     this.released = (state.enemies[this.id]?.contactIndex ?? 0) > 0;
   }

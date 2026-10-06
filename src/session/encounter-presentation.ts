@@ -1,7 +1,8 @@
+import type { EncounterView } from '../gameplay/state-view';
 import { Vector3 } from 'three';
 import { abilities } from '../gameplay/abilities';
 import type { GameplayAudio } from '../audio/gameplay';
-import { dodgeDuration, type Motion, type ActorState, type ActorId, type Encounter, type EncounterEvent } from '../gameplay/encounter';
+import { dodgeDuration, type Motion, type ActorState, type ActorId, type EncounterEvent } from '../gameplay/encounter';
 import type { WeaponSet } from '../gameplay/abilities';
 import type { CoreEffects } from '../rendering/effects';
 import type { createHud } from '../ui/hud';
@@ -54,7 +55,7 @@ export class EncounterPresentation {
   }
 
   constructor(
-    private readonly encounter: Encounter,
+    private readonly encounter: EncounterView,
     private readonly actors: Record<ActorId, Actor>,
     private readonly audio: GameplayAudio,
     private readonly hud: Pick<ReturnType<typeof createHud>, 'update'>,

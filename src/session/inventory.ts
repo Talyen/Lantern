@@ -1,125 +1,97 @@
 import type { GameAudio } from '../audio/audio';
-import type { Adventure } from '../gameplay/adventure';
-import type { CharacterSave } from '../gameplay/character';
-import { inCombat, type Encounter } from '../gameplay/encounter';
-import {
-  removeQuantity, sameEquipment, validItems,
-  type InventoryItem,
-} from '../gameplay/inventory';
+import { removeQuantity, sameEquipment, validItems, type InventoryItem } from '../gameplay/inventory';
 import { play, type Actor } from './actors';
 import type { EquipmentSets } from './equipment-sets';
 import type { WeaponSet } from '../gameplay/abilities';
+import type { SessionRuntime } from './runtime';
 
 type InventoryContext = {
   clearInput(): void;
-  equipmentBlocked(): boolean;
-  updateCharacter(character: CharacterSave): void;
+  closed(): boolean;
+  updateCharacter(): void;
   syncAdventure(): void;
+  presentationFailed(error: unknown): void;
 };
 
-/** Commits inventory only after compatible equipment and motions are ready. */
+/** Stages gear before runtime commit; display failures cannot reject committed items. */
 export class InventoryController {
   private preparing = false;
-
+  private pending = new Set<Promise<void>>();
+  async dispose(): Promise<void> { await Promise.allSettled([...this.pending]); }
+  private track(operation: Promise<void>): Promise<void> {
+    this.pending.add(operation);
+    void operation.then(() => this.pending.delete(operation), () => this.pending.delete(operation));
+    return operation;
+  }
   constructor(
-    private readonly adventure: Adventure,
-    private readonly encounter: Encounter,
     private readonly player: Actor,
-    private readonly equipment: Pick<EquipmentSets, 'prepare' | 'activate'>,
+    private readonly equipment: Pick<EquipmentSets, 'stage' | 'activate'>,
     private readonly audio: Pick<GameAudio, 'play'>,
     private readonly context: InventoryContext,
+    private readonly runtime: SessionRuntime,
   ) {}
 
   get loading(): boolean { return this.preparing; }
+  canEditEquipment(): boolean { return !this.loading && this.runtime.canEditEquipment(); }
 
-  canEditEquipment(): boolean {
-    const { player, phase, dodgeRemaining } = this.encounter;
-    return phase !== 'loading' && player.hp > 0 && !inCombat(this.encounter) &&
-      player.lock === 0 && dodgeRemaining === 0 && !this.loading && !this.context.equipmentBlocked();
-  }
-
-  async initialize(): Promise<void> {
-    await this.prepareEquipment(this.adventure.character.items);
-  }
-
-  syncLoadout(): void {
-    this.adventure.syncLoadout(this.encounter);
+  initialize(): Promise<void> { return this.track(this.initializeEquipment()); }
+  private async initializeEquipment(): Promise<void> {
+    const prepared = await this.equipment.stage(this.runtime.character.items, this.runtime.character.activeSet);
+    try {
+      if (this.context.closed()) throw new Error('Adventure closed while equipment was preparing.');
+      prepared.activate(); this.runtime.syncLoadout(); play(this.player, 'idle'); this.context.updateCharacter();
+    } finally { prepared.dispose(); }
   }
 
   activateSet(set: WeaponSet): void {
-    if (set === this.adventure.character.activeSet) return;
-    const { player, phase, dodgeRemaining, attackCooldown } = this.encounter;
-    if (!['playing', 'won'].includes(phase) || player.hp <= 0 || player.lock > 0 || dodgeRemaining > 0 || attackCooldown > 0 || this.loading || this.context.equipmentBlocked())
-      throw new Error('Weapon set cannot change during an action.');
-    this.context.clearInput(); this.equipment.activate(set);
-    this.encounter.pending = null; this.encounter.blocking = false; this.encounter.player.attackTime = -1;
-    this.adventure.setWeaponSet(set); this.syncLoadout(); play(this.player, 'idle');
-    this.context.updateCharacter(this.adventure.character); this.audio.play('equip');
+    if (this.loading) throw new Error('Character equipment is still loading.');
+    if (!this.runtime.activateSet(set)) return;
+    this.present(() => { this.context.clearInput(); this.equipment.activate(set); play(this.player, 'idle'); this.context.updateCharacter(); this.audio.play('equip'); });
   }
 
-  private async prepareEquipment(items: InventoryItem[], commit?: () => void): Promise<void> {
+  private async prepareEquipment(items: InventoryItem[], commit: (expected: readonly InventoryItem[]) => void, cue: 'equip' | 'inventoryDrop'): Promise<void> {
     if (this.loading || !this.player.mixer) throw new Error('Character equipment is still loading.');
+    const expected = this.runtime.character.items;
+    const activeSet = this.runtime.character.activeSet;
     this.preparing = true;
-    this.context.clearInput();
     try {
-      await this.equipment.prepare(items, this.adventure.character.activeSet);
-      commit?.();
-      this.syncLoadout();
-      play(this.player, 'idle');
-      this.context.updateCharacter(this.adventure.character);
-      if (commit) this.audio.play('equip');
-    } finally {
-      this.preparing = false;
-    }
+      this.context.clearInput();
+      const prepared = await this.equipment.stage(items, activeSet);
+      try {
+        if (this.context.closed()) throw new Error('Adventure closed while equipment was preparing.');
+        if (activeSet !== this.runtime.character.activeSet) throw new Error('Weapon set changed while equipment was preparing.');
+        commit(expected);
+        this.present(() => { prepared.activate(); play(this.player, 'idle'); this.context.updateCharacter(); this.audio.play(cue); this.context.syncAdventure(); });
+      } finally { prepared.dispose(); }
+    } finally { this.preparing = false; }
   }
 
   async change(items: InventoryItem[]): Promise<void> {
     if (!validItems(items)) throw new Error('Item does not fit.');
-    if (!sameEquipment(items, this.adventure.character.items)) {
+    if (!sameEquipment(items, this.runtime.character.items)) {
       if (!this.canEditEquipment()) throw new Error('Equipment cannot change during combat or an action.');
-      await this.prepareEquipment(items, () => this.adventure.replaceItems(items));
-    } else {
-      this.adventure.replaceItems(items);
-      this.inventoryChanged();
-    }
+      await this.track(this.prepareEquipment(items, expected => this.runtime.commitItems(items, expected), 'equip'));
+    } else { this.runtime.commitItems(items); this.inventoryChanged(); }
   }
-
-  changeContainers(items: InventoryItem[], stash: InventoryItem[]): void {
-    this.adventure.replaceContainers(items, stash);
-    this.inventoryChanged();
-  }
-
-  transfer(id: string, quantity: number, toStash: boolean, point?: { x: number; y: number }): void {
-    this.adventure.transferStash(id, quantity, toStash, point);
-    this.inventoryChanged();
-  }
-
-  recover(id: string): void {
-    this.adventure.recoverItem(id);
-    this.inventoryChanged();
-  }
+  changeContainers(items: readonly InventoryItem[], stash: readonly InventoryItem[]): void { this.runtime.changeContainers(items, stash); this.inventoryChanged(); }
+  transfer(id: string, quantity: number, toStash: boolean, point?: { x: number; y: number }): void { this.runtime.transfer(id, quantity, toStash, point); this.inventoryChanged(); }
+  recover(id: string): void { this.runtime.recover(id); this.inventoryChanged(); }
 
   async drop(id: string, quantity: number): Promise<void> {
-    const entry = this.adventure.character.items.find(item => item.id === id);
+    const entry = this.runtime.character.items.find(item => item.id === id);
     if (!entry) throw new Error('Item is no longer available.');
-    const drop = () => {
-      const { player } = this.encounter;
-      this.adventure.dropItem(id, quantity, [player.x, player.z]);
-    };
     if (entry.slot === 'bag' || entry.slot === 'overflow') {
-      drop();
-      this.context.updateCharacter(this.adventure.character);
+      this.runtime.drop(id, quantity);
+      this.present(() => { this.context.updateCharacter(); this.audio.play('inventoryDrop'); this.context.syncAdventure(); });
     } else {
       if (!this.canEditEquipment()) throw new Error('Equipment cannot change during combat or an action.');
-      const items = removeQuantity(this.adventure.character.items, id, quantity);
-      await this.prepareEquipment(items, drop);
+      const items = removeQuantity(this.runtime.character.items, id, quantity);
+      await this.track(this.prepareEquipment(items, expected => this.runtime.drop(id, quantity, expected), 'inventoryDrop'));
     }
-    this.audio.play('inventoryDrop');
-    this.context.syncAdventure();
   }
 
-  private inventoryChanged(): void {
-    this.context.updateCharacter(this.adventure.character);
-    this.audio.play('inventoryMove');
+  private inventoryChanged(): void { this.present(() => { this.context.updateCharacter(); this.audio.play('inventoryMove'); }); }
+  private present(feedback: () => void): void {
+    try { feedback(); } catch (error) { this.context.presentationFailed(error); }
   }
 }

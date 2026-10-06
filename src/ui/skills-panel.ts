@@ -2,14 +2,14 @@ import { weaponFamily } from '../gameplay/equipment';
 import { abilities, abilityIds, abilityUnlocked, type AbilityId } from '../gameplay/abilities';
 import { skillCategories, skillDefinitions, skillLevel, skillTree, earnsSkillXP, type Skill, type SkillCategory } from '../gameplay/skills';
 import { nodesForSkill, type SkillNode } from '../gameplay/skill-nodes';
-import type { CharacterSave } from '../gameplay/character';
+import type { CharacterView } from '../gameplay/state-view';
 import { skillIcon, skillNodeIcon } from './skill-icons';
 import { abilityIcon } from './ability-icons';
 import './skills.css';
 
 type Context = {
   dialog: HTMLDialogElement;
-  character(): CharacterSave;
+  character(): CharacterView;
   canEdit(): boolean;
   abilityInfo(id: AbilityId): string;
   beginDrag(id: AbilityId, event: PointerEvent): void;

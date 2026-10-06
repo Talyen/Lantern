@@ -7,14 +7,14 @@ import { renderEquipmentDetails } from './equipment-details';
 import { shopStock, sellPrices } from '../gameplay/economy';
 import { preferredEquipmentSlot, isEquipmentSlot, isItemId } from '../gameplay/equipment';
 import { lootDefinitions, type InventoryItem, type LootItem } from '../gameplay/inventory';
-import type { CharacterSave } from '../gameplay/character';
+import type { CharacterView } from '../gameplay/state-view';
 
 type Selection = { kind: 'stock'; item: LootItem } | { kind: 'bag' | 'buyback'; id: string };
-type ShopContext = { buy(item: LootItem): void; sell(id: string): void; buyBack(id: string): void; clear(): void; focus(): void; sound(cue: 'menuOpen' | 'menuClose'): void };
+type ShopContext = { present(feedback: () => void): void; buy(item: LootItem): void; sell(id: string): void; buyBack(id: string): void; clear(): void; focus(): void; sound(cue: 'menuOpen' | 'menuClose'): void };
 /** Selection is presentation-only. Adventure revalidates and commits every trade. */
 export class ShopMenu {
   private dialog = document.createElement('dialog');
-  private character?: CharacterSave;
+  private character?: CharacterView;
   private key = '';
   private tab: 'stock' | 'buyback' = 'stock';
   private selection: Selection = { kind: 'stock', item: 'potion' };
@@ -46,14 +46,14 @@ export class ShopMenu {
         if (this.selection.kind === 'stock') this.context.buy(this.selection.item);
         else if (this.selection.kind === 'bag') this.context.sell(this.selection.id);
         else this.context.buyBack(this.selection.id);
-        this.refresh();
+        this.context.present(() => this.refresh());
       } catch (error) { this.error.textContent = error instanceof Error ? error.message : String(error); }
     };
   }
   get paused(): boolean { return this.dialog.open; }
   open(): void { this.context.clear(); this.tab = 'stock'; this.selection = { kind: 'stock', item: 'potion' }; this.refresh(); this.dialog.showModal(); this.context.sound('menuOpen'); }
   close(): void { if (!this.paused) return; this.dialog.close(); this.context.clear(); this.context.focus(); this.context.sound('menuClose'); }
-  update(character: CharacterSave): void {
+  update(character: CharacterView): void {
     this.character = character;
     if (!this.paused) return;
     const key = JSON.stringify([character.gold, character.items, character.buyback, character.activeSet]);

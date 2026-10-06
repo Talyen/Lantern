@@ -1,3 +1,4 @@
+import type { EncounterView } from '../gameplay/state-view';
 import type { OrthographicCamera } from 'three';
 import type { WebGPURenderer } from 'three/webgpu';
 import { pendingNativeCompilations } from '../rendering/renderer';
@@ -11,7 +12,7 @@ import type { SurfaceMode } from '../assets/environment-surfaces';
 import type { AreaInstance } from '../levels/builder';
 import type { AreaDefinition } from '../levels/types';
 import type { Adventure } from '../gameplay/adventure';
-import type { Encounter, ActorId } from '../gameplay/encounter';
+import type { ActorId } from '../gameplay/encounter';
 import type { Harvesting } from '../gameplay/harvesting';
 import type { MovementWorld } from '../gameplay/movement';
 import type { InputPreferences } from '../input/bindings';
@@ -47,7 +48,7 @@ type Context = {
   readonly renderedFrames: number;
   audio: GameAudio;
   adventure: Adventure;
-  encounter: Encounter;
+  encounter: EncounterView;
   preferences: InputPreferences;
   harvesting: Harvesting;
   gathering: GatheringController;

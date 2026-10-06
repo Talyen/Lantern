@@ -8,6 +8,7 @@ import type { Equipment, PreparedEquipment } from '../rendering/equipment';
 import type { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { installMotions, type Actor } from './actors';
 
+export type PreparedSets = { activate(): void; dispose(): void };
 type PreparedSet = { equipment: PreparedEquipment; motions: CombatMotions; loadout: Loadout };
 
 /** Both sets prepare before replacement; inactive attachments remain owned for instant swaps. */
@@ -17,7 +18,7 @@ export class EquipmentSets {
 
   constructor(private readonly actor: Actor, private readonly equipment: Equipment, private readonly loader: GLTFLoader, private readonly prepareArrow: () => Promise<void>) {}
 
-  async prepare(items: InventoryItem[], active: WeaponSet): Promise<void> {
+  async stage(items: readonly InventoryItem[], active: WeaponSet): Promise<PreparedSets> {
     const candidates: PreparedEquipment[] = [];
     const motionCandidates: CombatMotions[] = [];
     let next: [PreparedSet, PreparedSet];
@@ -33,16 +34,29 @@ export class EquipmentSets {
         return { equipment, motions, loadout };
       };
       next = [await prepare(0), await prepare(1)];
-      installMotions(this.actor, next[active].motions);
-      this.equipment.commit(next[active].equipment, true);
     } catch (error) {
       for (const candidate of candidates) this.equipment.discard(candidate);
       motionCandidates.forEach(releaseCombatMotions);
       throw error;
     }
-    for (const previous of this.sets ?? []) { this.equipment.discard(previous.equipment); releaseCombatMotions(previous.motions); }
-    this.sets = next;
-    this.refreshTimings();
+    let adopted = false, disposed = false;
+    return {
+      activate: () => {
+        if (disposed) throw new Error('Prepared equipment was released.');
+        if (adopted) return;
+        // Retain the new sets even if activation fails: recovery must use committed gear.
+        const previous = this.sets;
+        this.sets = next; adopted = true;
+        this.refreshTimings();
+        try { this.activate(active); }
+        finally { for (const set of previous ?? []) { this.equipment.discard(set.equipment); releaseCombatMotions(set.motions); } }
+      },
+      dispose: () => {
+        if (adopted || disposed) return;
+        disposed = true;
+        for (const set of next) { this.equipment.discard(set.equipment); releaseCombatMotions(set.motions); }
+      },
+    };
   }
 
   activate(set: WeaponSet): void {

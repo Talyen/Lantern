@@ -3,7 +3,6 @@ import type { WeatherPhase } from '../gameplay/weather';
 import type { ClearingSnapshot } from '../session/diagnostics';
 import { isLine } from '../assets/resource-ownership';
 import * as THREE from 'three';
-import type { Encounter } from '../gameplay/encounter';
 import type { PreparedProbeBake } from '../rendering/lighting-bake';
 import type { SurfaceMode } from '../assets/environment-surfaces';
 import type { AreaDefinition } from './types';
@@ -11,7 +10,7 @@ import { setMaterialCalibration, resetMaterialCalibration, materialCalibration }
 import { calibrationStrengths, type CalibrationFamily } from '../rendering/material-recipes';
 type Diagnostics = Pick<ClearingSnapshot, 'area' | 'revision' | 'renderedRevision' | 'ready' | 'errors' | 'missing' | 'contentHash' | 'camera' | 'renderedFrames' | 'phase' | 'updateMs' | 'objects' | 'resources' | 'graphics'>;
 type Appearance = { shelterRestored?: boolean; lantern: boolean; surfaces: SurfaceMode };
-type Context = { previewWeather(phase: WeatherPhase | 'live', wetness: number): void; previewGraphics(): PreviewGraphicsView | undefined; invalidate(): void; resetMaterials(): void; resetMeasurements(): void; measurements(): unknown; exportLighting(this: void): Promise<PreparedProbeBake>; lighting(this: void): unknown; appearance(this: void): Appearance; setAppearance(appearance: { surfaces?: SurfaceMode; lantern?: boolean; shelterRestored?: boolean }): Promise<boolean>; scene: THREE.Scene; camera: THREE.OrthographicCamera; renderer: { domElement: HTMLCanvasElement }; definitions(): Record<string, AreaDefinition>; area(): AreaDefinition; encounter: Encounter; changeArea(id: string): Promise<boolean>; restart(this: void): void; inspect(): boolean; waitFrames(count?: number): Promise<void>; setFrozen(value: boolean): void; setView(id: string): void; diagnostics(): Diagnostics };
+type Context = { previewWeather(phase: WeatherPhase | 'live', wetness: number): void; previewGraphics(): PreviewGraphicsView | undefined; invalidate(): void; resetMaterials(): void; resetMeasurements(): void; measurements(): unknown; exportLighting(this: void): Promise<PreparedProbeBake>; lighting(this: void): unknown; appearance(this: void): Appearance; setAppearance(appearance: { surfaces?: SurfaceMode; lantern?: boolean; shelterRestored?: boolean }): Promise<boolean>; scene: THREE.Scene; camera: THREE.OrthographicCamera; renderer: { domElement: HTMLCanvasElement }; definitions(): Record<string, AreaDefinition>; area(): AreaDefinition; placePlayer(x: number, z: number, yaw: number): void; changeArea(id: string): Promise<boolean>; restart(this: void): void; inspect(): boolean; waitFrames(count?: number): Promise<void>; setFrozen(value: boolean): void; setView(id: string): void; diagnostics(): Diagnostics };
 export function attachAuthoring(ctx: Context) {
   attachPreviewGraphics(() => { const view = ctx.previewGraphics(); return view ? [view] : []; });
   const runtimeId = crypto.randomUUID();
@@ -91,7 +90,7 @@ export function attachAuthoring(ctx: Context) {
     clean: (value:boolean) => { if (value && document.querySelector<HTMLDialogElement>('#options-dialog')?.open) document.querySelector<HTMLButtonElement>('#options-close')?.click(); panel.hidden=value;document.querySelectorAll<HTMLElement>('.resource-orb, .enemy-health, #result-panel, #asset-status, #interaction-prompt, #action-bar, #hud-options').forEach(e=>{e.style.visibility=value?'hidden':'';});ctx.invalidate();},
     settle: async(count=16, expected=ctx.diagnostics().revision) => {await ctx.waitFrames(count);const d=ctx.diagnostics();if(!d.ready||d.revision!==expected||d.errors.length)throw new Error('Scene revision changed or is not ready');return d;},
     // Deterministic inspection setup; normal smoke tests still exercise keyboard movement/combat.
-    placePlayer: (x:number,z:number,yaw:number) => {ctx.encounter.player.x=x;ctx.encounter.player.z=z;ctx.encounter.player.yaw=yaw;ctx.invalidate();},
+    placePlayer: (x:number,z:number,yaw:number) => {ctx.placePlayer(x,z,yaw);ctx.invalidate();},
     zoom: (value:number) => {ctx.camera.zoom=value;ctx.camera.updateProjectionMatrix();ctx.invalidate();},
   };
   Object.assign(window,{lanternAuthoring:bridge}); refresh(); setView(ctx.appearance().surfaces === 'showcase' && ctx.area().id === 'clearing' ? 'entrance' : 'center');

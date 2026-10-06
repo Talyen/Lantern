@@ -1,7 +1,7 @@
+import type { EncounterView } from '../gameplay/state-view';
 import * as THREE from 'three';
 import type { WebGPURenderer } from 'three/webgpu';
 import { isMesh } from '../assets/resource-ownership';
-import type { Encounter } from '../gameplay/encounter';
 import type { AreaInstance } from '../levels/builder';
 import { particlePresets, type QualityLevel } from './quality-presets';
 import { ArrowRainEffects } from './arrow-rain';
@@ -30,7 +30,7 @@ export class AbilityEffects {
     area.root.add(this.rain.root);
   }
   async prepare(camera:THREE.Camera): Promise<void> {await this.rain.prepare(); this.rain.stageMaterials(camera);}
-  sync(state:Encounter,actor:THREE.Object3D,camera:THREE.Camera): void {
+  sync(state:EncounterView,actor:THREE.Object3D,camera:THREE.Camera): void {
     const committed=state.rains[0];
     const preparation=state.playerAction?.ability==='arrow-rain' && state.player.attackTime>=0 ? state.playerAction : null;
     const id=committed?.id ?? preparation?.impactId;

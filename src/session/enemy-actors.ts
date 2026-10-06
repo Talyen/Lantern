@@ -1,10 +1,10 @@
+import type { EncounterView } from '../gameplay/state-view';
 import { loadRigArt } from '../assets/rig-art';
 import * as THREE from 'three';
 import type { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import type { RuntimeAssets, RigArt } from '../assets/runtime-assets';
 import type { ArtLease } from '../assets/art-cache';
 import characters from '../../assets/playable-characters.json';
-import type { Encounter } from '../gameplay/encounter';
 import type { EnemyRig } from '../gameplay/area';
 import { loadEquipmentMotions, releaseCombatMotions, type CombatMotions } from '../animation/combat-animations';
 import { disposeSceneInstances } from '../assets/resource-ownership';
@@ -29,7 +29,7 @@ export class EnemyActors {
     }) };
   }
 
-  async prepare(state: Encounter): Promise<PreparedEnemies> {
+  async prepare(state: EncounterView): Promise<PreparedEnemies> {
     const root = new THREE.Scene(), entries: PreparedEnemies['entries'] = {};
     const rigLeases: ArtLease<RigArt>[] = [];
     let released = false;
@@ -78,11 +78,11 @@ export class EnemyActors {
     if (owned) previous?.dispose();
   }
   clear(): void { for (const entry of Object.values(this.active?.entries ?? {})) entry.caster?.clear(); }
-  restore(state: Encounter): void {
+  restore(state: EncounterView): void {
     for (const entry of Object.values(this.active?.entries ?? {})) entry.caster?.restore(state);
     this.sync(state, 0, true);
   }
-  sync(state: Encounter, dt: number, visible: boolean): void {
+  sync(state: EncounterView, dt: number, visible: boolean): void {
     if (!this.active) return;
     for (const id in this.active.entries) {
       const entry = this.active.entries[id];

@@ -1,7 +1,9 @@
+import type { EncounterView } from '../gameplay/state-view';
+import type { SessionRuntime } from './runtime';
 import type { Adventure } from '../gameplay/adventure';
 import { dropLandingSeconds, pickupRadius } from '../gameplay/ground-loot';
 import { near, type Point } from '../gameplay/area';
-import type { AimPoint, Encounter } from '../gameplay/encounter';
+import type { AimPoint } from '../gameplay/encounter';
 import type { MovementWorld } from '../gameplay/movement';
 import type { WorldInteraction } from './world-interactions';
 
@@ -26,7 +28,7 @@ type ApproachFrame = {
 export class ClickApproach {
   private route: Route | null = null;
 
-  constructor(private readonly adventure: Adventure, private readonly encounter: Encounter) {}
+  constructor(private readonly adventure: Adventure, private readonly encounter: EncounterView, private readonly runtime: Pick<SessionRuntime, 'selectPickup' | 'pickup'>) {}
 
   get worldKey(): string | null {
     return this.route?.target.kind === 'world' ? this.route.target.key : null;
@@ -34,7 +36,7 @@ export class ClickApproach {
 
   cancel(): void {
     this.route = null;
-    this.adventure.cancelPickup();
+    this.runtime.selectPickup(null);
   }
 
   private start(target: Route['target'], points: Point[]): void {
@@ -47,16 +49,16 @@ export class ClickApproach {
     this.cancel();
     const point: Point = [this.encounter.player.x, this.encounter.player.z];
     if (near(point, drop.position, pickupRadius) && this.adventure.canCollectGround(drop)) {
-      if (drop.age >= dropLandingSeconds) this.adventure.pickup(id, point, true);
+      if (drop.age >= dropLandingSeconds) this.runtime.pickup(id, point);
       else {
-        this.adventure.pickupTarget = id;
+        this.runtime.selectPickup(id);
         this.start({ kind: 'loot', id }, []);
       }
       return;
     }
     const points = navigation?.pickupPath(this.encounter.player, drop.position, drop.height);
     if (!points && (!navigation || navigation.navigationReady)) { this.adventure.message('Can’t reach item'); return; }
-    this.adventure.pickupTarget = id;
+    this.runtime.selectPickup(id);
     this.start({ kind: 'loot', id }, points ?? []);
   }
 
@@ -90,7 +92,7 @@ export class ClickApproach {
       const drop = this.adventure.session().drops.find(drop => drop.id === id);
       if (!this.adventure.pickupTarget || !drop) { this.cancel(); return; }
       if (near(point, drop.position, pickupRadius) && this.adventure.canCollectGround(drop)) {
-        if (drop.age >= dropLandingSeconds) { this.adventure.pickup(drop.id, point, true); this.cancel(); }
+        if (drop.age >= dropLandingSeconds) { this.runtime.pickup(drop.id, point); this.cancel(); }
         return;
       }
       refresh = () => navigation?.pickupPath(player, drop.position, drop.height);

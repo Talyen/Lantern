@@ -1,3 +1,5 @@
+import { SessionRuntime } from '../src/session/runtime';
+import { GatheringAction } from '../src/gameplay/gathering-action';
 import { memory } from './helpers/storage';
 import { isRecord, parseJson } from '../src/data/json';
 import { expect, test, vi } from 'vitest';
@@ -17,6 +19,14 @@ const field: AreaDefinition = { ...authoredField, layout: { ...authoredField.lay
   chests: authoredField.chests?.map(chest => ({ ...chest, gold: false })) };
 
 
+function inventoryRuntime(adventure: Adventure, encounter: ReturnType<typeof createEncounter>, blocked = () => false) {
+  const gathering = new GatheringAction(encounter, adventure, { area: () => home, paused: () => false, timing: () => undefined, visible: () => true, setTreeFelled: () => {} });
+  return new SessionRuntime(encounter, adventure, gathering, {
+    area: () => home, paused: () => false, impactHolding: () => false, equipmentBlocked: blocked,
+    movement: () => undefined, timings: () => ({ player: { attack: 1, hit: 1, contacts: [] } }), interruptApproach: () => {}, defeated: () => {},
+  });
+}
+
 test('failed equipment preparation retains saved gear and releases the gate for a successful retry', async () => {
   const THREE = await import('three');
   const { makeActor } = await import('../src/session/actors');
@@ -25,11 +35,11 @@ test('failed equipment preparation retains saved gear and releases the gate for 
   await adventure.prepareSave();
   const player = makeActor(new THREE.Scene(), encounter.player);
   player.mixer = new THREE.AnimationMixer(player.root);
-  const prepare = vi.fn().mockRejectedValueOnce(new Error('Missing weapon art')).mockResolvedValue(undefined);
-  const inventory = new InventoryController(adventure, encounter, player, { prepare, activate: () => {} }, { play: () => {} }, {
-    clearInput: () => {}, equipmentBlocked: () => false,
+  const prepare = vi.fn().mockRejectedValueOnce(new Error('Missing weapon art')).mockResolvedValue({ activate: () => {}, dispose: () => {} });
+  const inventory = new InventoryController(player, { stage: prepare, activate: () => {} }, { play: () => {} }, {
+    clearInput: () => {}, closed: () => false, presentationFailed: error => { throw error; },
     updateCharacter: () => {}, syncAdventure: () => {},
-  });
+  }, inventoryRuntime(adventure, encounter));
   const original = structuredClone(adventure.character.items), saved = storage.data.get(characterSaveKey);
   const axe = original.find(item => item.slot === 'main')!;
   const next = moveItem(original, axe.id, 2, 0, 1, adventure.newId);
@@ -59,10 +69,10 @@ test('dropping equipped gear saves one coherent transfer and retains the origina
   adventure.enter(encounter, home);
   const player = makeActor(new THREE.Scene(), encounter.player);
   player.mixer = new THREE.AnimationMixer(player.root);
-  const inventory = new InventoryController(adventure, encounter, player, { prepare: async () => {}, activate: () => {} }, { play: () => {} }, {
-    clearInput: () => {}, equipmentBlocked: () => false,
+  const inventory = new InventoryController(player, { stage: async () => ({ activate: () => {}, dispose: () => {} }), activate: () => {} }, { play: () => {} }, {
+    clearInput: () => {}, closed: () => false, presentationFailed: error => { throw error; },
     updateCharacter: () => {}, syncAdventure: () => {},
-  });
+  }, inventoryRuntime(adventure, encounter));
   const axe = adventure.character.items.find(item => item.slot === 'main')!;
   const writes = vi.spyOn(storage, 'setItem');
   await inventory.drop(axe.id, 1);
@@ -74,6 +84,69 @@ test('dropping equipped gear saves one coherent transfer and retains the origina
   expect(backup.items).toContainEqual(axe);
   expect(backup.outing.areas.homestead.drops).toEqual([]);
   adventure.closeSave();
+});
+
+// Admission: preparation and saved gameplay were previously mixed with fallible display work.
+// Protect committed gear and the latest inventory against false rejection/stale overwrite;
+// the existing retry test only covers failure before commit. Real runtime/save boundaries suffice.
+test.each(['activation', 'ui', 'audio'])('equipment remains committed after %s fails', async failure => {
+  const THREE = await import('three');
+  const { makeActor } = await import('../src/session/actors');
+  const { InventoryController } = await import('../src/session/inventory');
+  const storage = memory(), adventure = new Adventure(storage), encounter = createEncounter('won');
+  await adventure.prepareSave();
+  const player = makeActor(new THREE.Scene(), encounter.player);
+  player.mixer = new THREE.AnimationMixer(player.root);
+  const original = adventure.character.items, axe = original.find(item => item.slot === 'main')!;
+  const next = moveItem(original, axe.id, 2, 0, 1, adventure.newId);
+  const error = new Error('Presentation unavailable'), recovery = vi.fn();
+  const fail = (at: string) => { if (failure === at) throw error; };
+  const inventory = new InventoryController(player, {
+    stage: async () => ({ activate: () => fail('activation'), dispose: () => {} }), activate: () => {},
+  }, { play: () => fail('audio') }, {
+    clearInput: () => {}, closed: () => false, updateCharacter: () => fail('ui'), syncAdventure: () => {}, presentationFailed: recovery,
+  }, inventoryRuntime(adventure, encounter));
+  try {
+    await expect(inventory.change(next)).resolves.toBeUndefined();
+    expect(adventure.character.items).toEqual(next);
+    expect(encounter.weapon).toBeNull();
+    expect(decodeCharacter(storage.data.get(characterSaveKey)!).items).toEqual(next);
+    expect(recovery).toHaveBeenCalledExactlyOnceWith(error);
+    expect(inventory.loading).toBe(false);
+  } finally { await inventory.dispose(); adventure.closeSave(); }
+});
+
+test.each(['eligibility', 'inventory', 'closed'])('stale equipment preparation cannot commit after %s changes', async changed => {
+  const THREE = await import('three');
+  const { makeActor } = await import('../src/session/actors');
+  const { InventoryController } = await import('../src/session/inventory');
+  const storage = memory(), adventure = new Adventure(storage), encounter = createEncounter('won');
+  await adventure.prepareSave();
+  const player = makeActor(new THREE.Scene(), encounter.player);
+  player.mixer = new THREE.AnimationMixer(player.root);
+  let blocked = false, closed = false, finish!: () => void;
+  const ready = new Promise<void>(resolve => { finish = resolve; });
+  const activate = vi.fn(), discard = vi.fn(), runtime = inventoryRuntime(adventure, encounter, () => blocked);
+  const inventory = new InventoryController(player, { stage: async () => { await ready; return { activate, dispose: discard }; }, activate: () => {} }, { play: () => {} }, {
+    clearInput: () => {}, closed: () => closed, updateCharacter: () => {}, syncAdventure: () => {}, presentationFailed: error => { throw error; },
+  }, runtime);
+  const original = adventure.character.items, axe = original.find(item => item.slot === 'main')!;
+  const next = moveItem(original, axe.id, 2, 0, 1, adventure.newId);
+  const pending = inventory.change(next);
+  if (changed === 'eligibility') blocked = true;
+  if (changed === 'closed') closed = true;
+  if (changed === 'inventory') runtime.commitItems([...original, { id: adventure.newId(), item: 'wood', quantity: 1, slot: 'bag', x: 5, y: 0 }]);
+  const retained = structuredClone(adventure.character.items), saved = storage.data.get(characterSaveKey);
+  const rejected = expect(pending).rejects.toThrow();
+  finish();
+  try {
+    await rejected;
+    expect(adventure.character.items).toEqual(retained);
+    expect(storage.data.get(characterSaveKey)).toBe(saved);
+    expect(activate).not.toHaveBeenCalled();
+    expect(discard).toHaveBeenCalledOnce();
+    expect(inventory.loading).toBe(false);
+  } finally { await inventory.dispose(); adventure.closeSave(); }
 });
 
 test('home recovery, campfire travel and defeat preserve the outing and collected scrolls', () => {

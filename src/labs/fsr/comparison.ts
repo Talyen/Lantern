@@ -3,13 +3,13 @@ import type { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { Graphics } from '../../rendering/graphics';
 import { defaults } from '../../rendering/graphics-settings';
 import type { FrameLoop } from '../../session/frame-loop';
-import type { Encounter } from '../../gameplay/encounter';
+import type { EncounterView } from '../../gameplay/state-view';
 import { fsrComparison, comparisonPreset, comparisonPresets, selectComparisonPreset, resetComparisonRandom } from './settings';
 import { ComparisonVideo } from './video';
 
 type Context = {
   graphics: Graphics; frameLoop: FrameLoop; camera: OrthographicCamera; controls: OrbitControls; canvas: HTMLCanvasElement;
-  encounter: Encounter; diagnostics(): { ready: boolean; errors: string[]; missing: string[]; contentHash: string; revision: number };
+  encounter: EncounterView; prepareFixture(): void; diagnostics(): { ready: boolean; errors: string[]; missing: string[]; contentHash: string; revision: number };
   freeze(value: boolean): void; clean(): void; foliageFixture(): void; step(dt: number, movement: { x: number; z: number }, attack: boolean): boolean;
 };
 const nextFrame = () => new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
@@ -51,7 +51,7 @@ export function attachFsrComparison(ctx: Context) {
       ctx.graphics.flushSettings(); await ctx.graphics.ready();
       ctx.freeze(true); ctx.foliageFixture(); ctx.graphics.effects.resetComparisonPools(); resetComparisonRandom();
       // A private, save-free camp inspection. Won phase prevents enemy AI or rewards.
-      ctx.encounter.phase = 'won'; for (const enemy of Object.values(ctx.encounter.enemies)) enemy.hp = 0; ctx.encounter.player.x = 1; ctx.encounter.player.z = -5.6; ctx.encounter.player.yaw = Math.PI;
+      ctx.prepareFixture();
       target.set(1.5, .9, -6); ctx.camera.zoom = 1 / .6; ctx.camera.updateProjectionMatrix(); cameraAt(target);
       for (let i = 0; i < 120; i++) { await nextFrame(); resetComparisonRandom(74103 + i); if (!ctx.step(1 / 60, still, false)) throw new Error('Warm-up frame was not rendered.'); }
       ctx.graphics.resetHistory();
