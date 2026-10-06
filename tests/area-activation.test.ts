@@ -2,6 +2,7 @@ import { expect, test } from 'vitest';
 import { Scene } from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { AreaActivation } from '../src/session/area-activation';
+import type { RuntimeAssets } from '../src/assets/runtime-assets';
 import { EnemyActors, type PreparedEnemies } from '../src/session/enemy-actors';
 import { makeActor } from '../src/session/actors';
 import { CasterVisuals } from '../src/rendering/projectiles';
@@ -15,7 +16,7 @@ test('failed enemy attachment detaches every borrowed actor and permits retry wi
   const state = createEncounter('playing', (clearing as unknown as AreaDefinition).layout);
   const scene = new Scene(), staging = new Scene();
   const player = makeActor(scene, state.player), actors = { player };
-  const presenter = new EnemyActors(scene, new GLTFLoader(), actors);
+  const presenter = new EnemyActors(scene, new GLTFLoader(), actors, {} as RuntimeAssets);
   let released = 0;
   const enemies: PreparedEnemies = {
     entries: Object.fromEntries(state.enemyIds.filter(id => state.enemies[id].home).map(id => {
