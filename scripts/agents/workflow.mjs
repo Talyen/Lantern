@@ -149,7 +149,10 @@ export async function finishTask(ctx, task, { paths = [], message = `feat: ${tas
     for (;;) {
       await withResource('promotion', () => recover(ctx), { ctx });
       const base = await git(['rev-parse', 'HEAD'], ctx.main);
-      try { await git(['rebase', base], task.path); }
+      try {
+        const included = await git(['merge-base', '--is-ancestor', base, 'HEAD'], task.path).then(() => true).catch(error => { if (error.cause?.code === 1) return false; throw error; });
+        if (!included) await git(['rebase', base], task.path);
+      }
       catch (error) {
         task.status = 'needs-code-repair'; await saveTask(ctx, task);
         throw new Error(`Resolve the rebase in ${task.path}, run git rebase --continue, then retry agent:finish. ${error.message}`, { cause: error });

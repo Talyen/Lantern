@@ -737,3 +737,23 @@ test('source publication refreshes copy stamps but rejects changing original byt
     }
   } finally { await ctx.dispose(); }
 });
+
+
+// Flattening a merge that already contains main rewrote incorporated commit IDs
+// and prevented safe completed-branch disposal in the real cleanup.
+test('integration preserves incorporated merge parents when main is already included', async () => {
+  const ctx = await fixture();
+  try {
+    const side = await startTask(ctx, 'side');
+    await edit(side, 'adopted.txt', 'same change\n');
+    await git(['add', 'adopted.txt'], side.path); await git(['commit', '-m', 'original change'], side.path);
+    const original = await git(['rev-parse', 'HEAD'], side.path);
+    await writeFile(join(ctx.main, 'adopted.txt'), 'same change\n');
+    await git(['add', 'adopted.txt'], ctx.main); await git(['commit', '-m', 'incorporated change'], ctx.main);
+    const task = await startTask(ctx, 'merge');
+    await git(['merge', '-s', 'ours', '--no-ff', '--no-edit', side.branch], task.path);
+    await finishTask(ctx, task);
+    await git(['merge-base', '--is-ancestor', original, 'main'], ctx.main);
+    assert.equal(await readFile(join(ctx.main, 'adopted.txt'), 'utf8'), 'same change\n');
+  } finally { await ctx.dispose(); }
+});
