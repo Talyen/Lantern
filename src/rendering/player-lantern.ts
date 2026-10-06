@@ -12,7 +12,6 @@ export class PlayerLantern {
   private readonly ownerBounce: THREE.PointLight;
   private model: THREE.Group | null = null;
   private hook: THREE.Mesh | null = null;
-  private authoredLantern: THREE.Object3D | null = null;
   private disposed = false;
   constructor(private actor: THREE.Group, enabled: boolean, private resources: RuntimeAssets) {
     const recipe = resolveLocalLight({ role: 'lantern' });
@@ -32,10 +31,8 @@ export class PlayerLantern {
     this.actor.updateMatrixWorld(true);
     const emitterPosition = this.light.getWorldPosition(new THREE.Vector3());
     const bouncePosition = this.ownerBounce.getWorldPosition(new THREE.Vector3());
-    this.authoredLantern = this.actor.getObjectByName(characters.player.lanternNode) ?? null;
-    if (this.authoredLantern) this.authoredLantern.visible = this.root.visible;
     const url = characters.player.lanternModel;
-    if (!this.authoredLantern) try {
+    try {
       const { scene } = await this.resources.loader.loadAsync(url); sceneTextures(scene);
       this.model = scene;
       const height = new THREE.Box3().setFromObject(scene).getSize(new THREE.Vector3()).y;
@@ -70,8 +67,8 @@ export class PlayerLantern {
       }
     }
   }
-  setEnabled(value: boolean): void { this.root.visible = value; if (this.authoredLantern) this.authoredLantern.visible = value; }
-  diagnostics() { return { enabled: this.root.visible, model: !!this.model || !!this.authoredLantern, attachment: this.root.parent?.name, handlePosition: this.root.getWorldPosition(new THREE.Vector3()).toArray(), position: this.light.getWorldPosition(new THREE.Vector3()).toArray(), intensity: this.light.intensity, distance: this.light.distance, ownerBounce: { intensity: this.ownerBounce.intensity, distance: this.ownerBounce.distance }, attachedToRig: !!this.root.parent && ['Hips', 'lantern-socket'].includes(this.root.parent.name) }; }
+  setEnabled(value: boolean): void { this.root.visible = value; }
+  diagnostics() { return { enabled: this.root.visible, model: !!this.model, attachment: this.root.parent?.name, handlePosition: this.root.getWorldPosition(new THREE.Vector3()).toArray(), position: this.light.getWorldPosition(new THREE.Vector3()).toArray(), intensity: this.light.intensity, distance: this.light.distance, ownerBounce: { intensity: this.ownerBounce.intensity, distance: this.ownerBounce.distance }, attachedToRig: !!this.root.parent && ['Hips', 'lantern-socket'].includes(this.root.parent.name) }; }
   private disposeModel(): void {
     if (!this.model) return;
     this.model.removeFromParent();
